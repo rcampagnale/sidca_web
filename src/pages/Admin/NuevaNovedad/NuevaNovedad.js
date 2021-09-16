@@ -2,8 +2,8 @@ import React from 'react'
 import { useDispatch } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
-import { nuevoCurso } from '../../../redux/reducers/cursos/actions';
 import styles from '../../../assets/styles/global.module.css'
+import { nuevaNovedad } from '../../../redux/reducers/novedades/actions';
 
 const NuevaNovedad = () => {
 
@@ -24,7 +24,7 @@ const NuevaNovedad = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        dispatch(nuevoCurso(form));
+        dispatch(nuevaNovedad(form));
         reset()
         history.push('/admin');
     }   

@@ -19,7 +19,8 @@ const Enlaces = () => {
 
     return (
         <div>
-            <table style={{borderColor: 'black', borderWidth: 1}}>
+            Web in Maintenance
+            {/* <table style={{borderColor: 'black', borderWidth: 1}}>
                 <tr>
                     <th>Prioridad</th>
                     <th>Titulo</th>
@@ -41,7 +42,7 @@ const Enlaces = () => {
                         )
                     })
                 }
-            </table>
+            </table> */}
         </div>
     )
 }

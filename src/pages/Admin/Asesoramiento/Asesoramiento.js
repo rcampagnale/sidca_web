@@ -12,7 +12,8 @@ const Asesoramiento = () => {
 
     return (
         <div>
-            <table style={{borderColor: 'black', borderWidth: 1}}>
+            Web in Maintenance
+            {/* <table style={{borderColor: 'black', borderWidth: 1}}>
                 <tr>
                     <th>Prioridad</th>
                     <th>Titulo</th>
@@ -42,7 +43,7 @@ const Asesoramiento = () => {
                     :
                     <h3>No hay enlaces</h3>
                 }
-            </table>
+            </table> */}
         </div>
     )
 }

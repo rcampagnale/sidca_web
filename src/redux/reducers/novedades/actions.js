@@ -2,7 +2,7 @@ import types from './types'
 import { db } from '../../../firebase/firebase-config';
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore"; 
 
-export const nuevoCurso = (data) => {
+export const nuevaNovedad = (data) => {
     return async (dispatch, getState)=>{
         // dispatch(newUserProcess());
         let enlace = {
