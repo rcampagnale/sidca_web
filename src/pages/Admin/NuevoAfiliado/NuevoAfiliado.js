@@ -22,6 +22,8 @@ const NuevoAfiliado = () => {
     const afiliado = useSelector(state => state.afiliado)
     const [form, handleInputChange, reset] = useForm(initialform);
 
+    //TODO agregar cargo y departamento
+
     const handleSubmit = async(e) => {
         e.preventDefault();
         if(form.nombre === '' || form.apellido === '' || form.dni === ''){

@@ -19,7 +19,7 @@
     display: block;
     width: 25%;
     height: 25%;
-    background-color: #fea200;
+    background-color: #0af;
     border-radius: 100%;
     animation: sk_chase_dot_before 2.0s infinite ease-in-out both; 
 }

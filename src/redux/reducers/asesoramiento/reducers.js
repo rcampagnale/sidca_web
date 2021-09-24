@@ -8,83 +8,39 @@ const initialState = {
     profile: undefined,
 }
 
-export const afiliadoReducer = (state = initialState, action) => {
+export const asesoramientoReducer = (state = initialState, action) => {
     switch (action.type) {
-        case types.AUTHENTICATE_USER:
+        case types.NUEVO_ASESORAMIENTO :
             return {
                 ...state,
-                processing: true
+                processing: true,
+                status: '',
+                msg: '',
             };
-        case types.AUTHENTICATE_USER_SUCCESS:
+        case types.NUEVO_ASESORAMIENTO_SUCCESS :
             return {
                 ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
-            };
-        case types.AUTHENTICATE_USER_ERROR:
-            return {
-                ...state,
+                processing: true,
+                status: 'SUCCESS',
                 msg: action.payload,
-                processing: false
             };
-        case types.SET_USER:
+        case types.NUEVO_ASESORAMIENTO_ERROR :
             return {
                 ...state,
-                processing: true
-            };
-        case types.SET_USER_SUCCESS:
-            return {
-                ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
-            };
-        case types.SET_USER_ERROR:
-            return {
-                ...state,
-                msg: action.payload,
-                processing: false
-            };
-        case types.NEW_USER:
-            return {
-                ...state,
-                processing: true
-            };
-        case types.NEW_USER_SUCCESS:
-            return {
-                ...state,
-                nuevoAfiliado: true,
                 processing: false,
-                msg: 'Se ha enviado la informacion correctamente. ¡Gracias por afiliarte a SIDCA! Ingresa con el usuario Sidcagremio y con tu DNI'
-            };
-        case types.NEW_USER_ERROR:
-            return {
-                ...state,
+                status: 'FAILURE',
                 msg: action.payload,
-                processing: false
             };
-        case types.LOGOUT:
+        case types.CLEAR_STATUS :
             return {
                 ...state,
-                logoutProcess: true
-            };
-        case types.LOGOUT_SUCCESS:
-            return {
-                ...state,
-                auth: false,
-                profile: false,
-                msg: 'Se ha cerrado la sesión con exito',
-                logoutProcess: undefined
-            };
-        case types.LOGOUT_ERROR:
-            return {
-                ...state,
-                logoutProcess: undefined
+                processing: false,
+                status: '',
+                msg: '',
             };
         default:
             return state;
     }
 }
 
-export default afiliadoReducer;
+export default asesoramientoReducer;

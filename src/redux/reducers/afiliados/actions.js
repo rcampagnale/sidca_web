@@ -22,7 +22,8 @@ export const getAfiliadosNuevos = (data) => {
                         email: data.email,
                         celular: data.celular,
                         establecimientos: data.establecimientos,
-                        error: data.error
+                        error: data.error,
+                        departamento: data.departamento
                     }
                     arrayDocs.push(obj)
                 })

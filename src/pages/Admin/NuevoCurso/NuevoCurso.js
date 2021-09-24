@@ -94,12 +94,12 @@ const NuevoCurso = () => {
                 <label className={styles.labelForm}>Imagen (link)</label>
                 <input className={styles.inputForm} value={form.imagen} name="imagen" id="imagen" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.imagen}/>
                 <input className={styles.submitButton} type="submit" value={id ? 'Editar' : 'Agregar'}/>
+            </form>
                 {
                     cursos.processing 
                     &&
                     <Spinner />
                 }
-            </form>
         </div>
     )
 }

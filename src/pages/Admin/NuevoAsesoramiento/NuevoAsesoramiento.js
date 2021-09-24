@@ -1,15 +1,20 @@
-import React from 'react'
-import { useDispatch } from 'react-redux';
+import React, { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { useForm } from '../../../hooks/useForm';
 import styles from '../../../assets/styles/global.module.css'
-import { nuevoAsesoramiento } from '../../../redux/reducers/asesoramiento/actions';
+import { clearStatus, nuevoAsesoramiento } from '../../../redux/reducers/asesoramiento/actions';
+import Swal from 'sweetalert2'
+import { Spinner } from '../../../components/Spinner/Spinner';
 
 const NuevoAsesoramiento = () => {
 
     const dispatch = useDispatch();
-
+    const {id} = useParams();
     const history = useHistory();
+
+    const asesoramiento = useSelector(state => state.asesoramiento)
 
     const initialform = {
         titulo: '',
@@ -25,20 +30,69 @@ const NuevoAsesoramiento = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if(form.titulo === '' || form.estado === '' || form.categoria === ''){
+            Swal.fire({
+                title: 'Error!',
+                text: 'Titulo, estado y categoría son campos obligatorios',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
+            return false
+        }
         dispatch(nuevoAsesoramiento(form));
-        reset()
-        history.push('/admin');
-    }   
+    }
+
+    useEffect(() => {
+        if(asesoramiento.status == 'SUCCESS'){
+            Swal.fire({
+                title: 'Solicitud Exitosa',
+                text: asesoramiento.msg,
+                icon: 'success',
+                confirmButtonText: 'Continuar'
+            })
+            reset()
+            dispatch(clearStatus())
+        }if (asesoramiento.status == 'FAILURE'){
+            Swal.fire({
+                title: 'Error!',
+                text: asesoramiento.msg,
+                icon: 'error',
+                confirmButtonText: 'Continuar'
+            })
+            dispatch(clearStatus())
+        }
+    }, [asesoramiento])
 
     return (
-        <div>
+        <div className={styles.container}>
             <form onSubmit={handleSubmit} className={styles.formAdmin}>
-                <label>Titulo</label>
-                <input name="titulo" id="titulo" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.titulo}/>
-                <label>Descripcion</label>
-                <input name="descripcion" id="descripcion" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.descripcion}/>
-                <label>Categoría</label>
-                <select name='categoria' id='categoria' onChange={(e)=>{handleInputChange(e)}} value={form.categoria}>
+            <h2 className={styles.title}>{id ? 'Editar Asesoramiento' : 'Nuevo Asesoramiento'}</h2>
+                <label className={styles.labelForm}>Titulo</label>
+                <input 
+                    className={styles.inputForm}
+                    name="titulo" 
+                    id="titulo" 
+                    type="text"
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.titulo}
+                />
+                <label className={styles.labelForm}>Descripcion</label>
+                <input 
+                    className={styles.inputForm}
+                    name="descripcion" 
+                    id="descripcion" 
+                    type="text" 
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.descripcion}
+                />
+                <label className={styles.labelForm}>Categoría</label>
+                <select 
+                    className={styles.inputForm}
+                    name='categoria' 
+                    id='categoria' 
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.categoria}
+                >
                     <option value="">Selecciona una Categoria</option>
                     <option value="leyes">Legal | leyes</option>
                     <option value="decretos">Legal | Decretos</option>
@@ -48,24 +102,51 @@ const NuevoAsesoramiento = () => {
                     <option value="escala_salarial">Gremial | Escala Salarial</option>
                     <option value="novedades">Gremial | Novedades</option>
                 </select>
-                <label>Prioridad</label>
+                <label className={styles.labelForm}>Prioridad</label>
                 <input 
+                    className={styles.inputForm}
                     name="prioridad" 
                     id="prioridad" 
                     type="number" 
                     onChange={(e)=>{handleInputChange(e)}}
+                    value={form.prioridad}
                 />
-                <label>Link</label>
-                <input name="link" id="link" type="text" onChange={(e)=>{handleInputChange(e)}}  value={form.link}/>
-                <label>¿Es un archivo descargable?</label>
-                <select name='estado' id='estado' onChange={(e)=>{handleInputChange(e)}} value={form.estado}>
+                <label className={styles.labelForm}>Link</label>
+                <input 
+                    className={styles.inputForm} 
+                    name="link" 
+                    id="link" 
+                    type="text" 
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.link}
+                />
+                <label className={styles.labelForm}>¿Es un archivo descargable?</label>
+                <select 
+                    className={styles.inputForm} 
+                    name='descarga' 
+                    id='descarga' 
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.descarga}
+                >
                     <option value="no">Selecciona una opción</option>
                     <option value="si">Si</option>
                     <option value="no">No</option>
                 </select>
-                <label>Imagen (link)</label>
-                <input name="imagen" id="imagen" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.imagen}/>
-                <input type="submit" value='Agregar'/>
+                <label className={styles.labelForm}>Imagen (link)</label>
+                <input 
+                    className={styles.inputForm} 
+                    name="imagen" 
+                    id="imagen" 
+                    type="text" 
+                    onChange={(e)=>{handleInputChange(e)}} 
+                    value={form.imagen}
+                />
+                <input className={styles.submitButton} type="submit" value='Agregar'/>
+                {
+                    asesoramiento.processing 
+                    &&
+                    <Spinner />
+                }
             </form>
         </div>
     )

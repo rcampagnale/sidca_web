@@ -29,6 +29,7 @@ const AfiliadosNuevos = () => {
                         <th>Email</th>
                         <th>Celular</th>
                         <th>Establecimientos</th>
+                        <th>Departamento</th>
                         <th>Ya afiliado?</th>
                     </tr>
                 </thead>
@@ -43,6 +44,7 @@ const AfiliadosNuevos = () => {
                                 <td>{afiliado.email}</td>
                                 <td>{afiliado.celular}</td>
                                 <td>{afiliado.establecimientos}</td>
+                                <td>{afiliado.departamento}</td>
                                 <td>{afiliado.error ? 'Ya está afiliado' : ''}</td>
     
                                 <td><button>Eliminar</button></td>
