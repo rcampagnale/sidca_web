@@ -1,11 +1,71 @@
-.formAdmin {
-    margin-top: 20px;
+.container{
+    min-height: 80vh;
     align-items: center; 
     display: flex;
     justify-content: space-evenly;
-    flex-direction: column;
 }
-.container{
-    min-height: 80vh;
-    display: block;
+
+.title{
+    font-size: 25px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.formAdmin {
+    margin-top: 20px auto;
+    align-items: center; 
+    display: flex;
+    font-family: Arial, Helvetica, sans-serif;
+    justify-content: space-evenly;
+    flex-direction: column;
+    padding: 20px;
+    width: 300px;
+    background-color: #fea200;
+}
+
+.labelForm {
+    align-self: flex-start;
+    font-weight: 600;
+    font-size: 15px;
+    margin: 10px 0 5px;
+}
+
+.inputForm{
+    width: 100%;
+    border-radius: 5px;
+    height: 30px;
+}
+
+.submitButton{
+    background-color: #0af;
+    border-radius: 5px;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-block;
+    height: 30px;
+    text-decoration: none;
+    font-family: sans-serif;
+    font-size: 1rem;
+    margin: 20px auto;
+    text-align: center;
+    transition: background 250ms ease-in-out, 
+                transform 150ms ease;
+    width: 70%;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.submitButton:hover,
+.submitButton:focus {
+    background: #0053ba;
+}
+
+.submitButton:focus {
+    outline: 1px solid #fff;
+    outline-offset: -4px;
+}
+
+.submitButton:active {
+    transform: scale(0.99);
 }

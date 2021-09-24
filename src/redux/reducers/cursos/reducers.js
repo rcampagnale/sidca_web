@@ -1,90 +1,43 @@
 import types from './types';
 
 const initialState = {
-    auth: false,
-    msg: undefined,
-    nuevoAfiliado: undefined,
+    msg: '',
     processing: false,
-    profile: undefined,
+    status: '',
+    cursos: []
 }
 
-export const afiliadoReducer = (state = initialState, action) => {
+export const cursosReducer = (state = initialState, action) => {
     switch (action.type) {
-        case types.AUTHENTICATE_USER:
+        case types.NUEVO_CURSO:
             return {
                 ...state,
                 processing: true
             };
-        case types.AUTHENTICATE_USER_SUCCESS:
+        case types.NUEVO_CURSO_SUCCESS:
             return {
                 ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
-            };
-        case types.AUTHENTICATE_USER_ERROR:
-            return {
-                ...state,
-                msg: action.payload,
-                processing: false
-            };
-        case types.SET_USER:
-            return {
-                ...state,
-                processing: true
-            };
-        case types.SET_USER_SUCCESS:
-            return {
-                ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
-            };
-        case types.SET_USER_ERROR:
-            return {
-                ...state,
-                msg: action.payload,
-                processing: false
-            };
-        case types.NEW_USER:
-            return {
-                ...state,
-                processing: true
-            };
-        case types.NEW_USER_SUCCESS:
-            return {
-                ...state,
-                nuevoAfiliado: true,
                 processing: false,
-                msg: 'Se ha enviado la informacion correctamente. ¡Gracias por afiliarte a SIDCA! Ingresa con el usuario Sidcagremio y con tu DNI'
+                status: 'SUCCESS',
+                msg: action.payload
             };
-        case types.NEW_USER_ERROR:
+        case types.NUEVO_CURSO_ERROR:
             return {
                 ...state,
-                msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload
             };
-        case types.LOGOUT:
+        case types.CLEAR_STATUS:
             return {
                 ...state,
-                logoutProcess: true
-            };
-        case types.LOGOUT_SUCCESS:
-            return {
-                ...state,
-                auth: false,
-                profile: false,
-                msg: 'Se ha cerrado la sesión con exito',
-                logoutProcess: undefined
-            };
-        case types.LOGOUT_ERROR:
-            return {
-                ...state,
-                logoutProcess: undefined
+                processing: false,
+                status: '',
+                msg: ''
             };
         default:
             return state;
     }
 }
 
-export default afiliadoReducer;
+export default cursosReducer;

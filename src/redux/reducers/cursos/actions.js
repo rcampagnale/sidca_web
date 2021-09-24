@@ -4,7 +4,7 @@ import { collection, addDoc } from "firebase/firestore";
 
 export const nuevoCurso = (data) => {
     return async (dispatch, getState)=>{
-        // dispatch(newUserProcess());
+        dispatch(nuevoCursoProcess());
         let enlace = {
             titulo: `${data.titulo}`,
             link: `${data.link === '' ? false : data.link}`,
@@ -15,27 +15,16 @@ export const nuevoCurso = (data) => {
         }
         try {
             const doc = await addDoc(collection(db, 'cursos'), enlace)
-            console.log('curso agregado', doc.id)
+            dispatch(nuevoCursoSuccess(`curso agregado. id: ${doc.id}`))
         } catch (error) {
-            // dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
-            console.log('No se ha podido agregar el curso');
+            dispatch(nuevoCursoError('No se ha podido agregar el curso'));
             console.log(error)
         } 
     }
 }
 
-// const authenticateUserProcess = (payload) => ({type: types.AUTHENTICATE_USER, payload})
-// const authenticateUserSuccess = (payload) => ({type: types.AUTHENTICATE_USER_SUCCESS, payload})
-// const authenticateUserError = (payload) => ({type: types.AUTHENTICATE_USER_ERROR, payload})
+const nuevoCursoProcess = (payload) => ({type: types.NUEVO_CURSO, payload})
+const nuevoCursoSuccess = (payload) => ({type: types.NUEVO_CURSO_SUCCESS, payload})
+const nuevoCursoError = (payload) => ({type: types.NUEVO_CURSO_ERROR, payload})
 
-// const setUserProcess = (payload) => ({type: types.SET_USER, payload})
-// const setUserSuccess = (payload) => ({type: types.SET_USER_SUCCESS, payload})
-// const setUserError = (payload) => ({type: types.SET_USER_ERROR, payload})
-
-// const newUserProcess = (payload) => ({type: types.NEW_USER, payload})
-// const newUserSuccess = (payload) => ({type: types.NEW_USER_SUCCESS, payload})
-// const newUserError = (payload) => ({type: types.NEW_USER_ERROR, payload})
-
-export const logOutProcess = (payload) => ({type: types.LOGOUT, payload})
-export const logOutSuccess = (payload) => ({type: types.LOGOUT_SUCCESS, payload})
-export const logOutError = (payload) => ({type: types.LOGOUT_ERROR, payload})
+export const clearStatus = (payload) => ({type: types.CLEAR_STATUS, payload})
