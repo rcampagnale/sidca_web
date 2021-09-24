@@ -1,6 +1,11 @@
 .formAdmin {
+    margin-top: 20px;
     align-items: center; 
     display: flex;
     justify-content: space-evenly;
     flex-direction: column;
+}
+.container{
+    min-height: 80vh;
+    display: block;
 }

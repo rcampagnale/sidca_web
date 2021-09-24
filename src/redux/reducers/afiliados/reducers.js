@@ -1,50 +1,33 @@
 import types from './types';
 
 const initialState = {
-    auth: false,
     msg: undefined,
     nuevoAfiliado: undefined,
     processing: false,
-    profile: undefined,
+    nuevosAfiliados: [],
+    status: '',
 }
 
 export const afiliadoReducer = (state = initialState, action) => {
     switch (action.type) {
-        case types.AUTHENTICATE_USER:
+        case types.GET_AFILIADOS_NUEVOS:
             return {
                 ...state,
                 processing: true
             };
-        case types.AUTHENTICATE_USER_SUCCESS:
+        case types.GET_AFILIADOS_NUEVOS_SUCCESS:
             return {
                 ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
+                nuevosAfiliados: action.payload,
+                processing: false,
+                status: 'sucess'
             };
-        case types.AUTHENTICATE_USER_ERROR:
+        case types.GET_AFILIADOS_NUEVOS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
-                processing: false
-            };
-        case types.SET_USER:
-            return {
-                ...state,
-                processing: true
-            };
-        case types.SET_USER_SUCCESS:
-            return {
-                ...state,
-                auth: true,
-                profile: {...action.payload},
-                processing: false
-            };
-        case types.SET_USER_ERROR:
-            return {
-                ...state,
-                msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'error'
             };
         case types.NEW_USER:
             return {
@@ -54,33 +37,23 @@ export const afiliadoReducer = (state = initialState, action) => {
         case types.NEW_USER_SUCCESS:
             return {
                 ...state,
-                nuevoAfiliado: true,
+                msg: action.payload,
                 processing: false,
-                msg: 'Se ha enviado la informacion correctamente. ¡Gracias por afiliarte a SIDCA! Ingresa con el usuario Sidcagremio y con tu DNI'
+                status: 'SUCCESS'
             };
         case types.NEW_USER_ERROR:
             return {
                 ...state,
                 msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'FAILURE'
             };
-        case types.LOGOUT:
+        case types.CLEAR_STATUS:
             return {
                 ...state,
-                logoutProcess: true
-            };
-        case types.LOGOUT_SUCCESS:
-            return {
-                ...state,
-                auth: false,
-                profile: false,
-                msg: 'Se ha cerrado la sesión con exito',
-                logoutProcess: undefined
-            };
-        case types.LOGOUT_ERROR:
-            return {
-                ...state,
-                logoutProcess: undefined
+                msg: undefined,
+                status: '',
+                processing: false,
             };
         default:
             return state;

@@ -1,9 +1,11 @@
-import React from 'react'
-import { useDispatch } from 'react-redux';
+import React, { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
-import { nuevoAfiliado } from '../../../redux/reducers/afiliados/actions';
-import styles from '../../../assets/styles/global.module.css'
+import { clearStatus, nuevoAfiliado } from '../../../redux/reducers/afiliados/actions';
+import globalStyles from '../../../assets/styles/global.module.css'
+import Swal from 'sweetalert2'
+import { Spinner } from '../../../components/Spinner/Spinner';
 
 const NuevoAfiliado = () => {
 
@@ -17,25 +19,59 @@ const NuevoAfiliado = () => {
         apellido: ''
     };
 
+    const afiliado = useSelector(state => state.afiliado)
     const [form, handleInputChange, reset] = useForm(initialform);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async(e) => {
         e.preventDefault();
-        dispatch(nuevoAfiliado(form));
-        reset()
-        history.push('/admin');
+        if(form.nombre === '' || form.apellido === '' || form.dni === ''){
+            Swal.fire({
+                title: 'Error!',
+                text: 'Tienes que llenar todos los datos',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
+            return false
+        }
+        await dispatch(nuevoAfiliado(form));
     }   
 
+    useEffect(() => {
+        if(afiliado.status == 'SUCCESS'){
+            Swal.fire({
+                title: 'Solicitud Exitosa',
+                text: afiliado.msg,
+                icon: 'success',
+                confirmButtonText: 'Continuar'
+            })
+            reset()
+            dispatch(clearStatus())
+        }if (afiliado.status == 'FAILURE'){
+            Swal.fire({
+                title: 'Error!',
+                text: afiliado.msg,
+                icon: 'error',
+                confirmButtonText: 'Continuar'
+            })
+            dispatch(clearStatus())
+        }
+    }, [afiliado])
+
     return (
-        <div>
-            <form onSubmit={handleSubmit} className={styles.formAdmin}>
+        <div className={globalStyles.container}>
+            <form onSubmit={handleSubmit} className={globalStyles.formAdmin}>
                 <label>Nombre</label>
-                <input name="nombre" id="nombre" type="text" onChange={(e)=>{handleInputChange(e)}}/>
+                <input value={form.nombre} name="nombre" id="nombre" type="text" onChange={(e)=>{handleInputChange(e)}}/>
                 <label>Apellido</label>
-                <input name="apellido" id="apellido" type="text" onChange={(e)=>{handleInputChange(e)}}/>
+                <input value={form.apellido} name="apellido" id="apellido" type="text" onChange={(e)=>{handleInputChange(e)}}/>
                 <label>DNI</label>
-                <input name="dni" id="dni" type="number" onChange={(e)=>{handleInputChange(e)}}/>
+                <input value={form.dni} name="dni" id="dni" type="number" onChange={(e)=>{handleInputChange(e)}} maxLength={8}/>
                 <input type="submit" value='Agregar'/>
+                {
+                    afiliado.processing 
+                    &&
+                    <Spinner />
+                }
             </form>
         </div>
     )
