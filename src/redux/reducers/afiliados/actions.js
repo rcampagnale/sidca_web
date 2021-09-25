@@ -87,8 +87,4 @@ const newUserProcess = (payload) => ({type: types.NEW_USER, payload})
 const newUserSuccess = (payload) => ({type: types.NEW_USER_SUCCESS, payload})
 const newUserError = (payload) => ({type: types.NEW_USER_ERROR, payload})
 
-export const logOutProcess = (payload) => ({type: types.LOGOUT, payload})
-export const logOutSuccess = (payload) => ({type: types.LOGOUT_SUCCESS, payload})
-export const logOutError = (payload) => ({type: types.LOGOUT_ERROR, payload})
-
 export const clearStatus = (payload) => ({type: types.CLEAR_STATUS, payload})

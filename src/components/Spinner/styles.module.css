@@ -52,9 +52,3 @@
     transform: scale(1.0); 
 } 
 }
-
-.spinnerContainer{
-    margin: 10px auto;
-    width: 100px;
-    height: 100px;
-}

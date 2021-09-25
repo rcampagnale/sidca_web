@@ -66,7 +66,7 @@ const NuevoAsesoramiento = () => {
     return (
         <div className={styles.container}>
             <form onSubmit={handleSubmit} className={styles.formAdmin}>
-            <h2 className={styles.title}>{id ? 'Editar Asesoramiento' : 'Nuevo Asesoramiento'}</h2>
+                <h2 className={styles.title}>{id ? 'Editar Asesoramiento' : 'Nuevo Asesoramiento'}</h2>
                 <label className={styles.labelForm}>Titulo</label>
                 <input 
                     className={styles.inputForm}
@@ -141,7 +141,7 @@ const NuevoAsesoramiento = () => {
                     onChange={(e)=>{handleInputChange(e)}} 
                     value={form.imagen}
                 />
-                <input className={styles.submitButton} type="submit" value='Agregar'/>
+                <input className={styles.submitButton} type="submit" value={id ? 'Editar' : 'Agregar'}/>
                 {
                     asesoramiento.processing 
                     &&
