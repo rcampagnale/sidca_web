@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import ReactPaginate from 'react-paginate';
 import { getAfiliadosNuevos } from '../../../redux/reducers/afiliados/actions';
 import Swal from 'sweetalert2'
+import global from '../../../assets/styles/global.module.css'
+import styles from './styles.module.css'
 
 const AfiliadosNuevos = () => {
 
@@ -19,8 +21,8 @@ const AfiliadosNuevos = () => {
     }, [])
 
     return (
-        <div>
-            <table style={{borderColor: 'black', borderWidth: 1}}>
+        <div className={global.container}>
+            <table className={global.fl_table}>
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -31,6 +33,7 @@ const AfiliadosNuevos = () => {
                         <th>Establecimientos</th>
                         <th>Departamento</th>
                         <th>Ya afiliado?</th>
+                        <th>ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,18 +57,6 @@ const AfiliadosNuevos = () => {
                 }
                 </tbody>
             </table>
-            {/* <ReactPaginate
-                previousLabel={'anterior'}
-                nextLabel={'siguiente'}
-                breakLabel={'...'}
-                // breakClassName={'break-me'}
-                // pageCount={total}
-                // marginPagesDisplayed={2}
-                // pageRangeDisplayed={5}
-                // onPageChange={handleChange}
-                containerClassName={'pagination'}
-                activeClassName={'active'}
-            /> */}
         </div>
     )
 }

@@ -37,6 +37,7 @@ const AppRouter = () => {
 
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces}/>
                 <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace}/>
+                <AdminRoute exact path="/admin/nuevo-enlace/:id" component={NuevoEnlace}/>
 
                 <AdminRoute exact path="/admin/usuarios" component={Usuarios}/>
                 <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado}/>
@@ -47,6 +48,7 @@ const AppRouter = () => {
 
                 <AdminRoute exact path="/admin/asesoramiento" component={Asesoramiento}/>
                 <AdminRoute exact path="/admin/nuevo-asesoramiento" component={NuevoAsesoramiento}/>
+                <AdminRoute exact path="/admin/nuevo-asesoramiento:id" component={NuevoAsesoramiento}/>
                 
                 <AdminRoute exact path="/admin/novedades" component={Novedades}/>
                 <AdminRoute exact path="/admin/nueva-novedad" component={NuevaNovedad}/>

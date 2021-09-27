@@ -4,7 +4,7 @@ const initialState = {
     msg: '',
     processing: false,
     status: '',
-    novedades: [],
+    enlaces: [],
 }
 
 export const novedadesReducer = (state = initialState, action) => {

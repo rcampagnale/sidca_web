@@ -25,13 +25,25 @@ const LoginAdmin = () => {
     }   
 
     return (
-        <div>
+        <div className={styles.container}>
             <form onSubmit={handleSubmit} className={styles.formAdmin}>
-                <label>Admin</label>
-                <input name="admin" id="admin" type="text" onChange={(e)=>{handleInputChange(e)}}/>
-                <label>Contraseña</label>
-                <input name="password" id="password" type="password" onChange={(e)=>{handleInputChange(e)}}/>
-                <input type="submit" value='Ingresar'/>
+                <label className={styles.labelForm}>Admin</label>
+                <input 
+                    name="admin" 
+                    id="admin" 
+                    type="text" 
+                    className={styles.inputForm}
+                    onChange={(e)=>{handleInputChange(e)}}
+                />
+                <label className={styles.labelForm}>Contraseña</label>
+                <input 
+                    name="password" 
+                    id="password" 
+                    type="password"
+                    className={styles.inputForm} 
+                    onChange={(e)=>{handleInputChange(e)}}
+                />
+                <input type="submit" value='Ingresar' className={styles.submitButton}/>
             </form>
         </div>
     )

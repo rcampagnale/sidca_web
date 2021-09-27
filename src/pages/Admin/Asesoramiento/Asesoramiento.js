@@ -1,31 +1,42 @@
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux';
+import { useHistory } from 'react-router';
+import global from '../../../assets/styles/global.module.css'
 
 const Asesoramiento = () => {
 
-    const asesoramiento = [
-        
-    ]
+    const dispatch = useDispatch()
+    const history = useHistory();
 
-    const handleEdit = () => {
-        // history.push('/admin/nuevo-enlace/')
+    const asesoramiento = useSelector(state => state.asesoramiento);
+
+    const handleEdit = (id) => {
+        history.push(`/admin/nuevo-asesoramiento/${id}`)
     }
 
     return (
-        <div>
-            Web in Maintenance
-            {/* <table style={{borderColor: 'black', borderWidth: 1}}>
-                <tr>
-                    <th>Prioridad</th>
-                    <th>Titulo</th>
-                    <th>Descripcion</th>
-                    <th>Link</th>
-                </tr>
-                {
-                    asesoramiento.length > 0
-                    ?
-                    <>
+        <div className={global.container}>
+            <button 
+                onClick={()=>history.push("/admin/nuevo-asesoramiento")}
+                className={global.btn}
+            >
+                Nuevo Asesoramiento
+            </button>
+            {
+            asesoramiento.enlaces.length > 0
+            ?
+            <table className={global.fl_table}>
+                <thead>
+                    <tr>
+                        <th>Prioridad</th>
+                        <th>Titulo</th>
+                        <th>Descripcion</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {
-                        asesoramiento.map(enlace => {
+                        asesoramiento.enlaces.map(enlace => {
                             return (
                                 <tr>
                                     <td>{enlace.prioridad}</td>
@@ -39,11 +50,11 @@ const Asesoramiento = () => {
                             )
                         })
                     }
-                    </>
-                    :
-                    <h3>No hay enlaces</h3>
-                }
-            </table> */}
+                </tbody> 
+            </table>
+            :
+            <h3>No hay enlaces</h3>
+        }
         </div>
     )
 }

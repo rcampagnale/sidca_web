@@ -1,11 +1,10 @@
 import types from './types';
 
 const initialState = {
-    auth: false,
-    msg: undefined,
-    nuevoAfiliado: undefined,
+    msg: '',
     processing: false,
-    profile: undefined,
+    status: '',
+    enlaces: []
 }
 
 export const asesoramientoReducer = (state = initialState, action) => {

@@ -5,6 +5,7 @@ const initialState = {
     processing: false,
     stauts: '',
     enlaces: [],
+    enlace: {}
 }
 
 export const enlaceReducer = (state = initialState, action) => {
@@ -27,6 +28,30 @@ export const enlaceReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE',
                 msg: action.payload,
+            };
+        case types.GET_ENLACES:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_ENLACES_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                enlaces: action.payload,
+                status: 'SUCCESS',
+            };
+        case types.GET_ENLACES_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload,
+            };
+        case types.GET_ENLACE:
+            return {
+                ...state,
+                enlace: state.enlaces.find(enlace => enlace.id === action.payload)
             };
         case types.CLEAR_STATUS:
             return {

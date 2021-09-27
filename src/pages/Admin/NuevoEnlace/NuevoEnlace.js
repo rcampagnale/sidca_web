@@ -36,7 +36,17 @@ const NuevoEnlace = () => {
             return false
         }
         dispatch(nuevoEnlace(form))
-    }   
+    }
+
+    useEffect(() => {
+        if(id && enlace.enlace){
+            Object.entries(enlace.enlace).map(([key, value]) => {
+                if(key && value){
+                    handleInputChange({target: {name: key, value: value}})
+                }
+            })
+        }
+    }, [])
 
     //MESSAGE
     useEffect(() => {
