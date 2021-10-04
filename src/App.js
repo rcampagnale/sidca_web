@@ -2,7 +2,7 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import store from './redux/store';
 import AppRouter from './routes/Routes';
-import "primereact/resources/themes/md-light-indigo/theme.css";
+import "primereact/resources/themes/saga-orange/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 
