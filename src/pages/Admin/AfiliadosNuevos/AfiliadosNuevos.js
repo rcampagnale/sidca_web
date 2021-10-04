@@ -1,16 +1,26 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
-import ReactPaginate from 'react-paginate';
 import { getAfiliadosNuevos } from '../../../redux/reducers/afiliados/actions';
 import Swal from 'sweetalert2'
 import global from '../../../assets/styles/global.module.css'
 import styles from './styles.module.css'
+import { Paginator } from 'primereact/paginator';
 
 const AfiliadosNuevos = () => {
 
     const dispatch = useDispatch();
 
     const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
+
+    const [basicFirst, setBasicFirst] = useState(0);
+    const [basicRows, setBasicRows] = useState(10);
+
+    const onBasicPageChange = (event) => {
+        setBasicFirst(event.first);
+        setBasicRows(event.rows);
+        console.log(event.first, basicFirst)
+        console.log(event.rows, basicRows)
+    }
 
     useEffect(() => {
         dispatch(getAfiliadosNuevos());
@@ -57,6 +67,13 @@ const AfiliadosNuevos = () => {
                 }
                 </tbody>
             </table>
+            <Paginator 
+                first={basicFirst} 
+                rows={basicRows} 
+                //totalRecords={120} 
+                //rowsPerPageOptions={[10, 20, 30]} 
+                onPageChange={onBasicPageChange}
+            ></Paginator>
         </div>
     )
 }

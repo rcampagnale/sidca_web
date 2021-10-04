@@ -1,16 +1,21 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc } from "firebase/firestore"; 
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit } from "firebase/firestore";
 
 export const getAfiliadosNuevos = (data) => {
     return async (dispatch, getState)=>{
         dispatch(getAfiliadosNuevosProcess());
         try {
-            const q = await query(collection(db, 'nuevoAfiliado'))
+            if(getState().afiliado.lastAfiliado){
+                const q = await query(collection(db, "nuevoAfiliado"), limit(10));
+            }else{
+                const q = await query(collection(db, "nuevoAfiliado"), startAfter(getState().afiliado.lastAfiliado), limit(10));
+            }
             const querySnapshot = await getDocs(q);
             if(querySnapshot.size === 0){
                 dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
             }else{
+                dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
                 let arrayDocs = []
                 querySnapshot.forEach(doc=>{
                     const data = doc.data();
@@ -87,4 +92,22 @@ const newUserProcess = (payload) => ({type: types.NEW_USER, payload})
 const newUserSuccess = (payload) => ({type: types.NEW_USER_SUCCESS, payload})
 const newUserError = (payload) => ({type: types.NEW_USER_ERROR, payload})
 
+const setAfiliadosSize = (payload) => ({type: types.SET_AFILIADOS_SIZE, payload})
+const setLastAfiliado = (payload) => ({type: types.SET_LAST_AFILIADO, payload})
+
 export const clearStatus = (payload) => ({type: types.CLEAR_STATUS, payload})
+
+// // Query the first page of docs
+// const first = query(collection(db, "cities"), orderBy("population"), limit(25));
+// const documentSnapshots = await getDocs(first);
+
+// // Get the last visible document
+// const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length-1];
+// console.log("last", lastVisible);
+
+// // Construct a new query starting at this document,
+// // get the next 25 cities.
+// const next = query(collection(db, "cities"),
+//     orderBy("population"),
+//     startAfter(lastVisible),
+//     limit(25));
