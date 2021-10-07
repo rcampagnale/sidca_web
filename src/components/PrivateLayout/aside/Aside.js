@@ -10,18 +10,21 @@ const Aside = () => {
         <div>
             <aside>
                 <div className={styles.aside_container}>
-                    <div className={styles.aside_title}>Indice</div>
-                    <Button label="Cursos" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/cursos")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/cursos")}>Cursos</button>
                     <hr />
-                    <Button label="Enlaces" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/enlaces")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/enlaces")}>Enlaces</button>
                     <hr />
-                    <Button label="Enlaces de Asesoramiento" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/asesoramiento")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/asesoramiento")}>Asesoramiento</button>
                     <hr />
-                    <Button label="Novedades" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/novedades")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/novedades")}>Novedades</button>
                     <hr />
-                    <Button label="Nuevos Afiliados" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/nuevos-afiliados")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/nuevos-afiliados")}>Nuevos afiliados</button>
                     <hr />
-                    <Button label="Usuarios" className="p-button-outlined p-button-secondary mr-2 mb-2" onClick={()=>history.push("/admin/usuarios")}/>
+                    <button className={styles.btn} onClick={()=>history.push("/admin/usuarios")}>Usuarios</button>
+                    <hr />
+                    <div className={styles.btnExit}>
+                        <Button label="Salir" className="p-button-rounded p-button-danger" onClick={()=>history.push("/admin/login")}/>
+                    </div>
                 </div>
             </aside>
         </div>

@@ -13,17 +13,15 @@ export const PrivateLayoutPage = ({ history, children, user }) => {
     return (
         <body style={{ minHeight: "100vh" }}>
             <Header />
-            <main>
+            <div className={styles.mainContent}>
                 <Aside />
-                <div
-                    className={styles.siteLayoutBackground}
-                    style={{
-                        minHeight: "auto",
-                    }}
-                >
-                {children}
-                </div>
-            </main>
+                <main>
+                    <div className={styles.visibleContent}>
+                        {children}
+                    </div>
+                </main>
+                
+            </div>
 
             <Footer className={styles.footer}/>
         </body>
