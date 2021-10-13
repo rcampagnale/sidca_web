@@ -2,6 +2,8 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import global from '../../../assets/styles/global.module.css'
+import styles from './styles.module.css';
+import { Button } from 'primereact/button';
 
 const Novedades = () => {
 
@@ -15,13 +17,11 @@ const Novedades = () => {
     }
 
     return (
-        <div className={global.container}>
-            <button 
-                onClick={()=>history.push("/admin/nueva-novedad")}
-                className={global.btn}
-            >
-                Nueva novedad
-            </button>
+        <div className={styles.visibleContent}>
+            <div className={styles.container}>
+                <div className={styles.btn}>
+                    <Button label="Nueva novedad" icon="pi pi-plus" className="p-mr-2" onClick={()=>history.push("/admin/nueva-novedad")}/>
+                </div>
             {
             novedades.enlaces.length > 0
             ?
@@ -53,8 +53,9 @@ const Novedades = () => {
                 </tbody> 
             </table>
             :
-            <h3>No hay enlaces</h3>
+            <Button label="No hay enlaces" className={`p-button-outlined p-button-danger ${styles.errorBtn}`}/>
         }
+        </div>
         </div>
     )
 }

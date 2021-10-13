@@ -30,7 +30,7 @@ header {
 
 .textIcon,
 .adminPanel {
-  color: white;
+  color: #fff;
   font-size: 25px;
 }
 
@@ -47,6 +47,7 @@ header {
   width: 100%;
   flex-flow: row wrap;
   flex-grow: 1;
+  background-color: rgb(241, 240, 240);
 }
 
 aside {
@@ -64,7 +65,7 @@ main {
   margin: 50px 40px;
   border: 1px solid #ccc;
   flex: 100%;
-  background-color: aliceblue;
+  background-color: #fff;
 }
 
 footer {

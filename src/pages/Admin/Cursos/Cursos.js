@@ -64,7 +64,8 @@ const Cursos = () => {
                 </tbody>
             </table>
             :
-            <Button label="No hay cursos" className="p-button-outlined p-button-danger" />
+            <Button label="No hay cursos" className={`p-button-outlined p-button-danger ${styles.errorBtn}`}/>
+            
             }
             </div>
         </div>
