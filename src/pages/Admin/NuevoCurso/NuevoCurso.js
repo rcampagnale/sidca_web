@@ -38,7 +38,7 @@ const NuevoCurso = () => {
                 title: 'Error!',
                 text: 'Titulo, estado y categoría son campos obligatorios',
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: 'Ok'
             })
             return false
         }
@@ -88,7 +88,7 @@ const NuevoCurso = () => {
         <div className={styles.visibleContent}>
             <div className={styles.container}>
             <form onSubmit={handleSubmit} className={styles.formAdmin}>
-                <h2 className={styles.title}>{id ? 'Editar curso' : 'Agregar nuevo Curso'}</h2>
+                <h2 className={styles.title}>{id ? 'Editar curso' : 'Nuevo curso'}</h2>
                 
                 <span className={`p-float-label ${styles.inputSection}`}>
                     <InputText className={styles.inputForm} value={form.titulo} name="titulo" id="titulo" type="text" onChange={(e)=>{handleInputChange(e)}} />
