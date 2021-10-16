@@ -4,9 +4,14 @@ import { useParams } from 'react-router';
 import { useHistory } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import { clearStatus, nuevoCurso } from '../../../redux/reducers/cursos/actions';
-import styles from '../../../assets/styles/global.module.css'
+import styles from './styles.module.css';
 import Swal from 'sweetalert2'
 import { Spinner } from '../../../components/Spinner/Spinner';
+
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
+import { Button } from 'primereact/button';
 
 const NuevoCurso = () => {
 
@@ -68,38 +73,61 @@ const NuevoCurso = () => {
         }
     }, [cursos])
 
+    const estados = [
+        {label: 'Terminado', value: 'terminado'},
+        {label: 'Inscripción Abierta', value: 'inscripcion_abierta'},
+    ];
+
+    const categorias = [
+        {label: 'Nuevos', value: 'nuevos'},
+        {label: '2021', value: '2021'},
+        {label: '2020-2019', value: '20-19'}
+    ]
+
     return (
-        <div className={styles.container}>
+        <div className={styles.visibleContent}>
+            <div className={styles.container}>
             <form onSubmit={handleSubmit} className={styles.formAdmin}>
-                <h2 className={styles.title}>{id ? 'Editar Curso' : 'Agregar Nuevo Curso'}</h2>
-                <label className={styles.labelForm}>Titulo *</label>
-                <input className={styles.inputForm} value={form.titulo} name="titulo" id="titulo" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.titulo}/>
-                <label className={styles.labelForm}>Descripcion</label>
-                <input className={styles.inputForm} value={form.descripcion} name="descripcion" id="descripcion" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.descripcion}/>
-                <label className={styles.labelForm}>Estado *</label>
-                <select className={styles.inputForm} value={form.estado} name='estado' id='estado' onChange={(e)=>{handleInputChange(e)}} value={form.estado}>
-                    <option value="">Selecciona un Estado</option>
-                    <option value="terminado">Terminado</option>
-                    <option value="inscripcion_abierta">Inscripción Abierta</option>
-                </select>
-                <label className={styles.labelForm}>Categoría *</label>
-                <select className={styles.inputForm} value={form.categoria} name='categoria' id='categoria' onChange={(e)=>{handleInputChange(e)}} value={form.categoria}>
-                    <option value="">Selecciona una Categoria</option>
-                    <option value="nuevos">Nuevos</option>
-                    <option value="2021">2021</option>
-                    <option value="20-19">2020-2019</option>
-                </select>
-                <label className={styles.labelForm}>Link</label>
-                <input className={styles.inputForm} value={form.link} name="link" id="link" type="text" onChange={(e)=>{handleInputChange(e)}}  value={form.link}/>
-                <label className={styles.labelForm}>Imagen (link)</label>
-                <input className={styles.inputForm} value={form.imagen} name="imagen" id="imagen" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.imagen}/>
-                <input className={styles.submitButton} type="submit" value={id ? 'Editar' : 'Agregar'}/>
+                <h2 className={styles.title}>{id ? 'Editar curso' : 'Agregar nuevo Curso'}</h2>
+                
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <InputText className={styles.inputForm} value={form.titulo} name="titulo" id="titulo" type="text" onChange={(e)=>{handleInputChange(e)}} />
+                    <label className={styles.labelForm} htmlFor="titulo">Titulo*</label>
+                </span>
+
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <InputTextarea className={styles.inputForm} name="descripcion" id="descripcion" type="text" onChange={(e)=>{handleInputChange(e)}} value={form.descripcion} rows={3}/> 
+                    <label className={styles.labelForm} htmlFor="descripcion">Descripción</label>
+                </span>
+
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <Dropdown className={styles.inputForm} inputId="dropdown" value={form.estado} name='estado' id='estado' onChange={(e)=>{handleInputChange(e)}} options={estados} />                    
+                    <label className={styles.labelForm} htmlFor="estado">Estado*</label>
+                </span>
+
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <Dropdown className={styles.inputForm} inputId="dropdown" value={form.categoria} name='categoria' id='categoria' onChange={(e)=>{handleInputChange(e)}} options={categorias}/>                    
+                    <label className={styles.labelForm} htmlFor="categoria">Categoría*</label>
+                </span>
+
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <InputText className={styles.inputForm} value={form.link} name="link" id="link" type="text" onChange={(e)=>{handleInputChange(e)}} />
+                    <label className={styles.labelForm} htmlFor="link">Link</label>
+                </span>
+
+                <span className={`p-float-label ${styles.inputSection}`}>
+                    <InputText className={styles.inputForm} value={form.imagen} name="imagen" id="imagen" type="text" onChange={(e)=>{handleInputChange(e)}} />
+                    <label className={styles.labelForm} htmlFor="imagen">Imagen (link)</label>
+                </span>
+                
+                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-mt-2 ${styles.submitButton}`} />
             </form>
                 {
                     cursos.processing 
                     &&
                     <Spinner />
                 }
+        </div>
         </div>
     )
 }

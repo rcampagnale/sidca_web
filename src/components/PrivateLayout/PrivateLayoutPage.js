@@ -5,7 +5,6 @@ import Admin from "../../pages/Admin/Admin/Admin";
 // import UserActionButton from "components/UserActionsButton/UserActionButton";
 // import logoHeader from 'assets/images/logo-header.png'
 import Header from "./header/Header";
-import Aside from "./aside/Aside";
 import Footer from "./footer/Footer";
 
 export const PrivateLayoutPage = ({ history, children, user }) => {
@@ -14,15 +13,12 @@ export const PrivateLayoutPage = ({ history, children, user }) => {
         <body style={{ minHeight: "100vh" }}>
             <Header />
             <div className={styles.mainContent}>
-                <Aside />
                 <main>
                     <div className={styles.visibleContent}>
                         {children}
                     </div>
                 </main>
-                
             </div>
-
             <Footer className={styles.footer}/>
         </body>
     );
