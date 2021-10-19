@@ -35,6 +35,7 @@ const AfiliadosNuevos = () => {
             <table className={global.fl_table}>
                 <thead>
                     <tr>
+                        <th>Fecha</th>
                         <th>Nombre</th>
                         <th>Apellido</th>
                         <th>DNI</th>
@@ -51,6 +52,7 @@ const AfiliadosNuevos = () => {
                     nuevosAfiliados.map(afiliado => {
                         return (
                             <tr key={afiliado.id}>
+                                <td>{afiliado.fecha}</td>
                                 <td>{afiliado.nombre}</td>
                                 <td>{afiliado.apellido}</td>
                                 <td>{afiliado.dni}</td>
@@ -58,8 +60,7 @@ const AfiliadosNuevos = () => {
                                 <td>{afiliado.celular}</td>
                                 <td>{afiliado.establecimientos}</td>
                                 <td>{afiliado.departamento}</td>
-                                <td>{afiliado.error ? 'Ya está afiliado' : ''}</td>
-    
+                                <td>{afiliado.error ? 'Ya afiliado' : ''}</td>
                                 <td><button>Eliminar</button></td>
                             </tr>
                         )

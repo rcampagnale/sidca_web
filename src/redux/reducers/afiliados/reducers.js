@@ -20,7 +20,7 @@ export const afiliadoReducer = (state = initialState, action) => {
         case types.GET_AFILIADOS_NUEVOS_SUCCESS:
             return {
                 ...state,
-                nuevosAfiliados: action.payload,
+                nuevosAfiliados: [...state.nuevosAfiliados ,...action.payload],
                 processing: false,
                 status: 'sucess'
             };

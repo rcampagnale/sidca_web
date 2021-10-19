@@ -6,34 +6,59 @@ export const getAfiliadosNuevos = (data) => {
     return async (dispatch, getState)=>{
         dispatch(getAfiliadosNuevosProcess());
         try {
-            if(getState().afiliado.lastAfiliado){
-                const q = await query(collection(db, "nuevoAfiliado"), limit(10));
+            if(!getState().afiliado.lastAfiliado){
+                const q = await query(collection(db, "nuevoAfiliado"), orderBy('fecha', 'desc'), limit(10));
+                const querySnapshot = await getDocs(q);
+                if(querySnapshot.size === 0){
+                    dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
+                }else{
+                    dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
+                    let arrayDocs = []
+                    querySnapshot.forEach(doc=>{
+                        const data = doc.data();
+                        let obj = {
+                            id: doc.id,
+                            apellido: data.apellido,
+                            nombre: data.nombre,
+                            dni: data.dni,
+                            fecha: data.fecha,
+                            email: data.email,
+                            celular: data.celular,
+                            establecimientos: data.establecimientos,
+                            error: data.error,
+                            departamento: data.departamento
+                        }
+                        arrayDocs.push(obj)
+                    })
+                    dispatch(getAFiliadosNuevosSuccess(arrayDocs))
+                }
             }else{
-                const q = await query(collection(db, "nuevoAfiliado"), startAfter(getState().afiliado.lastAfiliado), limit(10));
-            }
-            const querySnapshot = await getDocs(q);
-            if(querySnapshot.size === 0){
-                dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
-            }else{
-                dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
-                let arrayDocs = []
-                querySnapshot.forEach(doc=>{
-                    const data = doc.data();
-                    let obj = {
-                        id: doc.id,
-                        apellido: data.apellido,
-                        nombre: data.nombre,
-                        dni: data.dni,
-                        email: data.email,
-                        celular: data.celular,
-                        establecimientos: data.establecimientos,
-                        error: data.error,
-                        departamento: data.departamento
-                    }
-                    arrayDocs.push(obj)
-                })
-                dispatch(getAFiliadosNuevosSuccess(arrayDocs))
-            }
+                const q = await query(collection(db, "nuevoAfiliado"), orderBy('fecha'), startAfter(getState().afiliado.lastAfiliado), limit(10));
+                const querySnapshot = await getDocs(q);
+                if(querySnapshot.size === 0){
+                    dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
+                }else{
+                    dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
+                    let arrayDocs = []
+                    querySnapshot.forEach(doc=>{
+                        const data = doc.data();
+                        let obj = {
+                            id: doc.id,
+                            apellido: data.apellido,
+                            nombre: data.nombre,
+                            dni: data.dni,
+                            fecha: data.fecha,
+                            email: data.email,
+                            celular: data.celular,
+                            establecimientos: data.establecimientos,
+                            error: data.error,
+                            departamento: data.departamento
+                        }
+                        arrayDocs.push(obj)
+                    })
+                    dispatch(getAFiliadosNuevosSuccess(arrayDocs))
+                }
+            } 
         } catch (error) {
             // dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
             console.log(error)
