@@ -8,17 +8,17 @@ import styles from './styles.module.css'
 
 const AfiliadosNuevos = () => {
 
-    const dispatch = useDispatch();
+    // const dispatch = useDispatch();
 
-    const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
+    // const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
 
-    useEffect(() => {
-        dispatch(getAfiliadosNuevos());
-    }, [])
+    // useEffect(() => {
+    //     dispatch(getAfiliadosNuevos());
+    // }, [])
 
-    useEffect(() => {
+    // useEffect(() => {
         
-    }, [])
+    // }, [])
 
     return (
         <div className={global.container}>
@@ -32,29 +32,58 @@ const AfiliadosNuevos = () => {
                         <th>Celular</th>
                         <th>Establecimientos</th>
                         <th>Departamento</th>
-                        <th>Ya afiliado?</th>
-                        <th>ACTIONS</th>
+                        <th>¿Ya afiliado?</th>
                     </tr>
                 </thead>
                 <tbody>
                 {
-                    nuevosAfiliados.map(afiliado => {
-                        return (
-                            <tr key={afiliado.id}>
-                                <td>{afiliado.nombre}</td>
-                                <td>{afiliado.apellido}</td>
-                                <td>{afiliado.dni}</td>
-                                <td>{afiliado.email}</td>
-                                <td>{afiliado.celular}</td>
-                                <td>{afiliado.establecimientos}</td>
-                                <td>{afiliado.departamento}</td>
-                                <td>{afiliado.error ? 'Ya está afiliado' : ''}</td>
+                    // nuevosAfiliados.map(afiliado => {
+                    //     return (
+                    //         <tr key={afiliado.id}>
+                    //             <td>{afiliado.nombre}</td>
+                    //             <td>{afiliado.apellido}</td>
+                    //             <td>{afiliado.dni}</td>
+                    //             <td>{afiliado.email}</td>
+                    //             <td>{afiliado.celular}</td>
+                    //             <td>{afiliado.establecimientos}</td>
+                    //             <td>{afiliado.departamento}</td>
+                    //             <td>{afiliado.error ? 'Ya está afiliado' : ''}</td>
     
-                                <td><button>Eliminar</button></td>
-                            </tr>
-                        )
-                    })
+                    //             <td><button>Eliminar</button></td>
+                    //         </tr>
+                    //     )
+                    // })
                 }
+                <tr key={1}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr>
+                <tr key={2}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr>
+                <tr key={3}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr>
                 </tbody>
             </table>
         </div>
