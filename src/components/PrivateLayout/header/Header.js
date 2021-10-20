@@ -19,7 +19,7 @@ const Header = () => {
                     </div>
                     <Nav />
                     <div className={styles.btnExit}>
-                        <Button label="Salir" className="p-button-rounded p-button-danger" onClick={()=>history.push("/admin/login")}/>
+                        <Button icon="pi pi-sign-out" label="Salir" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={()=>history.push("/admin/login")}/>
                     </div>
                     
                 </header>
