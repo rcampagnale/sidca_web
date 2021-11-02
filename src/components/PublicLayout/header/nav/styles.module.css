@@ -1,0 +1,26 @@
+.list {
+  display: flex;
+  flex-flow: row wrap;
+  width: 60em;
+  justify-content: space-between;
+}
+
+.list_btn {
+  color: white;
+  padding: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  text-align: center;
+  /* transition-property: all;
+  transition-duration: 1s; */
+}
+
+/* .list_btn:focus {
+  border-bottom: 1px solid #fb7a01;
+}
+
+.list_btn:hover {
+  border-bottom: 1px solid #fbcd01;
+} */
