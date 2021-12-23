@@ -1,0 +1,21 @@
+.textContainer {
+  width: 100vw;
+}
+
+.text {
+  color: #ff0000;
+  text-align: center;
+  margin-top: 80px;
+}
+
+@media only screen and (min-width: 767px) {
+  .text {
+    font-size: 2em;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .text {
+    font-size: 1.8em;
+  }
+}

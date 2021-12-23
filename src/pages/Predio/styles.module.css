@@ -1,0 +1,88 @@
+@media only screen and (max-width: 767px) {
+  .mainSection {
+    display: flex;
+    flex-flow: column wrap;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .mainSection div {
+    display: inherit;
+    flex-flow: column wrap;
+    align-items: center;
+    justify-content: center;
+  }
+  .title {
+    font-size: 2em;
+  }
+  .subTitle {
+    margin: 40px 0;
+    font-size: 1.8em;
+  }
+  .text {
+    line-height: 28px;
+  }
+  .titleReserva {
+    font-size: 1.8em;
+    margin: 60px 0 20px 0;
+  }
+  .btn {
+    margin: 60px 0 0 0;
+  }
+  .btn a,
+  .whatsappBtn {
+    border: none;
+    text-decoration: none;
+  }
+  .img {
+    margin-top: 60px;
+    width: 100%;
+  }
+}
+
+@media only screen and (min-width: 768px) {
+  .mainSection {
+    display: flex;
+    flex-flow: column wrap;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .mainSection div {
+    display: inherit;
+    flex-flow: column wrap;
+    align-items: center;
+    justify-content: center;
+    width: 60%;
+  }
+  .title {
+    font-size: 2em;
+    text-align: center;
+    line-height: 40px;
+  }
+  .subTitle {
+    margin: 40px 0;
+    font-size: 1.8em;
+    text-align: center;
+  }
+  .text {
+    line-height: 28px;
+    text-align: center;
+  }
+  .titleReserva {
+    font-size: 1.8em;
+    margin: 60px 0 20px 0;
+  }
+  .btn {
+    margin: 60px 0 0 0;
+  }
+  .btn a,
+  .whatsappBtn {
+    border: none;
+    text-decoration: none;
+  }
+  .img {
+    margin-top: 60px;
+    width: 40%;
+  }
+}
