@@ -87,7 +87,7 @@ const NuevoAfiliado = () => {
                     <label className={styles.labelForm} htmlFor="dni">DNI*</label>
                 </span>
                 
-                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-mt-2 ${styles.submitButton}`} />
+                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-button-raised p-button-warning ${styles.submitButton}`} />
             </form>
                 {
                     afiliado.processing 

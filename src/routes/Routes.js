@@ -30,6 +30,11 @@ import Capacitaciones from "../pages/Capacitaciones/Capacitaciones";
 import CasaDelDocente from "../pages/CasaDelDocente/CasaDelDocente";
 import Turismo from "../pages/Turismo/Turismo";
 import Predio from "../pages/Predio/Predio";
+import LoginUser from "../pages/LoginUser/LoginUser";
+import NuevosMisCursos from '../pages/Capacitaciones/MisCursos/NuevosMisCursos';
+import NuevosCursosNuevos from '../pages/Capacitaciones/Nuevos Cursos/NuevosCursosNuevos';
+import Nuevos2020_2019 from '../pages/Capacitaciones/Cursos 2020-2019/Nuevos2020_2019';
+import Nuevos2021 from '../pages/Capacitaciones/Cursos 2021/Nuevos2021';
 
 const AppRouter = () => {
 
@@ -42,11 +47,16 @@ const AppRouter = () => {
             <Switch>
 
                 {/* WEB */}
+                <Route exact path="/login" component={LoginUser} />
                 <PublicRoute exact path="/" component={Home} />
                 <PublicRoute exact path="/nosotros" component={Nosotros} />
                 <PublicRoute exact path="/contacto" component={Contacto} />
                 <PublicRoute exact path="/novedades" component={NovedadesUser} />
                 <PublicRoute exact path="/capacitaciones" component={Capacitaciones} />
+                <PublicRoute exact path="/capacitaciones/mis-cursos" component={NuevosMisCursos} />
+                <PublicRoute exact path="/capacitaciones/nuevos-cursos" component={NuevosCursosNuevos} />
+                <PublicRoute exact path="/capacitaciones/cursos-2020-2019" component={Nuevos2020_2019} />
+                <PublicRoute exact path="/capacitaciones/cursos-2021" component={Nuevos2021} />
                 {/* <PublicRoute exact path="/radio" component={Home} /> */}
                 <PublicRoute exact path="/casa-del-docente" component={CasaDelDocente} />
                 <PublicRoute exact path="/turismo" component={Turismo} />

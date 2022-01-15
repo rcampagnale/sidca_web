@@ -20,7 +20,7 @@ const Asesoramiento = () => {
         <div className={styles.visibleContent}>
             <div className={styles.container}>
                 <div className={styles.btn}>
-                    <Button label="Nuevo asesoramiento" icon="pi pi-plus" className="p-mr-2" onClick={()=>history.push("/admin/nuevo-asesoramiento")}/>
+                    <Button label="Nuevo asesoramiento" icon="pi pi-plus" className="p-button-raised p-button-warning" onClick={()=>history.push("/admin/nuevo-asesoramiento")}/>
                 </div>
             {
             asesoramiento.enlaces.length > 0

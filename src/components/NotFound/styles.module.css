@@ -1,17 +1,21 @@
-.contenedor {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.errorContainer {
   width: 100vw;
   height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
 }
 
-.caja {
+.errorBox {
   display: flex;
-  flex-direction: column;
+  flex-flow: column;
   align-items: center;
   justify-content: space-evenly;
+  width: 650px;
+  height: 60%;
+}
+
+.errorImg {
   width: 100%;
-  height: 30em;
 }

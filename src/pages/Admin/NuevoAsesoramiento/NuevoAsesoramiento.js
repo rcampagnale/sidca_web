@@ -124,7 +124,7 @@ const NuevoAsesoramiento = () => {
                     <label className={styles.labelForm} htmlFor="imagen">Imagen (link)</label>
                 </span>
                 
-                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-mt-2 ${styles.submitButton}`} />
+                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-button-raised p-button-warning ${styles.submitButton}`} />
             </form>
                 {
                     asesoramiento.processing 

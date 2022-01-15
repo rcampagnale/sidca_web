@@ -10,12 +10,12 @@
 
 @media only screen and (min-width: 767px) {
   .text {
-    font-size: 2em;
+    font-size: 1.5em;
   }
 }
 
 @media only screen and (max-width: 768px) {
   .text {
-    font-size: 1.8em;
+    font-size: 1.5em;
   }
 }

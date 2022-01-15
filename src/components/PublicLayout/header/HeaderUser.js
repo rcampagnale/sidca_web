@@ -16,11 +16,14 @@ const HeaderUser = () => {
             >
                 <div className={styles.upperHeader}>
                     <a href='/'><img className={styles.headerLogo} src={logo} alt="SiDCa logo"/></a>
-                    <div className={styles.headerText}>Abrir en app</div>
+                    <a href="https://play.google.com/store/apps/details?id=com.sidca&hl=es_419&gl=US"><div className={styles.headerText}>Abrir en app</div></a>
                 </div>
                 <div className={styles.header}>
                     <div className={styles.hamburger}>
                         <Button icon="pi pi-bars" className="p-button-rounded p-button-warning p-button-text" />
+                    </div>
+                    <div className={styles.menuIcon}>
+                        <Button icon="pi pi-home" className="p-button-rounded p-button-warning" onClick={() => history.push('/')}/>
                     </div>
                     <ul className={styles.headerNav}>
                         <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
@@ -32,7 +35,7 @@ const HeaderUser = () => {
                         <li onClick={() => history.push('/turismo')}>Turismo</li>
                     </ul>
                     <div className={styles.btnExit}>
-                        <Button icon="pi pi-sign-out" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={()=>history.push("/admin/login")}/>
+                        <Button icon="pi pi-sign-out" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={()=>history.push("/login")}/>
                     </div>
                 </div>
                 <NavUser />

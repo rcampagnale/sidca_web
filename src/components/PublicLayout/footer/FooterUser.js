@@ -1,7 +1,6 @@
 import React from 'react';
 import styles from "../styles.module.css";
 import { Button } from 'primereact/button';
-import './ButtonDemo.css';
 import { useHistory } from 'react-router';
 import { BsInstagram } from "react-icons/bs";
 
@@ -24,13 +23,13 @@ const FooterUser = () => {
                             <img className={styles.appStore} src="https://miro.medium.com/max/270/1*Crl55Tm6yDNMoucPo1tvDg.png" alt="App Store"/>
                             <a href="https://play.google.com/store/apps/details?id=com.sidca&hl=es_419&gl=US"><img className={styles.playStore} src="https://miro.medium.com/max/270/1*W_RAPQ62h0em559zluJLdQ.png" alt="App Store"/></a>
                         </div>
-
-                        {/* <Button icon="pi pi-check" className="p-button-rounded" />
-                        <Button label="Youtube" icon="pi pi-youtube p-px-2" className="youtube p-p-0" />
-                        <Button label="Facebook" icon="pi pi-facebook p-px-2" className="facebook p-p-0"/>
-                        <Button label="Twitter" icon="pi pi-twitter p-px-2" className="twitter p-p-0"/>
-                        <Button label="Instagram" icon="pi pi-camera p-px-2" className="google p-p-0"/>
-                        <Button label="Escucha Radio SiDCa" icon="pi pi-volume-up p-px-2" className="slack p-p-0"/>     */}
+                        {/* <div className={styles.footerDesktopLinks}>
+                        <Button label="Youtube" icon="pi pi-youtube p-px-2" className="p-button-raised p-button-danger" />
+                        <Button label="Facebook" icon="pi pi-youtube p-px-2" className="p-button-raised p-button-info" />
+                        <Button label="Twitter" icon="pi pi-twitter p-px-2" className="p-button-raised p-button-info"/>
+                        <Button label="Instagram" icon="pi pi-camera p-px-2" className="p-button-raised p-button-help"/>
+                        <Button label="Escucha Radio SiDCa" icon="pi pi-volume-up p-px-2" className="p-button-raised p-button-warning"/>
+                        </div> */}
                     </div>
                 </div>
             </div>

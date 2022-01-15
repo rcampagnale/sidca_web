@@ -12,7 +12,7 @@ const Usuarios = () => {
         <div className={styles.visibleContent}>
             <div className={styles.container}>
                 <div className={styles.btn}>
-                    <Button label="Nuevo usuario" icon="pi pi-plus" className="p-mr-2" onClick={()=>history.push("/admin/nuevo-usuario")}/>
+                    <Button label="Nuevo usuario" icon="pi pi-plus" className="p-button-raised p-button-warning" onClick={()=>history.push("/admin/nuevo-usuario")}/>
                 </div>
 
             </div>

@@ -20,7 +20,7 @@ const Novedades = () => {
         <div className={styles.visibleContent}>
             <div className={styles.container}>
                 <div className={styles.btn}>
-                    <Button label="Nueva novedad" icon="pi pi-plus" className="p-mr-2" onClick={()=>history.push("/admin/nueva-novedad")}/>
+                    <Button label="Nueva novedad" icon="pi pi-plus" className="p-button-raised p-button-warning" onClick={()=>history.push("/admin/nueva-novedad")}/>
                 </div>
             {
             novedades.enlaces.length > 0

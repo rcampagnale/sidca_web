@@ -64,7 +64,7 @@ const LoginAdmin = () => {
                     <label className={styles.labelForm} htmlFor="contraseña">Contraseña</label>
                 </span>
 
-                <Button type="submit" label='Ingresar' className={`p-mt-2 ${styles.submitButton}`} />
+                <Button type="submit" label='Ingresar' className={`p-button-raised p-button-warning ${styles.submitButton}`} />
             </form>
         </div>
         </div>

@@ -25,7 +25,7 @@ const Cursos = () => {
         <div className={styles.visibleContent}>
             <div className={styles.container}>
                 <div className={styles.btn}>
-                    <Button label="Nuevo curso" icon="pi pi-plus" className="p-mr-2" onClick={()=>history.push("/admin/nuevo-curso")}/>
+                    <Button label="Nuevo curso" icon="pi pi-plus" className="p-button-raised p-button-warning" onClick={()=>history.push("/admin/nuevo-curso")}/>
                 </div>
             
             

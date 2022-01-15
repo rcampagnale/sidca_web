@@ -10,7 +10,7 @@ const Contacto = () => {
                 <div className={styles.contentFlex}>
                     <div className={styles.firstSection}>
                         <div className={styles.subTitle}>Redes Sociales</div>
-                            <a href="https://www.messenger.com/t/100021125296788" className={styles.messenger}><Button label="Messenger" icon={BsMessenger} className="p-button-raised"/></a>
+                            <a href="https://www.messenger.com/t/100021125296788" className={styles.messenger}><Button label="Messenger" icon={BsMessenger} className="p-button-raised "/></a>
                             <a href="https://www.instagram.com/sidcagremio/?hl=es-la" className={styles.instagram}><Button label="Instagram" icon={BsInstagram} className="p-button-raised p-button-help" /></a>
                             <a href="https://twitter.com/sidcagremio" className={styles.twitter}><Button label="Twitter" icon="pi pi-twitter p-px-2" className="p-button-raised p-button-info" /></a>
                         </div>

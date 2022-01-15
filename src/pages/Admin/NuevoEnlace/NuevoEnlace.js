@@ -101,7 +101,7 @@ const NuevoEnlace = () => {
                     <label className={styles.labelForm} htmlFor="prioridad">Prioridad*</label>
                 </span>
                 
-                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-mt-2 ${styles.submitButton}`} />
+                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-button-raised p-button-warning ${styles.submitButton}`} />
             </form>
                 {
                     enlace.processing 
