@@ -55,13 +55,13 @@ const LoginAdmin = () => {
                 <h2 className={styles.title}>Administradores</h2>
                 
                 <span className={`p-float-label ${styles.inputSection}`}>
-                    <InputText className={styles.inputForm} value={form.admin} name="usuario" id="usuario" type="text" onChange={(e)=>{handleInputChange(e)}} />
-                    <label className={styles.labelForm} htmlFor="usuario">Usuario</label>
+                    <InputText className={styles.inputForm} value={form.admin} name="admin" id="admin" type="text" onChange={(e)=>{handleInputChange(e)}} />
+                    <label className={styles.labelForm} htmlFor="admin">Usuario</label>
                 </span>
 
                 <span className={`p-float-label ${styles.inputSection}`}>
-                    <InputText className={styles.inputForm} value={form.password} name="contraseña" id="contraseña" type="password" onChange={(e)=>{handleInputChange(e)}} />
-                    <label className={styles.labelForm} htmlFor="contraseña">Contraseña</label>
+                    <InputText className={styles.inputForm} value={form.password} name="password" id="password" type="password" onChange={(e)=>{handleInputChange(e)}} />
+                    <label className={styles.labelForm} htmlFor="password">Contraseña</label>
                 </span>
 
                 <Button type="submit" label='Ingresar' className={`p-button-raised p-button-warning ${styles.submitButton}`} />
