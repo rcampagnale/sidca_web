@@ -26,9 +26,9 @@ const AfiliadosNuevos = () => {
         dispatch(getAfiliadosNuevos());
     }, [])
 
-    useEffect(() => {
+    // useEffect(() => {
         
-    }, [])
+    // }, [])
 
     return (
         <div className={global.container}>
@@ -43,8 +43,7 @@ const AfiliadosNuevos = () => {
                         <th>Celular</th>
                         <th>Establecimientos</th>
                         <th>Departamento</th>
-                        <th>Ya afiliado?</th>
-                        <th>ACTIONS</th>
+                        <th>¿Ya afiliado?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -66,6 +65,36 @@ const AfiliadosNuevos = () => {
                         )
                     })
                 }
+                {/* <tr key={1}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr>
+                <tr key={2}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr>
+                <tr key={3}>
+                             <td>Mati</td>
+                             <td>pedazo</td>
+                             <td>de</td>
+                             <td>puto</td>
+                             <td>gay</td>
+                             <td>te amo</td>
+                             <td>haceme un hijo</td>
+                             <td><button>Eliminar</button></td>
+                         </tr> */}
                 </tbody>
             </table>
             <Paginator 

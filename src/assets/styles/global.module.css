@@ -1,185 +1,79 @@
-.container{
-    min-height: 85vh;
-    align-items: center; 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-}
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
 
-.title{
-    font-size: 25px;
-    font-weight: bold;
-    margin-bottom: 15px;
-}
-
-.subTitle{
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 15px;
-}
-
-/* FORM */
-.formAdmin {
-    margin-top: 20px auto;
-    align-items: center; 
-    display: flex;
-    font-family: Arial, Helvetica, sans-serif;
-    justify-content: space-evenly;
-    flex-direction: column;
-    padding: 20px;
-    width: 300px;
-    background-color: #fea200;
-}
-
-.labelForm {
-    align-self: flex-start;
-    font-weight: 600;
-    font-size: 15px;
-    margin: 10px 0 5px;
-}
-
-.inputForm{
-    width: 100%;
-    border-radius: 5px;
-    height: 30px;
-}
-
-.submitButton{
-    background-color: #0af;
-    border-radius: 5px;
-    border: none;
-    color: #ffffff;
-    cursor: pointer;
-    display: inline-block;
-    height: 30px;
-    text-decoration: none;
-    font-family: sans-serif;
-    font-size: 1rem;
-    margin: 20px auto;
-    text-align: center;
-    transition: background 250ms ease-in-out, 
-                transform 150ms ease;
-    width: 70%;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-}
-
-.submitButton:hover,
-.submitButton:focus {
-    background: #0053ba;
-}
-
-.submitButton:focus {
-    outline: 1px solid #fff;
-    outline-offset: -4px;
-}
-
-.submitButton:active {
-    transform: scale(0.99);
-}
-
-/* BUTTOM */
-.btn{
-    background-color: #fea200;
-    border-radius: 5px;
-    border: none;
-    color: #000;
-    cursor: pointer;
-    display: inline-block;
-    height: 30px;
-    text-decoration: none;
-    font-family: sans-serif;
-    font-size: 1rem;
-    font-weight: bold;
-    text-align: center;
-    transition: background 250ms ease-in-out, 
-                transform 150ms ease;
-    min-width: 200px;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-}
-
-.btn:hover,
-.btn:focus {
-    background: #0053ba;
-}
-
-.btn:focus {
-    outline: 1px solid #fff;
-    outline-offset: -4px;
-}
-
-.btn:active {
-    transform: scale(0.99);
+* {
+  font-family: "Roboto", sans-serif;
 }
 
 /* TABLE */
 .fl_table {
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: normal;
-    border: none;
-    border-collapse: collapse;
-    width: 100%;
-    max-width: 100%;
-    white-space: nowrap;
-    background-color: white;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: normal;
+  border: none;
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  background-color: white;
 }
 
-.fl_table td, .fl_table th {
-    text-align: center;
-    padding: 8px;
+.fl_table td,
+.fl_table th {
+  text-align: center;
+  padding: 8px;
 }
 
 .fl_table td {
-    border-right: 1px solid #f8f8f8;
-    font-size: 12px;
+  border-right: 1px solid #f8f8f8;
+  font-size: 12px;
 }
 
 .fl_table thead th {
-    color: #ffffff;
-    background: #fea200;
+  color: #ffffff;
+  background: #fea200;
 }
 
-
 .fl_table thead th:nth-child(odd) {
-    color: #ffffff;
-    background: #091d24;
+  color: #ffffff;
+  background: #091d24;
 }
 
 .fl_table tr:nth-child(even) {
-    background: #F8F8F8;
+  background: #f8f8f8;
 }
 
 @media (max-width: 767px) {
-.fl_table {
+  .fl_table {
     display: block;
     width: 100%;
-}
-.table-wrapper:before{
+  }
+  .table-wrapper:before {
     content: "Scroll horizontally >";
     display: block;
     text-align: right;
     font-size: 11px;
     color: white;
     padding: 0 0 10px;
-}
-.fl_table thead, .fl_table tbody, .fl_table thead th {
+  }
+  .fl_table thead,
+  .fl_table tbody,
+  .fl_table thead th {
     display: block;
-}
-.fl_table thead th:last-child{
+  }
+  .fl_table thead th:last-child {
     border-bottom: none;
-}
-.fl_table thead {
+  }
+  .fl_table thead {
     float: left;
-}
-.fl_table tbody {
+  }
+  .fl_table tbody {
     width: auto;
     position: relative;
     overflow-x: auto;
-}
-.fl_table td, .fl_table th {
-    padding: 20px .625em .625em .625em;
+  }
+  .fl_table td,
+  .fl_table th {
+    padding: 20px 0.625em 0.625em 0.625em;
     height: 60px;
     vertical-align: middle;
     box-sizing: border-box;
@@ -188,29 +82,29 @@
     width: 120px;
     font-size: 13px;
     text-overflow: ellipsis;
-}
-.fl_table thead th {
+  }
+  .fl_table thead th {
     text-align: left;
     border-bottom: 1px solid #f7f7f9;
-}
-.fl_table tbody tr {
+  }
+  .fl_table tbody tr {
     display: table-cell;
-}
-.fl_table tbody tr:nth-child(odd) {
+  }
+  .fl_table tbody tr:nth-child(odd) {
     background: none;
-}
-.fl_table tr:nth-child(even) {
+  }
+  .fl_table tr:nth-child(even) {
     background: transparent;
-}
-.fl_table tr td:nth-child(odd) {
-    background: #F8F8F8;
-    border-right: 1px solid #E6E4E4;
-}
-.fl_table tr td:nth-child(even) {
-    border-right: 1px solid #E6E4E4;
-}
-.fl_table tbody td {
+  }
+  .fl_table tr td:nth-child(odd) {
+    background: #f8f8f8;
+    border-right: 1px solid #e6e4e4;
+  }
+  .fl_table tr td:nth-child(even) {
+    border-right: 1px solid #e6e4e4;
+  }
+  .fl_table tbody td {
     display: block;
     text-align: center;
-}
+  }
 }

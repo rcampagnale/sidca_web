@@ -2,6 +2,8 @@ import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import global from '../../../assets/styles/global.module.css'
+import styles from './styles.module.css';
+import { Button } from 'primereact/button';
 
 const Cursos = () => {
 
@@ -20,17 +22,17 @@ const Cursos = () => {
     }, [])
 
     return (
-        <div className={global.container}>
-            <button 
-                    onClick={()=>history.push("/admin/nuevo-curso")}
-                    className={global.btn}
-                >
-                    Nuevo Curso
-            </button>   
+        <div className={styles.visibleContent}>
+            <div className={styles.container}>
+                <div className={styles.btn}>
+                    <Button label="Nuevo curso" icon="pi pi-plus" className="p-button-raised p-button-warning" onClick={()=>history.push("/admin/nuevo-curso")}/>
+                </div>
+            
+            
             {
             cursos.cursos.length > 0
             ?
-            <table className={global.fl_table}>
+            <table className={styles.fl_table}>
                 
                 <thead>
                     <tr>
@@ -62,8 +64,10 @@ const Cursos = () => {
                 </tbody>
             </table>
             :
-            <h3>No hay Cursos</h3>
+            <Button label="No hay cursos" className={`p-button-outlined p-button-danger ${styles.errorBtn}`}/>
+            
             }
+            </div>
         </div>
     )
 }
