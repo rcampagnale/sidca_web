@@ -1,0 +1,21 @@
+.errorContainer {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.errorBox {
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 650px;
+  height: 60%;
+}
+
+.errorImg {
+  width: 100%;
+}
