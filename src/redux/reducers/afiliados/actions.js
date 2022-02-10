@@ -7,12 +7,13 @@ export const getAfiliadosNuevos = (data) => {
         dispatch(getAfiliadosNuevosProcess());
         try {
             if(!getState().afiliado.lastAfiliado){
-                const q = await query(collection(db, "nuevoAfiliado"), orderBy('fecha', 'desc'), limit(10));
+                const q = await query(collection(db, "nuevoAfiliado"))
+                // , orderBy('fecha', 'desc'), limit(10));
                 const querySnapshot = await getDocs(q);
                 if(querySnapshot.size === 0){
                     dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
                 }else{
-                    dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
+                    // dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
                     let arrayDocs = []
                     querySnapshot.forEach(doc=>{
                         const data = doc.data();
@@ -33,12 +34,13 @@ export const getAfiliadosNuevos = (data) => {
                     dispatch(getAFiliadosNuevosSuccess(arrayDocs))
                 }
             }else{
-                const q = await query(collection(db, "nuevoAfiliado"), orderBy('fecha'), startAfter(getState().afiliado.lastAfiliado), limit(10));
+                const q = await query(collection(db, "nuevoAfiliado"))
+                // , orderBy('fecha'), startAfter(getState().afiliado.lastAfiliado), limit(10));
                 const querySnapshot = await getDocs(q);
                 if(querySnapshot.size === 0){
                     dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
                 }else{
-                    dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
+                    // dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
                     let arrayDocs = []
                     querySnapshot.forEach(doc=>{
                         const data = doc.data();
