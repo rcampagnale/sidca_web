@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from "../styles.module.css";
 import logo from '../../../assets/img/logo-01.png';
 import { Button } from 'primereact/button';
@@ -8,6 +8,8 @@ import NavUser from './nav/NavUser';
 const HeaderUser = () => {
 
     const history = useHistory();
+
+    const [active, setActive] = useState(false);
 
     return (
         <div>
@@ -19,8 +21,8 @@ const HeaderUser = () => {
                     <a href="https://play.google.com/store/apps/details?id=com.sidca&hl=es_419&gl=US"><div className={styles.headerText}>Abrir en app</div></a>
                 </div>
                 <div className={styles.header}>
-                    <div className={styles.hamburger}>
-                        <Button icon="pi pi-bars" className="p-button-rounded p-button-warning p-button-text" />
+                    <div className={styles.hamburger} >
+                        <Button icon="pi pi-bars" className="p-button-rounded p-button-warning p-button-text" onClick={()=> setActive(!active)}/>
                     </div>
                     <div className={styles.menuIcon}>
                         <Button icon="pi pi-home" className="p-button-rounded p-button-warning" onClick={() => history.push('/')}/>
@@ -38,7 +40,10 @@ const HeaderUser = () => {
                         <Button icon="pi pi-sign-out" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={()=>history.push("/login")}/>
                     </div>
                 </div>
-                <NavUser />
+                {
+                    active &&
+                    <NavUser setActive={setActive}/>
+                }
             </div>
         </div>
     )
