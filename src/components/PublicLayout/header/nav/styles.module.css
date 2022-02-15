@@ -15,7 +15,7 @@
     padding: 10px 0px 45px 0;
     position: absolute;
     z-index: 1;
-    display: none;
+    display: block;
   }
   .navUl li {
     padding: 20px 0;
