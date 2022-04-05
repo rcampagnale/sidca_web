@@ -10,7 +10,7 @@ import FooterUser from "./footer/FooterUser";
 const PublicLayoutPage = ({ history, children, user }) => {
 
     return (
-        <body style={{ minHeight: "100vh"}}>
+        <div className={styles.container} >
             <HeaderUser className={styles.header}/>
             <div className={styles.mainContent}>
                 <main>
@@ -20,7 +20,7 @@ const PublicLayoutPage = ({ history, children, user }) => {
                 </main>
             </div>
             <FooterUser className={styles.footer}/>
-        </body>
+        </div>
     );
 };
 

@@ -5,46 +5,21 @@
   margin: 0;
   box-sizing: border-box;
 }
-
 body {
   display: flex;
   flex-flow: column wrap;
   min-height: 100vh;
 }
 
-header {
+.header {
   width: 100%;
   height: 60px;
-  background-color: #525252;
+  background-color: rgba(0, 0, 0, 0.9);
   display: flex;
-  flex-direction: row;
+  flex-flow: row nowrap;
   align-items: center;
   justify-content: space-between;
   font-family: "Roboto", sans-serif;
-}
-
-.avatar {
-  display: flex;
-  width: 140px;
-  flex-direction: row wrap;
-  align-items: center;
-  margin-left: 40px;
-}
-
-.adminPanel {
-  color: #fff;
-  font-size: 25px;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.mainContent {
-  display: flex;
-  width: 100%;
-  flex-flow: row wrap;
-  flex-grow: 1;
-  background-color: rgb(241, 240, 240);
 }
 
 main {
@@ -52,28 +27,155 @@ main {
   display: flex;
 }
 
-.visibleContent {
-  margin: 50px 40px;
-  flex: 100%;
-  background-color: #fff;
-  box-shadow: 0 1px 8px 0 rgba(0, 0, 0, 0.1);
+.mainContent {
+  display: flex;
+  width: 100%;
+  flex-flow: row wrap;
+  flex-grow: 1;
+  background-color: rgb(255, 255, 255);
 }
 
-footer {
+.visibleContent {
+  background-color: #fff;
+}
+
+.footer {
   width: 100%;
   height: 60px;
-  background-color: #fea200;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  background-color: rgba(0, 0, 0, 0.9);
   font-family: "Roboto", sans-serif;
 }
 
-footer p {
-  font-size: 20px;
-  margin-right: 50px;
+a {
+  text-decoration: none;
 }
 
-.btnExit {
-  margin-right: 40px;
+.footerText,
+.footerLinks,
+.upperHeader,
+.footerList,
+.hamburger {
+  display: none;
+}
+
+@media only screen and (max-width: 767px) {
+  .headerNav {
+    display: none;
+  }
+  .footerText {
+    color: #ccc;
+    font-weight: bold;
+    margin: 25px;
+    font-size: 16px;
+    border-top: 1px solid #ccc;
+    padding-top: 30px;
+    text-align: center;
+    display: block;
+  }
+  .footer {
+    height: 16em;
+  }
+  .footerList {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+  }
+  .footerList a li {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 12.5px;
+    color: #fff;
+    margin-top: 40px;
+  }
+  .footerList a {
+    border: none;
+    text-decoration: none;
+  }
+  .appStore,
+  .playStore {
+    width: 135px;
+    height: 41px;
+    margin: 5px;
+  }
+  .appStore {
+    display: none;
+  }
+  .footerLinks {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+  }
+  .btnExit {
+    margin-right: 15px;
+  }
+  .hamburger {
+    display: block;
+    margin-left: 15px;
+  }
+  .upperHeader {
+    position: fixed;
+    top: 0;
+    z-index: 10;
+    height: 60px;
+    width: 100%;
+    background-color: #fff;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .headerLogo {
+    width: 100px;
+    margin-left: 10px;
+  }
+  .headerText {
+    color: rgb(131, 131, 131);
+    border: 1px solid rgb(131, 131, 131);
+    padding: 10px 15px;
+    border-radius: 50px;
+    margin-right: 15px;
+    font-family: "Roboto", sans-serif;
+    font-size: 15px;
+  }
+  .header {
+    margin-top: 60px;
+  }
+  .visibleContent {
+    margin: 0;
+  }
+  .menuIcon {
+    display: none;
+  }
+  .footerDesktopLinks {
+    display: none;
+  }
+}
+
+@media only screen and (min-width: 768px) {
+  .headerNav {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-around;
+    flex-grow: 1;
+  }
+  .headerNav li {
+    color: #fff;
+    cursor: pointer;
+    font-size: 20px;
+  }
+  .btnExit {
+    margin-right: 30px;
+  }
+  .menuIcon {
+    margin-left: 30px;
+  }
+  .footerDesktopLinks {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+  }
 }

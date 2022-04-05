@@ -1,6 +1,6 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-import { PrivateLayoutPage } from './PrivateLayoutPage';
+import PrivateLayoutPage from './PrivateLayoutPage';
 import { useSelector } from 'react-redux';
 
 const PrivateLayout = ({ children }) => {

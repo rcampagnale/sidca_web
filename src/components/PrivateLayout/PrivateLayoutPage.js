@@ -4,14 +4,14 @@ import logo from '../../assets/img/logo-01.png';
 import Admin from "../../pages/Admin/Admin/Admin";
 // import UserActionButton from "components/UserActionsButton/UserActionButton";
 // import logoHeader from 'assets/images/logo-header.png'
-import Header from "./header/Header";
-import Footer from "./footer/Footer";
+import HeaderUser from "./header/HeaderUser";
+import FooterUser from "./footer/FooterUser";
 
-export const PrivateLayoutPage = ({ history, children, user }) => {
+const PrivateLayoutPage = ({ history, children, user }) => {
 
     return (
-        <body style={{ minHeight: "100vh" }}>
-            <Header />
+        <body style={{ minHeight: "100vh"}}>
+            <HeaderUser className={styles.header}/>
             <div className={styles.mainContent}>
                 <main>
                     <div className={styles.visibleContent}>
@@ -19,7 +19,9 @@ export const PrivateLayoutPage = ({ history, children, user }) => {
                     </div>
                 </main>
             </div>
-            <Footer className={styles.footer}/>
+            <FooterUser className={styles.footer}/>
         </body>
     );
 };
+
+export default PrivateLayoutPage

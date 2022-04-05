@@ -10,8 +10,7 @@ const AdminRoute = ({ component: Component, ...rest }) => {
     const admin = localStorage.getItem('es_admin');
 
     if (!admin || !token) {
-         history.push('/admin/login')
-         return <div>No Auth</div>
+        history.push('/admin/login')
     } else {
         return (
             <Route {...rest} render={props => (

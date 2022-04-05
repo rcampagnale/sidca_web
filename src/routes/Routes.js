@@ -5,7 +5,7 @@ import {
     Switch
 } from "react-router-dom";
 import PublicRoute from './PublicRoute';
-// import PrivateRoute from './PrivateRoute';
+import PrivateRoute from './PrivateRoute';
 import AdminRoute from './AdminRoute';
 
 import LoginAdmin from '../pages/Admin/LoginAdmin/LoginAdmin';
@@ -23,7 +23,6 @@ import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
 import Novedades from "../pages/Admin/Novedades/Novedades";
 import NovedadesUser from "../pages/Novedades/Novedades";
 import Usuarios from "../pages/Admin/Usuarios/Usuarios";
-import Home from "../pages/Home/Home";
 import Nosotros from "../pages/Nosotros/Nosotros";
 import Contacto from "../pages/Contacto/Contacto";
 import Capacitaciones from "../pages/Capacitaciones/Capacitaciones";
@@ -38,29 +37,24 @@ import Nuevos2021 from '../pages/Capacitaciones/Cursos 2021/Nuevos2021';
 
 const AppRouter = () => {
 
-    //useFetchUser();
-    //useFetchUserProfile();
-
     return (
         <BrowserRouter basename={'/'}>
             {/* <ScrollToTop></ScrollToTop> */}
             <Switch>
 
                 {/* WEB */}
-                <Route exact path="/login" component={LoginUser} />
-                <PublicRoute exact path="/" component={Home} />
-                <PublicRoute exact path="/nosotros" component={Nosotros} />
-                <PublicRoute exact path="/contacto" component={Contacto} />
-                <PublicRoute exact path="/novedades" component={NovedadesUser} />
-                <PublicRoute exact path="/capacitaciones" component={Capacitaciones} />
-                <PublicRoute exact path="/capacitaciones/mis-cursos" component={NuevosMisCursos} />
-                <PublicRoute exact path="/capacitaciones/nuevos-cursos" component={NuevosCursosNuevos} />
-                <PublicRoute exact path="/capacitaciones/cursos-2020-2019" component={Nuevos2020_2019} />
-                <PublicRoute exact path="/capacitaciones/cursos-2021" component={Nuevos2021} />
-                {/* <PublicRoute exact path="/radio" component={Home} /> */}
-                <PublicRoute exact path="/casa-del-docente" component={CasaDelDocente} />
-                <PublicRoute exact path="/turismo" component={Turismo} />
-                <PublicRoute exact path="/predio" component={Predio} />
+                <PublicRoute exact path="/" component={LoginUser} />
+                <PrivateRoute exact path="/nosotros" component={Nosotros} />
+                <PrivateRoute exact path="/contacto" component={Contacto} />
+                <PrivateRoute exact path="/novedades" component={NovedadesUser} />
+                <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
+                <PrivateRoute exact path="/capacitaciones/mis-cursos" component={NuevosMisCursos} />
+                <PrivateRoute exact path="/capacitaciones/nuevos-cursos" component={NuevosCursosNuevos} />
+                <PrivateRoute exact path="/capacitaciones/cursos-2020-2019" component={Nuevos2020_2019} />
+                <PrivateRoute exact path="/capacitaciones/cursos-2021" component={Nuevos2021} />
+                <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
+                <PrivateRoute exact path="/turismo" component={Turismo} />
+                <PrivateRoute exact path="/predio" component={Predio} />
 
                 {/* ADMIN */}
                 <Route exact path="/admin/login" component={LoginAdmin} />
