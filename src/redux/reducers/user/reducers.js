@@ -1,4 +1,4 @@
-// import * as types from "./types";
+import * as types from "./types";
 
 const initialState = {
     auth: undefined,
@@ -13,24 +13,24 @@ const initialState = {
 };
 export const userReducer = (state = initialState, action) => {
     switch (action.type) {
-        // case types.AUTHENTICATE_USER:
-        //     return {
-        //         ...state,
-        //         processing: true
-        //     };
-        // case types.AUTHENTICATE_USER_SUCCESS:
-        //     return {
-        //         ...state,
-        //         auth: true,
-        //         profile: {...action.payload},
-        //         processing: false
-        //     };
-        // case types.AUTHENTICATE_USER_ERROR:
-        //     return {
-        //         ...state,
-        //         msg: action.payload,
-        //         processing: false
-        //     };
+        case types.AUTHENTICATE_USER:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.AUTHENTICATE_USER_SUCCESS:
+            return {
+                ...state,
+                auth: true,
+                profile: {...action.payload},
+                processing: false
+            };
+        case types.AUTHENTICATE_USER_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false
+            };
         // case types.SET_USER:
         //     return {
         //         ...state,
@@ -85,6 +85,14 @@ export const userReducer = (state = initialState, action) => {
         //         ...state,
         //         logoutProcess: undefined
         //     };
+        case types.CLEAR_USER_STATUS:
+            return {
+                ...state,
+                loading: undefined,
+                processing: undefined,
+                msg: false,
+                status: false
+            };
         default:
             return state;
     }

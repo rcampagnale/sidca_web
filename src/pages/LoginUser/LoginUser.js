@@ -1,18 +1,17 @@
 import React from 'react';
 import styles from './styles.module.css';
-// import { useDispatch } from 'react-redux';
-// import { useHistory } from 'react-router-dom';
-// import { useForm } from '../../../hooks/useForm';
-// import { adminLogin } from '../../../redux/reducers/user/actions';
+import { useDispatch } from 'react-redux';
+import { useHistory } from 'react-router-dom';
+import { useForm } from '../../hooks/useForm';
+import { authenticateUser } from '../../redux/reducers/user/actions';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
-import { useForm } from '../../hooks/useForm';
 import logo from '../../assets/img/logo-01.png';
 
 const LoginUser = () => {
 
-    // const dispatch = useDispatch();
-    // const history = useHistory();
+    const dispatch = useDispatch();
+    const history = useHistory();
 
     const initialform = {
         dni: '',
@@ -20,12 +19,12 @@ const LoginUser = () => {
 
     const [form, handleInputChange, reset] = useForm(initialform);
 
-    // const handleSubmit = async(e) => {
-    //     e.preventDefault();
-    //     await dispatch(adminLogin(form));
-    //     reset()
-    //     history.push('/admin');
-    // }   
+    const handleSubmit = async(e) => {
+        e.preventDefault();
+        await dispatch(authenticateUser(form));
+        reset()
+        // history.push('/nosotros');
+    }   
 
     return (
         <div className={styles.visibleContent}>
@@ -33,7 +32,7 @@ const LoginUser = () => {
                 <div className={styles.imgContainer}>
                     <img className={styles.img} src={logo} alt="Logo de SiDCa"></img>
                 </div>
-                <form /*onSubmit={handleSubmit}*/ className={styles.formAdmin}>
+                <form onSubmit={handleSubmit} className={styles.formAdmin}>
                     <h2 className={styles.title}>Iniciar sesión</h2>
 
                     <span className={`p-float-label ${styles.inputSection}`}>

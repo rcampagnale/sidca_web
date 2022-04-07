@@ -1,11 +1,6 @@
-// import * as types from "./types";
-
-// const result = (type, payload) => {
-//     return {
-//         type: type,
-//         payload: payload,
-//     };
-// };
+import * as types from "./types";
+import { db } from '../../../firebase/firebase-config';
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit } from "firebase/firestore";
 
 export const adminLogin = (data) => {
     return async (dispatch, getState)=>{
@@ -20,3 +15,36 @@ export const adminLogin = (data) => {
         } 
     }
 }
+
+export const authenticateUser = (data) => {
+    return async (dispatch, getState) => {
+        dispatch(authenticateUserProcess());
+        try {
+            const q = await query(collection(db, 'usuarios'), where('dni', '==', data.dni))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size > 0 && querySnapshot.size < 2) {
+                querySnapshot.forEach(documentSnapshot => {
+                    const user = {
+                        id: documentSnapshot.id,
+                        ...documentSnapshot.data()
+                    }
+                    dispatch(authenticateUserSuccess(user));
+                    localStorage.setItem('user', JSON.stringify(user));
+                })
+            } else if (querySnapshot.size > 1) {
+                dispatch(authenticateUserError('Algo ha salido mal, contactate con un administrador'));
+            } else {
+                dispatch(authenticateUserError('DNI incorrecto'));
+            }
+        } catch (error) {
+            dispatch(authenticateUserError('No se ha ingresar'));
+            console.log(error);
+        }
+    }
+}
+
+const authenticateUserProcess = (payload) => ({type: types.AUTHENTICATE_USER, payload})
+const authenticateUserSuccess = (payload) => ({type: types.AUTHENTICATE_USER_SUCCESS, payload})
+const authenticateUserError = (payload) => ({type: types.AUTHENTICATE_USER_ERROR, payload})
+
+export const clearStatus = (payload) => ({type: types.CLEAR_USER_STATUS, payload})
