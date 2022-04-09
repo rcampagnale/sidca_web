@@ -1,0 +1,52 @@
+.footer {
+    width: 100%;
+    height: 100px;
+    background-color: rgba(0, 0, 0, 0.9);
+    font-family: "Roboto", sans-serif;
+}
+
+.footerList {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+}
+
+.footerList a li {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 12.5px;
+    color: #fff;
+}
+
+.footerList a {
+    border: none;
+    text-decoration: none;
+}
+
+.footerLinks {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+}
+
+.footerText {
+    color: #ccc;
+    font-weight: bold;
+    font-size: 16px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* APP and others*/
+
+/* .appStore,
+  .playStore {
+    width: 135px;
+    height: 41px;
+    margin: 5px;
+  }
+  .appStore {
+    display: none;
+  } */

@@ -1,0 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
+
+.visibleContent {
+  height: 100%;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Roboto", sans-serif;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 575px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  padding: 4vh;
+}
+
+@media only screen and (min-width: 768px) {
+  .imgContainer {
+    height: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .img {
+    width: 100%;
+    /* position: absolute; */
+    margin: auto;
+  }
+}
+
+@media only screen and (max-width: 767px) {
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 400px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    padding: 4vh;
+  }
+
+  .imgContainer {
+    height: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .img {
+    width: 100%;
+  }
+}
+
+.formAdmin {
+  width: 80%;
+  text-align: center;
+}
+
+.title {
+  margin: 0px 0 40px 0;
+  font-size: 30px;
+  color: rgb(82, 82, 82);
+  font-weight: bold;
+}
+
+.inputForm {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.inputSection {
+  margin-bottom: 1.6rem;
+}
+
+.submitButton {
+  width: 100%;
+}
