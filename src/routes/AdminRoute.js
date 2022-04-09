@@ -1,6 +1,6 @@
 import React from 'react';
 import { Route, useHistory} from 'react-router-dom';
-import PrivateLayout from '../components/PrivateLayout/PrivateLayout';
+import Layout from '../components/Layout/Layout';
 
 const AdminRoute = ({ component: Component, ...rest }) => {
 
@@ -14,9 +14,9 @@ const AdminRoute = ({ component: Component, ...rest }) => {
     } else {
         return (
             <Route {...rest} render={props => (
-                <PrivateLayout>
+                <Layout type='Admin'>
                     <Component {...props} />
-                </PrivateLayout>
+                </Layout>
             )} />
         )
     }

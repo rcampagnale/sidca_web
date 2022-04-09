@@ -1,0 +1,24 @@
+.navUl {
+  width: 100%;
+  background-color: #3b3b3b;
+  display: flex;
+  flex-flow: column wrap;
+  align-items: flex-start;
+  justify-content: center;
+  font-family: "Roboto", sans-serif;
+}
+.navUl li {
+  padding: 20px 0;
+  margin-left: 50px;
+  color: white;
+  border-bottom: 1px solid #fff;
+  width: 75%;
+}
+.navUl li:hover {
+  padding: 20px 0;
+  margin-left: 50px;
+  color: rgb(187, 187, 187);
+  border-bottom: 1px solid #fff;
+  width: 75%;
+  cursor: pointer;
+}

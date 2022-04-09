@@ -1,0 +1,104 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
+
+.header {
+  width: 100%;
+  height: 60px;
+  background-color: #fea200;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: space-between;
+  font-family: "Roboto", sans-serif;
+}
+
+main {
+  flex: 100%;
+  display: flex;
+}
+
+.mainContent {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  /* flex-flow: row wrap; */
+  flex-grow: 1;
+  background-color: rgb(255, 255, 255);
+}
+
+.visibleContent {
+  background-color: #fff;
+}
+a {
+  text-decoration: none;
+}
+
+.headerLogo {
+  width: 120px;
+  margin-left: 10px;
+}
+
+/* CEll */
+@media only screen and (max-width: 767px) {
+  /* header */
+  .headerNav {
+    display: none;
+  }
+  .headerText {
+    color: rgb(131, 131, 131);
+    border: 1px solid rgb(131, 131, 131);
+    padding: 10px 15px;
+    border-radius: 50px;
+    margin-right: 15px;
+    font-family: "Roboto", sans-serif;
+    font-size: 15px;
+  }
+
+
+  /* APP and others*/
+  .btnExit {
+    margin-right: 15px;
+  }
+  .hamburger {
+    display: block;
+    margin-left: 15px;
+  }
+  .visibleContent {
+    margin: 0;
+  }
+  .menuIcon {
+    display: none;
+  }
+}
+
+/* DESK */
+@media only screen and (min-width: 768px) {
+  .headerNav {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: flex-end;
+    flex-grow: 1;
+  }
+  .headerNav li {
+    color: #fff;
+    cursor: pointer;
+    font-size: 15px;
+    margin-right: 8px;
+  }
+  .headerNav li:hover  {
+    color: #ccc;
+    cursor: pointer;
+    font-size: 16px;
+    margin-right: 8px;
+  }
+  
+  .btnExit {
+    margin-right: 30px;
+  }
+  .menuIcon {
+    margin-left: 30px;
+  }
+  .hamburger {
+    display: none;
+  }
+}
