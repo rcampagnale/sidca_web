@@ -7,8 +7,8 @@ export const adminLogin = (data) => {
         if(data.admin !== 'Yesi'){return null}
         if(data.password !== 'sidca'){return null}
         try {
-            localStorage.setItem('user', '{"access_token": "asdfqwerasdfqwer"}')
-            localStorage.setItem('es_admin', 'true');
+            sessionStorage.setItem('user', '{"access_token": "asdfqwerasdfqwer"}')
+            sessionStorage.setItem('es_admin', 'true');
         } catch (error) {
             // dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
             console.log(error)
@@ -29,7 +29,7 @@ export const authenticateUser = (data) => {
                         ...documentSnapshot.data()
                     }
                     dispatch(authenticateUserSuccess(user));
-                    localStorage.setItem('user', JSON.stringify(user));
+                    sessionStorage.setItem('user', JSON.stringify(user));
                 })
             } else if (querySnapshot.size > 1) {
                 dispatch(authenticateUserError('Algo ha salido mal, contactate con un administrador'));

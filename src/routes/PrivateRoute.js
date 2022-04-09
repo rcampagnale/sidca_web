@@ -1,5 +1,6 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
+import Layout from '../components/Layout/Layout';
 import PrivateLayout from '../components/PrivateLayout/PrivateLayout';
 
 const ignoreLayout = [
@@ -9,7 +10,7 @@ const ignoreLayout = [
 
 const PrivateRoute = ({ component: Component, ...rest }) => {
 
-    let token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).user : undefined;
+    let token = sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')).id : undefined;
 
     if (!token) {
         window.location.href = process.env.PUBLIC_URL + '/';
@@ -19,9 +20,9 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
                 ignoreLayout.includes(rest.location.pathname) ?
                     <Component {...props} />
                     :
-                    <PrivateLayout>
+                    <Layout type='Private'>
                         <Component {...props} />
-                    </PrivateLayout>
+                    </Layout>
             )} />
         )
     }

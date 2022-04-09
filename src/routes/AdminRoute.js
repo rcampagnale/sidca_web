@@ -6,8 +6,8 @@ const AdminRoute = ({ component: Component, ...rest }) => {
 
     const history = useHistory();
 
-    let token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).access_token : undefined;
-    const admin = localStorage.getItem('es_admin');
+    let token = sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')).access_token : undefined;
+    const admin = sessionStorage.getItem('es_admin');
 
     if (!admin || !token) {
         history.push('/admin/login')
@@ -20,6 +20,7 @@ const AdminRoute = ({ component: Component, ...rest }) => {
             )} />
         )
     }
+
 }
 
 export default AdminRoute;
