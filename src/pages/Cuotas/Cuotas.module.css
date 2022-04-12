@@ -1,0 +1,14 @@
+.cards_container{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
+    grid-gap: 2em;
+    width: 100%;
+    min-height: 100%;
+    align-self: center;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.card{
+    min-width: 120px;
+}

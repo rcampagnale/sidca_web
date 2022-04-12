@@ -35,6 +35,8 @@ import NuevosCursosNuevos from '../pages/Capacitaciones/Nuevos Cursos/NuevosCurs
 import Nuevos2020_2019 from '../pages/Capacitaciones/Cursos 2020-2019/Nuevos2020_2019';
 import Nuevos2021 from '../pages/Capacitaciones/Cursos 2021/Nuevos2021';
 import Home from "../pages/Home/Home";
+import Cuotas from "../pages/Cuotas/Cuotas";
+import Logout from "../pages/Logout/Logout";
 
 const AppRouter = () => {
 
@@ -45,7 +47,8 @@ const AppRouter = () => {
 
                 {/* WEB */}
                 <PublicRoute exact path="/" component={LoginUser} />
-                <PrivateRoute exact path="/home" component={Home} />
+                <PrivateRoute exact path="/logout" component={Logout} />
+                <PrivateRoute exact path="/home/" component={Home} />
                 <PrivateRoute exact path="/nosotros" component={Nosotros} />
                 <PrivateRoute exact path="/contacto" component={Contacto} />
                 <PrivateRoute exact path="/novedades" component={NovedadesUser} />
@@ -57,6 +60,7 @@ const AppRouter = () => {
                 <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
                 <PrivateRoute exact path="/turismo" component={Turismo} />
                 <PrivateRoute exact path="/predio" component={Predio} />
+                <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
                 {/* ADMIN */}
                 <Route exact path="/admin/login" component={LoginAdmin} />

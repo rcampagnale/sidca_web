@@ -3,7 +3,7 @@ import { Sidebar } from 'primereact/sidebar';
 import { useHistory } from 'react-router';
 import styles from './styles.module.css';
 
-const NavUser = ({active,setActive}) => {
+const NavUser = ({active,setActive, user}) => {
 
     const history = useHistory();
 
@@ -17,6 +17,8 @@ const NavUser = ({active,setActive}) => {
                 <li onClick={() => history.push('/novedades')}>Novedades</li>
                 <li onClick={() => history.push('/predio')}>Predio</li>
                 <li onClick={() => history.push('/turismo')}>Turismo</li>
+                {/* {user.profue.cotizante && } */}
+                <li onClick={() => history.push('/cuotas')}>Cuotas</li>
             </ul>
         </Sidebar>
     )

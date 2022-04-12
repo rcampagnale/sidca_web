@@ -7,15 +7,13 @@ const LayoutPage = ({ children, type }) => {
 
     return (
         <div className={styles.container} >
-            <Header type={type}/>
+            <Header type={type} />
             <div className={styles.mainContent}>
-                <main>
-                    <div className={styles.visibleContent}>
-                        {children}
-                    </div>
+                <main className={styles.visibleContent}>
+                    {children}
                 </main>
             </div>
-            <Footer className={styles.footer} type={type}/>
+            <Footer className={styles.footer} type={type} />
         </div>
     );
 };
