@@ -15,6 +15,7 @@ const NavUser = ({active,setActive}) => {
                 <li onClick={() => history.push('/admin/cursos')}>Cursos</li>
                 <li onClick={() => history.push('/admin/asesoramiento')}>Asesoramiento</li>
                 <li onClick={() => history.push('/admin/novedades')}>Novedades</li>
+                <li onClick={() => history.push('/admin/nuevos-afiliados')}>Afiliados</li>
             </ul>
         </Sidebar>
     )

@@ -4,6 +4,7 @@ import logo from '../../assets/img/logo-01.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { postTransaction, setUserCuotas } from '../../redux/reducers/cuotas/actions';
 import { useLocation } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 const Home = () => {
 
@@ -18,6 +19,12 @@ const Home = () => {
             location.search.slice(1).split('&').map(param => {const data = param.split('='); search[data[0]] = data[1]})
             // dispatch(postTransaction(search));
             dispatch(setUserCuotas(search.external_reference, search))
+            Swal.fire({
+                title: 'Transferencia recibida',
+                text: 'Se han cargado los datos de su pago.',
+                icon: 'success',
+                confirmButtonText: 'Ok'
+            })
         }
     }, [location]);
 

@@ -22,6 +22,7 @@ const AdminHeader = () => {
                 <li onClick={() => history.push('/admin/cursos')}>Cursos</li>
                 <li onClick={() => history.push('/admin/asesoramiento')}>Asesoramiento</li>
                 <li onClick={() => history.push('/admin/novedades')}>Novedades</li>
+                <li onClick={() => history.push('/admin/nuevos-afiliados')}>Afiliados</li>
             </ul>
             <div className={styles.hamburger} >
                 <Button icon="pi pi-bars" className="p-button-rounded p-button-warning p-button-text" onClick={() => setActive(!active)} />
