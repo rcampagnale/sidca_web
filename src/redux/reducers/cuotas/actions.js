@@ -7,7 +7,7 @@ export const getCuotas = (data) => {
     return async (dispatch, getState) => {
         dispatch(getCuotasProcess());
         try {
-            const q = await query(collection(db, 'cuotas'))
+            const q = await query(collection(db, 'cuotas'), orderBy('position', "asc"))
             const querySnapshot = await getDocs(q);
             if (querySnapshot.size > 0) {
                 let arrayCuotas = []

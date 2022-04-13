@@ -16,14 +16,21 @@ const Home = () => {
     useEffect(() => {
         if (location.search) {
             const search = {}
-            location.search.slice(1).split('&').map(param => {const data = param.split('='); search[data[0]] = data[1]})
-            // dispatch(postTransaction(search));
-            if(search.status == 'approved'){
+            location.search.slice(1).split('&').map(param => { const data = param.split('='); search[data[0]] = data[1] })
+            if (search.status == 'approved') {
+                dispatch(postTransaction(search));
                 dispatch(setUserCuotas(search.external_reference, search))
                 Swal.fire({
                     title: 'Transferencia recibida',
                     text: 'Se han cargado los datos de su pago.',
                     icon: 'success',
+                    confirmButtonText: 'Ok'
+                })
+            }else if(search.status){
+                Swal.fire({
+                    title: 'No se ha guardado la transferencia',
+                    text: 'Si no intentaste hacer un pago de cuota ignora este mensaje.',
+                    icon: 'error',
                     confirmButtonText: 'Ok'
                 })
             }
