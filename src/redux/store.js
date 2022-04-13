@@ -5,7 +5,9 @@ import rootReducer from './rootReducer';
 
 const store = createStore(
     rootReducer,
-    applyMiddleware(thunk, logger)
+    process.env.REACT_APP_STATUS == 'development' 
+    ? applyMiddleware(thunk, logger)
+    : applyMiddleware(thunk)
 );
 
 export default store

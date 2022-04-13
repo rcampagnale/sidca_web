@@ -18,13 +18,15 @@ const Home = () => {
             const search = {}
             location.search.slice(1).split('&').map(param => {const data = param.split('='); search[data[0]] = data[1]})
             // dispatch(postTransaction(search));
-            dispatch(setUserCuotas(search.external_reference, search))
-            Swal.fire({
-                title: 'Transferencia recibida',
-                text: 'Se han cargado los datos de su pago.',
-                icon: 'success',
-                confirmButtonText: 'Ok'
-            })
+            if(search.status == 'approved'){
+                dispatch(setUserCuotas(search.external_reference, search))
+                Swal.fire({
+                    title: 'Transferencia recibida',
+                    text: 'Se han cargado los datos de su pago.',
+                    icon: 'success',
+                    confirmButtonText: 'Ok'
+                })
+            }
         }
     }, [location]);
 

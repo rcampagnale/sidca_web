@@ -83,7 +83,8 @@ const Cuotas = () => {
                     <img src='https://firebasestorage.googleapis.com/v0/b/sidca-a33f0.appspot.com/o/img%2Fvolver-al-sitio.png?alt=media&token=864ca477-f47e-481a-84c1-920cc2fb8e2e'
                         style={{ marginBottom: 10, maxWidth: 500, maxHeight: 400 }}
                     />
-                    <PagarCuota item={payItem} payData={payData} />
+                    <Button onClick={() => {window.location.href = payData.data}} label={`Pagar ${payItem.title}`} icon="pi pi-credit-card" style={{ marginRight: '.25em' }} />
+                    {/* <PagarCuota item={payItem} payData={payData} /> */}
                     <Message severity='info' text='Recuerda guardar tu comprobante' style={{ marginTop: 10 }}></Message>
                 </div>
             }
