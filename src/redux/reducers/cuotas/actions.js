@@ -35,9 +35,9 @@ export const postTransaction = (data) => {
         dispatch(postTransactionProcess());
         try {
             if (data) {
-                const doc = await addDoc(collection(db, 'transacciones'), {...data, fecha: Timestamp.now()})
+                const doc = await addDoc(collection(db, 'transacciones'), { ...data, fecha: Timestamp.now() })
                 dispatch(postTransactionSuccess(doc));
-            } 
+            }
         } catch (error) {
             dispatch(postTransactionError('No se pudo cargar la transaccion'));
             console.log(error);
@@ -50,10 +50,10 @@ export const setUserCuotas = (search, data) => {
         dispatch(setUserCuotasProcess());
         try {
             if (data) {
-               const external = JSON.parse(search.split('%22').join('"'))
-                const colection = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'),{...data, cuota: external.id})
+                const external = JSON.parse(search.split('%22').join('"'))
+                const colection = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'), { ...data, cuota: external.id, fecha: Timestamp.now() })
                 dispatch(setUserCuotasSuccess(colection));
-            } 
+            }
         } catch (error) {
             dispatch(setUserCuotasError('No se pudo cargar la transaccion'));
             console.log(error);
