@@ -6,7 +6,6 @@ import { Skeleton } from 'primereact/skeleton';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
 import styles from './Cuotas.module.css';
-import PagarCuota from './PagarCuota';
 import { getCuotas } from '../../redux/reducers/cuotas/actions';
 
 const Cuotas = () => {

@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query } from "firebase/firestore"; 
+import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore"; 
 
 export const nuevoEnlace = (data) => {
     return async (dispatch, getState)=>{
@@ -26,7 +26,7 @@ export const getEnlaces = () => {
     return async (dispatch, getState)=>{
         dispatch(getEnlacesProcess());
         try {
-            const q = await query(collection(db, 'enlaces'))
+            const q = await query(collection(db, 'enlaces'), orderBy('position', 'asc'), limit(10))
             const querySnapshot = await getDocs(q);
             if(querySnapshot.size === 0){
                 dispatch(getEnlacesError('No hay enlaces'))

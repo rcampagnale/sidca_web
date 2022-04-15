@@ -1,7 +1,8 @@
 import * as types from "./types";
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, Timestamp } from "firebase/firestore";
 import { search } from "mercadopago/lib/resources/payment";
+import { date } from "mercadopago/lib/utils";
 
 export const getCuotas = (data) => {
     return async (dispatch, getState) => {
@@ -34,7 +35,7 @@ export const postTransaction = (data) => {
         dispatch(postTransactionProcess());
         try {
             if (data) {
-                const doc = await addDoc(collection(db, 'transacciones'), data)
+                const doc = await addDoc(collection(db, 'transacciones'), {...data, fecha: Timestamp.fromDate(new Date.now()),})
                 dispatch(postTransactionSuccess(doc));
             } 
         } catch (error) {
