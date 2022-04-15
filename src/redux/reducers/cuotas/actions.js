@@ -35,7 +35,7 @@ export const postTransaction = (data) => {
         dispatch(postTransactionProcess());
         try {
             if (data) {
-                const doc = await addDoc(collection(db, 'transacciones'), {...data, fecha: Timestamp.fromDate(new Date.now()),})
+                const doc = await addDoc(collection(db, 'transacciones'), {...data, fecha: Timestamp.now()})
                 dispatch(postTransactionSuccess(doc));
             } 
         } catch (error) {
