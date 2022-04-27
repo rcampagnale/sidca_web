@@ -5,7 +5,8 @@ const initialState = {
     processing: false,
     stauts: '',
     enlaces: [],
-    enlace: {}
+    enlace: {},
+    size: 0,
 }
 
 export const enlaceReducer = (state = initialState, action) => {
@@ -19,14 +20,52 @@ export const enlaceReducer = (state = initialState, action) => {
             return {
                 ...state,
                 processing: false,
-                status: 'SUCCESS',
+                status: 'SUCCESS_ADD',
                 msg: action.payload,
             };
         case types.NUEVO_ENLACE_ERROR:
             return {
                 ...state,
                 processing: false,
-                status: 'FAILURE',
+                status: 'FAILURE_ADD',
+                msg: action.payload,
+            };
+        case types.UPLOAD_ENLACE:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.UPLOAD_ENLACE_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                status: 'SUCCESS_UPLOAD',
+                msg: action.payload,
+            };
+        case types.UPLOAD_ENLACE_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE_UPLOAD',
+                msg: action.payload,
+            };
+        case types.DELETE_ENLACE:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_ENLACE_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                status: 'SUCCESS_DELETE',
+                msg: action.payload,
+            };
+        case types.DELETE_ENLACE_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE_DELETE',
                 msg: action.payload,
             };
         case types.GET_ENLACES:
@@ -51,7 +90,7 @@ export const enlaceReducer = (state = initialState, action) => {
         case types.GET_ENLACE:
             return {
                 ...state,
-                enlace: state.enlaces.find(enlace => enlace.id === action.payload)
+                enlace: state.enlaces.find(enlace => enlace.id == action.payload)
             };
         case types.CLEAR_STATUS:
             return {

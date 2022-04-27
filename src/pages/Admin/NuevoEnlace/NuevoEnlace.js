@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useParams } from 'react-router';
 import { useForm } from '../../../hooks/useForm';
-import { clearStatus, nuevoEnlace } from '../../../redux/reducers/enlaces/actions';
+import { clearStatus, nuevoEnlace, uploadEnlace } from '../../../redux/reducers/enlaces/actions';
 import styles from './styles.module.css';
 import Swal from 'sweetalert2'
 import { Spinner } from '../../../components/Spinner/Spinner';
@@ -27,9 +27,9 @@ const NuevoEnlace = () => {
     };
 
     const enlace = useSelector(state => state.enlace);
-    const [form, handleInputChange, reset] = useForm(initialform);
+    const [form, handleInputChange, reset] = useForm(id ? enlace.enlace : initialform);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if(form.titulo === '' || form.descripcion === '' || form.prioridad === '' || form.link === ''){
             Swal.fire({
@@ -40,7 +40,12 @@ const NuevoEnlace = () => {
             })
             return false
         }
-        dispatch(nuevoEnlace(form))
+        if(id){
+            await dispatch(uploadEnlace(form, enlace.enlace.id))
+        }else {
+            await dispatch(nuevoEnlace(form))
+        }
+        history.push('/admin/enlaces')
     }
 
     useEffect(() => {
@@ -51,29 +56,7 @@ const NuevoEnlace = () => {
                 }
             })
         }
-    }, [])
-
-    //MESSAGE
-    useEffect(() => {
-        if(enlace.status == 'SUCCESS'){
-            Swal.fire({
-                title: 'Solicitud Exitosa',
-                text: enlace.msg,
-                icon: 'success',
-                confirmButtonText: 'Continuar'
-            })
-            reset()
-            dispatch(clearStatus())
-        }if (enlace.status == 'FAILURE'){
-            Swal.fire({
-                title: 'Error!',
-                text: enlace.msg,
-                icon: 'error',
-                confirmButtonText: 'Continuar'
-            })
-            dispatch(clearStatus())
-        }
-    }, [enlace])
+    }, [enlace.enlace])
 
     return (
         <div className={styles.visibleContent}>
