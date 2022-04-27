@@ -9,6 +9,7 @@
     "env-cmd": "^10.1.0",
     "firebase": "^9.0.1",
     "formik": "^2.2.9",
+    "lodash": "^4.17.21",
     "mercadopago": "^1.5.12",
     "picocolors": "^1.0.0",
     "primeflex": "^2.0.0",

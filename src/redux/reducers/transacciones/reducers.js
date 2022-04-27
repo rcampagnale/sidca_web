@@ -1,75 +1,69 @@
 import * as types from "./types";
 
 const initialState = {
-    cuotas: [],
+    transacciones: [],
     msg: undefined,
     status: undefined,
     loading: true,
     processing: false,
 };
-export const cuotasReducer = (state = initialState, action) => {
+export const transaccionesReducer = (state = initialState, action) => {
     switch (action.type) {
-        case types.NUEVA_CUOTA:
+        case types.NUEVA_TRANSACCION:
             return {
                 ...state,
                 loading: true
             };
-        case types.NUEVA_CUOTA_SUCCESS:
+        case types.NUEVA_TRANSACCION_SUCCESS:
             return {
                 ...state,
                 msg: action.payload,
                 status: 'SUCCESS_ADD',
                 loading: false
             };
-        case types.NUEVA_CUOTA_ERROR:
+        case types.NUEVA_TRANSACCION_ERROR:
             return {
                 ...state,
                 msg: action.payload,
                 status: 'FAILURE_ADD',
                 loading: false
             };
-        case types.UPLOAD_CUOTA:
-            return {
-                ...state,
-                processing: true
-            };
-        case types.UPLOAD_CUOTA_SUCCESS:
-            return {
-                ...state,
-                processing: false,
-                status: 'SUCCESS_UPLOAD',
-                msg: action.payload,
-            };
-        case types.UPLOAD_CUOTA_ERROR:
-            return {
-                ...state,
-                processing: false,
-                status: 'FAILURE_UPLOAD',
-                msg: action.payload,
-            };
-        case types.GET_CUOTAS:
+        case types.GET_TRANSACCIONES:
             return {
                 ...state,
                 loading: true
             };
-        case types.GET_CUOTAS_SUCCESS:
+        case types.GET_TRANSACCIONES_SUCCESS:
             return {
                 ...state,
-                cuotas: action.payload || [],
+                transacciones: action.payload || [],
                 loading: false
             };
-        case types.GET_CUOTAS_ERROR:
+        case types.GET_TRANSACCIONES_ERROR:
             return {
                 ...state,
                 msg: action.payload,
                 loading: false
             };
-        case types.SET_USER_SESSION:
+        case types.GET_USER_CUOTAS:
             return {
                 ...state,
-                profile: action.payload
+                loading: true
             };
-        case types.CLEAR_CUOTAS_STATUS:
+        case types.GET_USER_CUOTAS_SUCCESS:
+            return {
+                ...state,
+                cuotas: action.payload.cuotas || [],
+                user: action.payload.user,
+                loading: false
+            };
+        case types.GET_USER_CUOTAS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                loading: false
+            };
+        case types.CLEAR_TRANSACCIONES_STATUS:
             return {
                 ...state,
                 loading: undefined,
@@ -78,14 +72,9 @@ export const cuotasReducer = (state = initialState, action) => {
                 status: false,
                 tarjeta: undefined
             };
-        case types.APROVE:
-            return {
-                ...state,
-                tarjeta: 'SUCCESS'
-            };
         default:
             return state;
     }
 }
 
-export default cuotasReducer;
+export default transaccionesReducer;

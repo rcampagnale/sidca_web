@@ -77,8 +77,8 @@ const Cuotas = () => {
             </div>
             {
                 !loader && payItem &&
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                    <Message severity='warn' text='Para que registremos tu pago de forma inmediata deberás hacer click en "Volver al Sitio" una vez finalizado el pago' style={{ marginBottom: 10 }}></Message>
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingTop: 10 }}>
+                    <Message severity='warn' text='Para que registremos tu pago de forma inmediata deberás hacer click en "Volver al Sitio" una vez finalizado la transacción.' style={{ marginBottom: 10 }}></Message>
                     <img src='https://firebasestorage.googleapis.com/v0/b/sidca-a33f0.appspot.com/o/img%2Fvolver-al-sitio.png?alt=media&token=864ca477-f47e-481a-84c1-920cc2fb8e2e'
                         style={{ marginBottom: 10, maxWidth: 500, maxHeight: 400 }}
                     />

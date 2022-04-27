@@ -1,0 +1,29 @@
+.container {
+  width: 100%;
+  display: flex;
+  flex-flow: column wrap;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+.title_and_button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.title{
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.errorBtn:hover {
+  cursor: default;
+}
+
+.prev{
+  margin-right: 5px;
+}

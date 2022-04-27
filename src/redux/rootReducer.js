@@ -5,6 +5,7 @@ import cuotasReducer from './reducers/cuotas/reducers';
 import cursosReducer from './reducers/cursos/reducers';
 import enlaceReducer from './reducers/enlaces/reducers';
 import novedadesReducer from './reducers/novedades/reducers';
+import transaccionesReducer from './reducers/transacciones/reducers';
 import userReducer from './reducers/user/reducers';
 
 const rootReducer = combineReducers({
@@ -14,7 +15,8 @@ const rootReducer = combineReducers({
     cursos: cursosReducer,
     asesoramiento: asesoramientoReducer,
     novedades: novedadesReducer,
-    cuotas: cuotasReducer
+    cuotas: cuotasReducer,
+    transacciones: transaccionesReducer,
 });
 
 export default rootReducer

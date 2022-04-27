@@ -8,28 +8,31 @@ import { Paginator } from 'primereact/paginator';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, getCuotas } from '../../../redux/reducers/cuotas/actions';
+import { clearStatus, getTransacciones, getUserCuotas } from '../../../redux/reducers/transacciones/actions';
 
-const Cuotas = () => {
+const Transacciones = () => {
 
     const dispatch = useDispatch()
     const history = useHistory();
 
     const columns = [
-        { field: 'position', header: 'Prioridad' },
-        { field: 'title', header: 'Titulo' },
-        { field: 'unit_price', header: 'Precio' },
+        { field: 'fecha', header: 'Fecha' },
+        { field: 'status', header: 'Estado' },
+        { field: 'payment_id', header: 'ID del pago' },
+        { field: 'userId', header: 'Acciones'}
     ];
 
-    const cuotas = useSelector(state => state.cuotas);
+    const transacciones = useSelector(state => state.transacciones);
 
     const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
 
-    const handleEdit = (id) => {
-        // dispatch(getEnlace(id));
-        // history.push(`/admin/nueva-cuota/${id}`)
+    const handleUser = (id) => {
+        // const transaccion = transacciones.transacciones.find(trans => trans.id === id)
+        // const userId = JSON.parse(transaccion.external_reference.split('%22').join('"')).userId
+        dispatch(getUserCuotas(id));
+        history.push(`/admin/transacciones/usuario/${id}`)
     }
 
     const handleDelete = (id) => {
@@ -42,26 +45,25 @@ const Cuotas = () => {
         }else{
             setPrevDisable(false)
         }
-        if(pagination === 'next' && cuotas.cuotas.length < 10 ){
+        if(pagination === 'next' && transacciones.transacciones.length < 10 ){
             return setNextDisable(true)
         }else{
             setNextDisable(false)
         }
         setStartAfter(pagination == 'next' ? startAfter + 10 : startAfter - 10);
-        dispatch(getCuotas(pagination, pagination == 'next' ? startAfter + 10 : startAfter - 10));
-
+        dispatch(getTransacciones(pagination, pagination == 'next' ? startAfter + 10 : startAfter - 10));
     }
 
     useEffect(() => {
-        dispatch(getCuotas())
+        dispatch(getTransacciones())
     }, [])
 
     const dynamicColumns = columns.map((col, i) => {
-        if (col.field === 'id') {
+        if (col.field === 'userId') {
             return <Column
                 key={col.field}
                 field={(enlace) => <div>
-                    <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
+                    <Button label="ver Usuario" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleUser(enlace.userId)} style={{ marginRight: 4 }} />
                     {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
                 </div>}
                 header={col.header}
@@ -74,24 +76,24 @@ const Cuotas = () => {
 
     //MESSAGE
     useEffect(() => {
-        if (cuotas.status == 'SUCCESS_ADD' || cuotas.status == 'SUCCESS_UPLOAD') {
+        if (transacciones.status == 'SUCCESS_ADD' || transacciones.status == 'SUCCESS_UPLOAD') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
-                text: cuotas.msg,
+                text: transacciones.msg,
                 icon: 'success',
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
-        } if (cuotas.status == 'FAILURE_ADD' || cuotas.status == 'FAILURE_UPLOAD') {
+        } if (transacciones.status == 'FAILURE_ADD' || transacciones.status == 'FAILURE_UPLOAD') {
             Swal.fire({
                 title: 'Error!',
-                text: cuotas.msg,
+                text: transacciones.msg,
                 icon: 'error',
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
         }
-    }, [cuotas.status])
+    }, [transacciones.status])
 
     const template2 = {
         layout: 'PrevPageLink NextPageLink',
@@ -114,16 +116,16 @@ const Cuotas = () => {
     return (
         <div className={styles.container}>
             <div className={styles.title_and_button}>
-                <h3 className={styles.title}>Cuotas</h3>
-                <Button label="Nueva Cuota" icon="pi pi-plus" onClick={() => history.push("/admin/nueva-cuota")} />
+                <h3 className={styles.title}>Transacciones</h3>
+                {/* <Button label="Nueva Cuota" icon="pi pi-plus" onClick={() => history.push("/admin/nueva-transaccion")} /> */}
             </div>
             <div>
                 {
-                    cuotas.cuotas.length > 0
+                    transacciones.transacciones.length > 0
                         ?
                         <>
                             <DataTable
-                                value={cuotas.cuotas}
+                                value={transacciones.transacciones}
                                 responsiveLayout="scroll"
                             >
                                 {dynamicColumns}
@@ -141,4 +143,4 @@ const Cuotas = () => {
     )
 }
 
-export default Cuotas;
+export default Transacciones;

@@ -25,7 +25,6 @@ export const nuevoEnlace = (data) => {
 export const uploadEnlace = (data, id) => {
     return async (dispatch, getState) => {
         dispatch(uploadEnlaceProcess());
-        console.log('hola', data, id)
         let enlaceObj = {
             titulo: `${data.titulo}`,
             link: `${data.link}`,
