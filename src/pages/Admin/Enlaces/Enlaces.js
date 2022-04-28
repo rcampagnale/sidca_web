@@ -5,9 +5,9 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import Swal from 'sweetalert2';
 
-import global from '../../../assets/styles/global.module.css'
 import styles from './styles.module.css';
 import { clearStatus, deleteEnlace, getEnlace, getEnlaces } from '../../../redux/reducers/enlaces/actions';
 
@@ -112,6 +112,14 @@ const Enlaces = () => {
                 </button>
             )
         },
+        // 'CurrentPageReport': (options) => {
+        //     return (
+        //         <button type="button" className={options.className} onClick={options.onClick}>
+        //             {page + 1}
+        //             <Ripple />
+        //         </button>
+        //     )
+        // }
     };
 
     return (
@@ -136,7 +144,10 @@ const Enlaces = () => {
                             />
                         </>
                         :
-                        <Button label="No hay enlaces" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
+                        enlace.processing ?
+                            <ProgressSpinner className='loader' />
+                            :
+                            <Button label="No hay enlaces" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
                 }
             </div>
 
