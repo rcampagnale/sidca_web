@@ -33,7 +33,7 @@ export const getTransacciones = (pagination = false, count) => {
             if (!!pagination) {
                 // q = await query(collection(db, 'transacciones'), orderBy('fecha', "asc"), limit(10), startAfter(count))
             } else {
-                q = await query(collection(db, 'transacciones'), orderBy('fecha', "asc"))
+                q = await query(collection(db, 'transacciones'), orderBy('fecha', "desc"))
             }
             const querySnapshot = await getDocs(q);
             console.log(querySnapshot.size)
@@ -43,7 +43,7 @@ export const getTransacciones = (pagination = false, count) => {
                     const transaccion = {
                         id: documentSnapshot.id,
                         ...documentSnapshot.data(),
-                        fecha: moment(documentSnapshot.data().fecha.seconds * 1000).format('DD-MM-YYYY MM:HH'),
+                        fecha: moment(documentSnapshot.data().fecha.seconds * 1000).format('DD-MM-YYYY HH:mm'),
                         userId: JSON.parse(documentSnapshot.data().external_reference.split('%22').join('"')).userId
                     }
                     arrayTransacciones.push(transaccion)
@@ -97,6 +97,8 @@ export const getUserCuotas = (id) => {
         }
     }
 }
+
+
 
 const nuevaTransaccionProcess = (payload) => ({ type: types.NUEVA_TRANSACCION, payload })
 const nuevaTransaccionSuccess = (payload) => ({ type: types.NUEVA_TRANSACCION_SUCCESS, payload })

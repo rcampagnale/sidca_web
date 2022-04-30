@@ -6,6 +6,7 @@ const initialState = {
     status: undefined,
     loading: true,
     processing: false,
+    setTransaccion: undefined,
 };
 export const cuotasReducer = (state = initialState, action) => {
     switch (action.type) {
@@ -69,6 +70,16 @@ export const cuotasReducer = (state = initialState, action) => {
                 ...state,
                 profile: action.payload
             };
+        case types.SET_USER_CUOTAS_SUCCESS:
+            return {
+                ...state,
+                setTransaccion: 'SUCCESS_SET',
+            };
+        case types.SET_USER_CUOTAS_ERROR:
+            return {
+                ...state,
+                setTransaccion: 'FAILURE_SET',
+            };
         case types.CLEAR_CUOTAS_STATUS:
             return {
                 ...state,
@@ -76,7 +87,8 @@ export const cuotasReducer = (state = initialState, action) => {
                 processing: undefined,
                 msg: false,
                 status: false,
-                tarjeta: undefined
+                tarjeta: undefined,
+                setTransaccion: undefined
             };
         case types.APROVE:
             return {

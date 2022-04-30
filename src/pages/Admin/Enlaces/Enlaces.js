@@ -136,6 +136,8 @@ const Enlaces = () => {
                             <DataTable
                                 value={enlace.enlaces}
                                 responsiveLayout="scroll"
+                                loading={enlace.processing}
+
                             >
                                 {dynamicColumns}
                             </DataTable>

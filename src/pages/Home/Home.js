@@ -9,32 +9,34 @@ import Swal from 'sweetalert2';
 const Home = () => {
 
     const dispatch = useDispatch();
-
+    const cuotas = useSelector(state => state.cuotas)
     const location = useLocation();
 
     useEffect(() => {
         if (location.search) {
             const search = {}
             location.search.slice(1).split('&').map(param => { const data = param.split('='); search[data[0]] = data[1] })
-            if (search.status == 'approved') {
-                dispatch(postTransaction(search));
-                dispatch(setUserCuotas(search.external_reference, search))
-                Swal.fire({
-                    title: 'Transferencia recibida',
-                    text: 'Se han cargado los datos de su pago.',
-                    icon: 'success',
-                    confirmButtonText: 'Ok'
-                })
-            }else if(search.status){
-                Swal.fire({
-                    title: 'No se ha guardado la transferencia',
-                    text: 'Si no intentaste hacer un pago de cuota ignora este mensaje.',
-                    icon: 'error',
-                    confirmButtonText: 'Ok'
-                })
-            }
+            dispatch(setUserCuotas(search))
         }
     }, [location]);
+
+    useEffect(() => {
+        if (cuotas.setTransaccion === 'SUCCESS_SET') {
+            Swal.fire({
+                title: 'Transferencia recibida',
+                text: 'Se han cargado los datos de su pago.',
+                icon: 'success',
+                confirmButtonText: 'Ok'
+            })
+        } else if (cuotas.setTransaccion === 'FAILURE_SET') {
+            Swal.fire({
+                title: 'No se ha guardado la transferencia',
+                text: 'Si no intentaste hacer un pago de cuota ignora este mensaje.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            })
+        }
+    }, [cuotas.setTransaccion]);
 
     return (
         <div className={styles.visibleContent}>

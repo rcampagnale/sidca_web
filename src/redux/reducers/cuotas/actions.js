@@ -70,29 +70,26 @@ export const getCuotas = (data) => {
     }
 }
 
-export const postTransaction = (data) => {
-    return async (dispatch, getState) => {
-        dispatch(postTransactionProcess());
-        try {
-            if (data) {
-                const doc = await addDoc(collection(db, 'transacciones'), { ...data, fecha: Timestamp.now() })
-                dispatch(postTransactionSuccess(doc));
-            }
-        } catch (error) {
-            dispatch(postTransactionError('No se pudo cargar la transaccion'));
-            console.log(error);
-        }
-    }
-}
-
-export const setUserCuotas = (search, data) => {
+export const setUserCuotas = (data) => {
     return async (dispatch, getState) => {
         dispatch(setUserCuotasProcess());
         try {
             if (data) {
-                const external = JSON.parse(search.split('%22').join('"'))
-                const colection = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'), { ...data, cuota: external.id, fecha: Timestamp.now() })
-                dispatch(setUserCuotasSuccess(colection));
+                const q = query(collection(db, "transacciones"), where("collection_id", "==", data.collection_id));
+                const docSnap = await getDocs(q);
+                if(docSnap.size === 0){
+                    const external = JSON.parse(data.external_reference.split('%22').join('"'))
+                    const userTransationData = {
+                        status: data.status,
+                        cuota: external.id,
+                        collection_id: data.collection_id,
+                        fecha: Timestamp.now()
+                    }
+                    console.log(external)
+                    const userTransaccion = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'),  userTransationData)
+                    const transaccion = await addDoc(collection(db, 'transacciones'), { ...data, fecha: Timestamp.now(), user: external.userId, cuota: external.id})
+                    dispatch(setUserCuotasSuccess());
+                }
             }
         } catch (error) {
             dispatch(setUserCuotasError('No se pudo cargar la transaccion'));
@@ -112,10 +109,6 @@ const uploadCuotaError = (payload) => ({ type: types.UPLOAD_CUOTA_ERROR, payload
 const getCuotasProcess = (payload) => ({ type: types.GET_CUOTAS, payload })
 const getCuotasSuccess = (payload) => ({ type: types.GET_CUOTAS_SUCCESS, payload })
 const getCuotasError = (payload) => ({ type: types.GET_CUOTAS_ERROR, payload })
-
-const postTransactionProcess = (payload) => ({ type: types.POST_TRANSACTION, payload })
-const postTransactionSuccess = (payload) => ({ type: types.POST_TRANSACTION_SUCCESS, payload })
-const postTransactionError = (payload) => ({ type: types.POST_TRANSACTION_ERROR, payload })
 
 const setUserCuotasProcess = (payload) => ({ type: types.SET_USER_CUOTAS, payload })
 const setUserCuotasSuccess = (payload) => ({ type: types.SET_USER_CUOTAS_SUCCESS, payload })
