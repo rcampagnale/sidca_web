@@ -91,6 +91,30 @@ export const getEnlaces = (pagination = false, count) => {
     }
 }
 
+export const uploadEnlaces = (rows) => {
+    return async (dispatch, getState) => {
+        dispatch(uploadEnlacesProcess());
+        try {
+            rows.map(async(row, index) => {
+                if(index === 0){
+                    return
+                }else{
+                    const enlaceObj = {}
+                    row.map( (item, index) => {
+                        enlaceObj[rows[0][index]] = item
+                    })
+                    const doc = await addDoc(collection(db, 'enlaces'), enlaceObj)
+                    await dispatch(uploadEnlacesComment(`${index} enlaces agregados correctamente.`));
+                }
+            })
+            dispatch(uploadEnlacesSuccess(`${rows.length - 1 } enlaces agregados correctamente.`));
+        } catch (error) {
+            dispatch(uploadEnlacesError('No se pudieron agregar todos los mensajes.'));
+            console.log(error)
+        }
+    }
+}
+
 export const getEnlace = (payload) => ({ type: types.GET_ENLACE, payload })
 
 const nuevoEnlaceProcess = (payload) => ({ type: types.NUEVO_ENLACE, payload })
@@ -100,6 +124,11 @@ const nuevoEnlaceError = (payload) => ({ type: types.NUEVO_ENLACE_ERROR, payload
 const uploadEnlaceProcess = (payload) => ({ type: types.UPLOAD_ENLACE, payload })
 const uploadEnlaceSuccess = (payload) => ({ type: types.UPLOAD_ENLACE_SUCCESS, payload })
 const uploadEnlaceError = (payload) => ({ type: types.UPLOAD_ENLACE_ERROR, payload })
+
+const uploadEnlacesProcess = (payload) => ({ type: types.UPLOAD_ENLACES, payload })
+const uploadEnlacesComment = (payload) => ({ type: types.UPLOAD_ENLACES_COMMENT, payload })
+const uploadEnlacesSuccess = (payload) => ({ type: types.UPLOAD_ENLACES_SUCCESS, payload })
+const uploadEnlacesError = (payload) => ({ type: types.UPLOAD_ENLACES_ERROR, payload })
 
 const deleteEnlaceProcess = (payload) => ({ type: types.DELETE_ENLACE, payload })
 const deleteEnlaceSuccess = (payload) => ({ type: types.DELETE_ENLACE_SUCCESS, payload })

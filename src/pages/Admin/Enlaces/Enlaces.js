@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
 import { clearStatus, deleteEnlace, getEnlace, getEnlaces } from '../../../redux/reducers/enlaces/actions';
+import SubirEnlaces from './SubirEnlaces';
 
 const Enlaces = () => {
 
@@ -29,6 +30,7 @@ const Enlaces = () => {
     const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
+    const [subirEnlacesActive, setSubirEnlacesActive ] = useState(false);
 
     const handleEdit = (id) => {
         dispatch(getEnlace(id));
@@ -126,10 +128,20 @@ const Enlaces = () => {
         <div className={styles.container}>
             <div className={styles.title_and_button}>
                 <h3 className={styles.title}>Enlaces</h3>
-                <Button label="Nuevo enlace" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-enlace")} />
+                <div>
+                    <Button label="Nuevo enlace" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-enlace")} style={{marginRight: 3}}/>
+                    <Button 
+                        label={subirEnlacesActive ? 'Ver enlaces' : 'Subir Enlaces'} 
+                        icon={subirEnlacesActive ? 'pi pi-search' : 'pi pi-file'} 
+                        onClick={() => setSubirEnlacesActive(!subirEnlacesActive)} 
+                    />
+                </div>
             </div>
-            <div>
+            <div className={styles.table_upload}>
                 {
+                    subirEnlacesActive ?
+                    <SubirEnlaces />
+                    :
                     enlace.enlaces.length > 0
                         ?
                         <>

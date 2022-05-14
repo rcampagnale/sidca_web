@@ -3,6 +3,7 @@ import types from './types';
 const initialState = {
     msg: '',
     processing: false,
+    uploading: false,
     stauts: '',
     enlaces: [],
     enlace: {},
@@ -46,6 +47,30 @@ export const enlaceReducer = (state = initialState, action) => {
             return {
                 ...state,
                 processing: false,
+                status: 'FAILURE_UPLOAD',
+                msg: action.payload,
+            };
+        case types.UPLOAD_ENLACES:
+            return {
+                ...state,
+                uploading: true
+            };
+        case types.UPLOAD_ENLACES_COMMENT:
+            return {
+                ...state,
+                msg: action.payload,
+            };
+        case types.UPLOAD_ENLACES_SUCCESS:
+            return {
+                ...state,
+                uploading: false,
+                status: 'SUCCESS_UPLOAD',
+                msg: action.payload,
+            };
+        case types.UPLOAD_ENLACES_ERROR:
+            return {
+                ...state,
+                uploading: false,
                 status: 'FAILURE_UPLOAD',
                 msg: action.payload,
             };

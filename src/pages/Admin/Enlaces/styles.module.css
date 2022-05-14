@@ -27,3 +27,9 @@
 .prev{
   margin-right: 5px;
 }
+
+.table_upload {
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+}
