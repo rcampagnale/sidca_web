@@ -95,6 +95,7 @@ export const uploadEnlaces = (rows) => {
     return async (dispatch, getState) => {
         dispatch(uploadEnlacesProcess());
         try {
+            //verificar con datos correctos, constants
             rows.map(async(row, index) => {
                 if(index === 0){
                     return

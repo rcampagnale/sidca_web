@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, startAt, endBefore } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast } from "firebase/firestore";
 
 export const getAfiliadosNuevos = (pagination, start) => {
     return async (dispatch, getState) => {
@@ -9,8 +9,9 @@ export const getAfiliadosNuevos = (pagination, start) => {
             let q
             if (pagination === 'next') {
                 q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10), startAfter(start))
-            } else if(pagination === 'prev' ){
-                q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10), endBefore(start))
+            } else if (pagination === 'prev') {
+                console.log({ start });
+                q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limitToLast(10), endBefore(start))
             } else {
                 q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10))
             }
@@ -18,6 +19,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
             } else {
+                const { page } = getState().afiliado;
                 let arrayDocs = []
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setfirstAfiliado(doc));
@@ -39,7 +41,8 @@ export const getAfiliadosNuevos = (pagination, start) => {
                     }
                     arrayDocs.push(obj)
                 })
-                dispatch(getAFiliadosNuevosSuccess(arrayDocs))
+                dispatch(getAFiliadosNuevosSuccess(arrayDocs));
+                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
             dispatch(getAfiliadosNuevosError('No se ha podido crear un nuevo afiliado'));
@@ -101,6 +104,7 @@ const newUserError = (payload) => ({ type: types.NEW_USER_ERROR, payload })
 
 const setfirstAfiliado = (payload) => ({ type: types.SET_FIRST_AFILIADO, payload })
 const setLastAfiliado = (payload) => ({ type: types.SET_LAST_AFILIADO, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const setNuevoAfiliadoDetails = (payload) => ({ type: types.SET_NUEVO_AFILIADO_DETAILS, payload })
 export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, payload })

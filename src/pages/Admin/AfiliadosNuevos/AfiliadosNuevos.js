@@ -27,10 +27,10 @@ const AfiliadosNuevos = () => {
     ];
 
     const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
+    const page = useSelector(state => state.afiliado.page)
     const afiliado = useSelector(state => state.afiliado)
 
     const [visible, setVisible] = useState(false);
-    const [page, setPage] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
 
@@ -44,7 +44,7 @@ const AfiliadosNuevos = () => {
     }
 
     const handlePagination = async (pagination) => {
-        if (pagination === 'prev' && page === 0) {
+        if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
         } else {
             setPrevDisable(false)
@@ -54,7 +54,6 @@ const AfiliadosNuevos = () => {
         } else {
             setNextDisable(false)
         }
-        setPage(pagination == 'next' ? page + 1 : page - 1);
         dispatch(getAfiliadosNuevos(pagination, pagination == 'next' ? afiliado.lastAfiliado : afiliado.firstAfiliado));
     }
 
@@ -114,7 +113,7 @@ const AfiliadosNuevos = () => {
         'CurrentPageReport': (options) => {
             return (
                 <button type="button" className={options.className} onClick={options.onClick}>
-                    {page + 1}
+                    {page}
                     <Ripple />
                 </button>
             )

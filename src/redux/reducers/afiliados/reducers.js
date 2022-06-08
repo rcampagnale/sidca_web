@@ -8,6 +8,7 @@ const initialState = {
     status: '',
     firstAfiliado: undefined,
     lastAfiliado: undefined,
+    page: 1,
 }
 
 export const afiliadoReducer = (state = initialState, action) => {
@@ -29,7 +30,7 @@ export const afiliadoReducer = (state = initialState, action) => {
                 ...state,
                 msg: action.payload,
                 processing: false,
-                status: 'FAILURE'
+                status: 'FAILURE',
             };
         case types.NEW_USER:
             return {
@@ -59,6 +60,11 @@ export const afiliadoReducer = (state = initialState, action) => {
             return {
                 ...state,
                 lastAfiliado: action.payload
+            };
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
             };
         case types.SET_NUEVO_AFILIADO_DETAILS:
             return {
