@@ -6,7 +6,7 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
 import { Ripple } from 'primereact/ripple';
-import { ConfirmDialog } from 'primereact/confirmdialog';
+import { Dialog } from 'primereact/dialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
@@ -121,12 +121,14 @@ const AfiliadosNuevos = () => {
     };
 
     const generateDetails = () => {
-        return `
-            DNI: ${afiliado.nuevoAfiliado?.dni}
-            \nDepartamento: ${afiliado.nuevoAfiliado?.departamento}
-            \nEstablecimiento: ${afiliado.nuevoAfiliado?.establecimientos || ''}
-            ${afiliado.nuevoAfiliado?.error ? '\nYA AFILIADO' : ''}
-        `
+        return <>
+            <h2>Nombre: {afiliado.nuevoAfiliado ? afiliado.nuevoAfiliado.apellido + ' ' + afiliado.nuevoAfiliado.nombre : 'Cargando...'}</h2>
+            <h3><b>DNI:</b> {afiliado.nuevoAfiliado?.dni}</h3>
+            <h3>Departamento: {afiliado.nuevoAfiliado?.departamento}</h3>
+            <h3>Establecimiento: {afiliado.nuevoAfiliado?.establecimientos || ''}</h3>
+            <h2>{afiliado.nuevoAfiliado?.error ? '\nYA AFILIADO' : ''}</h2>
+        </>
+
     }
 
     return (
@@ -159,14 +161,13 @@ const AfiliadosNuevos = () => {
                             <Button label="No hay afiliados nuevos" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
                 }
             </div>
-            <ConfirmDialog 
-                visible={visible} 
-                onHide={() => setVisible(false)} 
-                message={generateDetails()}
-                header={`${afiliado.nuevoAfiliado ? afiliado.nuevoAfiliado.apellido + ' ' + afiliado.nuevoAfiliado.nombre : 'Cargando...'}`} 
-                accept={() => setVisible(false)}
-                reject={false}
-            />
+            <Dialog
+                visible={visible}
+                onHide={() => setVisible(false)}
+                footer={() => (<div></div>)}
+            >
+                {generateDetails()}
+            </ Dialog>
         </div>
     )
 }
