@@ -51,6 +51,41 @@ export const getAfiliadosNuevos = (pagination, start) => {
     }
 }
 
+export const descargarAfiliadosNuevos = (pagination, start) => {
+    return async (dispatch, getState) => {
+        dispatch(descargarAfiliadosNuevosProcess());
+        try {
+            let q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(descargarAfiliadosNuevosError('No hay afiliados nuevos'))
+            } else {
+                let arrayDocs = []
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        apellido: data.apellido,
+                        nombre: data.nombre,
+                        dni: data.dni,
+                        fecha: data.fecha,
+                        email: data.email,
+                        celular: data.celular,
+                        establecimientos: data.establecimientos,
+                        error: data.error,
+                        departamento: data.departamento
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(descargarAFiliadosNuevosSuccess(arrayDocs));
+            }
+        } catch (error) {
+            dispatch(descargarAfiliadosNuevosError('No se ha podido descargar la data d eafiliados'));
+            console.log(error)
+        }
+    }
+}
+
 export const deleteAfiliadosNuevos = (id) => {
     return async (dispatch, getState) => {
         dispatch(deleteAfiliadosNuevosProcess());
@@ -94,6 +129,10 @@ const getAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEV
 const getAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
 const getAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
 
+const descargarAfiliadosNuevosProcess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS, payload })
+const descargarAFiliadosNuevosSuccess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS, payload })
+const descargarAfiliadosNuevosError = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_ERROR, payload })
+
 const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
 const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
 const deleteAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
@@ -108,6 +147,7 @@ const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const setNuevoAfiliadoDetails = (payload) => ({ type: types.SET_NUEVO_AFILIADO_DETAILS, payload })
 export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, payload })
+export const clearDownload = (payload) => ({ type: types.CLEAR_DOWNLOAD, payload })
 
 // // Query the first page of docs
 // const first = query(collection(db, "cities"), orderBy("population"), limit(25));

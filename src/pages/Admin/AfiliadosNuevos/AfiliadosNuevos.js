@@ -10,8 +10,9 @@ import { Dialog } from 'primereact/dialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, getAfiliadosNuevos, setNuevoAfiliadoDetails } from '../../../redux/reducers/afiliados/actions';
+import { clearDownload, clearStatus, descargarAfiliadosNuevos, getAfiliadosNuevos, setNuevoAfiliadoDetails } from '../../../redux/reducers/afiliados/actions';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import exportFromJSON from 'export-from-json'
 
 const AfiliadosNuevos = () => {
 
@@ -29,10 +30,24 @@ const AfiliadosNuevos = () => {
     const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
     const page = useSelector(state => state.afiliado.page)
     const afiliado = useSelector(state => state.afiliado)
+    const downloading = useSelector(state => state.afiliado.downloading)
 
     const [visible, setVisible] = useState(false);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
+
+    const ExportToExcel = () => {
+        dispatch(descargarAfiliadosNuevos());
+    }
+
+    useEffect(() => {
+        if (downloading.length > 0) {
+            const fileName = 'nuevos_afiliados'
+            const exportType = 'xls'
+            exportFromJSON({ data: downloading, fileName, exportType })
+            dispatch(clearDownload())
+        }
+    }, [downloading]);
 
     useEffect(() => {
         dispatch(getAfiliadosNuevos());
@@ -136,6 +151,7 @@ const AfiliadosNuevos = () => {
             <div className={styles.title_and_button}>
                 <h3 className={styles.title}>Nuevos Afiliados</h3>
                 <Button label="Agregar Usuario" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-usuario")} />
+                <Button label="Descargar" icon="pi pi-plus" onClick={ExportToExcel} />
             </div>
             <div>
                 {

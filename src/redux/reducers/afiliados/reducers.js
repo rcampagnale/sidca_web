@@ -9,6 +9,7 @@ const initialState = {
     firstAfiliado: undefined,
     lastAfiliado: undefined,
     page: 1,
+    downloading: []
 }
 
 export const afiliadoReducer = (state = initialState, action) => {
@@ -26,6 +27,25 @@ export const afiliadoReducer = (state = initialState, action) => {
                 status: 'SUCCESS'
             };
         case types.GET_AFILIADOS_NUEVOS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE',
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS:
+            return {
+                ...state,
+                downloading: action.payload,
+                processing: false,
+                status: 'SUCCESS'
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
@@ -77,6 +97,11 @@ export const afiliadoReducer = (state = initialState, action) => {
                 msg: undefined,
                 status: '',
                 processing: false,
+            };
+        case types.CLEAR_DOWNLOAD:
+            return {
+                ...state,
+                downloading: []
             };
         default:
             return state;
