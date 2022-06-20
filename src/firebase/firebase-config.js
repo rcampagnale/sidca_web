@@ -1,5 +1,6 @@
 import {initializeApp} from "firebase/app";
-import { getFirestore } from "firebase/firestore"
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 //import 'firebase/auth';
 
 const firebaseConfig = {
@@ -11,13 +12,15 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_APP_ID
 };
 
-initializeApp(firebaseConfig);
+const firebaseApp = initializeApp(firebaseConfig);
 // admin.initializeApp();
 
 const db = getFirestore();
 // const googleAuthProvider = firebase.auth.GoogleAuthProvider();
+const storage = getStorage(firebaseApp);
 
 export {
     db,
+    storage
     // googleAuthProvider,
 }
