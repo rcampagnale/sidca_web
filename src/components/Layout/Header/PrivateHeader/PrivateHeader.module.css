@@ -56,7 +56,7 @@ a {
 
   /* APP and others*/
   .btnExit {
-    margin-right: 15px;
+    display: none;
   }
   .hamburger {
     display: block;
@@ -89,7 +89,6 @@ a {
     color: #ccc;
     cursor: pointer;
     font-size: 16px;
-    margin-right: 8px;
   }
   
   .btnExit {
@@ -100,5 +99,8 @@ a {
   }
   .hamburger {
     display: none;
+  }
+  .btnExit {
+    margin-right: 15px;
   }
 }

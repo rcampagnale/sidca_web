@@ -1,75 +1,93 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast } from "firebase/firestore";
 
-export const getAfiliadosNuevos = (data) => {
-    return async (dispatch, getState)=>{
+export const getAfiliadosNuevos = (pagination, start) => {
+    return async (dispatch, getState) => {
         dispatch(getAfiliadosNuevosProcess());
         try {
-            if(!getState().afiliado.lastAfiliado){
-                const q = await query(collection(db, "nuevoAfiliado"))
-                // , orderBy('fecha', 'desc'), limit(10));
-                const querySnapshot = await getDocs(q);
-                if(querySnapshot.size === 0){
-                    dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
-                }else{
-                    // dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
-                    let arrayDocs = []
-                    querySnapshot.forEach(doc=>{
-                        const data = doc.data();
-                        let obj = {
-                            id: doc.id,
-                            apellido: data.apellido,
-                            nombre: data.nombre,
-                            dni: data.dni,
-                            fecha: data.fecha,
-                            email: data.email,
-                            celular: data.celular,
-                            establecimientos: data.establecimientos,
-                            error: data.error,
-                            departamento: data.departamento
-                        }
-                        arrayDocs.push(obj)
-                    })
-                    dispatch(getAFiliadosNuevosSuccess(arrayDocs))
-                }
-            }else{
-                const q = await query(collection(db, "nuevoAfiliado"))
-                // , orderBy('fecha'), startAfter(getState().afiliado.lastAfiliado), limit(10));
-                const querySnapshot = await getDocs(q);
-                if(querySnapshot.size === 0){
-                    dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
-                }else{
-                    // dispatch(setLastAfiliado(querySnapshot.docs[querySnapshot.docs.length-1]))
-                    let arrayDocs = []
-                    querySnapshot.forEach(doc=>{
-                        const data = doc.data();
-                        let obj = {
-                            id: doc.id,
-                            apellido: data.apellido,
-                            nombre: data.nombre,
-                            dni: data.dni,
-                            fecha: data.fecha,
-                            email: data.email,
-                            celular: data.celular,
-                            establecimientos: data.establecimientos,
-                            error: data.error,
-                            departamento: data.departamento
-                        }
-                        arrayDocs.push(obj)
-                    })
-                    dispatch(getAFiliadosNuevosSuccess(arrayDocs))
-                }
-            } 
+            let q
+            if (pagination === 'next') {
+                q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10), startAfter(start))
+            } else if (pagination === 'prev') {
+                console.log({ start });
+                q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limitToLast(10), endBefore(start))
+            } else {
+                q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10))
+            }
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
+            } else {
+                const { page } = getState().afiliado;
+                let arrayDocs = []
+                querySnapshot.docs.map((doc, i) => {
+                    i === 0 && dispatch(setfirstAfiliado(doc));
+                    i === 9 && dispatch(setLastAfiliado(doc));
+                })
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        apellido: data.apellido,
+                        nombre: data.nombre,
+                        dni: data.dni,
+                        fecha: data.fecha,
+                        email: data.email,
+                        celular: data.celular,
+                        establecimientos: data.establecimientos,
+                        error: data.error,
+                        departamento: data.departamento
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(getAFiliadosNuevosSuccess(arrayDocs));
+                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
+            }
         } catch (error) {
-            // dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
+            dispatch(getAfiliadosNuevosError('No se ha podido crear un nuevo afiliado'));
             console.log(error)
-        } 
+        }
     }
 }
-    
+
+export const descargarAfiliadosNuevos = (pagination, start) => {
+    return async (dispatch, getState) => {
+        dispatch(descargarAfiliadosNuevosProcess());
+        try {
+            let q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(descargarAfiliadosNuevosError('No hay afiliados nuevos'))
+            } else {
+                let arrayDocs = []
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        apellido: data.apellido,
+                        nombre: data.nombre,
+                        dni: data.dni,
+                        fecha: data.fecha,
+                        email: data.email,
+                        celular: data.celular,
+                        establecimientos: data.establecimientos,
+                        error: data.error,
+                        departamento: data.departamento
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(descargarAFiliadosNuevosSuccess(arrayDocs));
+            }
+        } catch (error) {
+            dispatch(descargarAfiliadosNuevosError('No se ha podido descargar la data d eafiliados'));
+            console.log(error)
+        }
+    }
+}
+
 export const deleteAfiliadosNuevos = (id) => {
-    return async (dispatch, getState)=>{
+    return async (dispatch, getState) => {
         dispatch(deleteAfiliadosNuevosProcess());
         try {
             await deleteDoc(doc(db, "nuevoAfiliado", id));
@@ -77,12 +95,12 @@ export const deleteAfiliadosNuevos = (id) => {
         } catch (error) {
             dispatch(deleteAfiliadosNuevosError('No se eliminaron los datos'))
             console.log(error)
-        } 
+        }
     }
 }
 
 export const nuevoAfiliado = (data) => {
-    return async (dispatch, getState)=>{
+    return async (dispatch, getState) => {
         dispatch(newUserProcess());
         let user = {
             nombre: `${data.apellido}, ${data.nombre}`,
@@ -91,38 +109,45 @@ export const nuevoAfiliado = (data) => {
         try {
             const q = await query(collection(db, 'usuarios'), where('dni', '==', data.dni))
             const querySnapshot = await getDocs(q);
-                if(querySnapshot.size === 0){
-                    const doc = await addDoc(collection(db, 'usuarios'), user)
-                    dispatch(newUserSuccess(`Usuario agregado Correctamente con el id ${doc.id}`));
-                }else if(querySnapshot.size > 0){
-                    dispatch(newUserError('Ya existe un afiliado con esos datos'));
-                }else{
-                    console.log('No existe ese Afiliado')
-                    dispatch(newUserError('Ha habido un error, intentalo de nuevo más tarde'));
-                }
+            if (querySnapshot.size === 0) {
+                const doc = await addDoc(collection(db, 'usuarios'), user)
+                dispatch(newUserSuccess(`Usuario agregado Correctamente con el id ${doc.id}`));
+            } else if (querySnapshot.size > 0) {
+                dispatch(newUserError('Ya existe un afiliado con esos datos'));
+            } else {
+                console.log('No existe ese Afiliado')
+                dispatch(newUserError('Ha habido un error, intentalo de nuevo más tarde'));
+            }
         } catch (error) {
             dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
             console.log(error)
-        } 
+        }
     }
 }
 
-const getAfiliadosNuevosProcess = (payload) => ({type: types.GET_AFILIADOS_NUEVOS, payload})
-const getAFiliadosNuevosSuccess = (payload) => ({type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload})
-const getAfiliadosNuevosError = (payload) => ({type: types.GET_AFILIADOS_NUEVOS_ERROR, payload})
+const getAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
+const getAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
+const getAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
 
-const deleteAfiliadosNuevosProcess = (payload) => ({type: types.GET_AFILIADOS_NUEVOS, payload})
-const deleteAFiliadosNuevosSuccess = (payload) => ({type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload})
-const deleteAfiliadosNuevosError = (payload) => ({type: types.GET_AFILIADOS_NUEVOS_ERROR, payload})
+const descargarAfiliadosNuevosProcess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS, payload })
+const descargarAFiliadosNuevosSuccess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS, payload })
+const descargarAfiliadosNuevosError = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_ERROR, payload })
 
-const newUserProcess = (payload) => ({type: types.NEW_USER, payload})
-const newUserSuccess = (payload) => ({type: types.NEW_USER_SUCCESS, payload})
-const newUserError = (payload) => ({type: types.NEW_USER_ERROR, payload})
+const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
+const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
+const deleteAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
 
-const setAfiliadosSize = (payload) => ({type: types.SET_AFILIADOS_SIZE, payload})
-const setLastAfiliado = (payload) => ({type: types.SET_LAST_AFILIADO, payload})
+const newUserProcess = (payload) => ({ type: types.NEW_USER, payload })
+const newUserSuccess = (payload) => ({ type: types.NEW_USER_SUCCESS, payload })
+const newUserError = (payload) => ({ type: types.NEW_USER_ERROR, payload })
 
-export const clearStatus = (payload) => ({type: types.CLEAR_STATUS, payload})
+const setfirstAfiliado = (payload) => ({ type: types.SET_FIRST_AFILIADO, payload })
+const setLastAfiliado = (payload) => ({ type: types.SET_LAST_AFILIADO, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+
+export const setNuevoAfiliadoDetails = (payload) => ({ type: types.SET_NUEVO_AFILIADO_DETAILS, payload })
+export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, payload })
+export const clearDownload = (payload) => ({ type: types.CLEAR_DOWNLOAD, payload })
 
 // // Query the first page of docs
 // const first = query(collection(db, "cities"), orderBy("population"), limit(25));

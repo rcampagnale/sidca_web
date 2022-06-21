@@ -46,7 +46,7 @@ const NuevoAfiliado = () => {
     }   
 
     useEffect(() => {
-        if(afiliado.status == 'SUCCESS'){
+        if(afiliado.status == 'SUCCESS_ADD'){
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: afiliado.msg,
@@ -55,7 +55,7 @@ const NuevoAfiliado = () => {
             })
             reset()
             dispatch(clearStatus())
-        }if (afiliado.status == 'FAILURE'){
+        }if (afiliado.status == 'FAILURE_ADD'){
             Swal.fire({
                 title: 'Error!',
                 text: afiliado.msg,

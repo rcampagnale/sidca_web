@@ -1,0 +1,43 @@
+.visibleContent {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  display: flex;
+  flex-flow: column wrap;
+  align-items: center;
+  justify-content: center;
+  width: 30vw;
+  height: 75%;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+.formAdmin {
+  width: 80%;
+  text-align: center;
+}
+
+.title {
+  margin: 20px 0 30px 0;
+  font-size: 30px;
+  color: rgb(82, 82, 82);
+  font-weight: bold;
+}
+
+.inputForm {
+  width: 100%;
+  text-align: left;
+}
+
+.inputSection {
+  margin-bottom: 1.6rem;
+}
+
+.submitButton {
+  width: 100%;
+  margin-bottom: 10px;
+}

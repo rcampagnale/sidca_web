@@ -47,4 +47,8 @@ const authenticateUserProcess = (payload) => ({type: types.AUTHENTICATE_USER, pa
 const authenticateUserSuccess = (payload) => ({type: types.AUTHENTICATE_USER_SUCCESS, payload})
 const authenticateUserError = (payload) => ({type: types.AUTHENTICATE_USER_ERROR, payload})
 
+export const logout = (payload) => ({type: types.LOGOUT, payload})
+export const setUserSession = (payload) => ({type: types.SET_USER_SESSION, payload})
+
 export const clearStatus = (payload) => ({type: types.CLEAR_USER_STATUS, payload})
+export const aprove = (payload) => ({type: types.APROVE, payload})

@@ -6,8 +6,10 @@ const initialState = {
     processing: false,
     nuevosAfiliados: [],
     status: '',
-    size: undefined,
+    firstAfiliado: undefined,
     lastAfiliado: undefined,
+    page: 1,
+    downloading: []
 }
 
 export const afiliadoReducer = (state = initialState, action) => {
@@ -20,16 +22,35 @@ export const afiliadoReducer = (state = initialState, action) => {
         case types.GET_AFILIADOS_NUEVOS_SUCCESS:
             return {
                 ...state,
-                nuevosAfiliados: [...state.nuevosAfiliados ,...action.payload],
+                nuevosAfiliados: action.payload,
                 processing: false,
-                status: 'sucess'
+                status: 'SUCCESS'
             };
         case types.GET_AFILIADOS_NUEVOS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
                 processing: false,
-                status: 'error'
+                status: 'FAILURE',
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS:
+            return {
+                ...state,
+                downloading: action.payload,
+                processing: false,
+                status: 'SUCCESS'
+            };
+        case types.DESCARGAR_AFILIADOS_NUEVOS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE',
             };
         case types.NEW_USER:
             return {
@@ -50,22 +71,37 @@ export const afiliadoReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE'
             };
-        case types.SET_AFILIADOS_SIZE:
+        case types.SET_FIRST_AFILIADO:
             return {
                 ...state,
-                size: action.payload
+                firstAfiliado: action.payload
             };
         case types.SET_LAST_AFILIADO:
             return {
                 ...state,
                 lastAfiliado: action.payload
             };
-        case types.CLEAR_STATUS:
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
+            };
+        case types.SET_NUEVO_AFILIADO_DETAILS:
+            return {
+                ...state,
+                nuevoAfiliado: action.payload
+            };
+        case types.CLEAR_AFILIADOS_STATUS:
             return {
                 ...state,
                 msg: undefined,
                 status: '',
                 processing: false,
+            };
+        case types.CLEAR_DOWNLOAD:
+            return {
+                ...state,
+                downloading: []
             };
         default:
             return state;

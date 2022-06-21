@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "sidca-a33f0"
-  }
+    "default": "sidca-a33f0",
+    "staging": "sidca-dev"
+  },
+  "targets": {}
 }

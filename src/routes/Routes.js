@@ -35,6 +35,12 @@ import NuevosCursosNuevos from '../pages/Capacitaciones/Nuevos Cursos/NuevosCurs
 import Nuevos2020_2019 from '../pages/Capacitaciones/Cursos 2020-2019/Nuevos2020_2019';
 import Nuevos2021 from '../pages/Capacitaciones/Cursos 2021/Nuevos2021';
 import Home from "../pages/Home/Home";
+import Cuotas from "../pages/Cuotas/Cuotas";
+import CuotasAdmin from "../pages/Admin/Cuotas/Cuotas";
+import Logout from "../pages/Logout/Logout";
+import NuevaCuota from "../pages/Admin/NuevaCuota/NuevaCuota";
+import Transacciones from "../pages/Admin/Transacciones/Transacciones";
+import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/TransaccionesUsuario";
 
 const AppRouter = () => {
 
@@ -45,7 +51,8 @@ const AppRouter = () => {
 
                 {/* WEB */}
                 <PublicRoute exact path="/" component={LoginUser} />
-                <PrivateRoute exact path="/home" component={Home} />
+                <PrivateRoute exact path="/logout" component={Logout} />
+                <PrivateRoute exact path="/home/" component={Home} />
                 <PrivateRoute exact path="/nosotros" component={Nosotros} />
                 <PrivateRoute exact path="/contacto" component={Contacto} />
                 <PrivateRoute exact path="/novedades" component={NovedadesUser} />
@@ -57,6 +64,7 @@ const AppRouter = () => {
                 <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
                 <PrivateRoute exact path="/turismo" component={Turismo} />
                 <PrivateRoute exact path="/predio" component={Predio} />
+                <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
                 {/* ADMIN */}
                 <Route exact path="/admin/login" component={LoginAdmin} />
@@ -65,6 +73,10 @@ const AppRouter = () => {
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
                 <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
                 <AdminRoute exact path="/admin/nuevo-enlace/:id" component={NuevoEnlace} />
+
+                <AdminRoute exact path="/admin/cuotas" component={CuotasAdmin} />
+                <AdminRoute exact path="/admin/nueva-cuota/" component={NuevaCuota} />
+                <AdminRoute exact path="/admin/nueva-cuota/:id" component={NuevaCuota} />
 
                 <AdminRoute exact path="/admin/usuarios" component={Usuarios} />
                 <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado} />
@@ -79,6 +91,10 @@ const AppRouter = () => {
 
                 <AdminRoute exact path="/admin/novedades" component={Novedades} />
                 <AdminRoute exact path="/admin/nueva-novedad" component={NuevaNovedad} />
+
+                <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
+                <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />
+                <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
 
                 {/* <Route exact path="/" component={Landing} />
                 <Route exact path="/activar-cuenta/:user_id/:token" component={ActivarCuenta} />
