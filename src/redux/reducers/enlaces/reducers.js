@@ -8,6 +8,10 @@ const initialState = {
     enlaces: [],
     enlace: {},
     size: 0,
+    firstEnlace: undefined,
+    lastEnlace: undefined,
+    page: 1,
+    downloading: []
 }
 
 export const enlaceReducer = (state = initialState, action) => {
@@ -116,6 +120,21 @@ export const enlaceReducer = (state = initialState, action) => {
             return {
                 ...state,
                 enlace: state.enlaces.find(enlace => enlace.id == action.payload)
+            };
+        case types.SET_FIRST_ENLACE:
+            return {
+                ...state,
+                firstEnlace: action.payload
+            };
+        case types.SET_LAST_ENLACE:
+            return {
+                ...state,
+                lastEnlace: action.payload
+            };
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
             };
         case types.CLEAR_STATUS:
             return {

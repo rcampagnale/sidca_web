@@ -5,6 +5,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
+import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import Swal from 'sweetalert2';
 
@@ -26,11 +27,12 @@ const Enlaces = () => {
     ];
 
     const enlace = useSelector(state => state.enlace);
+    const page = useSelector(state => state.afiliado.page)
 
     const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
-    const [subirEnlacesActive, setSubirEnlacesActive ] = useState(false);
+    const [subirEnlacesActive, setSubirEnlacesActive] = useState(false);
 
     const handleEdit = (id) => {
         dispatch(getEnlace(id));
@@ -41,19 +43,18 @@ const Enlaces = () => {
         dispatch(deleteEnlace(id));
     }
 
-    const handlePagination = async(pagination) => {
-        if(pagination === 'prev' && startAfter === 0){
+    const handlePagination = async (pagination) => {
+        if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
-        }else{
+        } else {
             setPrevDisable(false)
         }
-        if(pagination === 'next' && enlace.enlaces.length < 10 ){
+        if (pagination === 'next' && enlace.enlaces.length < 10) {
             return setNextDisable(true)
-        }else{
+        } else {
             setNextDisable(false)
         }
-        setStartAfter(pagination == 'next' ? startAfter + 10 : startAfter - 10);
-        dispatch(getEnlaces(pagination, pagination == 'next' ? startAfter + 10 : startAfter - 10));
+        dispatch(getEnlaces(pagination, pagination == 'next' ? enlace.lastEnlace : enlace.firstEnlace));
 
     }
 
@@ -99,10 +100,10 @@ const Enlaces = () => {
     }, [enlace.status])
 
     const template2 = {
-        layout: 'PrevPageLink NextPageLink',
+        layout: 'PrevPageLink CurrentPageReport NextPageLink',
         'PrevPageLink': (options) => {
             return (
-                <button type="button" className={options.className} style={{ marginRight: 8 }} onClick={() => handlePagination('prev')} disabled={prevDisable}>
+                <button type="button" className={options.className} onClick={() => handlePagination('prev')} disabled={prevDisable}>
                     <span className="p-3">Anterior</span>
                 </button>
             )
@@ -114,14 +115,14 @@ const Enlaces = () => {
                 </button>
             )
         },
-        // 'CurrentPageReport': (options) => {
-        //     return (
-        //         <button type="button" className={options.className} onClick={options.onClick}>
-        //             {page + 1}
-        //             <Ripple />
-        //         </button>
-        //     )
-        // }
+        'CurrentPageReport': (options) => {
+            return (
+                <button type="button" className={options.className} onClick={options.onClick}>
+                    {page}
+                    <Ripple />
+                </button>
+            )
+        }
     };
 
     return (
@@ -129,39 +130,39 @@ const Enlaces = () => {
             <div className={styles.title_and_button}>
                 <h3 className={styles.title}>Enlaces</h3>
                 <div>
-                    <Button label="Nuevo enlace" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-enlace")} style={{marginRight: 3}}/>
-                    <Button 
-                        label={subirEnlacesActive ? 'Ver enlaces' : 'Subir Enlaces'} 
-                        icon={subirEnlacesActive ? 'pi pi-search' : 'pi pi-file'} 
-                        onClick={() => setSubirEnlacesActive(!subirEnlacesActive)} 
+                    <Button label="Nuevo enlace" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-enlace")} style={{ marginRight: 3 }} />
+                    <Button
+                        label={subirEnlacesActive ? 'Ver enlaces' : 'Subir Enlaces'}
+                        icon={subirEnlacesActive ? 'pi pi-search' : 'pi pi-file'}
+                        onClick={() => setSubirEnlacesActive(!subirEnlacesActive)}
                     />
                 </div>
             </div>
             <div className={styles.table_upload}>
                 {
                     subirEnlacesActive ?
-                    <SubirEnlaces />
-                    :
-                    enlace.enlaces.length > 0
-                        ?
-                        <>
-                            <DataTable
-                                value={enlace.enlaces}
-                                responsiveLayout="scroll"
-                                loading={enlace.processing}
-
-                            >
-                                {dynamicColumns}
-                            </DataTable>
-                            <Paginator
-                                template={template2}
-                            />
-                        </>
+                        <SubirEnlaces />
                         :
-                        enlace.processing ?
-                            <ProgressSpinner className='loader' />
+                        enlace.enlaces.length > 0
+                            ?
+                            <>
+                                <DataTable
+                                    value={enlace.enlaces}
+                                    responsiveLayout="scroll"
+                                    loading={enlace.processing}
+
+                                >
+                                    {dynamicColumns}
+                                </DataTable>
+                                <Paginator
+                                    template={template2}
+                                />
+                            </>
                             :
-                            <Button label="No hay enlaces" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
+                            enlace.processing ?
+                                <ProgressSpinner className='loader' />
+                                :
+                                <Button label="No hay enlaces" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
                 }
             </div>
 

@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, setDoc, doc, deleteDoc, startAfter } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, setDoc, doc, deleteDoc, startAfter, endBefore, limitToLast } from "firebase/firestore";
 
 export const nuevoEnlace = (data) => {
     return async (dispatch, getState) => {
@@ -56,21 +56,29 @@ export const deleteEnlace = (id) => {
     }
 }
 
-export const getEnlaces = (pagination = false, count) => {
+export const getEnlaces = (pagination, start) => {
     return async (dispatch, getState) => {
         dispatch(getEnlacesProcess());
         try {
             let q
-            if(!!pagination){
-                q = await query(collection(db, 'enlaces'), orderBy('prioridad', 'asc'), limit(10), startAfter(count))
-            }else{
+
+            if (pagination === 'next') {
+                q = await query(collection(db, 'enlaces'), orderBy('prioridad', 'asc'), limit(10), startAfter(start))
+            } else if (pagination === 'prev') {
+                q = await query(collection(db, 'enlaces'), orderBy('prioridad', 'asc'), limitToLast(10), endBefore(start))
+            } else {
                 q = await query(collection(db, 'enlaces'), orderBy('prioridad', 'asc'), limit(10))
             }
             const querySnapshot = await getDocs(q);
             if (querySnapshot.size === 0) {
                 dispatch(getEnlacesError('No hay enlaces'))
             } else {
-                let arrayDocs = []
+                const { page } = getState().afiliado;
+                const arrayDocs = [];
+                querySnapshot.docs.map((doc, i) => {
+                    i === 0 && dispatch(setFirstEnlace(doc));
+                    i === 9 && dispatch(setLastEnlace(doc));
+                })
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
                     let obj = {
@@ -83,6 +91,7 @@ export const getEnlaces = (pagination = false, count) => {
                     arrayDocs.push(obj)
                 })
                 dispatch(getEnlacesSuccess(arrayDocs))
+                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
             dispatch(getEnlacesError('No se pudieron cargar los enlaces'));
@@ -96,19 +105,19 @@ export const uploadEnlaces = (rows) => {
         dispatch(uploadEnlacesProcess());
         try {
             //verificar con datos correctos, constants
-            rows.map(async(row, index) => {
-                if(index === 0){
+            rows.map(async (row, index) => {
+                if (index === 0) {
                     return
-                }else{
+                } else {
                     const enlaceObj = {}
-                    row.map( (item, index) => {
+                    row.map((item, index) => {
                         enlaceObj[rows[0][index]] = item
                     })
                     const doc = await addDoc(collection(db, 'enlaces'), enlaceObj)
                     await dispatch(uploadEnlacesComment(`${index} enlaces agregados correctamente.`));
                 }
             })
-            dispatch(uploadEnlacesSuccess(`${rows.length - 1 } enlaces agregados correctamente.`));
+            dispatch(uploadEnlacesSuccess(`${rows.length - 1} enlaces agregados correctamente.`));
         } catch (error) {
             dispatch(uploadEnlacesError('No se pudieron agregar todos los mensajes.'));
             console.log(error)
@@ -138,5 +147,9 @@ const deleteEnlaceError = (payload) => ({ type: types.DELETE_ENLACE_ERROR, paylo
 const getEnlacesProcess = (payload) => ({ type: types.GET_ENLACES, payload })
 const getEnlacesSuccess = (payload) => ({ type: types.GET_ENLACES_SUCCESS, payload })
 const getEnlacesError = (payload) => ({ type: types.GET_ENLACES_ERROR, payload })
+
+const setFirstEnlace = (payload) => ({ type: types.SET_FIRST_ENLACE, payload })
+const setLastEnlace = (payload) => ({ type: types.SET_LAST_ENLACE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
