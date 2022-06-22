@@ -16,8 +16,8 @@ import { Button } from 'primereact/button';
 const NuevoAfiliado = () => {
 
     const dispatch = useDispatch();
-    
-    const {id} = useParams();
+
+    const { id } = useParams();
     const history = useHistory();
 
     const initialform = {
@@ -31,9 +31,9 @@ const NuevoAfiliado = () => {
 
     //TODO agregar cargo y departamento
 
-    const handleSubmit = async(e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if(form.nombre === '' || form.apellido === '' || form.dni === ''){
+        if (form.nombre === '' || form.apellido === '' || form.dni === '') {
             Swal.fire({
                 title: 'Error!',
                 text: 'Todos los campos son obligatorios',
@@ -43,10 +43,10 @@ const NuevoAfiliado = () => {
             return false
         }
         await dispatch(nuevoAfiliado(form));
-    }   
+    }
 
     useEffect(() => {
-        if(afiliado.status == 'SUCCESS_ADD'){
+        if (afiliado.status == 'SUCCESS_ADD') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: afiliado.msg,
@@ -55,7 +55,7 @@ const NuevoAfiliado = () => {
             })
             reset()
             dispatch(clearStatus())
-        }if (afiliado.status == 'FAILURE_ADD'){
+        } if (afiliado.status == 'FAILURE_ADD') {
             Swal.fire({
                 title: 'Error!',
                 text: afiliado.msg,
@@ -69,32 +69,32 @@ const NuevoAfiliado = () => {
     return (
         <div className={styles.visibleContent}>
             <div className={styles.container}>
-            <form onSubmit={handleSubmit} className={styles.formAdmin}>
-                <h2 className={styles.title}>{id ? 'Editar usuario' : 'Agregar usuario'}</h2>
-                
-                <span className={`p-float-label ${styles.inputSection}`}>
-                    <InputText className={styles.inputForm} value={form.nombre} name="nombre" id="nombre" type="text" onChange={(e)=>{handleInputChange(e)}} />
-                    <label className={styles.labelForm} htmlFor="nombre">Nombre*</label>
-                </span>
+                <form onSubmit={handleSubmit} className={styles.formAdmin}>
+                    <h2 className={styles.title}>{id ? 'Editar usuario' : 'Agregar usuario'}</h2>
 
-                <span className={`p-float-label ${styles.inputSection}`}>
-                    <InputText className={styles.inputForm} value={form.apellido} name="apellido" id="apellido" type="text" onChange={(e)=>{handleInputChange(e)}} />
-                    <label className={styles.labelForm} htmlFor="apellido">Apellido*</label>
-                </span>
+                    <span className={`p-float-label ${styles.inputSection}`}>
+                        <InputText className={styles.inputForm} value={form.nombre} name="nombre" id="nombre" type="text" onChange={(e) => { handleInputChange(e) }} />
+                        <label className={styles.labelForm} htmlFor="nombre">Nombre*</label>
+                    </span>
 
-                <span className={`p-float-label ${styles.inputSection}`}>
-                    <InputText className={styles.inputForm} value={form.dni} name="dni" id="dni" type="number" onChange={(e)=>{handleInputChange(e)}} maxLength={8}/>
-                    <label className={styles.labelForm} htmlFor="dni">DNI*</label>
-                </span>
-                
-                <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-button-raised p-button-warning ${styles.submitButton}`} />
-            </form>
+                    <span className={`p-float-label ${styles.inputSection}`}>
+                        <InputText className={styles.inputForm} value={form.apellido} name="apellido" id="apellido" type="text" onChange={(e) => { handleInputChange(e) }} />
+                        <label className={styles.labelForm} htmlFor="apellido">Apellido*</label>
+                    </span>
+
+                    <span className={`p-float-label ${styles.inputSection}`}>
+                        <InputText className={styles.inputForm} value={form.dni} name="dni" id="dni" type="number" onChange={(e) => { handleInputChange(e) }} maxLength={8} />
+                        <label className={styles.labelForm} htmlFor="dni">DNI*</label>
+                    </span>
+
+                    <Button type="submit" label={id ? 'Editar' : 'Agregar'} className={`p-button-raised p-button-warning ${styles.submitButton}`} />
+                </form>
                 {
-                    afiliado.processing 
+                    afiliado.processing
                     &&
                     <Spinner />
                 }
-        </div>
+            </div>
         </div>
     )
 }

@@ -10,7 +10,6 @@ export const getAfiliadosNuevos = (pagination, start) => {
             if (pagination === 'next') {
                 q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10), startAfter(start))
             } else if (pagination === 'prev') {
-                console.log({ start });
                 q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limitToLast(10), endBefore(start))
             } else {
                 q = await query(collection(db, 'nuevoAfiliado'), orderBy('fecha', 'desc'), limit(10))
@@ -20,7 +19,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
                 dispatch(getAfiliadosNuevosError('No hay afiliados nuevos'))
             } else {
                 const { page } = getState().afiliado;
-                let arrayDocs = []
+                const arrayDocs = []
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setfirstAfiliado(doc));
                     i === 9 && dispatch(setLastAfiliado(doc));

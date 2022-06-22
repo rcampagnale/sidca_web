@@ -22,7 +22,8 @@ export const cursosReducer = (state = initialState, action) => {
                 ...state,
                 processing: false,
                 status: 'SUCCESS',
-                msg: action.payload
+                msg: action.payload,
+                img: ''
             };
         case types.NUEVO_CURSO_ERROR:
             return {
