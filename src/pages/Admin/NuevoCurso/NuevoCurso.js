@@ -34,7 +34,7 @@ const NuevoCurso = () => {
 
     const [form, handleInputChange, reset] = useForm(initialform);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (form.titulo === '' || form.estado === '' || form.categoria === '') {
             Swal.fire({
@@ -45,7 +45,12 @@ const NuevoCurso = () => {
             })
             return false
         }
-        dispatch(nuevoCurso(form));
+        if (id) {
+            // await dispatch(uploadCurso(form, cursos.curso.id))
+        } else {
+            await dispatch(nuevoCurso(form))
+        }
+        history.push('/admin/cursos')
     }
 
     // useEffect(() => {
@@ -55,26 +60,36 @@ const NuevoCurso = () => {
     // }, [input])
 
     //MESSAGE
+    // useEffect(() => {
+    //     if (cursos.status == 'SUCCESS') {
+    //         Swal.fire({
+    //             title: 'Solicitud Exitosa',
+    //             text: cursos.msg,
+    //             icon: 'success',
+    //             confirmButtonText: 'Continuar'
+    //         })
+    //         reset()
+    //         dispatch(clearStatus())
+    //     } if (cursos.status == 'FAILURE') {
+    //         Swal.fire({
+    //             title: 'Error!',
+    //             text: cursos.msg,
+    //             icon: 'error',
+    //             confirmButtonText: 'Continuar'
+    //         })
+    //         dispatch(clearStatus())
+    //     }
+    // }, [cursos])
+
     useEffect(() => {
-        if (cursos.status == 'SUCCESS') {
-            Swal.fire({
-                title: 'Solicitud Exitosa',
-                text: cursos.msg,
-                icon: 'success',
-                confirmButtonText: 'Continuar'
+        if (id && cursos.curso) {
+            Object.entries(cursos.curso).map(([key, value]) => {
+                if (key && value) {
+                    handleInputChange({ target: { name: key, value: value } })
+                }
             })
-            reset()
-            dispatch(clearStatus())
-        } if (cursos.status == 'FAILURE') {
-            Swal.fire({
-                title: 'Error!',
-                text: cursos.msg,
-                icon: 'error',
-                confirmButtonText: 'Continuar'
-            })
-            dispatch(clearStatus())
         }
-    }, [cursos])
+    }, [cursos.curso])
 
     const estados = [
         { label: 'Terminado', value: 'terminado' },
