@@ -19,7 +19,6 @@ const Asesoramiento = () => {
     const dispatch = useDispatch()
     const history = useHistory();
 
-    // camvbiar
     const columns = [
         { field: 'titulo', header: 'Titulo' },
         { field: 'descripcion', header: 'Descripcion' },

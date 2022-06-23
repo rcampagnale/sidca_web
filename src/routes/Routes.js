@@ -92,6 +92,7 @@ const AppRouter = () => {
 
                 <AdminRoute exact path="/admin/novedades" component={Novedades} />
                 <AdminRoute exact path="/admin/nueva-novedad" component={NuevaNovedad} />
+                <AdminRoute exact path="/admin/nueva-novedad/:id" component={NuevaNovedad} />
 
                 <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
                 <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />

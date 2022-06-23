@@ -12,13 +12,15 @@
   align-items: center;
   justify-content: center;
   width: 30vw;
-  height: 100%;
+  height: 90%;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  padding: 20px;
 }
 
 .formAdmin {
   width: 80%;
   text-align: center;
+  padding-bottom: 20px;
 }
 
 .title {
@@ -39,4 +41,10 @@
 
 .submitButton {
   width: 100%;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
