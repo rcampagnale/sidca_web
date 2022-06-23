@@ -27,9 +27,8 @@ const Enlaces = () => {
     ];
 
     const enlace = useSelector(state => state.enlace);
-    const page = useSelector(state => state.afiliado.page)
+    const page = useSelector(state => state.enlace.page)
 
-    const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
     const [subirEnlacesActive, setSubirEnlacesActive] = useState(false);
