@@ -5,9 +5,14 @@ const initialState = {
     processing: false,
     status: '',
     cursos: [],
+    curso: {},
     progress: 0,
     uploading: false,
     img: '',
+    firstCurso: undefined,
+    lastCurso: undefined,
+    page: 1,
+    size: 0,
 }
 
 export const cursosReducer = (state = initialState, action) => {
@@ -56,6 +61,45 @@ export const cursosReducer = (state = initialState, action) => {
             return {
                 ...state,
                 progress: action.payload,
+            };
+        case types.GET_CURSOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_CURSOS_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                cursos: action.payload,
+                status: 'SUCCESS',
+            };
+        case types.GET_CURSOS_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload,
+            };
+        case types.GET_CURSO:
+            return {
+                ...state,
+                curso: state.cursos.find(curso => curso.id == action.payload)
+            };
+        case types.SET_FIRST_CURSO:
+            return {
+                ...state,
+                firstCurso: action.payload
+            };
+        case types.SET_LAST_CURSO:
+            return {
+                ...state,
+                lastCurso: action.payload
+            };
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
             };
         case types.CLEAR_STATUS:
             return {

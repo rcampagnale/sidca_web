@@ -4,7 +4,7 @@ const initialState = {
     msg: '',
     processing: false,
     uploading: false,
-    stauts: '',
+    status: '',
     enlaces: [],
     enlace: {},
     size: 0,
