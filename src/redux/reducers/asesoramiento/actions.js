@@ -74,7 +74,7 @@ export const getAsesoramientos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getAsesoramientosError('No hay asesoramientos'))
             } else {
-                const { page } = getState().afiliado;
+                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstAsesoramiento(doc));

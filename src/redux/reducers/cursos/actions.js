@@ -69,7 +69,7 @@ export const getCursos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getCursosError('No hay cursos'))
             } else {
-                const { page } = getState().afiliado;
+                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstCurso(doc));

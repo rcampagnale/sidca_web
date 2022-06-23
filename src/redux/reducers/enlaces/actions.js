@@ -73,7 +73,7 @@ export const getEnlaces = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getEnlacesError('No hay enlaces'))
             } else {
-                const { page } = getState().afiliado;
+                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstEnlace(doc));
