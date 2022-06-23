@@ -34,8 +34,8 @@ const Cursos = () => {
     const [nextDisable, setNextDisable] = useState(false);
     const [subirCursosActive, setSubirCursosActive] = useState(false);
 
-    const handleEdit = (id) => {
-        dispatch(getCurso(id));
+    const handleEdit = async (id) => {
+        await dispatch(getCurso(id));
         history.push(`/admin/nuevo-curso/${id}`)
     }
 

@@ -62,6 +62,25 @@ export const cursosReducer = (state = initialState, action) => {
                 ...state,
                 progress: action.payload,
             };
+        case types.UPLOAD_CURSO:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.UPLOAD_CURSO_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                status: 'SUCCESS_UPLOAD',
+                msg: action.payload,
+            };
+        case types.UPLOAD_CURSO_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE_UPLOAD',
+                msg: action.payload,
+            };
         case types.GET_CURSOS:
             return {
                 ...state,
