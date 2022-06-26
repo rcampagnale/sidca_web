@@ -5,10 +5,12 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
+import { Ripple } from 'primereact/ripple';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, getCuotas } from '../../../redux/reducers/cuotas/actions';
+import { clearStatus, deleteCuota, getCuota, getCuotas } from '../../../redux/reducers/cuotas/actions';
 
 const Cuotas = () => {
 
@@ -16,39 +18,40 @@ const Cuotas = () => {
     const history = useHistory();
 
     const columns = [
-        { field: 'position', header: 'Prioridad' },
+        { field: 'position', header: 'Posición' },
         { field: 'title', header: 'Titulo' },
         { field: 'unit_price', header: 'Precio' },
+        { field: 'id', header: 'Acciones' }
     ];
 
     const cuotas = useSelector(state => state.cuotas);
+    const page = useSelector(state => state.cuotas.page);
 
-    const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
+    const [subirCuotasActive, setSubirCuotasActive] = useState(false);
 
-    const handleEdit = (id) => {
-        // dispatch(getEnlace(id));
-        // history.push(`/admin/nueva-cuota/${id}`)
+    const handleEdit = async (id) => {
+        await dispatch(getCuota(id));
+        history.push(`/admin/nueva-cuota/${id}`)
     }
 
-    const handleDelete = (id) => {
-        // dispatch(deleteEnlace(id));
-    }
+    // const handleDelete = (id) => {
+    //     dispatch(deleteCuota(id));
+    // }
 
-    const handlePagination = async(pagination) => {
-        if(pagination === 'prev' && startAfter === 0){
+    const handlePagination = async (pagination) => {
+        if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
-        }else{
+        } else {
             setPrevDisable(false)
         }
-        if(pagination === 'next' && cuotas.cuotas.length < 10 ){
+        if (pagination === 'next' && cuotas.cuotas.length < 10) {
             return setNextDisable(true)
-        }else{
+        } else {
             setNextDisable(false)
         }
-        setStartAfter(pagination == 'next' ? startAfter + 10 : startAfter - 10);
-        dispatch(getCuotas(pagination, pagination == 'next' ? startAfter + 10 : startAfter - 10));
+        dispatch(getCuotas(pagination, pagination == 'next' ? cuotas.lastCuota : cuotas.firstCuota));
 
     }
 
@@ -94,10 +97,10 @@ const Cuotas = () => {
     }, [cuotas.status])
 
     const template2 = {
-        layout: 'PrevPageLink NextPageLink',
+        layout: 'PrevPageLink CurrentPageReport NextPageLink',
         'PrevPageLink': (options) => {
             return (
-                <button type="button" className={options.className} style={{ marginRight: 8 }} onClick={() => handlePagination('prev')} disabled={prevDisable}>
+                <button type="button" className={options.className} onClick={() => handlePagination('prev')} disabled={prevDisable}>
                     <span className="p-3">Anterior</span>
                 </button>
             )
@@ -109,31 +112,49 @@ const Cuotas = () => {
                 </button>
             )
         },
+        'CurrentPageReport': (options) => {
+            return (
+                <button type="button" className={options.className} onClick={options.onClick}>
+                    {page}
+                    <Ripple />
+                </button>
+            )
+        }
     };
 
     return (
         <div className={styles.container}>
             <div className={styles.title_and_button}>
                 <h3 className={styles.title}>Cuotas</h3>
-                <Button label="Nueva Cuota" icon="pi pi-plus" onClick={() => history.push("/admin/nueva-cuota")} />
+                <div>
+                    <Button label="Nueva cuota" icon="pi pi-plus" onClick={() => history.push("/admin/nueva-cuota")} style={{ marginRight: 3 }} />
+                </div>
             </div>
-            <div>
+            <div className={styles.table_upload}>
                 {
-                    cuotas.cuotas.length > 0
-                        ?
-                        <>
-                            <DataTable
-                                value={cuotas.cuotas}
-                                responsiveLayout="scroll"
-                            >
-                                {dynamicColumns}
-                            </DataTable>
-                            {/* <Paginator
-                                template={template2}
-                            /> */}
-                        </>
+                    subirCuotasActive ?
+                        <></>
                         :
-                        <Button label="No hay cuotas" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
+                        cuotas.cuotas.length > 0
+                            ?
+                            <>
+                                <DataTable
+                                    value={cuotas.cuotas}
+                                    responsiveLayout="scroll"
+                                    loading={cuotas.processing}
+
+                                >
+                                    {dynamicColumns}
+                                </DataTable>
+                                <Paginator
+                                    template={template2}
+                                />
+                            </>
+                            :
+                            cuotas.processing ?
+                                <ProgressSpinner className='loader' />
+                                :
+                                <Button label="No hay cuotas" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
                 }
             </div>
 

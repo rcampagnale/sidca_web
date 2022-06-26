@@ -1,17 +1,19 @@
-import * as types from "./types";
+import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, Timestamp, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, Timestamp } from "firebase/firestore";
+
 import { search } from "mercadopago/lib/resources/payment";
 import { date } from "mercadopago/lib/utils";
 
-export const nuevoCuota = (data) => {
+export const nuevaCuota = (data) => {
     return async (dispatch, getState) => {
         dispatch(nuevaCuotaProcess());
         let cuota = {
-            titulo: `${data.titulo}`,
-            link: `${data.link}`,
-            descripcion: `${data.descripcion}`,
-            prioridad: Number.parseInt(data.prioridad),
+            title: `${data.title}`,
+            position: Number.parseInt(data.position),
+            unit_price: Number.parseInt(data.unit_price),
+            quantity: 1,
+            currency_id: 'ARS'
         }
 
         try {
@@ -28,44 +30,65 @@ export const uploadCuota = (data, id) => {
     return async (dispatch, getState) => {
         dispatch(uploadCuotaProcess());
         let cuotaObj = {
-            titulo: `${data.titulo}`,
-            link: `${data.link}`,
-            descripcion: `${data.descripcion}`,
-            prioridad: Number.parseInt(data.prioridad),
+            title: `${data.title}`,
+            position: Number.parseInt(data.position),
+            unit_price: Number.parseInt(data.unit_price),
+            quantity: 1,
+            currency_id: 'ARS'
         }
+
         try {
             const refDoc = doc(db, 'cuotas', id)
             const cuota = await setDoc(refDoc, cuotaObj)
             dispatch(uploadCuotaSuccess(`Cuota editado Correctamente. ID: ${id}`));
         } catch (error) {
-            dispatch(uploadCuotaError('No se ha podido editar el enlace'));
+            dispatch(uploadCuotaError('No se ha podido editar la cuota'));
             console.log(error)
         }
     }
 }
 
-export const getCuotas = (data) => {
+export const getCuotas = (pagination, start) => {
     return async (dispatch, getState) => {
         dispatch(getCuotasProcess());
         try {
-            const q = await query(collection(db, 'cuotas'), orderBy('position', "asc"))
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.size > 0) {
-                let arrayCuotas = []
-                querySnapshot.forEach(documentSnapshot => {
-                    const cuota = {
-                        id: documentSnapshot.id,
-                        ...documentSnapshot.data()
-                    }
-                    arrayCuotas.push(cuota)
-                })
-                dispatch(getCuotasSuccess(arrayCuotas));
+            let q
+
+            if (pagination === 'next') {
+                q = await query(collection(db, 'cuotas'), orderBy('position', 'asc'), limit(10), startAfter(start))
+            } else if (pagination === 'prev') {
+                q = await query(collection(db, 'cuotas'), orderBy('position', 'asc'), limitToLast(10), endBefore(start))
             } else {
-                dispatch(getCuotasError('No hay cuotas'));
+                q = await query(collection(db, 'cuotas'), orderBy('position', 'asc'), limit(10))
+            }
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(getCuotasError('No hay cuotas'))
+            } else {
+                const { page } = getState().cuotas;
+                const arrayDocs = [];
+                querySnapshot.docs.map((doc, i) => {
+                    i === 0 && dispatch(setFirstCuota(doc));
+                    i === 9 && dispatch(setLastCuota(doc));
+                })
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        title: data.title,
+                        position: data.position,
+                        unit_price: data.unit_price
+                    }
+
+                    console.log(data.unit_price);
+                    arrayDocs.push(obj)
+                })
+                dispatch(getCuotasSuccess(arrayDocs))
+                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
-            dispatch(getCuotasError('No se pudo traer las cuotas'));
-            console.log(error);
+            dispatch(getCuotasError('No se pudieron cargar las cuotas'));
+            console.log(error)
         }
     }
 }
@@ -77,7 +100,7 @@ export const setUserCuotas = (data) => {
             if (data) {
                 const q = query(collection(db, "transacciones"), where("collection_id", "==", data.collection_id));
                 const docSnap = await getDocs(q);
-                if(docSnap.size === 0){
+                if (docSnap.size === 0) {
                     const external = JSON.parse(data.external_reference.split('%22').join('"'))
                     const userTransationData = {
                         status: data.status,
@@ -86,8 +109,8 @@ export const setUserCuotas = (data) => {
                         fecha: Timestamp.now()
                     }
                     console.log(external)
-                    const userTransaccion = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'),  userTransationData)
-                    const transaccion = await addDoc(collection(db, 'transacciones'), { ...data, fecha: Timestamp.now(), user: external.userId, cuota: external.id})
+                    const userTransaccion = await addDoc(collection(db, "usuarios", external.userId, 'cuotas'), userTransationData)
+                    const transaccion = await addDoc(collection(db, 'transacciones'), { ...data, fecha: Timestamp.now(), user: external.userId, cuota: external.id })
                     dispatch(setUserCuotasSuccess());
                 }
             }
@@ -98,9 +121,11 @@ export const setUserCuotas = (data) => {
     }
 }
 
-const nuevaCuotaProcess = (payload) => ({ type: types.GET_CUOTAS, payload })
-const nuevaCuotaSuccess = (payload) => ({ type: types.GET_CUOTAS_SUCCESS, payload })
-const nuevaCuotaError = (payload) => ({ type: types.GET_CUOTAS_ERROR, payload })
+export const getCuota = (payload) => ({ type: types.GET_CUOTA, payload })
+
+const nuevaCuotaProcess = (payload) => ({ type: types.NUEVA_CUOTA, payload })
+const nuevaCuotaSuccess = (payload) => ({ type: types.NUEVA_CUOTA_SUCCESS, payload })
+const nuevaCuotaError = (payload) => ({ type: types.NUEVA_CUOTA_ERROR, payload })
 
 const uploadCuotaProcess = (payload) => ({ type: types.UPLOAD_CUOTA, payload })
 const uploadCuotaSuccess = (payload) => ({ type: types.UPLOAD_CUOTA_SUCCESS, payload })
@@ -113,6 +138,10 @@ const getCuotasError = (payload) => ({ type: types.GET_CUOTAS_ERROR, payload })
 const setUserCuotasProcess = (payload) => ({ type: types.SET_USER_CUOTAS, payload })
 const setUserCuotasSuccess = (payload) => ({ type: types.SET_USER_CUOTAS_SUCCESS, payload })
 const setUserCuotasError = (payload) => ({ type: types.SET_USER_CUOTAS_ERROR, payload })
+
+const setFirstCuota = (payload) => ({ type: types.SET_FIRST_CUOTA, payload })
+const setLastCuota = (payload) => ({ type: types.SET_LAST_CUOTA, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payload })
 
