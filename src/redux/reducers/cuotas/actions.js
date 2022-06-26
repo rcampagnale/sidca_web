@@ -79,8 +79,6 @@ export const getCuotas = (pagination, start) => {
                         position: data.position,
                         unit_price: data.unit_price
                     }
-
-                    console.log(data.unit_price);
                     arrayDocs.push(obj)
                 })
                 dispatch(getCuotasSuccess(arrayDocs))
