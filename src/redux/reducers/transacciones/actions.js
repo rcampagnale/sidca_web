@@ -1,6 +1,6 @@
-import * as types from "./types";
+import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, Timestamp, setDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, getDoc, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast } from "firebase/firestore";
 import { search } from "mercadopago/lib/resources/payment";
 import { date } from "mercadopago/lib/utils";
 import moment from 'moment';
@@ -25,20 +25,29 @@ export const nuevaTransaccion = (data) => {
     }
 }
 
-export const getTransacciones = (pagination = false, count) => {
+export const getTransacciones = (pagination, start) => {
     return async (dispatch, getState) => {
         dispatch(getTransaccionesProcess());
         try {
             let q
-            if (!!pagination) {
-                // q = await query(collection(db, 'transacciones'), orderBy('fecha', "asc"), limit(10), startAfter(count))
+            if (pagination === 'next') {
+                q = await query(collection(db, 'transacciones'), orderBy('fecha', 'desc'), limit(10), startAfter(start))
+            } else if (pagination === 'prev') {
+                q = await query(collection(db, 'transacciones'), orderBy('fecha', 'desc'), limitToLast(10), endBefore(start))
             } else {
-                q = await query(collection(db, 'transacciones'), orderBy('fecha', "desc"))
+                q = await query(collection(db, 'transacciones'), orderBy('fecha', 'desc'), limit(10))
             }
             const querySnapshot = await getDocs(q);
-            console.log(querySnapshot.size)
-            if (querySnapshot.size > 0) {
-                let arrayTransacciones = []
+            if (querySnapshot.size === 0) {
+                dispatch(getTransaccionesError('No hay transacciones'))
+            } else {
+                const { page } = getState().transacciones;
+                const arrayDocs = [];
+                querySnapshot.docs.map((doc, i) => {
+                    i === 0 && dispatch(setFirstTransaccion(doc));
+                    i === 9 && dispatch(setLastTransaccion(doc));
+                })
+                const arrayTransacciones = []
                 querySnapshot.forEach(documentSnapshot => {
                     const transaccion = {
                         id: documentSnapshot.id,
@@ -48,9 +57,8 @@ export const getTransacciones = (pagination = false, count) => {
                     }
                     arrayTransacciones.push(transaccion)
                 })
-                dispatch(getTransaccionesSuccess(arrayTransacciones));
-            } else {
-                dispatch(getTransaccionesError('No hay transacciones'));
+                dispatch(getTransaccionesSuccess(arrayTransacciones))
+                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
             dispatch(getTransaccionesError('No se pudo traer las transacciones'));
@@ -98,7 +106,7 @@ export const getUserCuotas = (id) => {
     }
 }
 
-
+export const getTransaccion = (payload) => ({ type: types.GET_TRANSACCION, payload })
 
 const nuevaTransaccionProcess = (payload) => ({ type: types.NUEVA_TRANSACCION, payload })
 const nuevaTransaccionSuccess = (payload) => ({ type: types.NUEVA_TRANSACCION_SUCCESS, payload })
@@ -111,5 +119,9 @@ const getTransaccionesError = (payload) => ({ type: types.GET_TRANSACCIONES_ERRO
 const getUserCuotasProcess = (payload) => ({ type: types.GET_USER_CUOTAS, payload })
 const getUserCuotasSuccess = (payload) => ({ type: types.GET_USER_CUOTAS_SUCCESS, payload })
 const getUserCuotasError = (payload) => ({ type: types.GET_USER_CUOTAS_ERROR, payload })
+
+const setFirstTransaccion = (payload) => ({ type: types.SET_FIRST_TRANSACCION, payload })
+const setLastTransaccion = (payload) => ({ type: types.SET_LAST_TRANSACCION, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_TRANSACCIONES_STATUS, payload })
