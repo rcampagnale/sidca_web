@@ -1,13 +1,22 @@
-import * as types from "./types";
+import types from './types';
 
 const initialState = {
-    cuotas: [],
-    msg: undefined,
-    status: undefined,
-    loading: true,
+    msg: '',
     processing: false,
+    status: '',
+    cuotas: [],
+    cuota: {},
+    progress: 0,
+    uploading: false,
+    img: '',
+    firstCuota: undefined,
+    lastCuota: undefined,
+    page: 1,
+    size: 0,
+    loading: true,
     setTransaccion: undefined,
 };
+
 export const cuotasReducer = (state = initialState, action) => {
     switch (action.type) {
         case types.NUEVA_CUOTA:
@@ -48,11 +57,6 @@ export const cuotasReducer = (state = initialState, action) => {
                 status: 'FAILURE_UPLOAD',
                 msg: action.payload,
             };
-        case types.GET_CUOTAS:
-            return {
-                ...state,
-                loading: true
-            };
         case types.GET_CUOTAS_SUCCESS:
             return {
                 ...state,
@@ -70,6 +74,9 @@ export const cuotasReducer = (state = initialState, action) => {
                 ...state,
                 profile: action.payload
             };
+
+        // FALTA SET_USER-CUOTAS
+
         case types.SET_USER_CUOTAS_SUCCESS:
             return {
                 ...state,
@@ -79,6 +86,26 @@ export const cuotasReducer = (state = initialState, action) => {
             return {
                 ...state,
                 setTransaccion: 'FAILURE_SET',
+            };
+        case types.GET_CUOTA:
+            return {
+                ...state,
+                cuota: state.cuotas.find(cuota => cuota.id == action.payload)
+            };
+        case types.SET_FIRST_CUOTA:
+            return {
+                ...state,
+                firstCuota: action.payload
+            };
+        case types.SET_LAST_CUOTA:
+            return {
+                ...state,
+                lastCuota: action.payload
+            };
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
             };
         case types.CLEAR_CUOTAS_STATUS:
             return {
