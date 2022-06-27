@@ -1,11 +1,16 @@
-import * as types from "./types";
+import types from './types'
 
 const initialState = {
-    transacciones: [],
-    msg: undefined,
-    status: undefined,
-    loading: true,
+    msg: '',
     processing: false,
+    status: '',
+    loading: true,
+    transacciones: [],
+    transaccion: {},
+    firstTransaccion: undefined,
+    lastTransaccion: undefined,
+    page: 1,
+    size: 0,
 };
 export const transaccionesReducer = (state = initialState, action) => {
     switch (action.type) {
@@ -62,6 +67,26 @@ export const transaccionesReducer = (state = initialState, action) => {
                 ...state,
                 msg: action.payload,
                 loading: false
+            };
+        case types.GET_TRANSACCION:
+            return {
+                ...state,
+                transaccion: state.transacciones.find(transaccion => transaccion.id == action.payload)
+            };
+        case types.SET_FIRST_TRANSACCION:
+            return {
+                ...state,
+                firstTransaccion: action.payload
+            };
+        case types.SET_LAST_TRANSACCION:
+            return {
+                ...state,
+                lastTransaccion: action.payload
+            };
+        case types.SET_PAGE:
+            return {
+                ...state,
+                page: action.payload
             };
         case types.CLEAR_TRANSACCIONES_STATUS:
             return {

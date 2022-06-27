@@ -5,6 +5,8 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
+import { Ripple } from 'primereact/ripple';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
@@ -19,14 +21,15 @@ const Transacciones = () => {
         { field: 'fecha', header: 'Fecha' },
         { field: 'status', header: 'Estado' },
         { field: 'payment_id', header: 'ID del pago' },
-        { field: 'userId', header: 'Acciones'}
+        { field: 'userId', header: 'Acciones' }
     ];
 
     const transacciones = useSelector(state => state.transacciones);
+    const page = useSelector(state => state.transacciones.page);
 
-    const [startAfter, setStartAfter] = useState(0);
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
+    const [subirTransaccionesActive, setSubirTransaccionesActive] = useState(false);
 
     const handleUser = (id) => {
         // const transaccion = transacciones.transacciones.find(trans => trans.id === id)
@@ -35,23 +38,23 @@ const Transacciones = () => {
         history.push(`/admin/transacciones/usuario/${id}`)
     }
 
-    const handleDelete = (id) => {
-        // dispatch(deleteEnlace(id));
-    }
+    // const handleDelete = (id) => {
+    // dispatch(deleteEnlace(id));
+    // }
 
-    const handlePagination = async(pagination) => {
-        if(pagination === 'prev' && startAfter === 0){
+    const handlePagination = async (pagination) => {
+        if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
-        }else{
+        } else {
             setPrevDisable(false)
         }
-        if(pagination === 'next' && transacciones.transacciones.length < 10 ){
+        if (pagination === 'next' && transacciones.transacciones.length < 10) {
             return setNextDisable(true)
-        }else{
+        } else {
             setNextDisable(false)
         }
-        setStartAfter(pagination == 'next' ? startAfter + 10 : startAfter - 10);
-        dispatch(getTransacciones(pagination, pagination == 'next' ? startAfter + 10 : startAfter - 10));
+        dispatch(getTransacciones(pagination, pagination == 'next' ? transacciones.lastTransaccion : transacciones.firstTransaccion));
+
     }
 
     useEffect(() => {
@@ -63,7 +66,7 @@ const Transacciones = () => {
             return <Column
                 key={col.field}
                 field={(enlace) => <div>
-                    <Button label="ver Usuario" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleUser(enlace.userId)} style={{ marginRight: 4 }} />
+                    <Button label="Ver Usuario" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleUser(enlace.userId)} style={{ marginRight: 4 }} />
                     {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
                 </div>}
                 header={col.header}
@@ -96,10 +99,10 @@ const Transacciones = () => {
     }, [transacciones.status])
 
     const template2 = {
-        layout: 'PrevPageLink NextPageLink',
+        layout: 'PrevPageLink CurrentPageReport NextPageLink',
         'PrevPageLink': (options) => {
             return (
-                <button type="button" className={options.className} style={{ marginRight: 8 }} onClick={() => handlePagination('prev')} disabled={prevDisable}>
+                <button type="button" className={options.className} onClick={() => handlePagination('prev')} disabled={prevDisable}>
                     <span className="p-3">Anterior</span>
                 </button>
             )
@@ -111,6 +114,14 @@ const Transacciones = () => {
                 </button>
             )
         },
+        'CurrentPageReport': (options) => {
+            return (
+                <button type="button" className={options.className} onClick={options.onClick}>
+                    {page}
+                    <Ripple />
+                </button>
+            )
+        }
     };
 
     return (
@@ -119,26 +130,32 @@ const Transacciones = () => {
                 <h3 className={styles.title}>Transacciones</h3>
                 {/* <Button label="Nueva Cuota" icon="pi pi-plus" onClick={() => history.push("/admin/nueva-transaccion")} /> */}
             </div>
-            <div>
+            <div className={styles.table_upload}>
                 {
-                    transacciones.transacciones.length > 0
-                        ?
-                        <>
-                            <DataTable
-                                value={transacciones.transacciones}
-                                responsiveLayout="scroll"
-                            >
-                                {dynamicColumns}
-                            </DataTable>
-                            {/* <Paginator
-                                template={template2}
-                            /> */}
-                        </>
+                    subirTransaccionesActive ?
+                        <></>
                         :
-                        <Button label="No hay cuotas" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
+                        transacciones.transacciones.length > 0
+                            ?
+                            <>
+                                <DataTable
+                                    value={transacciones.transacciones}
+                                    responsiveLayout="scroll"
+                                    loading={transacciones.processing}
+                                >
+                                    {dynamicColumns}
+                                </DataTable>
+                                <Paginator
+                                    template={template2}
+                                />
+                            </>
+                            :
+                            transacciones.processing ?
+                                <ProgressSpinner className='loader' />
+                                :
+                                <Button label="No hay transacciones" className={`p-button-outlined p-button-danger ${styles.errorBtn}`} />
                 }
             </div>
-
         </div>
     )
 }
