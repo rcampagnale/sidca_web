@@ -1,20 +1,32 @@
 import * as types from "./types";
 import { db } from '../../../firebase/firebase-config';
 import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 export const adminLogin = (data) => {
-    return async (dispatch, getState)=>{
-        if(data.admin !== 'Yesi'){return null}
-        if(data.password !== 'sidca'){return null}
+    return async (dispatch, getState) => {
+        dispatch(authenticateAdminProcess())
         try {
-            sessionStorage.setItem('user', '{"access_token": "asdfqwerasdfqwer"}')
-            sessionStorage.setItem('es_admin', 'true');
-        } catch (error) {
-            // dispatch(newUserError('No se ha podido crear un nuevo afiliado'));
-            console.log(error)
-        } 
+            const auth = getAuth();
+            signInWithEmailAndPassword(auth, data.admin, data.password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    sessionStorage.setItem('user', JSON.stringify({ accessToken: user.accessToken }))
+                    sessionStorage.setItem('es_admin', 'true');
+                    dispatch(authenticateAdminSuccess({ uid: user.uid, accessToken: user.accessToken }))
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                });
+        } catch (err) {
+            dispatch(authenticateAdminError('Error al Ingresar'))
+
+        }
     }
 }
+
+
 
 export const authenticateUser = (data) => {
     return async (dispatch, getState) => {
@@ -43,12 +55,16 @@ export const authenticateUser = (data) => {
     }
 }
 
-const authenticateUserProcess = (payload) => ({type: types.AUTHENTICATE_USER, payload})
-const authenticateUserSuccess = (payload) => ({type: types.AUTHENTICATE_USER_SUCCESS, payload})
-const authenticateUserError = (payload) => ({type: types.AUTHENTICATE_USER_ERROR, payload})
+const authenticateAdminProcess = (payload) => ({ type: types.AUTHENTICATE_ADMIN, payload })
+const authenticateAdminSuccess = (payload) => ({ type: types.AUTHENTICATE_ADMIN_SUCCESS, payload })
+const authenticateAdminError = (payload) => ({ type: types.AUTHENTICATE_ADMIN_ERROR, payload })
 
-export const logout = (payload) => ({type: types.LOGOUT, payload})
-export const setUserSession = (payload) => ({type: types.SET_USER_SESSION, payload})
+const authenticateUserProcess = (payload) => ({ type: types.AUTHENTICATE_USER, payload })
+const authenticateUserSuccess = (payload) => ({ type: types.AUTHENTICATE_USER_SUCCESS, payload })
+const authenticateUserError = (payload) => ({ type: types.AUTHENTICATE_USER_ERROR, payload })
 
-export const clearStatus = (payload) => ({type: types.CLEAR_USER_STATUS, payload})
-export const aprove = (payload) => ({type: types.APROVE, payload})
+export const logout = (payload) => ({ type: types.LOGOUT, payload })
+export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payload })
+
+export const clearStatus = (payload) => ({ type: types.CLEAR_USER_STATUS, payload })
+export const aprove = (payload) => ({ type: types.APROVE, payload })

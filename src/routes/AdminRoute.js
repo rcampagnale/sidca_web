@@ -6,7 +6,7 @@ const AdminRoute = ({ component: Component, ...rest }) => {
 
     const history = useHistory();
 
-    let token = sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')).access_token : undefined;
+    let token = sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')).accessToken : undefined;
     const admin = sessionStorage.getItem('es_admin');
 
     if ( !admin || !token ) {

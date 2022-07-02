@@ -13,6 +13,24 @@ const initialState = {
 };
 export const userReducer = (state = initialState, action) => {
     switch (action.type) {
+        case types.AUTHENTICATE_ADMIN:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.AUTHENTICATE_ADMIN_SUCCESS:
+            return {
+                ...state,
+                auth: true,
+                profile: {...action.payload},
+                processing: false
+            };
+        case types.AUTHENTICATE_ADMIN_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false
+            };
         case types.AUTHENTICATE_USER:
             return {
                 ...state,
