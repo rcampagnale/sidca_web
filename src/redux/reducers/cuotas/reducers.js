@@ -122,6 +122,13 @@ export const cuotasReducer = (state = initialState, action) => {
                 ...state,
                 tarjeta: 'SUCCESS'
             };
+
+
+        case types.CLEAR_CUOTAS:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

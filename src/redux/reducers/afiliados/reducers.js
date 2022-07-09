@@ -103,6 +103,12 @@ export const afiliadoReducer = (state = initialState, action) => {
                 ...state,
                 downloading: []
             };
+
+        case types.CLEAR_AFILIADOS:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

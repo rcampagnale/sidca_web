@@ -73,7 +73,7 @@ export const getNovedades = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getNovedadesError('No hay novedades'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().novedades
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstNovedad(doc));
@@ -129,3 +129,6 @@ const setLastNovedad = (payload) => ({ type: types.SET_LAST_NOVEDAD, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearNovedades = (payload) => ({ type: types.CLEAR_NOVEDADES, payload })

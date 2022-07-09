@@ -69,7 +69,7 @@ export const getCursos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getCursosError('No hay cursos'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().cursos;
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstCurso(doc));
@@ -123,3 +123,6 @@ const setLastCurso = (payload) => ({ type: types.SET_LAST_CURSO, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearCursos = (payload) => ({ type: types.CLEAR_CURSOS, payload })

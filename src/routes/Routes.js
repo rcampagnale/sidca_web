@@ -41,6 +41,7 @@ import Logout from "../pages/Logout/Logout";
 import NuevaCuota from "../pages/Admin/NuevaCuota/NuevaCuota";
 import Transacciones from "../pages/Admin/Transacciones/Transacciones";
 import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/TransaccionesUsuario";
+import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 
 const AppRouter = () => {
 
@@ -67,7 +68,7 @@ const AppRouter = () => {
                 <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
                 {/* ADMIN */}
-                <Route exact path="/admin/login" component={LoginAdmin} />
+                <PublicRoute exact path="/admin/login" component={LoginAdmin} />
                 <AdminRoute exact path="/admin" component={Admin} />
 
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
@@ -97,6 +98,9 @@ const AppRouter = () => {
                 <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
                 <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />
                 <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
+
+                <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
+
 
                 {/* <Route exact path="/" component={Landing} />
                 <Route exact path="/activar-cuenta/:user_id/:token" component={ActivarCuenta} />

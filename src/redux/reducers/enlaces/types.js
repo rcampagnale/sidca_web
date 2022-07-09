@@ -26,7 +26,10 @@ const types = {
     SET_LAST_ENLACE: 'SET_LAST_ENLACE',
     SET_PAGE: 'SET_PAGE',
 
-    CLEAR_STATUS: 'CLEAR_STATUS'
+    CLEAR_STATUS: 'CLEAR_STATUS',
+
+
+    CLEAR_ENLACES: 'CLEAR_ENLACES'
 }
 
 export default types

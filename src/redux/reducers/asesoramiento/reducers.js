@@ -127,6 +127,12 @@ export const asesoramientoReducer = (state = initialState, action) => {
                 status: '',
                 msg: ''
             };
+
+        case types.CLEAR_ASESORAMIENTOS:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

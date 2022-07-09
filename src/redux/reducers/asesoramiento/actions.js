@@ -74,7 +74,7 @@ export const getAsesoramientos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getAsesoramientosError('No hay asesoramientos'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().asesoramiento
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstAsesoramiento(doc));
@@ -130,3 +130,6 @@ const setLastAsesoramiento = (payload) => ({ type: types.SET_LAST_ASESORAMIENTO,
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearAsesoramiento = (payload) => ({ type: types.CLEAR_ASESORAMIENTOS, payload })

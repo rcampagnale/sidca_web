@@ -126,6 +126,12 @@ export const novedadesReducer = (state = initialState, action) => {
                 status: '',
                 msg: ''
             };
+            
+        case types.CLEAR_NOVEDADES:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

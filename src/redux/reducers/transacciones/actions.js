@@ -125,3 +125,6 @@ const setLastTransaccion = (payload) => ({ type: types.SET_LAST_TRANSACCION, pay
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_TRANSACCIONES_STATUS, payload })
+
+
+export const clearTransacciones = (payload) => ({ type: types.CLEAR_TRANSACCIONES, payload })
