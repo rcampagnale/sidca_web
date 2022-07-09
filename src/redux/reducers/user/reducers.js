@@ -10,6 +10,8 @@ const initialState = {
     status: undefined,
     currentStep: undefined,
     ubicacion: undefined,
+    user: [],
+    userEdit: undefined
 };
 export const userReducer = (state = initialState, action) => {
     switch (action.type) {
@@ -22,7 +24,7 @@ export const userReducer = (state = initialState, action) => {
             return {
                 ...state,
                 auth: true,
-                profile: {...action.payload},
+                profile: { ...action.payload },
                 processing: false
             };
         case types.AUTHENTICATE_ADMIN_ERROR:
@@ -40,7 +42,7 @@ export const userReducer = (state = initialState, action) => {
             return {
                 ...state,
                 auth: true,
-                profile: {...action.payload},
+                profile: { ...action.payload },
                 processing: false
             };
         case types.AUTHENTICATE_USER_ERROR:
