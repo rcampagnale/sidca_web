@@ -10,7 +10,8 @@ export const nuevaCuota = (data) => {
             position: Number.parseInt(data.position),
             unit_price: Number.parseInt(data.unit_price),
             quantity: 1,
-            currency_id: 'ARS'
+            currency_id: 'ARS',
+            categoria: data.categoria,
         }
 
         try {
@@ -31,7 +32,8 @@ export const uploadCuota = (data, id) => {
             position: Number.parseInt(data.position),
             unit_price: Number.parseInt(data.unit_price),
             quantity: 1,
-            currency_id: 'ARS'
+            currency_id: 'ARS',
+            categoria: data.categoria
         }
 
         try {
@@ -74,12 +76,43 @@ export const getCuotas = (pagination, start) => {
                         id: doc.id,
                         title: data.title,
                         position: data.position,
-                        unit_price: data.unit_price
+                        unit_price: data.unit_price,
+                        categoria: data.categoria
                     }
                     arrayDocs.push(obj)
                 })
                 dispatch(getCuotasSuccess(arrayDocs))
                 dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
+            }
+        } catch (error) {
+            dispatch(getCuotasError('No se pudieron cargar las cuotas'));
+            console.log(error)
+        }
+    }
+}
+
+export const getAllCuotas = (pagination, start) => {
+    return async (dispatch, getState) => {
+        dispatch(getCuotasProcess());
+        try {
+            let q = await query(collection(db, 'cuotas'), orderBy('position', 'asc'))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(getCuotasError('No hay cuotas'))
+            } else {
+                const arrayDocs = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        title: data.title,
+                        position: data.position,
+                        unit_price: data.unit_price,
+                        categoria: data.categoria
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(getCuotasSuccess(arrayDocs))
             }
         } catch (error) {
             dispatch(getCuotasError('No se pudieron cargar las cuotas'));

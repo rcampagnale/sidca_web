@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
     BrowserRouter,
     Route,
     Switch
 } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import PublicRoute from './PublicRoute';
 import PrivateRoute from './PrivateRoute';
 import AdminRoute from './AdminRoute';
@@ -40,7 +41,18 @@ import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/Transaccio
 import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 
+import { getCategories } from "../redux/reducers/categorias/actions";
+
 const AppRouter = () => {
+
+    const categorias = useSelector(state => state.categorias);
+    const dispatch = useDispatch();
+
+    useEffect(()=> {
+        if(!categorias.categorias){
+            dispatch(getCategories())
+        }
+    }, [])
 
     return (
         <BrowserRouter basename={'/'}>
