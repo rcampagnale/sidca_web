@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useParams } from 'react-router';
@@ -10,6 +10,7 @@ import { Spinner } from '../../../components/Spinner/Spinner';
 
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
+import { Dropdown } from 'primereact/dropdown';
 
 const NuevaCuota = () => {
 
@@ -21,9 +22,13 @@ const NuevaCuota = () => {
         title: '',
         position: '',
         unit_price: '',
+        categoria: ''
     };
 
     const cuotas = useSelector(state => state.cuotas);
+    const categoriasCuotas = useSelector(state => state.categorias.categorias?.cuotas);
+
+    const [categoriasDropDown, setCategoriasDropdown] = useState([]);
     const [form, handleInputChange, reset] = useForm(id ? cuotas.cuota : initialform);
 
     const handleSubmit = async (e) => {
@@ -51,9 +56,17 @@ const NuevaCuota = () => {
                 if (key && value) {
                     handleInputChange({ target: { name: key, value: value } })
                 }
+                console.log(key, value)
             })
         }
     }, [cuotas.cuota])
+
+    useEffect(()=>{
+        if(categoriasCuotas){
+
+            Object.entries(categoriasCuotas).map(([key, value]) => setCategoriasDropdown(categoria => [...categoria, {label: value, value: key}]))
+        }
+    }, [categoriasCuotas])
 
     return (
         <div className={styles.visibleContent}>
@@ -64,6 +77,11 @@ const NuevaCuota = () => {
                     <span className={`p-float-label ${styles.inputSection}`}>
                         <InputText className={styles.inputForm} value={form.title} name="title" id="title" type="text" onChange={(e) => { handleInputChange(e) }} />
                         <label className={styles.labelForm} htmlFor="title">Titulo*</label>
+                    </span>
+
+                    <span className={`p-float-label ${styles.inputSection}`}>
+                        <Dropdown className={styles.inputForm} inputId="dropdown" value={form.categoria} name='categoria' id='categoria' onChange={(e) => { handleInputChange(e) }} options={categoriasDropDown} />
+                        <label className={styles.labelForm} htmlFor="categoria">Categoría*</label>
                     </span>
 
                     <span className={`p-float-label ${styles.inputSection}`}>

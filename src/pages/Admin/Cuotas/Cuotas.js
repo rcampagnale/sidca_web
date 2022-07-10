@@ -19,6 +19,7 @@ const Cuotas = () => {
 
     const columns = [
         { field: 'position', header: 'Posición' },
+        { field: 'categoria', header: 'Categoria' },
         { field: 'title', header: 'Titulo' },
         { field: 'unit_price', header: 'Precio' },
         { field: 'id', header: 'Acciones' }

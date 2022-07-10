@@ -1,6 +1,7 @@
 import { combineReducers } from 'redux';
 import afiliadoReducer from './reducers/afiliados/reducers';
 import asesoramientoReducer from './reducers/asesoramiento/reducers';
+import categoriasReducer from './reducers/categorias/reducers';
 import cuotasReducer from './reducers/cuotas/reducers';
 import cursosReducer from './reducers/cursos/reducers';
 import enlaceReducer from './reducers/enlaces/reducers';
@@ -17,6 +18,7 @@ const rootReducer = combineReducers({
     novedades: novedadesReducer,
     cuotas: cuotasReducer,
     transacciones: transaccionesReducer,
+    categorias: categoriasReducer
 });
 
 export default rootReducer

@@ -12,3 +12,23 @@
 .card{
     min-width: 120px;
 }
+
+.categories {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    width: inherit;
+    margin: 20px 0;
+}
+
+.title{
+    font-size: 30px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.container{
+    width: 100%
+    
+}
