@@ -13,6 +13,7 @@ const initialState = {
     lastCurso: undefined,
     page: 1,
     size: 0,
+    misCursos: []
 }
 
 export const cursosReducer = (state = initialState, action) => {
@@ -120,6 +121,44 @@ export const cursosReducer = (state = initialState, action) => {
                 ...state,
                 page: action.payload
             };
+        case types.GET_CURSOS_CATEGORY:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_CURSOS_CATEGORY_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                cursos: action.payload,
+                status: 'SUCCESS',
+            };
+        case types.GET_CURSOS_CATEGORY_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload,
+            };
+        case types.GET_MIS_CURSOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_MIS_CURSOS_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                misCursos: action.payload,
+                status: 'SUCCESS',
+            };
+        case types.GET_MIS_CURSOS_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload,
+            };
         case types.CLEAR_STATUS:
             return {
                 ...state,
@@ -127,7 +166,6 @@ export const cursosReducer = (state = initialState, action) => {
                 status: '',
                 msg: ''
             };
-
         case types.CLEAR_CURSOS:
             return {
                 ...state,
