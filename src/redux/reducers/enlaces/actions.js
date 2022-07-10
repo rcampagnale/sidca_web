@@ -73,7 +73,7 @@ export const getEnlaces = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getEnlacesError('No hay enlaces'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().enlace;
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstEnlace(doc));
@@ -153,3 +153,6 @@ const setLastEnlace = (payload) => ({ type: types.SET_LAST_ENLACE, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearEnlaces = (payload) => ({ type: types.CLEAR_ENLACES, payload })

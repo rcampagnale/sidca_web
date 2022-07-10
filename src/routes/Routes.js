@@ -30,10 +30,6 @@ import CasaDelDocente from "../pages/CasaDelDocente/CasaDelDocente";
 import Turismo from "../pages/Turismo/Turismo";
 import Predio from "../pages/Predio/Predio";
 import LoginUser from "../pages/LoginUser/LoginUser";
-import NuevosMisCursos from '../pages/Capacitaciones/MisCursos/NuevosMisCursos';
-import NuevosCursosNuevos from '../pages/Capacitaciones/Nuevos Cursos/NuevosCursosNuevos';
-import Nuevos2020_2019 from '../pages/Capacitaciones/Cursos 2020-2019/Nuevos2020_2019';
-import Nuevos2021 from '../pages/Capacitaciones/Cursos 2021/Nuevos2021';
 import Home from "../pages/Home/Home";
 import Cuotas from "../pages/Cuotas/Cuotas";
 import CuotasAdmin from "../pages/Admin/Cuotas/Cuotas";
@@ -41,6 +37,8 @@ import Logout from "../pages/Logout/Logout";
 import NuevaCuota from "../pages/Admin/NuevaCuota/NuevaCuota";
 import Transacciones from "../pages/Admin/Transacciones/Transacciones";
 import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/TransaccionesUsuario";
+import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
+import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 
 const AppRouter = () => {
 
@@ -57,17 +55,14 @@ const AppRouter = () => {
                 <PrivateRoute exact path="/contacto" component={Contacto} />
                 <PrivateRoute exact path="/novedades" component={NovedadesUser} />
                 <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
-                <PrivateRoute exact path="/capacitaciones/mis-cursos" component={NuevosMisCursos} />
-                <PrivateRoute exact path="/capacitaciones/nuevos-cursos" component={NuevosCursosNuevos} />
-                <PrivateRoute exact path="/capacitaciones/cursos-2020-2019" component={Nuevos2020_2019} />
-                <PrivateRoute exact path="/capacitaciones/cursos-2021" component={Nuevos2021} />
+                <PrivateRoute exact path="/capacitaciones/cursos/:type" component={CursosUser} />
                 <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
                 <PrivateRoute exact path="/turismo" component={Turismo} />
                 <PrivateRoute exact path="/predio" component={Predio} />
                 <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
                 {/* ADMIN */}
-                <Route exact path="/admin/login" component={LoginAdmin} />
+                <PublicRoute exact path="/admin/login" component={LoginAdmin} />
                 <AdminRoute exact path="/admin" component={Admin} />
 
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
@@ -80,6 +75,7 @@ const AppRouter = () => {
 
                 <AdminRoute exact path="/admin/usuarios" component={Usuarios} />
                 <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado} />
+                <AdminRoute exact path="/admin/nuevo-usuario/:id" component={NuevoAfiliado} />
                 <AdminRoute exact path="/admin/nuevos-afiliados" component={AfiliadosNuevos} />
 
                 <AdminRoute exact path="/admin/cursos" component={Cursos} />
@@ -97,6 +93,9 @@ const AppRouter = () => {
                 <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
                 <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />
                 <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
+
+                <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
+
 
                 {/* <Route exact path="/" component={Landing} />
                 <Route exact path="/activar-cuenta/:user_id/:token" component={ActivarCuenta} />

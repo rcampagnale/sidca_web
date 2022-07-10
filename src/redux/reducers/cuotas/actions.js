@@ -2,9 +2,6 @@ import types from './types'
 import { db } from '../../../firebase/firebase-config';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, Timestamp } from "firebase/firestore";
 
-import { search } from "mercadopago/lib/resources/payment";
-import { date } from "mercadopago/lib/utils";
-
 export const nuevaCuota = (data) => {
     return async (dispatch, getState) => {
         dispatch(nuevaCuotaProcess());
@@ -145,3 +142,6 @@ export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payl
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_CUOTAS_STATUS, payload })
 export const aprove = (payload) => ({ type: types.APROVE, payload })
+
+
+export const clearCuotas = (payload) => ({ type: types.CLEAR_CUOTAS, payload })

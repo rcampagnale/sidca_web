@@ -1,18 +1,16 @@
 import React, { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { logout } from '../../redux/reducers/user/actions';
+import { adminLogout } from '../../../redux/reducers/user/actions';
 import { useHistory } from 'react-router-dom';
 
-const Logout = () => {
+const LogoutAdmin = () => {
 
     const dispatch = useDispatch();
-
     const history = useHistory();
 
     const hanldeLogOut = async() => {
-        await dispatch(logout())
-        sessionStorage.removeItem('user');
+        await dispatch(adminLogout())
         history.push('/')
     }
 
@@ -25,4 +23,4 @@ const Logout = () => {
     )
 }
 
-export default Logout
+export default LogoutAdmin

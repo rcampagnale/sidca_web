@@ -97,6 +97,11 @@ export const transaccionesReducer = (state = initialState, action) => {
                 status: false,
                 tarjeta: undefined
             };
+        case types.CLEAR_TRANSACCIONES:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

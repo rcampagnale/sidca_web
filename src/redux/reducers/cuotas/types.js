@@ -25,8 +25,10 @@ const types = {
     SET_LAST_CUOTA: 'SET_LAST_CUOTA',
     SET_PAGE: 'SET_PAGE',
 
-    GET_CUOTA: 'GET_CUOTA'
+    GET_CUOTA: 'GET_CUOTA',
+    
 
+    CLEAR_CUOTAS: 'CLEAR_CUOTAS'
 }
 
 export default types
