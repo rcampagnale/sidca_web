@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, deleteDoc } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
 
 
@@ -105,6 +105,19 @@ export const getAsesoramientos = (pagination, start) => {
     }
 }
 
+export const deleteAsesoramientos = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteAsesoramientosProcess());
+        try {
+            await deleteDoc(doc(db, "asesoramiento", id));
+            dispatch(deleteAsesoramientosSuccess(id))
+        } catch (error) {
+            dispatch(deleteAsesoramientosError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 export const getAsesoramiento = (payload) => ({ type: types.GET_ASESORAMIENTO, payload })
 
 const nuevoAsesoramientoProcess = (payload) => ({ type: types.NUEVO_ASESORAMIENTO, payload })
@@ -124,6 +137,10 @@ const uploadAsesoramientoError = (payload) => ({ type: types.UPLOAD_ASESORAMIENT
 const getAsesoramientosProcess = (payload) => ({ type: types.GET_ASESORAMIENTOS, payload })
 const getAsesoramientosSuccess = (payload) => ({ type: types.GET_ASESORAMIENTOS_SUCCESS, payload })
 const getAsesoramientosError = (payload) => ({ type: types.GET_ASESORAMIENTOS_ERROR, payload })
+
+const deleteAsesoramientosProcess = (payload) => ({ type: types.DELETE_ASESORAMIENTO, payload })
+const deleteAsesoramientosSuccess = (payload) => ({ type: types.DELETE_ASESORAMIENTO_SUCCESS, payload })
+const deleteAsesoramientosError = (payload) => ({ type: types.DELETE_ASESORAMIENTO_ERROR, payload })
 
 const setFirstAsesoramiento = (payload) => ({ type: types.SET_FIRST_ASESORAMIENTO, payload })
 const setLastAsesoramiento = (payload) => ({ type: types.SET_LAST_ASESORAMIENTO, payload })

@@ -64,16 +64,13 @@ const Novedades = () => {
         dispatch(deleteNovedades(id))
     }
 
-    const reject = () => {
-    }
-
     const confirm = (id) => {
         confirmDialog({
             message: 'Esta seguro que desea Eliminar?',
             header: 'Atención',
             icon: 'pi pi-exclamation-triangle',
             accept: ()=>accept(id),
-            reject
+            reject: () => {}
         });
     };
 
