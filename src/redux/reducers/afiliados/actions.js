@@ -172,6 +172,19 @@ export const updateUser = (data, id) => {
     }
 }
 
+export const deleteUser = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteUserProcess());
+        try {
+            await deleteDoc(doc(db, "usuarios", id));
+            dispatch(deleteUserSuccess(id))
+        } catch (error) {
+            dispatch(deleteUserError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const getAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
 const getAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
 const getAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
@@ -183,6 +196,10 @@ const descargarAfiliadosNuevosError = (payload) => ({ type: types.DESCARGAR_AFIL
 const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS, payload })
 const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_SUCCESS, payload })
 const deleteAfiliadosNuevosError = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_ERROR, payload })
+
+const deleteUserProcess = (payload) => ({ type: types.DELETE_USER, payload })
+const deleteUserSuccess = (payload) => ({ type: types.DELETE_USER_SUCCESS, payload })
+const deleteUserError = (payload) => ({ type: types.DELETE_USER_ERROR, payload })
 
 const newUserProcess = (payload) => ({ type: types.NEW_USER, payload })
 const newUserSuccess = (payload) => ({ type: types.NEW_USER_SUCCESS, payload })
