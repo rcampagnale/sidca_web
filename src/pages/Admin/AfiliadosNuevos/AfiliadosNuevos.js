@@ -7,10 +7,11 @@ import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
 import { Ripple } from 'primereact/ripple';
 import { Dialog } from 'primereact/dialog';
+import { confirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearDownload, clearStatus, descargarAfiliadosNuevos, getAfiliadosNuevos, setNuevoAfiliadoDetails } from '../../../redux/reducers/afiliados/actions';
+import { clearDownload, clearStatus, deleteAfiliadosNuevos, descargarAfiliadosNuevos, getAfiliadosNuevos, setNuevoAfiliadoDetails } from '../../../redux/reducers/afiliados/actions';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import exportFromJSON from 'export-from-json'
 
@@ -31,6 +32,7 @@ const AfiliadosNuevos = () => {
     const page = useSelector(state => state.afiliado.page)
     const afiliado = useSelector(state => state.afiliado)
     const downloading = useSelector(state => state.afiliado.downloading)
+    const user = useSelector(state => state.user.profile)
 
     const [visible, setVisible] = useState(false);
     const [prevDisable, setPrevDisable] = useState(false);
@@ -64,13 +66,30 @@ const AfiliadosNuevos = () => {
         } else {
             setPrevDisable(false)
         }
-        if (pagination === 'next' && nuevosAfiliados.length < 10) {
-            return setNextDisable(true)
-        } else {
-            setNextDisable(false)
-        }
-        dispatch(getAfiliadosNuevos(pagination, pagination == 'next' ? afiliado.lastAfiliado : afiliado.firstAfiliado));
+        // if (pagination === 'next' && nuevosAfiliados.length < 10) {
+        //     return setNextDisable(true)
+        // } else {
+        //     setNextDisable(false)
+        // }
+        dispatch(getAfiliadosNuevos(pagination, pagination === 'next' ? afiliado.lastAfiliado : afiliado.firstAfiliado));
     }
+
+    const accept = (id) => {
+        dispatch(deleteAfiliadosNuevos(id))
+    }
+
+    const reject = () => {
+    }
+
+    const confirm = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: ()=>accept(id),
+            reject
+        });
+    };
 
     const dynamicColumns = columns.map((col, i) => {
         if (col.field === 'id') {
@@ -78,7 +97,11 @@ const AfiliadosNuevos = () => {
                 key={col.field}
                 field={(nuevoAfiliado) => <div>
                     <Button label="Ver Detalles" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(nuevoAfiliado)} style={{ marginRight: 4 }} />
-                    {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
+                    {
+                        user?.uid === process.env.REACT_APP_ADMIN_ID &&
+                        <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(nuevoAfiliado.id)} />
+                    }
+                    
                 </div>}
                 header={col.header}
             />
@@ -90,7 +113,7 @@ const AfiliadosNuevos = () => {
 
     //MESSAGE
     useEffect(() => {
-        if (afiliado.status == 'SUCCESS_ADD' || afiliado.status == 'SUCCESS_UPLOAD') {
+        if (afiliado.status == 'SUCCESS_ADD' || afiliado.status == 'SUCCESS_UPLOAD'||  afiliado.status == 'SUCCESS_DELETE') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: afiliado.msg,
@@ -98,7 +121,7 @@ const AfiliadosNuevos = () => {
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
-        } if (afiliado.status == 'FAILURE_ADD' || afiliado.status == 'FAILURE_UPLOAD') {
+        } if (afiliado.status == 'FAILURE_ADD' || afiliado.status == 'FAILURE_UPLOAD' || afiliado.status == 'FAILURE_DELETE') {
             Swal.fire({
                 title: 'Error!',
                 text: afiliado.msg,

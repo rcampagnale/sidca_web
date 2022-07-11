@@ -103,11 +103,11 @@ export const userReducer = (state = initialState, action) => {
                 status: false,
                 tarjeta: undefined
             };
-        // case types.APROVE:
-        //     return {
-        //         ...state,
-        //         tarjeta: 'SUCCESS'
-        //     };
+        case types.SET_PROFILE:
+            return {
+                ...state,
+                profile: action.payload
+            };
         default:
             return state;
     }

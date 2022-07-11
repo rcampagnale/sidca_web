@@ -28,4 +28,6 @@ export const SET_USER_SESSION = 'SET_USER_SESSION';
 export const CLEAR_USER_STATUS = 'CLEAR_PROFILE_STATUS';
 export const APROVE = 'APROVE';
 
+export const SET_PROFILE = 'SET_PROFILE';
+
 

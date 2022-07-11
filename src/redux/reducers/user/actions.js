@@ -18,7 +18,7 @@ export const adminLogin = (data) => {
             signInWithEmailAndPassword(auth, data.admin, data.password)
                 .then((userCredential) => {
                     const user = userCredential.user;
-                    sessionStorage.setItem('user', JSON.stringify({ accessToken: user.accessToken }))
+                    sessionStorage.setItem('user', JSON.stringify({ uid: user.uid, accessToken: user.accessToken }))
                     sessionStorage.setItem('es_admin', 'true');
                     dispatch(authenticateAdminSuccess({ uid: user.uid, accessToken: user.accessToken }))
                 })
@@ -105,8 +105,6 @@ export const logout = () => {
     }
 }
 
-
-
 const authenticateAdminProcess = (payload) => ({ type: types.AUTHENTICATE_ADMIN, payload })
 const authenticateAdminSuccess = (payload) => ({ type: types.AUTHENTICATE_ADMIN_SUCCESS, payload })
 const authenticateAdminError = (payload) => ({ type: types.AUTHENTICATE_ADMIN_ERROR, payload })
@@ -127,3 +125,5 @@ export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payl
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_USER_STATUS, payload })
 export const aprove = (payload) => ({ type: types.APROVE, payload })
+
+export const setProfile = (payload) => ({ type: types.SET_PROFILE, payload })
