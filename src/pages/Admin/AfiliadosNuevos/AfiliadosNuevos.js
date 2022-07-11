@@ -28,11 +28,11 @@ const AfiliadosNuevos = () => {
         { field: 'id', header: 'Acciones' },
     ];
 
-    const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados)
-    const page = useSelector(state => state.afiliado.page)
-    const afiliado = useSelector(state => state.afiliado)
-    const downloading = useSelector(state => state.afiliado.downloading)
-    const user = useSelector(state => state.user.profile)
+    const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados);
+    const page = useSelector(state => state.afiliado.page);
+    const afiliado = useSelector(state => state.afiliado);
+    const downloading = useSelector(state => state.afiliado.downloading);
+    const user = useSelector(state => state.user.profile);
 
     const [visible, setVisible] = useState(false);
     const [prevDisable, setPrevDisable] = useState(false);

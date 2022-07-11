@@ -7,10 +7,11 @@ import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
 import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { confirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, deleteNovedad, getNovedad, getNovedades } from '../../../redux/reducers/novedades/actions';
+import { clearStatus, deleteNovedades, getNovedad, getNovedades } from '../../../redux/reducers/novedades/actions';
 // import SubirEnlaces from './SubirEnlaces';
 
 const Novedades = () => {
@@ -29,6 +30,7 @@ const Novedades = () => {
 
     const novedades = useSelector(state => state.novedades);
     const page = useSelector(state => state.novedades.page);
+    const user = useSelector(state => state.user.profile);
 
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
@@ -39,21 +41,17 @@ const Novedades = () => {
         history.push(`/admin/nueva-novedad/${id}`)
     }
 
-    // const handleDelete = (id) => {
-    //     dispatch(deleteNovedad(id));
-    // }
-
     const handlePagination = async (pagination) => {
         if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
         } else {
             setPrevDisable(false)
         }
-        if (pagination === 'next' && novedades.novedades.length < 10) {
-            return setNextDisable(true)
-        } else {
-            setNextDisable(false)
-        }
+        // if (pagination === 'next' && novedades.novedades.length < 10) {
+        //     return setNextDisable(true)
+        // } else {
+        //     setNextDisable(false)
+        // }
         dispatch(getNovedades(pagination, pagination == 'next' ? novedades.lastNovedad : novedades.firstNovedad));
 
     }
@@ -62,13 +60,33 @@ const Novedades = () => {
         dispatch(getNovedades())
     }, [])
 
+    const accept = (id) => {
+        dispatch(deleteNovedades(id))
+    }
+
+    const reject = () => {
+    }
+
+    const confirm = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: ()=>accept(id),
+            reject
+        });
+    };
+
     const dynamicColumns = columns.map((col, i) => {
         if (col.field === 'id') {
             return <Column
                 key={col.field}
                 field={(enlace) => <div>
                     <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
-                    {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
+                    {
+                        user?.uid === process.env.REACT_APP_ADMIN_ID &&
+                        <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(enlace.id)} />
+                    }
                 </div>}
                 header={col.header}
             />
@@ -80,7 +98,7 @@ const Novedades = () => {
 
     //MESSAGE
     useEffect(() => {
-        if (novedades.status == 'SUCCESS_ADD' || novedades.status == 'SUCCESS_UPLOAD') {
+        if (novedades.status == 'SUCCESS_ADD' || novedades.status == 'SUCCESS_UPLOAD' ||  novedades.status == 'SUCCESS_DELETE') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: novedades.msg,
@@ -88,7 +106,7 @@ const Novedades = () => {
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
-        } if (novedades.status == 'FAILURE_ADD' || novedades.status == 'FAILURE_UPLOAD') {
+        } if (novedades.status == 'FAILURE_ADD' || novedades.status == 'FAILURE_UPLOAD' || novedades.status == 'FAILURE_DELETE') {
             Swal.fire({
                 title: 'Error!',
                 text: novedades.msg,
