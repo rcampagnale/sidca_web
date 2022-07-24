@@ -52,6 +52,46 @@ export const afiliadoReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE',
             };
+        case types.DELETE_AFILIADOS_NUEVOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_AFILIADOS_NUEVOS_SUCCESS:
+            return {
+                ...state,
+                nuevosAfiliados: state.nuevosAfiliados.filter(afiliado => afiliado.id != action.payload),
+                processing: false,
+                msg: 'Nuevo Afiliado Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_AFILIADOS_NUEVOS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
+        case types.DELETE_USER:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_USER_SUCCESS:
+            return {
+                ...state,
+                user: state.user.filter(afiliado => afiliado.id != action.payload),
+                processing: false,
+                msg: 'Nuevo Afiliado Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_USER_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
         case types.NEW_USER:
             return {
                 ...state,
@@ -71,7 +111,7 @@ export const afiliadoReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE'
             };
-            case types.GET_USER:
+        case types.GET_USER:
             return {
                 ...state,
                 processing: true
@@ -86,7 +126,8 @@ export const afiliadoReducer = (state = initialState, action) => {
             return {
                 ...state,
                 msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'FAILURE'
             };
         case types.SET_USER_EDIT:
             return {

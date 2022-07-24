@@ -1,20 +1,21 @@
 import React, { useEffect } from 'react'
 import { useHistory } from 'react-router'
-import global from '../../../assets/styles/global.module.css'
 import styles from './styles.module.css';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from '../../../hooks/useForm';
-import { getUser, setUserEdit, clearStatus  } from '../../../redux/reducers/afiliados/actions';
+import { getUser, setUserEdit, clearStatus, deleteUser } from '../../../redux/reducers/afiliados/actions';
 import { Spinner } from '../../../components/Spinner/Spinner';
 import Swal from 'sweetalert2';
+import { confirmDialog } from 'primereact/confirmdialog';
 
 const Usuarios = () => {
 
     const afiliado = useSelector(state => state.afiliado)
     const history = useHistory();
     const dispatch = useDispatch();
+    const user = useSelector(state => state.user.profile);
 
     const initialform = {
         dni: '',
@@ -33,12 +34,22 @@ const Usuarios = () => {
         history.push(`/admin/nuevo-usuario/${id}`)
     }
 
-    const handleDelete= async (id) => {
-        
+    const accept = (id) => {
+        dispatch(deleteUser(id))
     }
 
+    const confirm = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => accept(id),
+            reject: () => { }
+        });
+    };
+
     useEffect(() => {
-        if (afiliado.status == 'SUCCESS') {
+        if (afiliado.status == 'SUCCESS' ||  afiliado.status == 'SUCCESS_DELETE') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: afiliado.msg,
@@ -47,7 +58,7 @@ const Usuarios = () => {
             })
             reset()
             dispatch(clearStatus())
-        } if (afiliado.status == 'FAILURE') {
+        } if (afiliado.status == 'FAILURE' || afiliado.status == 'FAILURE_DELETE') {
             Swal.fire({
                 title: 'Error!',
                 text: afiliado.msg,
@@ -83,11 +94,14 @@ const Usuarios = () => {
                         afiliado.user.map(item => (
                             <div className={styles.searchContainer} key={item.id}>
 
-                                <h2 className={styles.title}>{item.apellido + ', '+ item.nombre}</h2>
+                                <h2 className={styles.title}>{item.apellido + ', ' + item.nombre}</h2>
                                 <h2 className={styles.title}>{item.dni}</h2>
                                 <div className={styles.actions}>
-                                    <Button label='Editar' className={`p-button-raised`} onClick={() => handleEdit(item.id)}/>
-                                    <Button label='Eliminar' icon="pi pi-trash" className={`p-button-raised p-button-danger`} onClick={() => handleDelete(item.id)}/>
+                                    <Button label='Editar' className={`p-button-raised`} onClick={() => handleEdit(item.id)} />
+                                    {
+                                        user?.uid === process.env.REACT_APP_ADMIN_ID &&
+                                        <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(item.id)} />
+                                    }
                                 </div>
                             </div>
                         ))

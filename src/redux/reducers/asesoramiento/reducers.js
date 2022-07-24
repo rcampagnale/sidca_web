@@ -100,6 +100,26 @@ export const asesoramientoReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+            case types.DELETE_ASESORAMIENTO:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_ASESORAMIENTO_SUCCESS:
+            return {
+                ...state,
+                asesoramientos: state.asesoramientos.filter(afiliado => afiliado.id != action.payload),
+                processing: false,
+                msg: 'Asesoramiento Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_ASESORAMIENTO_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
         case types.GET_ASESORAMIENTO:
             return {
                 ...state,

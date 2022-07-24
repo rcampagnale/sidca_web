@@ -41,7 +41,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
                     arrayDocs.push(obj)
                 })
                 dispatch(getAFiliadosNuevosSuccess(arrayDocs));
-                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
+                dispatch(setPage(pagination === 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
             dispatch(getAfiliadosNuevosError('No se ha podido crear un nuevo afiliado'));
@@ -90,7 +90,7 @@ export const deleteAfiliadosNuevos = (id) => {
         dispatch(deleteAfiliadosNuevosProcess());
         try {
             await deleteDoc(doc(db, "nuevoAfiliado", id));
-            dispatch(deleteAFiliadosNuevosSuccess('Se han eliminado los datos correctamente'))
+            dispatch(deleteAFiliadosNuevosSuccess(id))
         } catch (error) {
             dispatch(deleteAfiliadosNuevosError('No se eliminaron los datos'))
             console.log(error)
@@ -172,6 +172,19 @@ export const updateUser = (data, id) => {
     }
 }
 
+export const deleteUser = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteUserProcess());
+        try {
+            await deleteDoc(doc(db, "usuarios", id));
+            dispatch(deleteUserSuccess(id))
+        } catch (error) {
+            dispatch(deleteUserError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const getAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
 const getAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
 const getAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
@@ -180,9 +193,13 @@ const descargarAfiliadosNuevosProcess = (payload) => ({ type: types.DESCARGAR_AF
 const descargarAFiliadosNuevosSuccess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS, payload })
 const descargarAfiliadosNuevosError = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_ERROR, payload })
 
-const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
-const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
-const deleteAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
+const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS, payload })
+const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_SUCCESS, payload })
+const deleteAfiliadosNuevosError = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_ERROR, payload })
+
+const deleteUserProcess = (payload) => ({ type: types.DELETE_USER, payload })
+const deleteUserSuccess = (payload) => ({ type: types.DELETE_USER_SUCCESS, payload })
+const deleteUserError = (payload) => ({ type: types.DELETE_USER_ERROR, payload })
 
 const newUserProcess = (payload) => ({ type: types.NEW_USER, payload })
 const newUserSuccess = (payload) => ({ type: types.NEW_USER_SUCCESS, payload })

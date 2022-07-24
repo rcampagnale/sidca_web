@@ -99,6 +99,26 @@ export const novedadesReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+        case types.DELETE_NOVEDADES:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_NOVEDADES_SUCCESS:
+            return {
+                ...state,
+                novedades: state.novedades.filter(novedad => novedad.id != action.payload),
+                processing: false,
+                msg: 'Novedad Eliminada con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_NOVEDADES_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
         case types.GET_NOVEDAD:
             return {
                 ...state,
@@ -126,7 +146,7 @@ export const novedadesReducer = (state = initialState, action) => {
                 status: '',
                 msg: ''
             };
-            
+
         case types.CLEAR_NOVEDADES:
             return {
                 ...state,
