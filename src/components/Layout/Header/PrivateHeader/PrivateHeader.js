@@ -20,13 +20,13 @@ const PrivateHeader = () => {
                 <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
             </a>
             <ul className={styles.headerNav}>
-                {/* <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
-                <li onClick={() => history.push('/casa-del-docente')}>Casa del Docente</li> */}
+                <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
+                <li onClick={() => history.push('/casa-del-docente')}>Casa del Docente</li>
                 <li onClick={() => history.push('/contacto')}>Contacto</li>
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>
-                {/* <li onClick={() => history.push('/novedades')}>Novedades</li>
+                <li onClick={() => history.push('/novedades')}>Novedades</li>
                 <li onClick={() => history.push('/predio')}>Predio</li>
-                <li onClick={() => history.push('/turismo')}>Turismo</li> */}
+                <li onClick={() => history.push('/turismo')}>Turismo</li>
                 {/* {user.profue.cotizante && } */}
                 <li onClick={() => history.push('/cuotas')}>Cuotas</li>
             </ul>
