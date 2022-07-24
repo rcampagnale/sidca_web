@@ -1,11 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
 
 .visibleContent {
-  height: 100%;
+  height: 100vh;
   width: 100vw;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-around;
   font-family: "Roboto", sans-serif;
 }
 
@@ -17,6 +18,16 @@
   width: 575px;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   padding: 4vh;
+}
+
+.h1 {
+  font-size: 1.5em;
+  margin: 50px;
+  text-align: center;
+}
+
+.chip {
+  margin-bottom: 20px;
 }
 
 @media only screen and (min-width: 768px) {
