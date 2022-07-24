@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast, setDoc } from "firebase/firestore";
 
 export const getAfiliadosNuevos = (pagination, start) => {
     return async (dispatch, getState) => {
@@ -41,7 +41,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
                     arrayDocs.push(obj)
                 })
                 dispatch(getAFiliadosNuevosSuccess(arrayDocs));
-                dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
+                dispatch(setPage(pagination === 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
             }
         } catch (error) {
             dispatch(getAfiliadosNuevosError('No se ha podido crear un nuevo afiliado'));
@@ -90,7 +90,7 @@ export const deleteAfiliadosNuevos = (id) => {
         dispatch(deleteAfiliadosNuevosProcess());
         try {
             await deleteDoc(doc(db, "nuevoAfiliado", id));
-            dispatch(deleteAFiliadosNuevosSuccess('Se han eliminado los datos correctamente'))
+            dispatch(deleteAFiliadosNuevosSuccess(id))
         } catch (error) {
             dispatch(deleteAfiliadosNuevosError('No se eliminaron los datos'))
             console.log(error)
@@ -124,6 +124,67 @@ export const nuevoAfiliado = (data) => {
     }
 }
 
+export const getUser = (data) => {
+    return async (dispatch, getState) => {
+        dispatch(getUserProcess());
+        try {
+            const q = await query(collection(db, 'usuarios'), where('dni', '==', data.dni))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size > 0) {
+                let users = [];
+                querySnapshot.forEach(documentSnapshot => {
+                    const nombreCompleto = documentSnapshot.data().nombre.split(', ')
+                    const [apellido, nombre] = nombreCompleto
+                    const user = {
+                        id: documentSnapshot.id,
+                        dni: documentSnapshot.data().dni,
+                        nombre,
+                        apellido
+                    }
+                    users.push(user)
+                })
+                dispatch(getUserSuccess(users));
+            } else {
+                dispatch(getUserError('DNI incorrecto'));
+            }
+        } catch (error) {
+            dispatch(getUserError('No se ha ingresar'));
+            console.log(error);
+        }
+    }
+}
+
+export const updateUser = (data, id) => {
+    return async (dispatch, getState) => {
+        dispatch(updateUserProcess());
+        let userObj = {
+            nombre: `${data.apellido}, ${data.nombre}`,
+            dni: `${data.dni}`
+        }
+        try {
+            const refDoc = doc(db, 'usuarios', id)
+            const enlace = await setDoc(refDoc, userObj)
+            dispatch(updateUserSuccess(`Enlace editado Correctamente. ID: ${id}`));
+        } catch (error) {
+            dispatch(updateUserError('No se ha podido editar el enlace'));
+            console.log(error)
+        }
+    }
+}
+
+export const deleteUser = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteUserProcess());
+        try {
+            await deleteDoc(doc(db, "usuarios", id));
+            dispatch(deleteUserSuccess(id))
+        } catch (error) {
+            dispatch(deleteUserError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const getAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
 const getAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
 const getAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
@@ -132,13 +193,27 @@ const descargarAfiliadosNuevosProcess = (payload) => ({ type: types.DESCARGAR_AF
 const descargarAFiliadosNuevosSuccess = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_SUCCESS, payload })
 const descargarAfiliadosNuevosError = (payload) => ({ type: types.DESCARGAR_AFILIADOS_NUEVOS_ERROR, payload })
 
-const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS, payload })
-const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_SUCCESS, payload })
-const deleteAfiliadosNuevosError = (payload) => ({ type: types.GET_AFILIADOS_NUEVOS_ERROR, payload })
+const deleteAfiliadosNuevosProcess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS, payload })
+const deleteAFiliadosNuevosSuccess = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_SUCCESS, payload })
+const deleteAfiliadosNuevosError = (payload) => ({ type: types.DELETE_AFILIADOS_NUEVOS_ERROR, payload })
+
+const deleteUserProcess = (payload) => ({ type: types.DELETE_USER, payload })
+const deleteUserSuccess = (payload) => ({ type: types.DELETE_USER_SUCCESS, payload })
+const deleteUserError = (payload) => ({ type: types.DELETE_USER_ERROR, payload })
 
 const newUserProcess = (payload) => ({ type: types.NEW_USER, payload })
 const newUserSuccess = (payload) => ({ type: types.NEW_USER_SUCCESS, payload })
 const newUserError = (payload) => ({ type: types.NEW_USER_ERROR, payload })
+
+const getUserProcess = (payload) => ({ type: types.GET_USER, payload })
+const getUserSuccess = (payload) => ({ type: types.GET_USER_SUCCESS, payload })
+const getUserError = (payload) => ({ type: types.GET_USER_ERROR, payload })
+
+export const setUserEdit = (payload) => ({ type: types.SET_USER_EDIT, payload })
+
+const updateUserProcess = (payload) => ({ type: types.UPDATE_USER, payload })
+const updateUserSuccess = (payload) => ({ type: types.UPDATE_USER_SUCCESS, payload })
+const updateUserError = (payload) => ({ type: types.UPDATE_USER_ERROR, payload })
 
 const setfirstAfiliado = (payload) => ({ type: types.SET_FIRST_AFILIADO, payload })
 const setLastAfiliado = (payload) => ({ type: types.SET_LAST_AFILIADO, payload })
@@ -148,17 +223,5 @@ export const setNuevoAfiliadoDetails = (payload) => ({ type: types.SET_NUEVO_AFI
 export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, payload })
 export const clearDownload = (payload) => ({ type: types.CLEAR_DOWNLOAD, payload })
 
-// // Query the first page of docs
-// const first = query(collection(db, "cities"), orderBy("population"), limit(25));
-// const documentSnapshots = await getDocs(first);
 
-// // Get the last visible document
-// const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length-1];
-// console.log("last", lastVisible);
-
-// // Construct a new query starting at this document,
-// // get the next 25 cities.
-// const next = query(collection(db, "cities"),
-//     orderBy("population"),
-//     startAfter(lastVisible),
-//     limit(25));
+export const clearAfiliados = (payload) => ({ type: types.CLEAR_AFILIADOS, payload })

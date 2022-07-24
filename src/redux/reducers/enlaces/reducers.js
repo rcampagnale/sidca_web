@@ -143,6 +143,12 @@ export const enlaceReducer = (state = initialState, action) => {
                 status: '',
                 msg: '',
             };
+
+        case types.CLEAR_ENLACES:
+            return {
+                ...state,
+                ...initialState
+            };
         default:
             return state;
     }

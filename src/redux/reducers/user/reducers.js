@@ -10,9 +10,29 @@ const initialState = {
     status: undefined,
     currentStep: undefined,
     ubicacion: undefined,
+    user: [],
+    userEdit: undefined
 };
 export const userReducer = (state = initialState, action) => {
     switch (action.type) {
+        case types.AUTHENTICATE_ADMIN:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.AUTHENTICATE_ADMIN_SUCCESS:
+            return {
+                ...state,
+                auth: true,
+                profile: { ...action.payload },
+                processing: false
+            };
+        case types.AUTHENTICATE_ADMIN_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false
+            };
         case types.AUTHENTICATE_USER:
             return {
                 ...state,
@@ -22,7 +42,7 @@ export const userReducer = (state = initialState, action) => {
             return {
                 ...state,
                 auth: true,
-                profile: {...action.payload},
+                profile: { ...action.payload },
                 processing: false
             };
         case types.AUTHENTICATE_USER_ERROR:
@@ -31,13 +51,43 @@ export const userReducer = (state = initialState, action) => {
                 msg: action.payload,
                 processing: false
             };
-        case types.LOGOUT:
+        case types.ADMIN_LOGOUT:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.ADMIN_LOGOUT_SUCCESS:
             return {
                 ...state,
                 auth: false,
                 profile: false,
                 msg: 'Se ha cerrado la sesión con exito',
-                logoutProcess: undefined
+                processing: false
+            };
+        case types.ADMIN_LOGOUT_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false
+            };
+        case types.LOGOUT:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.LOGOUT_SUCCESS:
+            return {
+                ...state,
+                auth: false,
+                profile: false,
+                msg: 'Se ha cerrado la sesión con exito',
+                processing: false
+            };
+        case types.LOGOUT_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false
             };
         case types.SET_USER_SESSION:
             return {
@@ -53,11 +103,11 @@ export const userReducer = (state = initialState, action) => {
                 status: false,
                 tarjeta: undefined
             };
-        // case types.APROVE:
-        //     return {
-        //         ...state,
-        //         tarjeta: 'SUCCESS'
-        //     };
+        case types.SET_PROFILE:
+            return {
+                ...state,
+                profile: action.payload
+            };
         default:
             return state;
     }

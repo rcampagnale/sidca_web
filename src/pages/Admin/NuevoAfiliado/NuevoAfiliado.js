@@ -1,16 +1,14 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useParams } from 'react-router';
 import { useForm } from '../../../hooks/useForm';
-import { clearStatus, nuevoAfiliado } from '../../../redux/reducers/afiliados/actions';
+import { nuevoAfiliado, updateUser } from '../../../redux/reducers/afiliados/actions';
 import styles from './styles.module.css';
 import Swal from 'sweetalert2'
 import { Spinner } from '../../../components/Spinner/Spinner';
 
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 
 const NuevoAfiliado = () => {
@@ -23,7 +21,7 @@ const NuevoAfiliado = () => {
     const initialform = {
         dni: '',
         nombre: '',
-        apellido: ''
+        apellido: '',
     };
 
     const afiliado = useSelector(state => state.afiliado)
@@ -42,29 +40,23 @@ const NuevoAfiliado = () => {
             })
             return false
         }
-        await dispatch(nuevoAfiliado(form));
+        if (id) {
+            await dispatch(updateUser(form, id))
+        } else {
+            await dispatch(nuevoAfiliado(form))
+        }
+        history.push('/admin/usuarios')
     }
 
     useEffect(() => {
-        if (afiliado.status == 'SUCCESS_ADD') {
-            Swal.fire({
-                title: 'Solicitud Exitosa',
-                text: afiliado.msg,
-                icon: 'success',
-                confirmButtonText: 'Continuar'
+        if (id && afiliado.userEdit) {
+            Object.entries(afiliado.userEdit).map(([key, value]) => {
+                if (key && value) {
+                    handleInputChange({ target: { name: key, value: value } })
+                }
             })
-            reset()
-            dispatch(clearStatus())
-        } if (afiliado.status == 'FAILURE_ADD') {
-            Swal.fire({
-                title: 'Error!',
-                text: afiliado.msg,
-                icon: 'error',
-                confirmButtonText: 'Continuar'
-            })
-            dispatch(clearStatus())
         }
-    }, [afiliado])
+    }, [afiliado.userEdit])
 
     return (
         <div className={styles.visibleContent}>
@@ -83,7 +75,7 @@ const NuevoAfiliado = () => {
                     </span>
 
                     <span className={`p-float-label ${styles.inputSection}`}>
-                        <InputText className={styles.inputForm} value={form.dni} name="dni" id="dni" type="number" onChange={(e) => { handleInputChange(e) }} maxLength={8} />
+                        <InputText className={styles.inputForm} value={form.dni} name="dni" id="dni" type="text" onChange={(e) => { handleInputChange(e) }} maxLength={8} />
                         <label className={styles.labelForm} htmlFor="dni">DNI*</label>
                     </span>
 
@@ -93,6 +85,14 @@ const NuevoAfiliado = () => {
                     afiliado.processing
                     &&
                     <Spinner />
+                }
+                {
+                    id && afiliado.userEdit
+                    &&
+                    <div className={styles.searchContainer}>
+                        <h2 className={styles.title}>{afiliado.userEdit.apellido + ', ' + afiliado.userEdit.nombre}</h2>
+                        <h2 className={styles.title}>{afiliado.userEdit.dni}</h2>
+                    </div>
                 }
             </div>
         </div>

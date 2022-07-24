@@ -21,14 +21,16 @@ const PrivateHeader = () => {
             </a>
             <ul className={styles.headerNav}>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
-                <li onClick={() => history.push('/casa-del-docente')}>Casa del Docente</li>
-                <li onClick={() => history.push('/contacto')}>Contacto</li>
-                <li onClick={() => history.push('/nosotros')}>Nosotros</li>
-                <li onClick={() => history.push('/novedades')}>Novedades</li>
+                {/* <li onClick={() => history.push('/casa-del-docente')}>Casa del Docente</li> */}
+
+
+                {/* <li onClick={() => history.push('/novedades')}>Novedades</li>
                 <li onClick={() => history.push('/predio')}>Predio</li>
                 <li onClick={() => history.push('/turismo')}>Turismo</li>
                 {/* {user.profue.cotizante && } */}
                 <li onClick={() => history.push('/cuotas')}>Cuotas</li>
+                <li onClick={() => history.push('/nosotros')}>Nosotros</li>
+                <li onClick={() => history.push('/contacto')}>Contacto</li>
             </ul>
             <div className={styles.btnExit}>
                 <Button icon="pi pi-sign-out" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={() => history.push("/logout")} />

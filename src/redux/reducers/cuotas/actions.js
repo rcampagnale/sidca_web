@@ -2,9 +2,6 @@ import types from './types'
 import { db } from '../../../firebase/firebase-config';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, Timestamp } from "firebase/firestore";
 
-import { search } from "mercadopago/lib/resources/payment";
-import { date } from "mercadopago/lib/utils";
-
 export const nuevaCuota = (data) => {
     return async (dispatch, getState) => {
         dispatch(nuevaCuotaProcess());
@@ -13,7 +10,8 @@ export const nuevaCuota = (data) => {
             position: Number.parseInt(data.position),
             unit_price: Number.parseInt(data.unit_price),
             quantity: 1,
-            currency_id: 'ARS'
+            currency_id: 'ARS',
+            categoria: data.categoria,
         }
 
         try {
@@ -34,7 +32,8 @@ export const uploadCuota = (data, id) => {
             position: Number.parseInt(data.position),
             unit_price: Number.parseInt(data.unit_price),
             quantity: 1,
-            currency_id: 'ARS'
+            currency_id: 'ARS',
+            categoria: data.categoria
         }
 
         try {
@@ -77,14 +76,43 @@ export const getCuotas = (pagination, start) => {
                         id: doc.id,
                         title: data.title,
                         position: data.position,
-                        unit_price: data.unit_price
+                        unit_price: data.unit_price,
+                        categoria: data.categoria
                     }
-
-                    console.log(data.unit_price);
                     arrayDocs.push(obj)
                 })
                 dispatch(getCuotasSuccess(arrayDocs))
                 dispatch(setPage(pagination == 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page))
+            }
+        } catch (error) {
+            dispatch(getCuotasError('No se pudieron cargar las cuotas'));
+            console.log(error)
+        }
+    }
+}
+
+export const getAllCuotas = (pagination, start) => {
+    return async (dispatch, getState) => {
+        dispatch(getCuotasProcess());
+        try {
+            let q = await query(collection(db, 'cuotas'), orderBy('position', 'asc'))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(getCuotasError('No hay cuotas'))
+            } else {
+                const arrayDocs = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        title: data.title,
+                        position: data.position,
+                        unit_price: data.unit_price,
+                        categoria: data.categoria
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(getCuotasSuccess(arrayDocs))
             }
         } catch (error) {
             dispatch(getCuotasError('No se pudieron cargar las cuotas'));
@@ -147,3 +175,6 @@ export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payl
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_CUOTAS_STATUS, payload })
 export const aprove = (payload) => ({ type: types.APROVE, payload })
+
+
+export const clearCuotas = (payload) => ({ type: types.CLEAR_CUOTAS, payload })

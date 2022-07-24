@@ -5,13 +5,16 @@ import AppRouter from './routes/Routes';
 import "primereact/resources/themes/saga-orange/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
+import SetUser from './components/SetUser/setUser';
 
 function App() {
     return (
         <Provider
             store={store}
         >
-            <AppRouter></AppRouter>
+            <SetUser>
+                <AppRouter></AppRouter>
+            </SetUser>
         </Provider>
     );
 }

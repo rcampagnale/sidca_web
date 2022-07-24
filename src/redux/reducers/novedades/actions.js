@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, deleteDoc } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
 
 export const nuevaNovedad = (data) => {
@@ -73,7 +73,7 @@ export const getNovedades = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getNovedadesError('No hay novedades'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().novedades
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstNovedad(doc));
@@ -106,6 +106,19 @@ export const getNovedades = (pagination, start) => {
 
 export const getNovedad = (payload) => ({ type: types.GET_NOVEDAD, payload })
 
+export const deleteNovedades = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteNovedadesProcess());
+        try {
+            await deleteDoc(doc(db, "novedades", id));
+            dispatch(deleteNovedadesSuccess(id))
+        } catch (error) {
+            dispatch(deleteNovedadesError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const nuevaNovedadProcess = (payload) => ({ type: types.NUEVA_NOVEDAD, payload })
 const nuevaNovedadSuccess = (payload) => ({ type: types.NUEVA_NOVEDAD_SUCCESS, payload })
 const nuevaNovedadError = (payload) => ({ type: types.NUEVA_NOVEDAD_ERROR, payload })
@@ -124,8 +137,15 @@ const getNovedadesProcess = (payload) => ({ type: types.GET_NOVEDADES, payload }
 const getNovedadesSuccess = (payload) => ({ type: types.GET_NOVEDADES_SUCCESS, payload })
 const getNovedadesError = (payload) => ({ type: types.GET_NOVEDADES_ERROR, payload })
 
+const deleteNovedadesProcess = (payload) => ({ type: types.DELETE_NOVEDADES, payload })
+const deleteNovedadesSuccess = (payload) => ({ type: types.DELETE_NOVEDADES_SUCCESS, payload })
+const deleteNovedadesError = (payload) => ({ type: types.DELETE_NOVEDADES_ERROR, payload })
+
 const setFirstNovedad = (payload) => ({ type: types.SET_FIRST_NOVEDAD, payload })
 const setLastNovedad = (payload) => ({ type: types.SET_LAST_NOVEDAD, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearNovedades = (payload) => ({ type: types.CLEAR_NOVEDADES, payload })

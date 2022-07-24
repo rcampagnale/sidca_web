@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
 
 export const nuevoCurso = (data) => {
@@ -69,7 +69,7 @@ export const getCursos = (pagination, start) => {
             if (querySnapshot.size === 0) {
                 dispatch(getCursosError('No hay cursos'))
             } else {
-                const { page } = getState().afiliado; // TODO revisar porque dice afiliado
+                const { page } = getState().cursos;
                 const arrayDocs = [];
                 querySnapshot.docs.map((doc, i) => {
                     i === 0 && dispatch(setFirstCurso(doc));
@@ -100,6 +100,69 @@ export const getCursos = (pagination, start) => {
 
 export const getCurso = (payload) => ({ type: types.GET_CURSO, payload })
 
+export const getCursosCategory = (type) => {
+    return async (dispatch, getState) => {
+        dispatch(getCursosCategoryProcess());
+        try {
+            let q = await query(collection(db, 'cursos'), orderBy('titulo', 'asc'), where('categoria', '==', type))
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size === 0) {
+                dispatch(getCursosCategoryError('No hay cursos'))
+            } else {
+                const arrayDocs = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        titulo: data.titulo,
+                        descripcion: data.descripcion,
+                        estado: data.estado,
+                        categoria: data.categoria,
+                        link: data.link,
+                        imagen: data.imagen
+                    }
+                    arrayDocs.push(obj)
+                })
+                dispatch(getCursosCategorySuccess(arrayDocs))
+            }
+        } catch (error) {
+            dispatch(getCursosCategoryError('No se pudieron cargar los cursos'));
+            console.log(error)
+        }
+    }
+}
+
+export const getMisCursos = () => {
+    return async (dispatch, getState) => {
+        dispatch(getMisCursosProcess())
+        try {
+            const { id } = getState().user.profile;
+            const q = await collection(db, "usuarios", id, 'cursos')
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.size > 0) {
+                let arrayCursos = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    let obj = {
+                        id: doc.id,
+                        titulo: data.titulo,
+                        estado: data.estado,
+                        imagen: data.imagen,
+                        aprobo: data.aprobo
+                    }
+                    arrayCursos.push(obj)
+                })
+                dispatch(getMisCursosSuccess(arrayCursos));
+            } else {
+                dispatch(getMisCursosError('No tienes Cursos'));
+            }
+        } catch (error) {
+            dispatch(getMisCursosError('No se ha podido cargar la información del usuario.'));
+            console.log(error);
+        }
+    }
+}
+
 const nuevoCursoProcess = (payload) => ({ type: types.NUEVO_CURSO, payload })
 const nuevoCursoSuccess = (payload) => ({ type: types.NUEVO_CURSO_SUCCESS, payload })
 const nuevoCursoError = (payload) => ({ type: types.NUEVO_CURSO_ERROR, payload })
@@ -122,4 +185,15 @@ const setFirstCurso = (payload) => ({ type: types.SET_FIRST_CURSO, payload })
 const setLastCurso = (payload) => ({ type: types.SET_LAST_CURSO, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
 
+const getCursosCategoryProcess = (payload) => ({ type: types.GET_CURSOS_CATEGORY, payload })
+const getCursosCategorySuccess = (payload) => ({ type: types.GET_CURSOS_CATEGORY_SUCCESS, payload })
+const getCursosCategoryError = (payload) => ({ type: types.GET_CURSOS_CATEGORY_ERROR, payload })
+
+const getMisCursosProcess = (payload) => ({ type: types.GET_MIS_CURSOS, payload })
+const getMisCursosSuccess = (payload) => ({ type: types.GET_MIS_CURSOS_SUCCESS, payload })
+const getMisCursosError = (payload) => ({ type: types.GET_MIS_CURSOS_ERROR, payload })
+
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
+
+
+export const clearCursos = (payload) => ({ type: types.CLEAR_CURSOS, payload })

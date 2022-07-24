@@ -9,7 +9,9 @@ const initialState = {
     firstAfiliado: undefined,
     lastAfiliado: undefined,
     page: 1,
-    downloading: []
+    downloading: [],
+    user: [],
+    userEdit: undefined
 }
 
 export const afiliadoReducer = (state = initialState, action) => {
@@ -24,14 +26,12 @@ export const afiliadoReducer = (state = initialState, action) => {
                 ...state,
                 nuevosAfiliados: action.payload,
                 processing: false,
-                status: 'SUCCESS'
             };
         case types.GET_AFILIADOS_NUEVOS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
                 processing: false,
-                status: 'FAILURE',
             };
         case types.DESCARGAR_AFILIADOS_NUEVOS:
             return {
@@ -52,6 +52,46 @@ export const afiliadoReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE',
             };
+        case types.DELETE_AFILIADOS_NUEVOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_AFILIADOS_NUEVOS_SUCCESS:
+            return {
+                ...state,
+                nuevosAfiliados: state.nuevosAfiliados.filter(afiliado => afiliado.id != action.payload),
+                processing: false,
+                msg: 'Nuevo Afiliado Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_AFILIADOS_NUEVOS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
+        case types.DELETE_USER:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_USER_SUCCESS:
+            return {
+                ...state,
+                user: state.user.filter(afiliado => afiliado.id != action.payload),
+                processing: false,
+                msg: 'Nuevo Afiliado Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_USER_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
         case types.NEW_USER:
             return {
                 ...state,
@@ -65,6 +105,50 @@ export const afiliadoReducer = (state = initialState, action) => {
                 status: 'SUCCESS'
             };
         case types.NEW_USER_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE'
+            };
+        case types.GET_USER:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_USER_SUCCESS:
+            return {
+                ...state,
+                user: action.payload,
+                processing: false
+            };
+        case types.GET_USER_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE'
+            };
+        case types.SET_USER_EDIT:
+            return {
+                ...state,
+                userEdit: state.user.find(item => item.id = action.payload)
+            };
+        case types.UPDATE_USER:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.UPDATE_USER_SUCCESS:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'SUCCESS',
+                user: [],
+                userEdit: undefined
+            };
+        case types.UPDATE_USER_ERROR:
             return {
                 ...state,
                 msg: action.payload,
@@ -102,6 +186,12 @@ export const afiliadoReducer = (state = initialState, action) => {
             return {
                 ...state,
                 downloading: []
+            };
+
+        case types.CLEAR_AFILIADOS:
+            return {
+                ...state,
+                ...initialState
             };
         default:
             return state;
