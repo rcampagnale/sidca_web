@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, Timestamp, deleteDoc } from "firebase/firestore";
 
 export const nuevaCuota = (data) => {
     return async (dispatch, getState) => {
@@ -121,6 +121,19 @@ export const getAllCuotas = (pagination, start) => {
     }
 }
 
+export const deleteCuotas = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteCuotasProcess());
+        try {
+            await deleteDoc(doc(db, "cuotas", id));
+            dispatch(deleteCuotasSuccess(id))
+        } catch (error) {
+            dispatch(deleteCuotasError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 export const setUserCuotas = (data) => {
     return async (dispatch, getState) => {
         dispatch(setUserCuotasProcess());
@@ -162,6 +175,10 @@ const uploadCuotaError = (payload) => ({ type: types.UPLOAD_CUOTA_ERROR, payload
 const getCuotasProcess = (payload) => ({ type: types.GET_CUOTAS, payload })
 const getCuotasSuccess = (payload) => ({ type: types.GET_CUOTAS_SUCCESS, payload })
 const getCuotasError = (payload) => ({ type: types.GET_CUOTAS_ERROR, payload })
+
+const deleteCuotasProcess = (payload) => ({ type: types.DELETE_CUOTAS, payload })
+const deleteCuotasSuccess = (payload) => ({ type: types.DELETE_CUOTAS_SUCCESS, payload })
+const deleteCuotasError = (payload) => ({ type: types.DELETE_CUOTAS_ERROR, payload })
 
 const setUserCuotasProcess = (payload) => ({ type: types.SET_USER_CUOTAS, payload })
 const setUserCuotasSuccess = (payload) => ({ type: types.SET_USER_CUOTAS_SUCCESS, payload })

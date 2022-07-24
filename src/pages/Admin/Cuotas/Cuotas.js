@@ -7,10 +7,11 @@ import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
 import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { confirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, deleteCuota, getCuota, getCuotas } from '../../../redux/reducers/cuotas/actions';
+import { clearStatus, deleteCuotas, getCuota, getCuotas } from '../../../redux/reducers/cuotas/actions';
 
 const Cuotas = () => {
 
@@ -27,6 +28,7 @@ const Cuotas = () => {
 
     const cuotas = useSelector(state => state.cuotas);
     const page = useSelector(state => state.cuotas.page);
+    const user = useSelector(state => state.user.profile);
 
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
@@ -37,21 +39,17 @@ const Cuotas = () => {
         history.push(`/admin/nueva-cuota/${id}`)
     }
 
-    // const handleDelete = (id) => {
-    //     dispatch(deleteCuota(id));
-    // }
-
     const handlePagination = async (pagination) => {
         if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
         } else {
             setPrevDisable(false)
         }
-        if (pagination === 'next' && cuotas.cuotas.length < 10) {
-            return setNextDisable(true)
-        } else {
-            setNextDisable(false)
-        }
+        // if (pagination === 'next' && cuotas.cuotas.length < 10) {
+        //     return setNextDisable(true)
+        // } else {
+        //     setNextDisable(false)
+        // }
         dispatch(getCuotas(pagination, pagination == 'next' ? cuotas.lastCuota : cuotas.firstCuota));
 
     }
@@ -60,13 +58,30 @@ const Cuotas = () => {
         dispatch(getCuotas())
     }, [])
 
+    const accept = (id) => {
+        dispatch(deleteCuotas(id))
+    }
+
+    const confirm = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: ()=>accept(id),
+            reject: () => {}
+        });
+    };
+
     const dynamicColumns = columns.map((col, i) => {
         if (col.field === 'id') {
             return <Column
                 key={col.field}
                 field={(enlace) => <div>
                     <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
-                    {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
+                    {
+                        user?.uid === process.env.REACT_APP_ADMIN_ID &&
+                        <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(enlace.id)} />
+                    }
                 </div>}
                 header={col.header}
             />
@@ -78,7 +93,7 @@ const Cuotas = () => {
 
     //MESSAGE
     useEffect(() => {
-        if (cuotas.status == 'SUCCESS_ADD' || cuotas.status == 'SUCCESS_UPLOAD') {
+        if (cuotas.status == 'SUCCESS_ADD' || cuotas.status == 'SUCCESS_UPLOAD' || cuotas.status == 'SUCCESS_DELETE') {
             Swal.fire({
                 title: 'Solicitud Exitosa',
                 text: cuotas.msg,
@@ -86,7 +101,7 @@ const Cuotas = () => {
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
-        } if (cuotas.status == 'FAILURE_ADD' || cuotas.status == 'FAILURE_UPLOAD') {
+        } if (cuotas.status == 'FAILURE_ADD' || cuotas.status == 'FAILURE_UPLOAD' || cuotas.status == 'FAILURE_DELETE') {
             Swal.fire({
                 title: 'Error!',
                 text: cuotas.msg,

@@ -69,6 +69,27 @@ export const cuotasReducer = (state = initialState, action) => {
                 msg: action.payload,
                 loading: false
             };
+        case types.DELETE_CUOTAS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_CUOTAS_SUCCESS:
+            return {
+                ...state,
+                cuotas: state.cuotas.filter(cuota => cuota.id != action.payload),
+                processing: false,
+                msg: 'Cuota Eliminada con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_CUOTAS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
+
         case types.SET_USER_SESSION:
             return {
                 ...state,
