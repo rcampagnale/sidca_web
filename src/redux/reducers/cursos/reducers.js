@@ -159,6 +159,26 @@ export const cursosReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+        case types.DELETE_CURSOS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_CURSOS_SUCCESS:
+            return {
+                ...state,
+                cursos: state.cursos.filter(curso => curso.id != action.payload),
+                processing: false,
+                msg: 'Curso Eliminado con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_CURSOS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
         case types.CLEAR_STATUS:
             return {
                 ...state,

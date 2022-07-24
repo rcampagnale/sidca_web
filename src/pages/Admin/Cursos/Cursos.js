@@ -7,11 +7,11 @@ import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
 import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { confirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
-import { clearStatus, deleteCurso, getCurso, getCursos } from '../../../redux/reducers/cursos/actions';
-// import SubirEnlaces from './SubirEnlaces';
+import { clearStatus, deleteCursos, getCurso, getCursos } from '../../../redux/reducers/cursos/actions';
 
 const Cursos = () => {
 
@@ -29,6 +29,7 @@ const Cursos = () => {
 
     const cursos = useSelector(state => state.cursos);
     const page = useSelector(state => state.cursos.page);
+    const user = useSelector(state => state.user.profile);
 
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
@@ -39,28 +40,37 @@ const Cursos = () => {
         history.push(`/admin/nuevo-curso/${id}`)
     }
 
-    // const handleDelete = (id) => {
-    //     dispatch(deleteCurso(id));
-    // }
-
     const handlePagination = async (pagination) => {
         if (pagination === 'prev' && page === 1) {
             return setPrevDisable(true)
         } else {
             setPrevDisable(false)
         }
-        if (pagination === 'next' && cursos.cursos.length < 10) {
-            return setNextDisable(true)
-        } else {
-            setNextDisable(false)
-        }
+        // if (pagination === 'next' && cursos.cursos.length < 10) {
+        //     return setNextDisable(true)
+        // } else {
+        //     setNextDisable(false)
+        // }
         dispatch(getCursos(pagination, pagination == 'next' ? cursos.lastCurso : cursos.firstCurso));
-
     }
 
     useEffect(() => {
         dispatch(getCursos())
     }, [])
+
+    const accept = (id) => {
+        dispatch(deleteCursos(id))
+    }
+
+    const confirm = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: ()=>accept(id),
+            reject: () => {}
+        });
+    };
 
     const dynamicColumns = columns.map((col, i) => {
         if (col.field === 'id') {
@@ -68,7 +78,10 @@ const Cursos = () => {
                 key={col.field}
                 field={(enlace) => <div>
                     <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
-                    {/* <Button label="Eliminar" icon="pi pi-minus" className="p-button-raised p-button-danger" onClick={() => handleDelete(enlace.id)} /> */}
+                    {
+                        // user?.uid === process.env.REACT_APP_ADMIN_ID &&
+                        // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(nuevoAfiliado.id)} />
+                    }
                 </div>}
                 header={col.header}
             />
