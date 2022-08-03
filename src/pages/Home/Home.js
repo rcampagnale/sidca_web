@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Carousel } from 'primereact/carousel';
-import { Chip } from 'primereact/chip';
-import styles from './styles.module.css';
+import styles from './home.module.scss';
 import logo from '../../assets/img/logo-01.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { postTransaction, setUserCuotas } from '../../redux/reducers/cuotas/actions';
 import { getNovedades } from '../../redux/reducers/novedades/actions';
-
 import { useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import './CarouselDemo.css';
 
 const Home = () => {
 
@@ -55,57 +51,11 @@ const Home = () => {
         }
     }, [cuotas.setTransaccion]);
 
-    const responsiveOptions = [
-        {
-            breakpoint: '2000px',
-            numVisible: 3,
-            numScroll: 3
-        },
-        {
-            breakpoint: '1400px',
-            numVisible: 2,
-            numScroll: 2
-        },
-        {
-            breakpoint: '800px',
-            numVisible: 1,
-            numScroll: 1
-        }
-    ];
-
-    console.log(products)
-
-    function productTemplate(product) {
-        return (
-            <div className="product-item">
-                <div className="product-item-content">
-                    <div>
-                        <h4 className="mb-1">{product.titulo}</h4>
-                        <Chip className={styles.chip} label={product.categoria[0].toUpperCase() + product.categoria.slice(1)} />
-                    </div>
-                    <div className="mb-3">
-                        <img src={product.imagen} alt={product.titulo} className="product-image" />
-                    </div>
-                    <div className="mb-3" style={{ 'margin': '20px' }}>
-                        <p>{product.descripcion}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    } // onError={(e) => e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/0/0a/No-image-available.png'}
-
     return (
-        <div className={styles.visibleContent}>
+        <div className={styles.componentContainer}>
             <div className={styles.container}>
-                <div className={styles.imgContainer}>
-                    <img className={styles.img} src={logo} alt="Logo de SiDCa"></img>
-                </div>
-            </div>
-
-            <div className="carousel-demo">
-                <div className="card">
-                    <Carousel value={products} responsiveOptions={responsiveOptions}
-                        itemTemplate={productTemplate} header={<h1 className={styles.h1}>Novedades</h1>} />
+                <div className={styles.container__imgContainer}>
+                    <img className={styles.container__imgContainer__img} src={logo} alt="Logo de SiDCa"></img>
                 </div>
             </div>
         </div>

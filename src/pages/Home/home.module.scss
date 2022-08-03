@@ -1,0 +1,48 @@
+@use "../../scss/abstracts/variables.scss" as *;
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
+
+// Default styles
+.componentContainer {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: $boxShadowM1;
+
+  &__imgContainer {
+    height: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+
+    &__img {
+      width: 100%;
+      margin: auto;
+    }
+  }
+}
+
+
+// PC
+@media only screen and (min-width: 768px) {
+  .container {
+    width: 575px;
+  }
+}
+
+// Mobile
+@media only screen and (max-width: 767px) {
+  .container {
+    width: 350px;
+  }
+}
