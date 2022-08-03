@@ -1,21 +1,22 @@
+@use '../../../../scss/abstracts/variables.scss' as *;
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
-
+ 
 .header {
   width: 100%;
   height: 60px;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: $headerBG;
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
   justify-content: space-between;
   font-family: "Roboto", sans-serif;
 }
-
+ 
 main {
   flex: 100%;
   display: flex;
 }
-
+ 
 .mainContent {
   display: flex;
   width: 100%;
@@ -24,19 +25,19 @@ main {
   flex-grow: 1;
   background-color: rgb(255, 255, 255);
 }
-
+ 
 .visibleContent {
   background-color: #fff;
 }
 a {
   text-decoration: none;
 }
-
+ 
 .headerLogo {
   width: 120px;
   margin-left: 10px;
 }
-
+ 
 /* CEll */
 @media only screen and (max-width: 767px) {
   /* header */
@@ -44,16 +45,16 @@ a {
     display: none;
   }
   .headerText {
-    color: rgb(131, 131, 131);
-    border: 1px solid rgb(131, 131, 131);
+    color: $headerText;
+    border: 1px solid $headerText;
     padding: 10px 15px;
     border-radius: 50px;
     margin-right: 15px;
     font-family: "Roboto", sans-serif;
     font-size: 15px;
   }
-
-
+ 
+ 
   /* APP and others*/
   .btnExit {
     display: none;
@@ -69,7 +70,7 @@ a {
     display: none;
   }
 }
-
+ 
 /* DESK */
 @media only screen and (min-width: 768px) {
   .headerNav {
@@ -78,6 +79,8 @@ a {
     align-items: center;
     justify-content: flex-end;
     flex-grow: 1;
+    margin-right: 25px;
+    gap: 10px;
   }
   .headerNav li {
     color: #fff;
@@ -90,10 +93,7 @@ a {
     cursor: pointer;
     font-size: 16px;
   }
-  
-  .btnExit {
-    margin-right: 30px;
-  }
+ 
   .menuIcon {
     margin-left: 30px;
   }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sidebar } from 'primereact/sidebar';
 import { useHistory } from 'react-router';
-import styles from './styles.module.css';
+import styles from './navUser.module.scss';
 
 const NavUser = ({ active, setActive, user }) => {
 
@@ -19,6 +19,7 @@ const NavUser = ({ active, setActive, user }) => {
                 <li onClick={() => history.push('/turismo')}>Turismo</li> */}
                 {/* {user.profue.cotizante && } */}
                 <li onClick={() => history.push('/cuotas')}>Cuotas</li>
+                <li className={styles.logOut} onClick={() => history.push("/logout")}>Cerrar sesión</li>
             </ul>
         </Sidebar>
     )
