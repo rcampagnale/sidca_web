@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from "./PrivateHeader.module.css";
+import styles from "./privateHeader.module.scss";
 import logo from '../../../../assets/img/logo-01.png';
 import { Button } from 'primereact/button';
 import { useHistory } from 'react-router';

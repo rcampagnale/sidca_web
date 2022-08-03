@@ -1,3 +1,5 @@
+@use '../../../../../scss/abstracts/variables.scss' as *;
+
 .navUl {
   width: 100%;
   background-color: #3b3b3b;
@@ -21,4 +23,9 @@
   border-bottom: 1px solid #fff;
   width: 75%;
   cursor: pointer;
+}
+ 
+.logOut {
+  color: $log-out !important;
+  border-bottom: none !important;
 }
