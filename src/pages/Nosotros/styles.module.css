@@ -1,12 +1,26 @@
+.containerSlides {
+  width: 700px;
+  height: 336px;
+  margin: 100px 0;
+}
+
+@media only screen and (max-width: 850px) {
+  .containerSlides {
+    display: none !important;
+  }
+}
+
 @media only screen and (max-width: 767px) {
-  .mainSection {
+  .componentContainer {
+    height: 100%;
+    width: 100%;
     display: flex;
     flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
+    /* align-items: center; */
+    /* justify-content: center; */
     padding: 40px 20px;
   }
-  .mainSection div {
+  .componentContainer div {
     display: inherit;
     flex-flow: column wrap;
     align-items: center;
@@ -14,9 +28,10 @@
   }
   .title {
     font-size: 2em;
+    text-align: center
   }
   .text {
-    margin-top: 60px;
+    margin-top: 30px;
     line-height: 28px;
   }
   .img {
@@ -24,23 +39,26 @@
     width: 100%;
   }
 }
-
+ 
 .btnSection {
   display: flex;
   justify-content: space-evenly;
-  width: 1000px;
+  min-width: 75%;
   margin-bottom: 80px;
+  gap: 30px;
 }
 
 @media only screen and (min-width: 768px) {
-  .mainSection {
+  .componentContainer {
+    height: 100%;
+    width: 100%;
     display: flex;
     flex-flow: column wrap;
     align-items: center;
-    justify-content: center;
+    /* justify-content: center; */
     padding: 40px 20px;
   }
-  .mainSection .text {
+  .componentContainer .text {
     display: inherit;
     flex-flow: column wrap;
     align-items: center;
@@ -52,7 +70,7 @@
     text-align: center;
   }
   .text {
-    margin-top: 60px;
+    margin-top: 40px;
     line-height: 28px;
     text-align: center;
   }
