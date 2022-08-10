@@ -20,18 +20,18 @@ import img12 from '../../assets/images/nosotros/nosotros-12.jpeg';
 const Nosotros = () => {
 
     const slides = [
-        { url: img1, title: "mati" },
-        { url: img2, title: "mati" },
-        { url: img3, title: "mati" },
-        { url: img4, title: "mati" },
-        { url: img5, title: "mati" },
-        { url: img6, title: "mati" },
-        { url: img7, title: "mati" },
-        { url: img8, title: "mati" },
-        { url: img9, title: "mati" },
-        { url: img10, title: "mati" },
-        { url: img11, title: "mati" },
-        { url: img12, title: "mati" },
+        { url: img1, title: "img1-nosotros" },
+        { url: img2, title: "img2-nosotros" },
+        { url: img3, title: "img3-nosotros" },
+        { url: img4, title: "img4-nosotros" },
+        { url: img5, title: "img5-nosotros" },
+        { url: img6, title: "img6-nosotros" },
+        { url: img7, title: "img7-nosotros" },
+        { url: img8, title: "img8-nosotros" },
+        { url: img9, title: "img9-nosotros" },
+        { url: img10, title: "img10-nosotros" },
+        { url: img11, title: "img11-nosotros" },
+        { url: img12, title: "img12-nosotros" },
     ];
 
     const history = useHistory();
@@ -46,10 +46,7 @@ const Nosotros = () => {
             <div className={styles.title}>Quienes Somos</div>
             <p className={styles.text}>SIDCA, el Sindicato de Docentes de Catamarca, inscripción gremial 2902, adherido a la Confederación Argentina de Educadores, CEA, Personería gremial 1716.
                 <br /><br />Trabaja en la firme defensa de los derechos docentes, reafirmando el reclamo permanente por mejores condiciones en el desempeño profesional, promoviendo la capacitación y el perfeccionamiento, exigiendo el respeto a normativas justas para los trabajadores y trabajadoras de la educación.
-
                 <br /><br />Creemos que la educación es motor indiscutible de desarrollo de los pueblos y por eso, defendemos las mejores condiciones laborales para quienes la imparten, en consonancia con las instituciones gremiales consolidadas a nivel país y la Internacional de la Educación, que cuidan y protegen a educadores del país y el mundo.</p>
-
-
             <div className={styles.containerSlides}>
                 <ImageSlider slides={slides} />
             </div>
