@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Carousel } from 'primereact/carousel';
-import { Chip } from 'primereact/chip';
 import styles from './styles.module.css';
 import logo from '../../assets/img/logo-01.png';
 import { useDispatch, useSelector } from 'react-redux';
-import { postTransaction, setUserCuotas } from '../../redux/reducers/cuotas/actions';
+import { setUserCuotas } from '../../redux/reducers/cuotas/actions';
 import { getNovedades } from '../../redux/reducers/novedades/actions';
-
 import { useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import './CarouselDemo.css';
+import  "./CarouselDemo.css";
+import { Carousel } from 'primereact/carousel';
+import { Chip } from 'primereact/chip';
 
 const Home = () => {
 
@@ -22,12 +21,6 @@ const Home = () => {
     useEffect(() => {
         dispatch(getNovedades())
     }, [])
-
-    const [products, setProducts] = useState([]);
-
-    novedades.novedades.forEach(e => {
-        products.push(e);
-    })
 
     useEffect(() => {
         if (location.search) {
@@ -73,8 +66,6 @@ const Home = () => {
         }
     ];
 
-    console.log(products)
-
     function productTemplate(product) {
         return (
             <div className="product-item">
@@ -92,22 +83,28 @@ const Home = () => {
                 </div>
             </div>
         );
-    } // onError={(e) => e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/0/0a/No-image-available.png'}
+    }
 
     return (
-        <div className={styles.visibleContent}>
+        <div className={styles.componentContainer}>
             <div className={styles.container}>
                 <div className={styles.imgContainer}>
                     <img className={styles.img} src={logo} alt="Logo de SiDCa"></img>
                 </div>
             </div>
-
-            <div className="carousel-demo">
-                <div className="card">
-                    <Carousel value={products} responsiveOptions={responsiveOptions}
-                        itemTemplate={productTemplate} header={<h1 className={styles.h1}>Novedades</h1>} />
+            {
+                novedades?.novedades?.length > 0 &&
+                <div className="carousel-demo">
+                    <div className="card">
+                        <Carousel
+                            value={novedades?.novedades}
+                            responsiveOptions={responsiveOptions}
+                            itemTemplate={productTemplate}
+                            header={<h1 className={styles.h1}>Novedades</h1>}
+                        />
+                    </div>
                 </div>
-            </div>
+            }
         </div>
     )
 }

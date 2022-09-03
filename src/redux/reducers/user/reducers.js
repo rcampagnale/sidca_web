@@ -31,7 +31,8 @@ export const userReducer = (state = initialState, action) => {
             return {
                 ...state,
                 msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'AUTH_FAILURE',
             };
         case types.AUTHENTICATE_USER:
             return {
@@ -49,7 +50,8 @@ export const userReducer = (state = initialState, action) => {
             return {
                 ...state,
                 msg: action.payload,
-                processing: false
+                processing: false,
+                status: 'AUTH_FAILURE',
             };
         case types.ADMIN_LOGOUT:
             return {
