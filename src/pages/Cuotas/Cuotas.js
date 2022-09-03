@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
-import { Skeleton } from 'primereact/skeleton';
+import SkeletonLoading from './SkeletonLoading';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
-import styles from './Cuotas.module.css';
+import styles from './cuotas.module.scss';
 import { getAllCuotas } from '../../redux/reducers/cuotas/actions';
 
 const Cuotas = () => {
@@ -55,6 +55,7 @@ const Cuotas = () => {
 
     }, [cuotasCategories])
 
+    let counter = 0;
 
     return (
         <div className={styles.container}>
@@ -72,23 +73,23 @@ const Cuotas = () => {
             }
             {
                 cuotas.loading ?
-                    <div className={styles.cards_container} >
-                        <Skeleton shape="rectangle" height="100px" width="300px" />
-                        <Skeleton shape="rectangle" height="100px" width="300px" />
-                        <Skeleton shape="rectangle" height="100px" width="300px" />
-                        <Skeleton shape="rectangle" height="100px" width="300px" />
+                    <div className={styles.categories}>
+                        <SkeletonLoading />
+                        <SkeletonLoading />
+                        <SkeletonLoading />
                     </div>
                     :
                     !loader && categorias && Object.entries(categorias).map(([key, value]) => (
                         <div className={styles.categories}>
-                            <h1 className={styles.title}>{value}</h1>
-                            <div className={styles.cards_container}>
+                            <h1 className={styles.categories__title}>{value}</h1>
+                            <div className={styles.categories__cards_container}>
                                 {
                                     (cuotas.cuotas.length > 0) ?
                                         cuotas.cuotas.filter(item => item.categoria == key).map(item => (
-                                            <Card title={item.title} key={item.title} className={styles.card}>
+                                            <Card title={item.title} key={item.title} className={styles.categories__cards_container__card}>
                                                 <Button onClick={() => hanldePostItem(item)} label="Seleccionar" icon="pi pi-check" style={{ marginRight: '.25em' }} />
                                             </Card>
+
                                         ))
                                         :
                                         <Card title={cuotas.msg} className={styles.card}></Card>
@@ -101,7 +102,7 @@ const Cuotas = () => {
                 loader &&
                 <ProgressSpinner className='loader' />
             }
-        </div>
+        </div >
     )
 }
 

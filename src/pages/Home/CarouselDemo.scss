@@ -1,4 +1,4 @@
-.carousel-demo .product-item .product-item-content {
+.product-item .product-item-content {
     border: 1px solid var(--surface-d);
     border-radius: 3px;
     margin: .3rem;
@@ -6,10 +6,11 @@
     padding: 2rem 0;
 }
 
-.carousel-demo .product-item .product-image {
+.product-item .product-image {
     width: 50%;
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
+
 .carousel-demo {
     width: 60em;
 }
@@ -18,14 +19,14 @@
     margin-bottom: 20px;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 1400px) {
     .carousel-demo {
-        width: 20em;
+        width: 30em;
     }
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 500px) {
     .carousel-demo {
-        width: 40em;
+        width: 16em;
     }
 }

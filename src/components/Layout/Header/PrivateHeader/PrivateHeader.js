@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { Button } from 'primereact/button';
 import { confirmDialog } from 'primereact/confirmdialog';
 import NavUser from './nav/NavUser';
-import styles from "./PrivateHeader.module.css";
+import styles from "./privateHeader.module.scss";
 import logo from '../../../../assets/img/logo-01.png';
 
 const PrivateHeader = () => {

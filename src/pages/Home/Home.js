@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import styles from './styles.module.css';
+import styles from './home.module.scss';
 import logo from '../../assets/img/logo-01.png';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserCuotas } from '../../redux/reducers/cuotas/actions';
 import { getNovedades } from '../../redux/reducers/novedades/actions';
 import { useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import  "./CarouselDemo.css";
+import  "./CarouselDemo.scss";
 import { Carousel } from 'primereact/carousel';
 import { Chip } from 'primereact/chip';
 
@@ -60,7 +60,7 @@ const Home = () => {
             numScroll: 2
         },
         {
-            breakpoint: '800px',
+            breakpoint: '500px',
             numVisible: 1,
             numScroll: 1
         }
@@ -88,8 +88,8 @@ const Home = () => {
     return (
         <div className={styles.componentContainer}>
             <div className={styles.container}>
-                <div className={styles.imgContainer}>
-                    <img className={styles.img} src={logo} alt="Logo de SiDCa"></img>
+                <div className={styles.container__imgContainer}>
+                    <img className={styles.container__imgContainer__img} src={logo} alt="Logo de SiDCa"></img>
                 </div>
             </div>
             {
