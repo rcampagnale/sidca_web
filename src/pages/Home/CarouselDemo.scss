@@ -1,0 +1,32 @@
+.product-item .product-item-content {
+    border: 1px solid var(--surface-d);
+    border-radius: 3px;
+    margin: .3rem;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.product-item .product-image {
+    width: 50%;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+
+.carousel-demo {
+    width: 60em;
+}
+
+.product-item-content div h4 {
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1400px) {
+    .carousel-demo {
+        width: 30em;
+    }
+}
+
+@media (max-width: 500px) {
+    .carousel-demo {
+        width: 16em;
+    }
+}

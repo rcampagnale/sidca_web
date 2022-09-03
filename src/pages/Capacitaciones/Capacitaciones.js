@@ -28,7 +28,7 @@ const Capacitaciones = () => {
             <div className="fixthismessfran">
                 {
                     categorias?.map(categoria => (<div className={styles.button_title}>
-                        <div className={styles.title}>Nuevos cursos</div>
+                        <div className={styles.title}>{categoria.toUpperCase()}</div>
                             <Button key={categoria} icon="pi pi-check-square" label="Ver cursos" className="p-button-raised p-button-warning" onClick={() => history.push(`/capacitaciones/cursos/${categoria}`)} />
                         </div>)
                     )

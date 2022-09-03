@@ -9,6 +9,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-around;
+  margin-top: 20px
 }
 
 .container {
@@ -35,7 +36,13 @@
 
     &__img {
       width: 100%;
-      margin: auto;
+      margin: 18px auto;
     }
   }
+}
+
+.h1 {
+  font-size: 1.5em;
+  margin: 50px;
+  text-align: center;
 }
