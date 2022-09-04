@@ -24,8 +24,6 @@ const Capacitaciones = () => {
                     <p className={styles.text}>El <span style={{ fontWeight: "bold" }}>Programa de Capacitación de SIDCA</span> brinda durante todo el año ofertas de capacitación y perfeccionamiento docente gratuita a sus afiliados, mediante cursos, talleres, congresos y seminarios que propician el acceso a material innovador y actualizado, contribuyendo en la profesionalización de nuestros docente. ¡Súmate vos también a estos beneficios!</p>
                 </div>
             </div>
-
-            <div className="fixthismessfran">
                 {
                     categorias?.map(categoria => (<div className={styles.button_title}>
                         <div className={styles.title}>{categoria.toUpperCase()}</div>
@@ -33,7 +31,6 @@ const Capacitaciones = () => {
                         </div>)
                     )
                 }
-            </div>
             <div className={styles.card_container}>
                 <div className={styles.secondSection}>
                     <div>

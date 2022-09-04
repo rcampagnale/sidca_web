@@ -11,7 +11,7 @@ const LayoutPage = ({ children, type }) => {
             <div className={styles.content}>
                 {children}
             </div>
-            <Footer className={styles.footer} type={type} />
+            <Footer type={type} />
         </div>
     );
 };

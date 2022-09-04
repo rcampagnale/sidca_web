@@ -53,7 +53,7 @@ const Asesoramiento = () => {
         // } else {
         //     setNextDisable(false)
         // }
-        dispatch(getAsesoramientos(pagination, pagination == 'next' ? asesoramiento.lastCurso : asesoramiento.firstCurso));
+        dispatch(getAsesoramientos(pagination, pagination == 'next' ? asesoramiento.lastAsesoramiento : asesoramiento.firstAsesoramiento));
 
     }
 

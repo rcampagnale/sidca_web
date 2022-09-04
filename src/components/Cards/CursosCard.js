@@ -4,7 +4,6 @@ import { Button } from 'primereact/button';
 import { Skeleton } from 'primereact/skeleton';
 
 const CursosCard = ({ curso, miCurso }) => {
-    // onError={(e) => e.target.src='https://www.primefaces.org/wp-content/uploads/2020/05/placeholder.png'}
     const header = curso.imagen.includes('https://') ? (
         <img alt="Card" src={curso.imagen} />
 
@@ -29,7 +28,7 @@ const CursosCard = ({ curso, miCurso }) => {
             </span>)
 
     return (
-        <Card title={curso.titulo} style={{ width: '25em' }} footer={footer} header={header}>
+        <Card title={curso.titulo} footer={footer} header={header}>
             <p className="m-0" style={{ lineHeight: '1.5' }}>{curso.descripcion}</p>
         </Card>
     )

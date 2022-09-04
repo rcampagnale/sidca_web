@@ -3,12 +3,15 @@
     min-height: 100px;
     background-color: rgba(0, 0, 0, 0.9);
     font-family: "Roboto", sans-serif;
+    display: flex;
+    flex-direction: column;
 }
 
 .footerList {
     display: flex;
     flex-flow: row wrap;
     justify-content: center;
+    align-self: center;
 }
 
 .footerList a li {
@@ -38,15 +41,3 @@
     justify-content: center;
     align-items: center;
 }
-
-/* APP and others*/
-
-/* .appStore,
-  .playStore {
-    width: 135px;
-    height: 41px;
-    margin: 5px;
-  }
-  .appStore {
-    display: none;
-  } */
