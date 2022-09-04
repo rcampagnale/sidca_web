@@ -230,7 +230,7 @@ const setUserCuotasError = (payload) => ({ type: types.SET_USER_CUOTAS_ERROR, pa
 
 const setFirstCuota = (payload) => ({ type: types.SET_FIRST_CUOTA, payload })
 const setLastCuota = (payload) => ({ type: types.SET_LAST_CUOTA, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_CUOTA, payload })
 
 const uploadCuotasUserProcess = (payload) => ({ type: types.UPLOAD_CUOTAS_USER, payload })
 const uploadCuotasUserSuccess = (payload) => ({ type: types.UPLOAD_CUOTAS_USER_SUCCESS, payload })

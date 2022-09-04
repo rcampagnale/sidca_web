@@ -122,7 +122,7 @@ const getUserCuotasError = (payload) => ({ type: types.GET_USER_CUOTAS_ERROR, pa
 
 const setFirstTransaccion = (payload) => ({ type: types.SET_FIRST_TRANSACCION, payload })
 const setLastTransaccion = (payload) => ({ type: types.SET_LAST_TRANSACCION, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_TRANSACCION, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_TRANSACCIONES_STATUS, payload })
 

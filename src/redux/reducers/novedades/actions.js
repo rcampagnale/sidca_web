@@ -143,7 +143,7 @@ const deleteNovedadesError = (payload) => ({ type: types.DELETE_NOVEDADES_ERROR,
 
 const setFirstNovedad = (payload) => ({ type: types.SET_FIRST_NOVEDAD, payload })
 const setLastNovedad = (payload) => ({ type: types.SET_LAST_NOVEDAD, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_NOVEDAD, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
 

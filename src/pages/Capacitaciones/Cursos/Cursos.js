@@ -30,45 +30,36 @@ const CursosUser = () => {
         }
     }, [])
 
-    // const handleCursos = async () => {
-    //     if (curso.estado == 'terminado') {
-    //         if (!misCursos) {
-    //             await dispatch(getCursosUser())
-    //         }
-    //         setActive(true)
-    //     } else {
-    //         curso.link
-    //             &&
-    //             handlePress(curso.link)
-    //     }
-    // }
-
     return (
-        <div className={styles.boxContainer}>
+        <div className={styles.mainContainer}>
             <h1 className={styles.title}>{type === 'mis-cursos' ? 'Mis Cursos' : `Cursos ${type}`}</h1>
-            <div className={styles.container}>
-                {
-                    cursos.processing ?
-                        <CursosSkeleton />
-                        :
-                        type === 'mis-cursos' ?
-                            cursos.misCursos.length == 0 ?
-                                <div className={styles.boxContainer}>
-                                    <h1 className={styles.title}>No tienes Cursos</h1>
-                                    <Button label="Volver" onClick={() => history.goBack()} />
-                                </div>
-                                :
-                                cursos.misCursos.map(curso => (<CursosCard curso={curso} miCurso={true}/>))
+
+            {
+                cursos.processing ?
+                    <CursosSkeleton />
+                    :
+                    type === 'mis-cursos' ?
+                        cursos.misCursos.length == 0 ?
+                            <div className={styles.boxContainer}>
+                                <h1 className={styles.title}>No tienes Cursos</h1>
+                                <Button label="Volver" onClick={() => history.goBack()} />
+                            </div>
                             :
-                            cursos.cursos?.length == 0 ?
-                                <div className={styles.boxContainer} >
-                                    <h1 className={styles.title}        >No tienes Cursos En esta categoria</h1>
-                                    <Button label="Volver" onClick={() => history.goBack()} />
-                                </div>
-                                :
-                                cursos.cursos.map(curso => (<CursosCard curso={curso} />))
-                }
-            </div>
+                            <div className={styles.container}>
+                                {cursos.misCursos.map(curso => (<CursosCard curso={curso} miCurso={true} />))}
+                            </div>
+                        :
+                        cursos.cursos?.length == 0 ?
+                            <div className={styles.boxContainer} >
+                                <h1 className={styles.title}        >No tienes Cursos En esta categoria</h1>
+                                <Button label="Volver" onClick={() => history.goBack()} />
+                            </div>
+                            :
+                            <div className={styles.container}>
+                                {cursos.cursos.map(curso => (<CursosCard curso={curso} />))}
+                            </div>
+            }
+
         </div>
     )
 }

@@ -134,7 +134,7 @@ export const cuotasReducer = (state = initialState, action) => {
                 ...state,
                 lastCuota: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_CUOTA:
             return {
                 ...state,
                 page: action.payload

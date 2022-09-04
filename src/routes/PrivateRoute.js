@@ -1,10 +1,8 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { Route } from 'react-router-dom';
 import Layout from '../components/Layout/Layout';
-import PrivateLayout from '../components/PrivateLayout/PrivateLayout';
 import { setUserSession } from '../redux/reducers/user/actions';
 
 const ignoreLayout = [

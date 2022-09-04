@@ -92,7 +92,7 @@ export const transaccionesReducer = (state = initialState, action) => {
                 ...state,
                 lastTransaccion: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_TRANSACCION:
             return {
                 ...state,
                 page: action.payload

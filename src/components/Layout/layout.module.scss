@@ -1,11 +1,12 @@
+@use '../../scss/abstracts/variables.scss' as *;
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
-
-* {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
-}
-
+ 
+// * {
+//   padding: 0;
+//   margin: 0;
+//   box-sizing: border-box;
+// }
+ 
 .container {
   min-height: 100vh;
   max-width: 100vw;
@@ -13,62 +14,43 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto 1fr auto;
+  font-family: "Roboto", sans-serif;
 }
-
+ 
 .header {
   max-width: 100vw;
   height: 60px;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: $headerBG;
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
   justify-content: space-between;
-  font-family: "Roboto", sans-serif;
   padding-right: 25px;
 }
-
-.mainContent {
-  width: 100vw;
+ 
+.content {
+  padding: 1em;
+  max-width: 100vw;
   min-height: 100%;
-  background-color: rgb(225, 225, 225);
-}
-
-.visibleContent {
-  margin: 20px;
-  padding: 20px;
-  max-width: inherit;
-  min-height: inherit;
-  flex: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   flex-direction: column;
   background-color: #fff;
 }
-
+ 
 .footer {
+  display: flex;
   width: 100%;
   height: 60px;
-  background-color: rgba(0, 0, 0, 0.9);
-  font-family: "Roboto", sans-serif;
+  background-color: $footerBG;
+  align-items: center;
 }
-
+ 
 a {
   text-decoration: none;
 }
-
-/* .footerText,
-.footerLinks,
-.footerList,
-.hamburger {
-  display: none;
-} */
-
-/* .headerLogo {
-  width: 120px;
-  margin-left: 10px;
-} */
-
+ 
 /* CEll */
 @media only screen and (max-width: 767px) {
   /* header */
@@ -76,15 +58,14 @@ a {
     display: none;
   }
   .headerText {
-    color: rgb(131, 131, 131);
-    border: 1px solid rgb(131, 131, 131);
+    color: $headerText;
+    border: 1px solid $headerText;
     padding: 10px 15px;
     border-radius: 50px;
     margin-right: 15px;
-    font-family: "Roboto", sans-serif;
     font-size: 15px;
   }
-  
+ 
   /* Footer */
   .footerText {
     color: #ccc;
@@ -120,9 +101,9 @@ a {
     flex-flow: row wrap;
     justify-content: center;
   }
-
+ 
   /* APP and others*/
-
+ 
   .appStore,
   .playStore {
     width: 135px;
@@ -139,9 +120,6 @@ a {
     display: block;
     margin-left: 15px;
   }
-  .visibleContent {
-    margin: 0;
-  }
   .menuIcon {
     display: none;
   }
@@ -149,8 +127,8 @@ a {
     display: none;
   }
 }
-
-
+ 
+ 
 /* DESK */
 @media only screen and (min-width: 768px) {
   .headerNav {

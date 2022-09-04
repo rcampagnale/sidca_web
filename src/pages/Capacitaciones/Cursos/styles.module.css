@@ -12,24 +12,24 @@
   }
 }
 
-.boxContainer {
+.mainContainer {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+}
+
+.boxContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .container {
-  height: 100%;
   width: 90%;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(21em, 1fr));
-  grid-gap: 2em;
+  grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
+  grid-gap: 4em;
   width: 80%;
-  min-height: 100%;
-  align-self: center;
-  padding-left: 20px;
-  padding-right: 20px;
 }

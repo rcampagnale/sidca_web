@@ -13,23 +13,17 @@ import { clearTransacciones } from "../transacciones/actions";
 export const adminLogin = (data) => {
     return async (dispatch, getState) => {
         dispatch(authenticateAdminProcess())
-        try {
-            const auth = getAuth();
-            signInWithEmailAndPassword(auth, data.admin, data.password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    sessionStorage.setItem('user', JSON.stringify({ uid: user.uid, accessToken: user.accessToken }))
-                    sessionStorage.setItem('es_admin', 'true');
-                    dispatch(authenticateAdminSuccess({ uid: user.uid, accessToken: user.accessToken }))
-                })
-                .catch((error) => {
-                    const errorCode = error.code;
-                    const errorMessage = error.message;
-                });
-        } catch (err) {
-            dispatch(authenticateAdminError('Error al Ingresar'))
-
-        }
+        const auth = getAuth();
+        signInWithEmailAndPassword(auth, data.admin, data.password)
+            .then((userCredential) => {
+                const user = userCredential.user;
+                sessionStorage.setItem('user', JSON.stringify({ uid: user.uid, accessToken: user.accessToken }))
+                sessionStorage.setItem('es_admin', 'true');
+                dispatch(authenticateAdminSuccess({ uid: user.uid, accessToken: user.accessToken }))
+            })
+            .catch((error) => {
+                dispatch(authenticateAdminError('Error al Ingresar'))
+            });
     }
 }
 
@@ -74,7 +68,7 @@ export const adminLogout = () => {
             dispatch(clearEnlaces());
             dispatch(clearNovedades());
             dispatch(clearTransacciones());
-            
+
             sessionStorage.removeItem('user');
             sessionStorage.removeItem('es_admin');
         }).catch((error) => {
@@ -95,7 +89,7 @@ export const logout = () => {
             dispatch(clearEnlaces());
             dispatch(clearNovedades());
             dispatch(clearTransacciones());
-            
+
             dispatch(logoutSuccess());
             sessionStorage.removeItem('user');
             sessionStorage.removeItem('es_admin');

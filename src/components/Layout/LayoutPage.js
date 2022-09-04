@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import styles from "./styles.module.css";
+import styles from "./layout.module.scss";
 import Header from "./Header/Header";
 import Footer from "./Footer/Footer";
 
@@ -8,12 +8,10 @@ const LayoutPage = ({ children, type }) => {
     return (
         <div className={styles.container} >
             <Header type={type} />
-            <div className={styles.mainContent}>
-                <main className={styles.visibleContent}>
-                    {children}
-                </main>
+            <div className={styles.content}>
+                {children}
             </div>
-            <Footer className={styles.footer} type={type} />
+            <Footer type={type} />
         </div>
     );
 };

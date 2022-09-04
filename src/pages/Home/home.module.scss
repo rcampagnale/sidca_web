@@ -1,0 +1,48 @@
+@use "../../scss/abstracts/variables.scss" as *;
+@use "../../scss/abstracts/mixins.scss" as *;
+
+// Default styles
+.componentContainer {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  margin-top: 20px
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: $boxShadowM1;
+
+  @include mobile {
+    width: 350px;
+  }
+
+  @include tablet {
+    width: 575px;
+  }
+
+  &__imgContainer {
+    height: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+
+    &__img {
+      width: 100%;
+      margin: 18px auto;
+    }
+  }
+}
+
+.h1 {
+  font-size: 1.5em;
+  margin: 50px;
+  text-align: center;
+}

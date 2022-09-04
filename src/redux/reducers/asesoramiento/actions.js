@@ -144,7 +144,7 @@ const deleteAsesoramientosError = (payload) => ({ type: types.DELETE_ASESORAMIEN
 
 const setFirstAsesoramiento = (payload) => ({ type: types.SET_FIRST_ASESORAMIENTO, payload })
 const setLastAsesoramiento = (payload) => ({ type: types.SET_LAST_ASESORAMIENTO, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_ASESORAMIENTO, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
 
