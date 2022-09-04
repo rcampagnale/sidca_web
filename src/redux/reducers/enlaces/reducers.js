@@ -131,7 +131,7 @@ export const enlaceReducer = (state = initialState, action) => {
                 ...state,
                 lastEnlace: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_ENLACE:
             return {
                 ...state,
                 page: action.payload

@@ -150,7 +150,7 @@ const getEnlacesError = (payload) => ({ type: types.GET_ENLACES_ERROR, payload }
 
 const setFirstEnlace = (payload) => ({ type: types.SET_FIRST_ENLACE, payload })
 const setLastEnlace = (payload) => ({ type: types.SET_LAST_ENLACE, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_ENLACE, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
 

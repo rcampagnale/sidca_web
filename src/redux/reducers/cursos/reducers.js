@@ -116,7 +116,7 @@ export const cursosReducer = (state = initialState, action) => {
                 ...state,
                 lastCurso: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_CURSO:
             return {
                 ...state,
                 page: action.payload
