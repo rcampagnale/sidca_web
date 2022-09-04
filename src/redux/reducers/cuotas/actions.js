@@ -164,6 +164,50 @@ export const setUserCuotas = (data) => {
 
 export const getCuota = (payload) => ({ type: types.GET_CUOTA, payload })
 
+export const uploadCuotasUser = (rows) => {
+    return async (dispatch, getState) => {
+        dispatch(uploadCuotasUserProcess());
+        try {
+            //verificar con datos correctos, constants
+            rows.map(async (row, index) => {
+                if (index === 0) {
+                    return
+                } else {
+                    const cuotasObj = {}
+
+                    row.map((item, index) => {
+                        cuotasObj[rows[0][index]] = item
+                    })
+                    const doc = await addDoc(collection(db, 'cuotas'), cuotasObj)
+                    // await dispatch(uploadCuotasUserComment(`${index} Cuotas agregados correctamente.`));
+                }
+            })
+            dispatch(uploadCuotasUserSuccess(`${rows.length - 1} Cuotas agregadas correctamente.`));
+        } catch (error) {
+            dispatch(uploadCuotasUserError('No se pudieron actualizar todos los usuarios.'));
+            console.log(error)
+        }
+    }
+}
+
+// export const updateUser = (data, id) => {
+//     return async (dispatch, getState) => {
+//         dispatch(updateUserProcess());
+//         let userObj = {
+//             nombre: `${data.apellido}, ${data.nombre}`,
+//             dni: `${data.dni}`
+//         }
+//         try {
+//             const refDoc = doc(db, 'usuarios', id)
+//             const enlace = await setDoc(refDoc, userObj)
+//             dispatch(updateUserSuccess(`Enlace editado Correctamente. ID: ${id}`));
+//         } catch (error) {
+//             dispatch(updateUserError('No se ha podido editar el enlace'));
+//             console.log(error)
+//         }
+//     }
+// }
+
 const nuevaCuotaProcess = (payload) => ({ type: types.NUEVA_CUOTA, payload })
 const nuevaCuotaSuccess = (payload) => ({ type: types.NUEVA_CUOTA_SUCCESS, payload })
 const nuevaCuotaError = (payload) => ({ type: types.NUEVA_CUOTA_ERROR, payload })
@@ -187,6 +231,10 @@ const setUserCuotasError = (payload) => ({ type: types.SET_USER_CUOTAS_ERROR, pa
 const setFirstCuota = (payload) => ({ type: types.SET_FIRST_CUOTA, payload })
 const setLastCuota = (payload) => ({ type: types.SET_LAST_CUOTA, payload })
 const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+
+const uploadCuotasUserProcess = (payload) => ({ type: types.UPLOAD_CUOTAS_USER, payload })
+const uploadCuotasUserSuccess = (payload) => ({ type: types.UPLOAD_CUOTAS_USER_SUCCESS, payload })
+const uploadCuotasUserError = (payload) => ({ type: types.UPLOAD_CUOTAS_USER_ERROR, payload })
 
 export const setUserSession = (payload) => ({ type: types.SET_USER_SESSION, payload })
 

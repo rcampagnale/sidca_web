@@ -12,6 +12,7 @@ import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
 import { clearStatus, deleteCursos, getCurso, getCursos } from '../../../redux/reducers/cursos/actions';
+import SubirCursosUsuarios from './SubirCursosUsuarios';
 
 const Cursos = () => {
 
@@ -33,6 +34,7 @@ const Cursos = () => {
 
     const [prevDisable, setPrevDisable] = useState(false);
     const [nextDisable, setNextDisable] = useState(false);
+    const [cursoSelect, setCursoSelect] = useState(undefined);
     const [subirCursosActive, setSubirCursosActive] = useState(false);
 
     const handleEdit = async (id) => {
@@ -58,17 +60,32 @@ const Cursos = () => {
         dispatch(getCursos())
     }, [])
 
-    const accept = (id) => {
+    const acceptDelete = (id) => {
         dispatch(deleteCursos(id))
     }
 
-    const confirm = (id) => {
+    const confirmDelete = (id) => {
         confirmDialog({
             message: 'Esta seguro que desea Eliminar?',
             header: 'Atención',
             icon: 'pi pi-exclamation-triangle',
-            accept: ()=>accept(id),
-            reject: () => {}
+            accept: () => acceptDelete(id),
+            reject: () => { }
+        });
+    };
+
+    const acceptUpload = (enlace) => {
+        setCursoSelect(enlace)
+        setSubirCursosActive(true)
+    }
+
+    const confirmUpload = (id) => {
+        confirmDialog({
+            message: 'Esta seguro que desea Eliminar?',
+            header: 'Atención',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => acceptUpload(id),
+            reject: () => { }
         });
     };
 
@@ -80,8 +97,9 @@ const Cursos = () => {
                     <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
                     {
                         // user?.uid === process.env.REACT_APP_ADMIN_ID &&
-                        // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(nuevoAfiliado.id)} />
+                        // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirmDelete(enlace.id)} />
                     }
+                    <Button label="Cargar Usuarios" icon="pi pi-file" className="p-button-raised" onClick={() => acceptUpload(enlace)} />
                 </div>}
                 header={col.header}
             />
@@ -144,12 +162,19 @@ const Cursos = () => {
                 <h3 className={styles.title}>Cursos</h3>
                 <div>
                     <Button label="Nuevo curso" icon="pi pi-plus" onClick={() => history.push("/admin/nuevo-curso")} style={{ marginRight: 3 }} />
+                    {
+                        subirCursosActive && <Button
+                            label='Ver Cursos'
+                            icon={'pi pi-search'}
+                            onClick={() => {setSubirCursosActive(!subirCursosActive); setCursoSelect(undefined)}}
+                        />
+                    }
                 </div>
             </div>
             <div className={styles.table_upload}>
                 {
                     subirCursosActive ?
-                        <></>
+                        <SubirCursosUsuarios curso={cursoSelect} />
                         :
                         cursos.cursos.length > 0
                             ?
