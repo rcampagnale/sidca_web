@@ -134,7 +134,7 @@ export const novedadesReducer = (state = initialState, action) => {
                 ...state,
                 lastNovedad: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_NOVEDAD:
             return {
                 ...state,
                 page: action.payload

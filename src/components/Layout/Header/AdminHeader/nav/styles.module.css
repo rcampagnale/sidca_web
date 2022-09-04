@@ -22,3 +22,7 @@
   width: 75%;
   cursor: pointer;
 }
+.logOut {
+  color: red !important;
+  border-bottom: none !important;
+}

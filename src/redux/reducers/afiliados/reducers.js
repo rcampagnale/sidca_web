@@ -165,7 +165,7 @@ export const afiliadoReducer = (state = initialState, action) => {
                 ...state,
                 lastAfiliado: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_AFILIADO:
             return {
                 ...state,
                 page: action.payload

@@ -135,7 +135,7 @@ export const asesoramientoReducer = (state = initialState, action) => {
                 ...state,
                 lastAsesoramiento: action.payload
             };
-        case types.SET_PAGE:
+        case types.SET_PAGE_ASESORAMIENTO:
             return {
                 ...state,
                 page: action.payload

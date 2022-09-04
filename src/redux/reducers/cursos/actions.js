@@ -183,7 +183,7 @@ const getCursosError = (payload) => ({ type: types.GET_CURSOS_ERROR, payload })
 
 const setFirstCurso = (payload) => ({ type: types.SET_FIRST_CURSO, payload })
 const setLastCurso = (payload) => ({ type: types.SET_LAST_CURSO, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_CURSO, payload })
 
 const getCursosCategoryProcess = (payload) => ({ type: types.GET_CURSOS_CATEGORY, payload })
 const getCursosCategorySuccess = (payload) => ({ type: types.GET_CURSOS_CATEGORY_SUCCESS, payload })

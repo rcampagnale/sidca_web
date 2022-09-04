@@ -19,10 +19,6 @@ const Footer = () => {
             </ul>
             <div className={styles.footerText}>
                 <p>Sidca Gremio &#169; 2022</p>
-                {/* <div className={styles.footerLinks}>
-                                <img className={styles.appStore} src="https://miro.medium.com/max/270/1*Crl55Tm6yDNMoucPo1tvDg.png" alt="App Store"/>
-                                <a href="https://play.google.com/store/apps/details?id=com.sidca&hl=es_419&gl=US"><img className={styles.playStore} src="https://miro.medium.com/max/270/1*W_RAPQ62h0em559zluJLdQ.png" alt="App Store"/></a>
-                            </div> */}
             </div>
         </div>
     )

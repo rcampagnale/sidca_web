@@ -217,7 +217,7 @@ const updateUserError = (payload) => ({ type: types.UPDATE_USER_ERROR, payload }
 
 const setfirstAfiliado = (payload) => ({ type: types.SET_FIRST_AFILIADO, payload })
 const setLastAfiliado = (payload) => ({ type: types.SET_LAST_AFILIADO, payload })
-const setPage = (payload) => ({ type: types.SET_PAGE, payload })
+const setPage = (payload) => ({ type: types.SET_PAGE_AFILIADO, payload })
 
 export const setNuevoAfiliadoDetails = (payload) => ({ type: types.SET_NUEVO_AFILIADO_DETAILS, payload })
 export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, payload })

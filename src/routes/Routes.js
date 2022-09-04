@@ -52,7 +52,7 @@ const AppRouter = () => {
         if(!categorias.categorias){
             dispatch(getCategories())
         }
-    }, [])
+    }, [categorias.categorias])
 
     return (
         <BrowserRouter basename={'/'}>
@@ -107,14 +107,6 @@ const AppRouter = () => {
                 <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
 
                 <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
-
-
-                {/* <Route exact path="/" component={Landing} />
-                <Route exact path="/activar-cuenta/:user_id/:token" component={ActivarCuenta} />
-                <PrivateRoute exact path="/login" component={Login} />
-                <PublicRoute exact path="/ofertas-laborales" component={OfertasLaborales} />
-                <PublicRoute path="/ofertas-laborales/:id" component={DetalleOferta} />
-                <EmpresaRoute exact path="/empresa/entrevistas" component={EntrevistasEmpresa} /> */}
 
                 <Route component={NotFound} path="*" />
             </Switch>

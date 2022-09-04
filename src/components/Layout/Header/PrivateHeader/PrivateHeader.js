@@ -26,8 +26,8 @@ const PrivateHeader = () => {
 
     return (
         <>
-            <a href='/home'>
-                <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
+            <a href='#' onClick={()=>history.push("/home")}>
+                <img className={styles.headerLogo} src={logo} alt="SiDCa logo"/>
             </a>
             <ul className={styles.headerNav}>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
