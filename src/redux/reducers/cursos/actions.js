@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, deleteDoc } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
 
 export const nuevoCurso = (data) => {
@@ -163,6 +163,19 @@ export const getMisCursos = () => {
     }
 }
 
+export const deleteCursos = (id) => {
+    return async (dispatch, getState) => {
+        dispatch(deleteCursosProcess());
+        try {
+            await deleteDoc(doc(db, "cursos", id));
+            dispatch(deleteCursosSuccess(id))
+        } catch (error) {
+            dispatch(deleteCursosError('No se eliminaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const nuevoCursoProcess = (payload) => ({ type: types.NUEVO_CURSO, payload })
 const nuevoCursoSuccess = (payload) => ({ type: types.NUEVO_CURSO_SUCCESS, payload })
 const nuevoCursoError = (payload) => ({ type: types.NUEVO_CURSO_ERROR, payload })
@@ -192,6 +205,10 @@ const getCursosCategoryError = (payload) => ({ type: types.GET_CURSOS_CATEGORY_E
 const getMisCursosProcess = (payload) => ({ type: types.GET_MIS_CURSOS, payload })
 const getMisCursosSuccess = (payload) => ({ type: types.GET_MIS_CURSOS_SUCCESS, payload })
 const getMisCursosError = (payload) => ({ type: types.GET_MIS_CURSOS_ERROR, payload })
+
+const deleteCursosProcess = (payload) => ({ type: types.DELETE_CURSOS, payload })
+const deleteCursosSuccess = (payload) => ({ type: types.DELETE_CURSOS_SUCCESS, payload })
+const deleteCursosError = (payload) => ({ type: types.DELETE_CURSOS_ERROR, payload })
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
 

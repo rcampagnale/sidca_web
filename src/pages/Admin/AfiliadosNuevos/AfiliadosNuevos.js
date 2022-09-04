@@ -98,7 +98,6 @@ const AfiliadosNuevos = () => {
                         user?.uid === process.env.REACT_APP_ADMIN_ID &&
                         <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirm(nuevoAfiliado.id)} />
                     }
-                    
                 </div>}
                 header={col.header}
             />

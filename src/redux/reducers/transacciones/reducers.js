@@ -17,13 +17,15 @@ export const transaccionesReducer = (state = initialState, action) => {
         case types.NUEVA_TRANSACCION:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                processing: true,
             };
         case types.NUEVA_TRANSACCION_SUCCESS:
             return {
                 ...state,
                 msg: action.payload,
                 status: 'SUCCESS_ADD',
+                processing: false,
                 loading: false
             };
         case types.NUEVA_TRANSACCION_ERROR:
@@ -31,28 +33,33 @@ export const transaccionesReducer = (state = initialState, action) => {
                 ...state,
                 msg: action.payload,
                 status: 'FAILURE_ADD',
+                processing: false,
                 loading: false
             };
         case types.GET_TRANSACCIONES:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                processing: true,
             };
         case types.GET_TRANSACCIONES_SUCCESS:
             return {
                 ...state,
                 transacciones: action.payload || [],
+                processing: false,
                 loading: false
             };
         case types.GET_TRANSACCIONES_ERROR:
             return {
                 ...state,
                 msg: action.payload,
+                processing: false,
                 loading: false
             };
         case types.GET_USER_CUOTAS:
             return {
                 ...state,
+                processing: true,
                 loading: true
             };
         case types.GET_USER_CUOTAS_SUCCESS:
@@ -60,12 +67,14 @@ export const transaccionesReducer = (state = initialState, action) => {
                 ...state,
                 cuotas: action.payload.cuotas || [],
                 user: action.payload.user,
+                processing: false,
                 loading: false
             };
         case types.GET_USER_CUOTAS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
+                processing: false,
                 loading: false
             };
         case types.GET_TRANSACCION:

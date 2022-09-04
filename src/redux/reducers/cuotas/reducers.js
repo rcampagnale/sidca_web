@@ -22,21 +22,24 @@ export const cuotasReducer = (state = initialState, action) => {
         case types.NUEVA_CUOTA:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                processing: true
             };
         case types.NUEVA_CUOTA_SUCCESS:
             return {
                 ...state,
                 msg: action.payload,
                 status: 'SUCCESS_ADD',
-                loading: false
+                loading: false,
+                processing: false
             };
         case types.NUEVA_CUOTA_ERROR:
             return {
                 ...state,
                 msg: action.payload,
                 status: 'FAILURE_ADD',
-                loading: false
+                loading: false,
+                processing: false
             };
         case types.UPLOAD_CUOTA:
             return {
@@ -57,18 +60,47 @@ export const cuotasReducer = (state = initialState, action) => {
                 status: 'FAILURE_UPLOAD',
                 msg: action.payload,
             };
+        case types.GET_CUOTAS:
+            return {
+                ...state,
+                loading: true,
+                processing: true
+            };
         case types.GET_CUOTAS_SUCCESS:
             return {
                 ...state,
                 cuotas: action.payload || [],
-                loading: false
+                loading: false,
+                processing: false
             };
         case types.GET_CUOTAS_ERROR:
             return {
                 ...state,
                 msg: action.payload,
-                loading: false
+                loading: false,
+                processing: false
             };
+        case types.DELETE_CUOTAS:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.DELETE_CUOTAS_SUCCESS:
+            return {
+                ...state,
+                cuotas: state.cuotas.filter(cuota => cuota.id != action.payload),
+                processing: false,
+                msg: 'Cuota Eliminada con exito',
+                status: 'SUCCESS_DELETE'
+            };
+        case types.DELETE_CUOTAS_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_DELETE',
+            };
+
         case types.SET_USER_SESSION:
             return {
                 ...state,
