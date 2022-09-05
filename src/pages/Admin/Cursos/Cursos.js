@@ -99,7 +99,7 @@ const Cursos = () => {
                         // user?.uid === process.env.REACT_APP_ADMIN_ID &&
                         // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirmDelete(enlace.id)} />
                     }
-                    <Button label="Cargar Usuarios" icon="pi pi-file" className="p-button-raised" onClick={() => acceptUpload(enlace)} />
+                    {/* <Button label="Cargar Usuarios" icon="pi pi-file" className="p-button-raised" onClick={() => acceptUpload(enlace)} /> */}
                 </div>}
                 header={col.header}
             />

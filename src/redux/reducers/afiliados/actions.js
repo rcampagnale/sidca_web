@@ -1,6 +1,6 @@
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
-import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast, setDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, deleteDoc, orderBy, startAfter, limit, endBefore, limitToLast, setDoc, getDoc, Timestamp } from "firebase/firestore";
 
 export const getAfiliadosNuevos = (pagination, start) => {
     return async (dispatch, getState) => {
@@ -124,6 +124,37 @@ export const nuevoAfiliado = (data) => {
     }
 }
 
+export const afiliacion = (data) => {
+    return async (dispatch, getState) => {
+        dispatch(afiliacionProcess());
+        try {
+            const qc = await doc(db, 'cod', 'cod')
+            const cod = await getDoc(qc)
+            console.log({cod: cod.data()})
+            console.log({data})
+            const q = await query(collection(db, 'usuarios'), where('dni', '==', data.dni))
+            console.log(q)
+            const querySnapshot = await getDocs(q);
+            console.log(querySnapshot)
+            if (querySnapshot.size === 0) {
+                let user = {
+                    ...data,
+                    cod: cod.data().ultimoCod,
+                    fecha: Timestamp.now()
+                }
+                console.log({user})
+                // const doc = await addDoc(collection(db, 'nuevoAfiliado'), data)
+                // dispatch(afiliacionSuccess(`Cuota agregada correctamente. ID: ${doc.id}`));
+            }else {
+                dispatch(newUserError('Ya existe un afiliado con esos datos.'));
+            }
+        } catch (error) {
+            dispatch(afiliacionError('No se ha podido afiliar, intentelo más tarde'));
+            console.log(error)
+        }
+    }
+}
+
 export const getUser = (data) => {
     return async (dispatch, getState) => {
         dispatch(getUserProcess());
@@ -204,6 +235,10 @@ const deleteUserError = (payload) => ({ type: types.DELETE_USER_ERROR, payload }
 const newUserProcess = (payload) => ({ type: types.NEW_USER, payload })
 const newUserSuccess = (payload) => ({ type: types.NEW_USER_SUCCESS, payload })
 const newUserError = (payload) => ({ type: types.NEW_USER_ERROR, payload })
+
+const afiliacionProcess = (payload) => ({ type: types.AFILIACION, payload })
+const afiliacionSuccess = (payload) => ({ type: types.AFILIACION_SUCCESS, payload })
+const afiliacionError = (payload) => ({ type: types.AFILIACION_ERROR, payload })
 
 const getUserProcess = (payload) => ({ type: types.GET_USER, payload })
 const getUserSuccess = (payload) => ({ type: types.GET_USER_SUCCESS, payload })
