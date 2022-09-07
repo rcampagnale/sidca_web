@@ -21,6 +21,8 @@ const PrivateHeader = () => {
             header: 'Cerrar Sesión',
             icon: 'pi pi-exclamation-triangle',
             accept: () => history.push("/logout"),
+            acceptLabel: 'Si',
+            rejectLabel: 'No'
         });
     };
 
