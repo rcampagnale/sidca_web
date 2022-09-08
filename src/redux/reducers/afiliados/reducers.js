@@ -111,6 +111,25 @@ export const afiliadoReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE'
             };
+        case types.AFILIACION:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.AFILIACION_SUCCESS:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'SUCCESS_AF'
+            };
+        case types.AFILIACION_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_AF'
+            };
         case types.GET_USER:
             return {
                 ...state,

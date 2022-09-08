@@ -40,6 +40,7 @@ import Transacciones from "../pages/Admin/Transacciones/Transacciones";
 import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/TransaccionesUsuario";
 import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
+import Afiliacion from "../pages/Afiliacion/Afiliacion";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 
@@ -61,6 +62,7 @@ const AppRouter = () => {
 
                 {/* WEB */}
                 <PublicRoute exact path="/" component={LoginUser} />
+                <PublicRoute exact path="/afiliacion" component={Afiliacion} />
                 <PrivateRoute exact path="/logout" component={Logout} />
                 <PrivateRoute exact path="/home/" component={Home} />
                 <PrivateRoute exact path="/nosotros" component={Nosotros} />

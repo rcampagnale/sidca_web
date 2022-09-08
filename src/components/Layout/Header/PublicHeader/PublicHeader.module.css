@@ -1,4 +1,27 @@
 .headerLogo {
-    width: 120px;
-    margin-left: 10px;
-  }
+  width: 120px;
+  margin-left: 10px;
+}
+
+.headerNav {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: flex-end;
+  flex-grow: 1;
+  margin-right: 25px;
+  gap: 10px;
+}
+
+.headerNav li {
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  margin-right: 8px;
+}
+
+.headerNav li:hover {
+  color: #ccc;
+  cursor: pointer;
+  font-size: 16px;
+}
