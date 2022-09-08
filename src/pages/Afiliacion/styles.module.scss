@@ -1,3 +1,5 @@
+@use "../../scss/abstracts/mixins.scss" as *;
+
 .visibleContent {
   height: 100%;
   width: 100%;
@@ -7,14 +9,18 @@
   justify-content: center;
 }
 
-.container {
-  display: flex;
-  flex-flow: column wrap;
-  align-items: center;
-  justify-content: center;
-  width: 30vw;
-  height: 60%;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+.containe{
+  // width: 25rem; 
+  margin-bottom: 2em;
+
+  @include mobile {
+    width: 95%;
+  }
+
+  @include tablet {
+    width: 80%;
+  }
+
 }
 
 .title {
@@ -35,4 +41,8 @@
 
 .submitButton {
   width: 100%;
+}
+
+.display-none{
+  display: none;
 }

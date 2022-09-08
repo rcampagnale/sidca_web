@@ -31,7 +31,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
                         apellido: data.apellido,
                         nombre: data.nombre,
                         dni: data.dni,
-                        fecha: data.fecha,
+                        fecha: data.fecha?.seconds ? '' : data.fecha,
                         email: data.email,
                         celular: data.celular,
                         establecimientos: data.establecimientos,
@@ -130,23 +130,27 @@ export const afiliacion = (data) => {
         try {
             const qc = await doc(db, 'cod', 'cod')
             const cod = await getDoc(qc)
-            console.log({cod: cod.data()})
-            console.log({data})
             const q = await query(collection(db, 'usuarios'), where('dni', '==', data.dni))
-            console.log(q)
             const querySnapshot = await getDocs(q);
-            console.log(querySnapshot)
             if (querySnapshot.size === 0) {
                 let user = {
-                    ...data,
-                    cod: cod.data().ultimoCod,
-                    fecha: Timestamp.now()
+                    nombre: data.nombre,
+                    apellido: data.apellido,
+                    dni: data.dni,
+                    departamento: data.departamento,
+                    celular: data.celular,
+                    email: data.email,
+                    establecimientos: data.establecimientos,
+                    cod: Number(cod.data().ultimoCod) + 1,
+                    fecha: Timestamp.now(),
+                    cotizante: data.descuento
                 }
-                console.log({user})
-                // const doc = await addDoc(collection(db, 'nuevoAfiliado'), data)
-                // dispatch(afiliacionSuccess(`Cuota agregada correctamente. ID: ${doc.id}`));
+                await addDoc(collection(db, 'nuevoAfiliado'), user);
+                await addDoc(collection(db, 'usuarios'), user);
+                await setDoc(qc, {ultimoCod: user.cod});
+                dispatch(afiliacionSuccess(`Se ha registrado su afiliación. ¡Bienvenido a SiDCa! Ingrese con su DNI`));
             }else {
-                dispatch(newUserError('Ya existe un afiliado con esos datos.'));
+                dispatch(afiliacionError('Ya existe un afiliado con esos datos. Ingrese desde la pantalla principal'));
             }
         } catch (error) {
             dispatch(afiliacionError('No se ha podido afiliar, intentelo más tarde'));

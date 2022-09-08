@@ -1,25 +1,29 @@
-import React from 'react'
+import React, {useRef, useEffect} from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
-import styles from './styles.module.css';
-import Swal from 'sweetalert2'
-import { Spinner } from '../../components/Spinner/Spinner';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
-import { departamentos } from '../../constants/departamentos';
-import { useFormik } from 'formik';
+import { Toast } from 'primereact/toast';
 import { classNames } from 'primereact/utils';
-import { afiliacion } from '../../redux/reducers/afiliados/actions';
+import { useFormik } from 'formik';
+import { Spinner } from '../../components/Spinner/Spinner';
+import { afiliacion, clearStatus } from '../../redux/reducers/afiliados/actions';
+import { departamentos } from '../../constants/departamentos';
+import styles from './styles.module.scss';
+import { useMemo } from 'react';
 
 const Afiliacion = () => {
 
     const dispatch = useDispatch();
     const history = useHistory();
     const afiliado = useSelector(state => state.afiliado)
-
+    const toast = useRef(null);
+    
+    const dptos = useMemo(()=> Object.entries(departamentos).map(([key, value]) => ({label: value, value: key})), [departamentos])
+    
     const formik = useFormik({
         initialValues: {
             nombre: '',
@@ -76,9 +80,21 @@ const Afiliacion = () => {
         return isFormFieldValid(name) && <small className="p-error">{formik.errors[name]}</small>;
     };
 
+    useEffect(() => {
+        if (afiliado.status == 'SUCCESS_AF') {
+            toast.current.show({ severity: 'success', summary: 'Operación Exitosa', detail: afiliado.msg, life: 5000 });
+            dispatch(clearStatus())
+            setTimeout(()=>history.push('/'), 5000)
+        } if (afiliado.status == 'FAILURE_AF') {
+            toast.current.show({ severity: 'error', summary: 'Hubo un error', detail: afiliado.msg, life: 5000 });
+            dispatch(clearStatus())
+        }
+    }, [afiliado.status])
+
     return (
         <div className={styles.visibleContent}>
-            <Card title="Afiliate a SiDCa" style={{ width: '25rem', marginBottom: '2em' }}>
+            <Toast ref={toast} />
+            <Card title="Afiliate a SiDCa" style={styles.container}>
                 <form onSubmit={formik.handleSubmit} className="p-fluid p-mt-10">
                     <div className={styles.inputSection}>
                         <span className='p-float-label' >
@@ -117,7 +133,7 @@ const Afiliacion = () => {
                     </div>
                     <div className={styles.inputSection}>
                         <span className='p-float-label'>
-                            <Dropdown className={classNames({ 'p-invalid': isFormFieldValid('departamento') })} inputId="dropdown" value={formik.values.departamento} name='departamento' id='departamento' onChange={formik.handleChange} options={departamentos} />
+                            <Dropdown className={classNames({ 'p-invalid': isFormFieldValid('departamento') })} inputId="dropdown" value={formik.values.departamento} name='departamento' id='departamento' onChange={formik.handleChange} options={dptos} />
                             <label className={classNames({ 'p-error': isFormFieldValid('departamento') })} htmlFor="departamento">Departamento*</label>
                         </span>
                         {getFormErrorMessage('departamento')}
