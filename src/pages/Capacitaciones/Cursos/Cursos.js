@@ -51,12 +51,12 @@ const CursosUser = () => {
                         :
                         cursos.cursos?.length == 0 ?
                             <div className={styles.boxContainer} >
-                                <h1 className={styles.title}        >No tienes Cursos En esta categoria</h1>
+                                <h1 className={styles.title} >No hay cursos en esta categoria</h1>
                                 <Button label="Volver" onClick={() => history.goBack()} />
                             </div>
                             :
                             <div className={styles.container}>
-                                {cursos.cursos.map(curso => (<CursosCard curso={curso} />))}
+                                {cursos.cursos.reverse().map(curso => (<CursosCard curso={curso} />))}
                             </div>
             }
 
