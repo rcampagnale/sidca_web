@@ -1,20 +1,21 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { FileUpload } from 'primereact/fileupload';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import {ExcelRenderer, OutTable} from 'react-excel-renderer';
+import { ExcelRenderer, OutTable } from 'react-excel-renderer';
 import '../../../assets/styles/excel/excel-2007.css'
 import styles from './styles.module.css';
+import { clearStatus, uploadUserCursosInfo } from '../../../redux/reducers/cursos/actions';
 
-import { uploadEnlaces } from '../../../redux/reducers/enlaces/actions';
-
-const SubirCursosUsuarios = ({curso}) => {
+const SubirCursosUsuarios = ({ curso, noSubidos }) => {
 
     const dispatch = useDispatch();
     const enlace = useSelector(state => state.enlace)
     const [excelTable, setExcelTable] = useState({});
+    const [noSubidosFinal, setNoSubidosFinal] = useState(noSubidos);
 
     const handleSelectExcel = (e) => {
+        dispatch(clearStatus());
         let fileObj = e.files[0];
 
         //just pass the fileObj as parameter
@@ -30,10 +31,13 @@ const SubirCursosUsuarios = ({curso}) => {
     }
 
     const handleUploadData = (e) => {
-        dispatch(uploadEnlaces(excelTable.rows))
+        //TODO diferenciar aprobados de no aprobados
+        dispatch(uploadUserCursosInfo(curso, excelTable.rows))
     }
 
-    console.log(curso)
+    useEffect(()=>{
+        setNoSubidosFinal(noSubidos)
+    }, [noSubidos])
 
     return (
         <>
@@ -53,12 +57,29 @@ const SubirCursosUsuarios = ({curso}) => {
                 onClear={() => setExcelTable({})}
             />
             {
-            enlace.uploading && <div>
-                <ProgressSpinner />
-                <p>{enlace.msg}</p>
-            </div>
+                enlace.uploading && <div>
+                    <ProgressSpinner />
+                    <p>{enlace.msg}</p>
+                </div>
             }
-            {excelTable.rows && <OutTable data={excelTable.rows} columns={excelTable.cols} tableClassName="ExcelTable2007" tableHeaderRowClass="heading" />}
+            {
+                //TODO ver como hacer para que se muestren los noSubidos
+                noSubidosFinal?.length > 0 ?
+                <table>
+                    <th><tr>DNI no subidos</tr></th>
+                    <tbody>
+                        <td>
+                            {
+                                noSubidosFinal?.map(nosubido => (
+                                    <tr>
+                                        {nosubido}
+                                    </tr>
+                                ))}
+                        </td>
+                    </tbody>
+                </table>
+                : excelTable.rows && <OutTable data={excelTable.rows} columns={excelTable.cols} tableClassName="ExcelTable2007" tableHeaderRowClass="heading" />
+            }
         </>
     )
 }

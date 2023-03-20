@@ -2,6 +2,7 @@ import types from './types'
 import { db } from '../../../firebase/firebase-config';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, startAfter, endBefore, limitToLast, where, deleteDoc } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
+import { ref } from '@firebase/storage';
 
 export const nuevoCurso = (data) => {
     return async (dispatch, getState) => {
@@ -176,6 +177,48 @@ export const deleteCursos = (id) => {
     }
 }
 
+export const uploadUserCursosInfo = (curso, rows) => {
+    return async (dispatch, getState) => {
+        dispatch(uploadUserCursosInfoProcess());
+        try {
+            let subidos = [];
+            let noSubidos = [];
+            let indexOfDNI = rows[0].indexOf('DNI')
+            rows.map(async (aprobado, index) => {
+                if (index === 0) return
+                let dniAprobado = JSON.stringify(aprobado[indexOfDNI])
+                const q = await query(collection(db, 'usuarios'), where('dni', '==', dniAprobado))
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.size > 0) {
+                    querySnapshot.forEach(async documentSnapshot => {
+                        let cursoAprobado = {
+                            aprobo: true,
+                            estado: 'terminado',
+                            titulo: curso.titulo,
+                            imagen: curso.imagen,
+                            curso: `cursos/${curso.id}`
+                        }
+                        try {
+                            const doc = await addDoc(collection(db, 'usuarios', documentSnapshot.id, 'cursos'), cursoAprobado)
+                            subidos.push(dniAprobado)
+                        } catch {
+                            noSubidos.push(dniAprobado)
+                        }
+                    })
+                } else {
+                    noSubidos.push(dniAprobado)
+                }
+            })
+            dispatch(uploadUserCursosInfoSuccess({subidos, noSubidos}))
+            console.log('subidos', subidos)
+            console.log('no subidos', noSubidos)
+        } catch (error) {
+            dispatch(uploadUserCursosInfoError('No se cargaron los datos'))
+            console.log(error)
+        }
+    }
+}
+
 const nuevoCursoProcess = (payload) => ({ type: types.NUEVO_CURSO, payload })
 const nuevoCursoSuccess = (payload) => ({ type: types.NUEVO_CURSO_SUCCESS, payload })
 const nuevoCursoError = (payload) => ({ type: types.NUEVO_CURSO_ERROR, payload })
@@ -210,7 +253,9 @@ const deleteCursosProcess = (payload) => ({ type: types.DELETE_CURSOS, payload }
 const deleteCursosSuccess = (payload) => ({ type: types.DELETE_CURSOS_SUCCESS, payload })
 const deleteCursosError = (payload) => ({ type: types.DELETE_CURSOS_ERROR, payload })
 
+const uploadUserCursosInfoProcess = (payload) => ({ type: types.UPLOAD_CURSOS_USER_INFO, payload })
+const uploadUserCursosInfoSuccess = (payload) => ({ type: types.UPLOAD_CURSOS_USER_INFO_SUCCESS, payload })
+const uploadUserCursosInfoError = (payload) => ({ type: types.UPLOAD_CURSOS_USER_INFO_ERROR, payload })
+
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload })
-
-
 export const clearCursos = (payload) => ({ type: types.CLEAR_CURSOS, payload })

@@ -29,6 +29,7 @@ const Cursos = () => {
     ];
 
     const cursos = useSelector(state => state.cursos);
+    const noSubidos = useSelector(state => state.cursos.noSubidos);
     const page = useSelector(state => state.cursos.page);
     const user = useSelector(state => state.user.profile);
 
@@ -74,8 +75,8 @@ const Cursos = () => {
         });
     };
 
-    const acceptUpload = (enlace) => {
-        setCursoSelect(enlace)
+    const acceptUpload = (curso) => {
+        setCursoSelect(curso)
         setSubirCursosActive(true)
     }
 
@@ -93,13 +94,18 @@ const Cursos = () => {
         if (col.field === 'id') {
             return <Column
                 key={col.field}
-                field={(enlace) => <div>
-                    <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(enlace.id)} style={{ marginRight: 4 }} />
+                field={(curso) => <div>
+                    <Button label="Editar" icon="pi pi-plus" className="p-button-raised p-button-primary" onClick={() => handleEdit(curso.id)} style={{ marginRight: 4 }} />
                     {
+                        /*
+                            Los cursos no deberían eliminarse, según la arquitectura rompería en la forma que se mostraría a los usuarios, 
+                            dado a que no existe una relación y se conservarían el curso terminado dentro de la coleccion de usuarios.
+                            Para ello la logica debería ser más compleja o refactorizar la manera en la que se manejan los cursos
+                        */
                         // user?.uid === process.env.REACT_APP_ADMIN_ID &&
-                        // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirmDelete(enlace.id)} />
+                        // <Button label="Eliminar" icon="pi pi-trash" className="p-button-raised p-button-danger" onClick={() => confirmDelete(curso.id)} />
                     }
-                    {/* <Button label="Cargar Usuarios" icon="pi pi-file" className="p-button-raised" onClick={() => acceptUpload(enlace)} /> */}
+                    <Button label="Cargar Usuarios" icon="pi pi-file" className="p-button-raised" onClick={() => acceptUpload(curso)} />
                 </div>}
                 header={col.header}
             />
@@ -119,7 +125,7 @@ const Cursos = () => {
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
-        } if (cursos.status == 'FAILURE_ADD' || cursos.status == 'FAILURE_UPLOAD') {
+        } if (cursos.status == 'FAILURE_ADD' || cursos.status == 'FAILURE_UPLOAD' || cursos.status == 'FAILURE_USER_INFO') {
             Swal.fire({
                 title: 'Error!',
                 text: cursos.msg,
@@ -127,6 +133,15 @@ const Cursos = () => {
                 confirmButtonText: 'Continuar'
             })
             dispatch(clearStatus())
+        }
+        //TODO ver como hacer para mostrar los noSubidos
+        if ( cursos.status == 'SUCCESS_USER_INFO' ){
+            Swal.fire({
+                title: noSubidos.length > 0 ? 'Algunos usuarios no fueron cargados con sus cursos!' : 'Se actualizaron los datos correctamente',
+                text: noSubidos.length > 0 ? 'Los siguientes dni no fueron subidos: \n' + noSubidos.join(' - \n') : '',
+                icon: 'success',
+                confirmButtonText: 'Continuar'
+            })
         }
     }, [cursos.status])
 
@@ -174,7 +189,7 @@ const Cursos = () => {
             <div className={styles.table_upload}>
                 {
                     subirCursosActive ?
-                        <SubirCursosUsuarios curso={cursoSelect} />
+                        <SubirCursosUsuarios curso={cursoSelect} noSubidos={noSubidos}/>
                         :
                         cursos.cursos.length > 0
                             ?

@@ -13,7 +13,9 @@ const initialState = {
     lastCurso: undefined,
     page: 1,
     size: 0,
-    misCursos: []
+    misCursos: [],
+    subidos: [],
+    noSubidos: []
 }
 
 export const cursosReducer = (state = initialState, action) => {
@@ -179,12 +181,35 @@ export const cursosReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE_DELETE',
             };
+            case types.UPLOAD_CURSOS_USER_INFO:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.UPLOAD_CURSOS_USER_INFO_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                msg: '',
+                subidos: action.payload.subidos,
+                noSubidos: action.payload.noSubidos,
+                status: 'SUCCESS_USER_INFO'
+            };
+        case types.UPLOAD_CURSOS_USER_INFO_ERROR:
+            return {
+                ...state,
+                msg: action.payload,
+                processing: false,
+                status: 'FAILURE_USER_INFO',
+            };
         case types.CLEAR_STATUS:
             return {
                 ...state,
                 processing: false,
                 status: '',
-                msg: ''
+                msg: '',
+                noSubidos: [],
+                subidos: []
             };
         case types.CLEAR_CURSOS:
             return {
