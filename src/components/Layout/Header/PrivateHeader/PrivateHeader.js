@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Button } from 'primereact/button';
 import { confirmDialog } from 'primereact/confirmdialog';

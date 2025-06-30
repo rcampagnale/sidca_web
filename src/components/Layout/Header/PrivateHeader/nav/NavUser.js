@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sidebar } from 'primereact/sidebar';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import styles from './navUser.module.scss';
 import { confirmDialog } from 'primereact/confirmdialog';
 

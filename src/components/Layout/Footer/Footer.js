@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from "./Footer.module.css";
 import { Button } from 'primereact/button';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import { BsInstagram } from "react-icons/bs";
 import { BiRadio } from "react-icons/bi";
 

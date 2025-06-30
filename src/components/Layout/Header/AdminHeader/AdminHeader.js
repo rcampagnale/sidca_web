@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styles from "./AdminHeader.module.css";
 import logo from '../../../../assets/img/logo-01.png';
 import { Button } from 'primereact/button';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import NavUser from './nav/NavUser';
 import { confirmDialog } from 'primereact/confirmdialog';
 

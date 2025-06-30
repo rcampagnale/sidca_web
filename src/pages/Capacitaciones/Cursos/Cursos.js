@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import styles from './styles.module.css';
-import { useHistory, useParams } from 'react-router';
+import { useHistory, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from "react-redux";
 import CursosSkeleton from "../../../components/Cursos/CursosSkeleton";
 import CursosCard from "../../../components/Cards/CursosCard";

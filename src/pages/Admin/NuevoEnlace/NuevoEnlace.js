@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import { clearStatus, nuevoEnlace, uploadEnlace } from '../../../redux/reducers/enlaces/actions';
 import styles from './styles.module.css';

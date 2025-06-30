@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from './styles.module.css';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import { Button } from 'primereact/button';
 
 const Turismo = () => {

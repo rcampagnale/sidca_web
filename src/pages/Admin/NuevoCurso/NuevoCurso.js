@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useHistory } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import { clearStatus, nuevoCurso, uploadCurso, uploadImg } from '../../../redux/reducers/cursos/actions';

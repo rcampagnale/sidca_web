@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory } from 'react-router';
+import { useHistory } from 'react-router-dom';
 import styles from './styles.module.css';
 import logo from '../../../assets/img/logo-01.png';
 

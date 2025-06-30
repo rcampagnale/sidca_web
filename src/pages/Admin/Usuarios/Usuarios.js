@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useHistory } from 'react-router'
+import { useHistory } from 'react-router-dom'
 import styles from './styles.module.css';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
