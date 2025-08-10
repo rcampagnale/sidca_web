@@ -27,3 +27,19 @@
 .prev{
   margin-right: 5px;
 }
+.badgeReafiliado {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #fff3cd;  /* amarillo suave */
+  color: #8a6d3b;       /* mostaza */
+  border: 1px solid #ffe8a1;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+}
+
+.rowReafiliado {
+  background-color: #fff9e6 !important; /* fila con fondo amarillo claro */
+}
