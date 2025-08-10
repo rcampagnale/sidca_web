@@ -42,6 +42,7 @@ import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 import Afiliacion from "../pages/Afiliacion/Afiliacion";
 import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
+import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 
@@ -79,6 +80,7 @@ const AppRouter = () => {
                 {/* ADMIN */}
                 <PublicRoute exact path="/admin/login" component={LoginAdmin} />
                 <AdminRoute exact path="/admin" component={Admin} />
+                <AdminRoute exact path="/admin/ListaAsistencia" component={ListaAsistencia} />
                 <AdminRoute exact path="/admin/botones" component={habilitarbotones} />
 
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces} />

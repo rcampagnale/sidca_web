@@ -29,6 +29,7 @@ const AdminHeader = () => {
                 <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
             </a>
             <ul className={styles.headerNav}>
+                <li onClick={() => history.push('/admin/ListaAsistencia')}>Lista de Asistencia</li>
                 <li onClick={() => history.push('/admin/botones')}>Habilitar Botones</li>
                 <li onClick={() => history.push('/admin/enlaces')}>Enlaces</li>
                 <li onClick={() => history.push('/admin/usuarios')}>Usuarios</li>

@@ -1,0 +1,92 @@
+.container {
+  padding: 16px;
+}
+
+.header {
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #6b7280; /* gris */
+  margin: 4px 0 0 0;
+}
+
+.toolbar {
+  margin: 12px 0 16px 0;
+  border-radius: 10px;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filterItem {
+  min-width: 160px;
+}
+
+.table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* acciones en tabla */
+.actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+/* badges presente */
+.badgeSi {
+  background: #dcfce7; /* verde suave */
+  color: #166534;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.badgeNo {
+  background: #fee2e2; /* rojo suave */
+  color: #991b1b;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* formulario modal */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formRowFull {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialogActions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
