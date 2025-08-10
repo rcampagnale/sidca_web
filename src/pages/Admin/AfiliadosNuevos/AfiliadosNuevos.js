@@ -21,12 +21,14 @@ const AfiliadosNuevos = () => {
     const history = useHistory();
 
     const columns = [
-        { field: 'fecha', header: 'Fecha' },
-        { field: 'nombre', header: 'Nombre' },
-        { field: 'apellido', header: 'Apellido' },
-        { field: 'dni', header: 'DNI' },
-        { field: 'id', header: 'Acciones' },
-    ];
+    { field: 'fecha', header: 'Fecha' },
+    { field: 'hora', header: 'Hora' }, // nueva columna
+    { field: 'nombre', header: 'Nombre' },
+    { field: 'apellido', header: 'Apellido' },
+    { field: 'dni', header: 'DNI' },
+    { field: 'id', header: 'Acciones' },
+];
+
 
     const nuevosAfiliados = useSelector(state => state.afiliado.nuevosAfiliados);
     const page = useSelector(state => state.afiliado.page);
@@ -60,19 +62,23 @@ const AfiliadosNuevos = () => {
         setVisible(true)
     }
 
-    const handlePagination = async (pagination) => {
-        if (pagination === 'prev' && page === 1) {
-            return setPrevDisable(true)
-        } else {
-            setPrevDisable(false)
-        }
-        // if (pagination === 'next' && nuevosAfiliados.length < 10) {
-        //     return setNextDisable(true)
-        // } else {
-        //     setNextDisable(false)
-        // }
-        dispatch(getAfiliadosNuevos(pagination, pagination === 'next' ? afiliado.lastAfiliado : afiliado.firstAfiliado));
+    const handlePagination = async (event) => {
+    const currentPage = event.page + 1; // paginación base 0 → base 1
+    const direction = currentPage > page ? 'next' : 'prev';
+
+    if (direction === 'prev' && page === 1) {
+        setPrevDisable(true);
+        return;
+    } else {
+        setPrevDisable(false);
     }
+
+    dispatch(getAfiliadosNuevos(
+        direction,
+        direction === 'next' ? afiliado.lastAfiliado : afiliado.firstAfiliado
+    ));
+};
+
 
     const accept = (id) => {
         dispatch(deleteAfiliadosNuevos(id))

@@ -1,0 +1,52 @@
+/* Contenedor principal */
+.habilitar_funciones {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;             /* separa Título vs. Botonera sin necesidad de margin en el h3 */
+  width: 100%;
+  padding: 20px;
+  margin-bottom: 15px;
+  background: linear-gradient(145deg, #f9f9f9, #e9ecef);
+  border-left: 6px solid #22c55e;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.habilitar_funciones:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* Título */
+.habilitar_titulo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f5132;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;            /* sin margen, el gap del contenedor ya separa del bloque de botones */
+}
+
+/* Contenedor de botones con buena separación */
+.habilitar_botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;         /* separación entre botones */
+  justify-content: flex-start;
+}
+
+/* Botones PrimeReact dentro del bloque */
+.habilitar_botones :global(.p-button) {
+  border-radius: 10px;
+  padding: 0.85rem 1.5rem;  /* aire interno */
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.habilitar_botones :global(.p-button:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}

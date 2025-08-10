@@ -1,0 +1,25 @@
+/* Nueva sección: Habilitar funciones */
+.habilitar_funciones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f4f4f4;
+  border-left: 5px solid #22c55e; /* verde claro */
+  border-radius: 4px;
+}
+
+.habilitar_titulo {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f5132;
+  margin: 0;
+}
+
+.habilitar_botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

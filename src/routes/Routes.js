@@ -41,6 +41,7 @@ import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/Transaccio
 import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 import Afiliacion from "../pages/Afiliacion/Afiliacion";
+import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 
@@ -78,6 +79,7 @@ const AppRouter = () => {
                 {/* ADMIN */}
                 <PublicRoute exact path="/admin/login" component={LoginAdmin} />
                 <AdminRoute exact path="/admin" component={Admin} />
+                <AdminRoute exact path="/admin/botones" component={habilitarbotones} />
 
                 <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
                 <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
