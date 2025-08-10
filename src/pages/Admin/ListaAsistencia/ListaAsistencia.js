@@ -20,6 +20,49 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../firebase/firebase-config';
 import styles from './ListaAsistencia.module.css';
+import * as XLSX from 'xlsx';
+
+// Definí el orden y etiqueta de las columnas que querés en el Excel
+const exportAsExcel = (rows, curso) => {
+  const columnasExcel = [
+    { key: 'fecha',           header: 'Fecha' },
+    { key: 'curso',           header: 'Curso' },
+    { key: 'nombre',          header: 'Nombre' },
+    { key: 'apellido',        header: 'Apellido' },
+    { key: 'dni',             header: 'DNI' },
+    { key: 'departamento',    header: 'Departamento' },
+    { key: 'nivelEducativo',  header: 'Nivel Educativo' },
+  ];
+
+  const datos = rows.map((r) => {
+    const fila = {};
+    columnasExcel.forEach(col => { fila[col.key] = r[col.key] ?? ''; });
+    return fila;
+  });
+
+  const wb = XLSX.utils.book_new();
+  const headers = columnasExcel.map(c => c.header);
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
+
+  XLSX.utils.sheet_add_json(ws, datos, {
+    origin: 'A2',
+    header: columnasExcel.map(c => c.key),
+    skipHeader: true
+  });
+
+  ws['!cols'] = columnasExcel.map(col => {
+    const base = { fecha: 12, curso: 10, nombre: 18, apellido: 18, dni: 12, departamento: 16, nivelEducativo: 18 }[col.key] ?? 14;
+    return { wch: base };
+  });
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const nombre = `asistencia_${curso || 'todos'}_${stamp}.xlsx`;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+  XLSX.writeFile(wb, nombre);
+};
 
 /** ---- Helpers de fecha (acepta "27/6/2025" o "2025-06-27") ---- */
 const parseToDate = (value) => {
@@ -227,17 +270,20 @@ const ListaAsistencia = () => {
     </div>
   );
 
-  const leftToolbar = (
-    <div className={styles.toolbarLeft}>
-      <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={abrirNuevo} />
-      <Button
-        label="Exportar CSV"
-        icon="pi pi-upload"
-        className="p-button-secondary"
-        onClick={() => dt.current?.exportCSV({ selectionOnly: false })}
-      />
-    </div>
-  );
+// En leftToolbar:
+const leftToolbar = (
+  <div className={styles.toolbarLeft}>
+    <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={abrirNuevo} />
+    <Button
+      label="Exportar Excel"
+      icon="pi pi-file-excel"
+      className="p-button-success"
+      onClick={() => exportAsExcel(dataFiltrada, cursoAplicado)}
+    />
+  </div>
+);
+
+
 
   const rightToolbar = (
     <div className={styles.toolbarRight}>
