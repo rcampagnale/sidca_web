@@ -18,11 +18,47 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 import { db } from '../../../firebase/firebase-config';
 import styles from './ListaAsistencia.module.css';
-import * as XLSX from 'xlsx';
 
-// Definí el orden y etiqueta de las columnas que querés en el Excel
+/** ---------- Helpers de fecha ---------- */
+const parseToDate = (value) => {
+  if (!value) return null;
+  const str = String(value);
+  if (str.includes('-')) {
+    // YYYY-MM-DD
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  }
+  // D/M/YYYY ó DD/MM/YYYY
+  const [d, m, y] = str.split('/').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+};
+const dateToDMY = (date) => {
+  if (!date) return '';
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+};
+const sameDay = (a, b) =>
+  a instanceof Date &&
+  b instanceof Date &&
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+/** ---------- Búsqueda: normalizar (ignora acentos y mayúsculas) ---------- */
+const normalizeText = (t) =>
+  (t ?? '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // quita acentos
+
+/** ---------- Exportar Excel (función pura) ---------- */
 const exportAsExcel = (rows, curso) => {
   const columnasExcel = [
     { key: 'fecha',           header: 'Fecha' },
@@ -36,75 +72,54 @@ const exportAsExcel = (rows, curso) => {
 
   const datos = rows.map((r) => {
     const fila = {};
-    columnasExcel.forEach(col => { fila[col.key] = r[col.key] ?? ''; });
+    columnasExcel.forEach((col) => { fila[col.key] = r[col.key] ?? ''; });
     return fila;
   });
 
   const wb = XLSX.utils.book_new();
-  const headers = columnasExcel.map(c => c.header);
+  const headers = columnasExcel.map((c) => c.header);
   const ws = XLSX.utils.aoa_to_sheet([headers]);
 
   XLSX.utils.sheet_add_json(ws, datos, {
     origin: 'A2',
-    header: columnasExcel.map(c => c.key),
-    skipHeader: true
+    header: columnasExcel.map((c) => c.key),
+    skipHeader: true,
   });
 
-  ws['!cols'] = columnasExcel.map(col => {
+  ws['!cols'] = columnasExcel.map((col) => {
     const base = { fecha: 12, curso: 10, nombre: 18, apellido: 18, dni: 12, departamento: 16, nivelEducativo: 18 }[col.key] ?? 14;
     return { wch: base };
   });
 
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
-  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
   const nombre = `asistencia_${curso || 'todos'}_${stamp}.xlsx`;
 
   XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
   XLSX.writeFile(wb, nombre);
 };
 
-/** ---- Helpers de fecha (acepta "27/6/2025" o "2025-06-27") ---- */
-const parseToDate = (value) => {
-  if (!value) return null;
-  if (value.includes('-')) {
-    const [y, m, d] = value.split('-').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1);
-  }
-  const [d, m, y] = value.split('/').map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
-};
-const dateToDMY = (date) => {
-  if (!date) return '';
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
-};
-
 const ListaAsistencia = () => {
   const toast = useRef(null);
 
-  // Datos
+  // ------------------- Datos base -------------------
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtros UI (cliente)
+  // ------------------- Filtros cliente -------------------
   const [busqueda, setBusqueda] = useState('');
   const [filtroFecha, setFiltroFecha] = useState(null); // Date | null
 
-  // Cursos para el dropdown
+  // ------------------- Cursos (dropdown) -------------------
   const [cursosOptions, setCursosOptions] = useState([]);
+  const [cursoSeleccionado, setCursoSeleccionado] = useState(null); // elegido por el usuario
+  const [cursoAplicado, setCursoAplicado] = useState(null);         // usado por la query
 
-  // Flujo "Filtrar" manual
-  const [cursoSeleccionado, setCursoSeleccionado] = useState(null); // lo que elige el usuario
-  const [cursoAplicado, setCursoAplicado] = useState(null);         // lo que usa Firestore
-
-  // Paginación controlada
+  // ------------------- Paginación controlada -------------------
   const [first, setFirst] = useState(0);
 
-  // Modal alta/edición
+  // ------------------- Modal (alta/edición) -------------------
   const [visibleDialog, setVisibleDialog] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState({
@@ -118,7 +133,7 @@ const ListaAsistencia = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  // =================== 1) Suscripción para armar lista de cursos ===================
+  // ===== 1) Suscripción para armar lista de cursos (ligera) =====
   useEffect(() => {
     const base = collection(db, 'asistencia');
     const unsub = onSnapshot(
@@ -131,14 +146,12 @@ const ListaAsistencia = () => {
         });
         setCursosOptions(Array.from(setCursos).sort().map((c) => ({ label: c, value: c })));
       },
-      (err) => {
-        console.error('cursos (onSnapshot):', err);
-      }
+      (err) => console.error('cursos (onSnapshot):', err)
     );
     return () => unsub();
   }, []);
 
-  // =================== 2) Suscripción principal con filtro aplicado ===================
+  // ===== 2) Suscripción principal con filtro por curso aplicado =====
   useEffect(() => {
     setLoading(true);
     const base = collection(db, 'asistencia');
@@ -161,28 +174,35 @@ const ListaAsistencia = () => {
     return () => unsub();
   }, [cursoAplicado]);
 
-  // Resetear a primera página cuando cambia el filtro aplicado
+  // Reset paginación cuando cambia el filtro aplicado
   useEffect(() => {
     setFirst(0);
   }, [cursoAplicado]);
 
-  // =================== Filtrado adicional (texto/fecha) y orden local por fecha desc ===================
+  // ===== Derivados: filtro texto/fecha + orden por fecha desc (cliente) =====
   const dataFiltrada = useMemo(() => {
-    const s = (busqueda || '').toLowerCase();
-    const filtroDMY = filtroFecha ? dateToDMY(filtroFecha) : null;
+    const s = normalizeText(busqueda).trim();
 
     const filtrada = rows.filter((r) => {
-      const txt = `${r.nombre || ''} ${r.apellido || ''} ${r.dni || ''} ${r.curso || ''} ${r.departamento || ''} ${r.nivelEducativo || ''}`.toLowerCase();
+      // Texto: nombre, apellido, dni, curso, departamento, nivelEducativo
+      const txt = normalizeText(
+        `${r.nombre || ''} ${r.apellido || ''} ${r.dni || ''} ${r.curso || ''} ${r.departamento || ''} ${r.nivelEducativo || ''}`
+      );
       const okTexto = s === '' || txt.includes(s);
-      const okFecha = !filtroDMY || r.fecha === filtroDMY;
+
+      // Fecha: comparar por día con sameDay (robusto ante formatos)
+      const fechaRow = parseToDate(r.fecha);
+      const okFecha = !filtroFecha || (fechaRow && sameDay(fechaRow, filtroFecha));
+
       return okTexto && okFecha;
     });
 
+    // Orden por fecha desc (cliente)
     const toTime = (f) => parseToDate(f)?.getTime() || 0;
     return filtrada.sort((a, b) => toTime(b.fecha) - toTime(a.fecha));
   }, [rows, busqueda, filtroFecha]);
 
-  // =================== CRUD ===================
+  // ===== CRUD =====
   const abrirNuevo = () => {
     setEditandoId(null);
     setForm({
@@ -227,7 +247,7 @@ const ListaAsistencia = () => {
     setSaving(true);
     try {
       const payload = {
-        fecha: dateToDMY(form.fecha),
+        fecha: dateToDMY(form.fecha), // guardamos como "DD/MM/YYYY"
         curso: form.curso.trim(),
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
@@ -262,7 +282,7 @@ const ListaAsistencia = () => {
     }
   };
 
-  // =================== UI / Render ===================
+  // ===== UI =====
   const accionesTemplate = (row) => (
     <div className={styles.actions}>
       <Button icon="pi pi-pencil" rounded text aria-label="Editar" onClick={() => abrirEditar(row)} />
@@ -270,20 +290,19 @@ const ListaAsistencia = () => {
     </div>
   );
 
-// En leftToolbar:
-const leftToolbar = (
-  <div className={styles.toolbarLeft}>
-    <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={abrirNuevo} />
-    <Button
-      label="Exportar Excel"
-      icon="pi pi-file-excel"
-      className="p-button-success"
-      onClick={() => exportAsExcel(dataFiltrada, cursoAplicado)}
-    />
-  </div>
-);
+  const dt = useRef(null);
 
-
+  const leftToolbar = (
+    <div className={styles.toolbarLeft}>
+      <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={abrirNuevo} />
+      <Button
+        label="Exportar Excel"
+        icon="pi pi-file-excel"
+        className="p-button-success"
+        onClick={() => exportAsExcel(dataFiltrada, cursoAplicado)}
+      />
+    </div>
+  );
 
   const rightToolbar = (
     <div className={styles.toolbarRight}>
@@ -296,7 +315,7 @@ const leftToolbar = (
         />
       </span>
 
-      {/* Selección de curso (no aplica aún) */}
+      {/* Selección de curso (no aplica hasta presionar Filtrar) */}
       <Dropdown
         value={cursoSeleccionado}
         onChange={(e) => setCursoSeleccionado(e.value)}
@@ -306,13 +325,12 @@ const leftToolbar = (
         showClear
       />
 
-      {/* Botón Filtrar: aplica al query y resetea paginación */}
       <Button
         label="Filtrar"
         icon="pi pi-filter"
         onClick={() => {
           setCursoAplicado(cursoSeleccionado || null);
-          setFirst(0); // reset de paginación
+          setFirst(0); // reset paginación
           toast.current?.show({
             severity: 'info',
             summary: 'Filtro aplicado',
@@ -321,7 +339,6 @@ const leftToolbar = (
         }}
       />
 
-      {/* Filtro por fecha (cliente) */}
       <Calendar
         value={filtroFecha}
         onChange={(e) => setFiltroFecha(e.value)}
@@ -329,10 +346,10 @@ const leftToolbar = (
         dateFormat="dd/mm/yy"
         className={styles.filterItem}
         showIcon
+        showButtonBar
         readOnlyInput
       />
 
-      {/* Limpiar todo */}
       <Button
         text
         label="Limpiar"
@@ -340,27 +357,25 @@ const leftToolbar = (
           setBusqueda('');
           setFiltroFecha(null);
           setCursoSeleccionado(null);
-          setCursoAplicado(null); // trae todo
-          setFirst(0);            // reset paginación
+          setCursoAplicado(null); // vuelve a traer todo
+          setFirst(0);
         }}
       />
     </div>
   );
-
-  const dt = useRef(null);
 
   return (
     <div className={styles.container}>
       <Toast ref={toast} />
       <div className={styles.header}>
         <h2>Asistencia por curso</h2>
-        <p className={styles.subtitle}>Elegí un curso, presioná <strong>Filtrar</strong> y se actualiza la grilla.</p>
+        <p className={styles.subtitle}>Elegí un curso, filtrá, buscá por texto o fecha y exportá lo que ves a Excel.</p>
       </div>
 
       <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
 
       <DataTable
-        key={cursoAplicado || 'all'}   /* fuerza re-montaje al cambiar filtro */
+        key={cursoAplicado || 'all'} /* fuerza re-montaje al cambiar filtro */
         ref={dt}
         value={dataFiltrada}
         loading={loading}
@@ -445,6 +460,5 @@ const leftToolbar = (
 };
 
 export default ListaAsistencia;
-
 
 
