@@ -1,16 +1,24 @@
 @use "../../scss/abstracts/mixins.scss" as *;
 
+:root {
+  --container-max: 960px;
+}
+
+/* Contenedor principal */
 .visibleContent {
-  height: 100%;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  background: var(--surface-ground, #f7f7f7);
+  padding: env(safe-area-inset-top) clamp(12px, 3vw, 20px) env(safe-area-inset-bottom);
 }
 
-.containe{
-  // width: 25rem; 
+/* Card contenedor del formulario */
+.containe {
+  width: 100%;
+  max-width: var(--container-max);
   margin-bottom: 2em;
 
   @include mobile {
@@ -20,29 +28,102 @@
   @include tablet {
     width: 80%;
   }
-
 }
 
+/* Título */
 .title {
   margin: 20px 0 30px 0;
-  font-size: 30px;
+  font-size: clamp(22px, 4vw, 32px);
   color: rgb(82, 82, 82);
   font-weight: bold;
+  text-align: center;
 }
 
+/* Formulario: grilla responsive */
 .inputForm {
   width: 100%;
-  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 12px;
+
+  @include tablet {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 24px;
+    padding: 16px 20px 20px;
+  }
 }
 
+/* Campo */
 .inputSection {
-  margin-bottom: 1.6rem;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 1rem;
+
+  :global(.p-inputtext),
+  :global(.p-dropdown) {
+    font-size: 16px;
+  }
+
+  @include tablet {
+    margin-bottom: 1.2rem;
+  }
+}
+
+/* Forzar a ocupar las 2 columnas */
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
+/* Checkbox */
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  :global(.p-checkbox) {
+    transform: translateY(2px);
+  }
+}
+
+.checkLabel {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+/* Botón de envío */
+.submitRow {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 40%);
+  padding: 12px 0 4px;
+  display: flex;
+  justify-content: center;
+
+  @include tablet {
+    position: static;
+    background: transparent;
+    padding: 4px 0 0;
+    justify-content: flex-end;
+  }
 }
 
 .submitButton {
-  width: 100%;
+  width: min(100%, 480px);
+  font-size: 16px;
+  padding: 12px 18px;
+  border-radius: 10px;
+
+  @include tablet {
+    width: auto;
+    min-width: 220px;
+    font-size: 17px;
+  }
 }
 
-.display-none{
+/* Ocultar elementos */
+.display-none {
   display: none;
 }
+
