@@ -14,12 +14,18 @@ const initialState = {
   lastAsesoramiento: undefined,
   page: 1,
   size: 0,
+  categoryFilter: '',
 };
 
 export const asesoramientoReducer = (state = initialState, action) => {
   switch (action.type) {
     case types.NUEVO_ASESORAMIENTO:
       return { ...state, processing: true };
+      case types.SET_ASESORAMIENTO_CATEGORY_FILTER:
+      return { ...state, categoryFilter: action.payload || '' };
+
+    case types.CLEAR_ASESORAMIENTOS:
+      return { ...state, ...initialState };
 
     case types.NUEVO_ASESORAMIENTO_SUCCESS:
       return { ...state, processing: false, status: 'SUCCESS', msg: action.payload, img: '', pdf: '' };
@@ -110,6 +116,8 @@ export const asesoramientoReducer = (state = initialState, action) => {
     default:
       return state;
   }
+
+  
 };
 
 export default asesoramientoReducer;

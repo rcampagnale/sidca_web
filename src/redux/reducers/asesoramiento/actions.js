@@ -1,24 +1,37 @@
 import types from './types';
 import { db, storage } from '../../../firebase/firebase-config';
 import {
-  collection, addDoc, getDocs, query, orderBy, limit,
-  doc, setDoc, startAfter, endBefore, limitToLast, deleteDoc,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  doc,
+  setDoc,
+  startAfter,
+  endBefore,
+  limitToLast,
+  deleteDoc,
+  where, // 👈 IMPORTANTE
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
 
-// ---------- CREATE ----------
+// -------------------- CREATE --------------------
 export const nuevoAsesoramiento = (data) => {
   return async (dispatch) => {
-    dispatch({ type: types.NUEVO_ASESORAMIENTO });
+    dispatch(nuevoAsesoramientoProcess());
 
     const prioridadNum = Number.parseInt(data.prioridad);
-    // Guardamos pdf como string ('' si no hay), y NO tocamos 'link' legacy.
     const enlace = {
       titulo: (data.titulo ?? '').trim(),
-      pdf: data.pdf ? String(data.pdf) : '',              // NUEVO CAMPO OFICIAL
-      link: data.link ? String(data.link) : (data.pdf ? String(data.pdf) : ''), // opcional: copia a link si querés backward
+      // Nuevo campo oficial para PDF:
+      pdf: data.pdf ? String(data.pdf) : '',
+      // Si querés mantener el legacy link sincronizado:
+      link: data.link ? String(data.link) : (data.pdf ? String(data.pdf) : ''),
+
       descripcion: data.descripcion ? String(data.descripcion) : '',
       categoria: data.categoria ? String(data.categoria) : '',
       estado: data.estado ? String(data.estado) : 'activo',
@@ -29,24 +42,23 @@ export const nuevoAsesoramiento = (data) => {
 
     try {
       const docRef = await addDoc(collection(db, 'asesoramiento'), enlace);
-      dispatch({ type: types.NUEVO_ASESORAMIENTO_SUCCESS, payload: `Enlace de asesoramiento agregado. ID: ${docRef.id}` });
+      dispatch(nuevoAsesoramientoSuccess(`Enlace de asesoramiento agregado. ID: ${docRef.id}`));
     } catch (error) {
-      dispatch({ type: types.NUEVO_ASESORAMIENTO_ERROR, payload: 'No se ha podido agregar el enlace de asesoramiento' });
+      dispatch(nuevoAsesoramientoError('No se ha podido agregar el enlace de asesoramiento'));
       console.log(error);
     }
   };
 };
 
-// ---------- UPDATE ----------
+// -------------------- UPDATE --------------------
 export const uploadAsesoramiento = (data, id) => {
   return async (dispatch) => {
-    dispatch({ type: types.UPLOAD_ASESORAMIENTO });
+    dispatch(uploadAsesoramientoProcess());
 
     const prioridadNum = Number.parseInt(data.prioridad);
     const asesoramientoObj = {
       titulo: (data.titulo ?? '').trim(),
-      pdf: data.pdf ? String(data.pdf) : '',              // actualizamos PDF aquí
-      // Si querés mantener 'link' legacy sincronizado:
+      pdf: data.pdf ? String(data.pdf) : '',
       link: data.link ? String(data.link) : (data.pdf ? String(data.pdf) : ''),
 
       descripcion: data.descripcion ? String(data.descripcion) : '',
@@ -60,27 +72,29 @@ export const uploadAsesoramiento = (data, id) => {
     try {
       const refDoc = doc(db, 'asesoramiento', id);
       await setDoc(refDoc, asesoramientoObj);
-      dispatch({ type: types.UPLOAD_ASESORAMIENTO_SUCCESS, payload: `Asesoramiento editado Correctamente. ID: ${id}` });
+      dispatch(uploadAsesoramientoSuccess(`Asesoramiento editado Correctamente. ID: ${id}`));
     } catch (error) {
-      dispatch({ type: types.UPLOAD_ASESORAMIENTO_ERROR, payload: 'No se ha podido editar el asesoramiento' });
+      dispatch(uploadAsesoramientoError('No se ha podido editar el asesoramiento'));
       console.log(error);
     }
   };
 };
 
-// ---------- UPLOAD IMG ----------
+// -------------------- UPLOAD IMG --------------------
 export const uploadImg = (file) => {
   return async (dispatch) => {
-    uploadImgFunction(dispatch, file,
-      (p) => ({ type: types.UPLOAD_IMG, payload: p }),
-      (p) => ({ type: types.UPLOAD_IMG_SUCCESS, payload: p }),
-      (p) => ({ type: types.UPLOAD_IMG_ERROR, payload: p }),
-      (p) => ({ type: types.UPLOAD_PROGRESS, payload: p }),
+    uploadImgFunction(
+      dispatch,
+      file,
+      uploadImgProcess,
+      uploadImgSuccess,
+      uploadImgError,
+      uploadProgress
     );
   };
 };
 
-// ---------- UPLOAD PDF ----------
+// -------------------- UPLOAD PDF --------------------
 export const uploadPdf = (file) => {
   return async (dispatch) => {
     try {
@@ -92,7 +106,9 @@ export const uploadPdf = (file) => {
       dispatch({ type: types.UPLOAD_PDF_REQUEST });
 
       const timestamp = Date.now();
-      const safeName = (file.name || `asesoramiento_${timestamp}.pdf`).replace(/\s+/g, '_').toLowerCase();
+      const safeName = (file.name || `asesoramiento_${timestamp}.pdf`)
+        .replace(/\s+/g, '_')
+        .toLowerCase();
       const storagePath = `asesoramiento/pdfs/${timestamp}_${safeName}`;
 
       const storageRef = ref(storage, storagePath);
@@ -109,7 +125,7 @@ export const uploadPdf = (file) => {
         },
         async () => {
           const url = await getDownloadURL(uploadTask.snapshot.ref);
-          dispatch({ type: types.UPLOAD_PDF_SUCCESS, payload: url }); // se copia a form.pdf desde el componente
+          dispatch({ type: types.UPLOAD_PDF_SUCCESS, payload: url }); // el componente copiará a form.pdf
         }
       );
     } catch (err) {
@@ -118,74 +134,116 @@ export const uploadPdf = (file) => {
   };
 };
 
-// ---------- LIST / PAGINATION ----------
-export const getAsesoramientos = (pagination, start) => {
+// -------------------- FILTER (Category) --------------------
+export const setAsesoramientoCategoryFilter = (category) => ({
+  type: types.SET_ASESORAMIENTO_CATEGORY_FILTER,
+  payload: category || '',
+});
+
+// -------------------- LIST / PAGINATION --------------------
+export const getAsesoramientos = (pagination, start, categoryOverride) => {
   return async (dispatch, getState) => {
-    dispatch({ type: types.GET_ASESORAMIENTOS });
+    dispatch(getAsesoramientosProcess());
     try {
+      const { categoryFilter } = getState().asesoramiento;
+      const category = categoryOverride !== undefined ? categoryOverride : categoryFilter;
+
+      // Base ref + filtro opcional
+      let baseRef = collection(db, 'asesoramiento');
+      if (category) {
+        baseRef = query(baseRef, where('categoria', '==', category)); // 👈 ahora sí existe where
+      }
+
       let q;
       if (pagination === 'next') {
-        q = await query(collection(db, 'asesoramiento'), orderBy('prioridad', 'asc'), limit(10), startAfter(start));
+        q = await query(baseRef, orderBy('prioridad', 'asc'), limit(10), startAfter(start));
       } else if (pagination === 'prev') {
-        q = await query(collection(db, 'asesoramiento'), orderBy('prioridad', 'asc'), limitToLast(10), endBefore(start));
+        q = await query(baseRef, orderBy('prioridad', 'asc'), limitToLast(10), endBefore(start));
       } else {
-        q = await query(collection(db, 'asesoramiento'), orderBy('prioridad', 'asc'), limit(10));
+        q = await query(baseRef, orderBy('prioridad', 'asc'), limit(10));
       }
 
       const querySnapshot = await getDocs(q);
       if (querySnapshot.size === 0) {
-        dispatch({ type: types.GET_ASESORAMIENTOS_ERROR, payload: 'No hay asesoramientos' });
+        dispatch(getAsesoramientosError('No hay asesoramientos'));
       } else {
         const { page } = getState().asesoramiento;
         const arrayDocs = [];
 
         querySnapshot.docs.forEach((d, i) => {
-          i === 0 && dispatch({ type: types.SET_FIRST_ASESORAMIENTO, payload: d });
-          i === 9 && dispatch({ type: types.SET_LAST_ASESORAMIENTO, payload: d });
+          i === 0 && dispatch(setFirstAsesoramiento(d)); // 👈 definidos abajo
+          i === 9 && dispatch(setLastAsesoramiento(d));
         });
 
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
           arrayDocs.push({
             id: docSnap.id,
-            titulo: data.titulo,
-            descripcion: data.descripcion,
-            estado: data.estado,
-            categoria: data.categoria,
-            // traemos ambos para compatibilidad
-            link: data.link,
-            pdf: data.pdf,
-            imagen: data.imagen,
-            prioridad: data.prioridad,
-            descarga: data.descarga,
+            titulo: data.titulo ?? '',
+            descripcion: data.descripcion ?? '',
+            estado: data.estado ?? 'activo',
+            categoria: data.categoria ?? '',
+            link: data.link ?? '',
+            pdf: data.pdf ?? '',
+            imagen: data.imagen ?? '',
+            prioridad: Number.isFinite(Number(data.prioridad)) ? Number(data.prioridad) : 0,
+            descarga: !!data.descarga,
           });
         });
 
-        dispatch({ type: types.GET_ASESORAMIENTOS_SUCCESS, payload: arrayDocs });
-        dispatch({ type: types.SET_PAGE_ASESORAMIENTO, payload: pagination === 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page });
+        dispatch(getAsesoramientosSuccess(arrayDocs));
+        dispatch(setPage(pagination === 'next' ? page + 1 : pagination === 'prev' ? page - 1 : page));
       }
     } catch (error) {
-      dispatch({ type: types.GET_ASESORAMIENTOS_ERROR, payload: 'No se pudieron cargar los asesoramientos' });
+      dispatch(getAsesoramientosError('No se pudieron cargar los asesoramientos'));
       console.log(error);
     }
   };
 };
 
-// ---------- DELETE ----------
+// -------------------- DELETE --------------------
 export const deleteAsesoramientos = (id) => {
   return async (dispatch) => {
-    dispatch({ type: types.DELETE_ASESORAMIENTO });
+    dispatch(deleteAsesoramientosProcess());
     try {
       await deleteDoc(doc(db, 'asesoramiento', id));
-      dispatch({ type: types.DELETE_ASESORAMIENTO_SUCCESS, payload: id });
+      dispatch(deleteAsesoramientosSuccess(id));
     } catch (error) {
-      dispatch({ type: types.DELETE_ASESORAMIENTO_ERROR, payload: 'No se eliminaron los datos' });
+      dispatch(deleteAsesoramientosError('No se eliminaron los datos'));
       console.log(error);
     }
   };
 };
 
-// ---------- UTIL ----------
+// -------------------- GET ONE --------------------
 export const getAsesoramiento = (payload) => ({ type: types.GET_ASESORAMIENTO, payload });
+
+// -------------------- SIMPLE ACTION CREATORS --------------------
+const nuevoAsesoramientoProcess = (payload) => ({ type: types.NUEVO_ASESORAMIENTO, payload });
+const nuevoAsesoramientoSuccess = (payload) => ({ type: types.NUEVO_ASESORAMIENTO_SUCCESS, payload });
+const nuevoAsesoramientoError = (payload) => ({ type: types.NUEVO_ASESORAMIENTO_ERROR, payload });
+
+const uploadImgProcess = (payload) => ({ type: types.UPLOAD_IMG, payload });
+const uploadImgSuccess = (payload) => ({ type: types.UPLOAD_IMG_SUCCESS, payload });
+const uploadImgError = (payload) => ({ type: types.UPLOAD_IMG_ERROR, payload });
+
+const uploadProgress = (payload) => ({ type: types.UPLOAD_PROGRESS, payload });
+
+const uploadAsesoramientoProcess = (payload) => ({ type: types.UPLOAD_ASESORAMIENTO, payload });
+const uploadAsesoramientoSuccess = (payload) => ({ type: types.UPLOAD_ASESORAMIENTO_SUCCESS, payload });
+const uploadAsesoramientoError = (payload) => ({ type: types.UPLOAD_ASESORAMIENTO_ERROR, payload });
+
+const getAsesoramientosProcess = (payload) => ({ type: types.GET_ASESORAMIENTOS, payload });          // 👈 definido
+const getAsesoramientosSuccess = (payload) => ({ type: types.GET_ASESORAMIENTOS_SUCCESS, payload });  // 👈 definido
+const getAsesoramientosError = (payload) => ({ type: types.GET_ASESORAMIENTOS_ERROR, payload });      // 👈 definido
+
+const deleteAsesoramientosProcess = (payload) => ({ type: types.DELETE_ASESORAMIENTO, payload });
+const deleteAsesoramientosSuccess = (payload) => ({ type: types.DELETE_ASESORAMIENTO_SUCCESS, payload });
+const deleteAsesoramientosError = (payload) => ({ type: types.DELETE_ASESORAMIENTO_ERROR, payload });
+
+const setFirstAsesoramiento = (payload) => ({ type: types.SET_FIRST_ASESORAMIENTO, payload });        // 👈 definido
+const setLastAsesoramiento = (payload) => ({ type: types.SET_LAST_ASESORAMIENTO, payload });          // 👈 definido
+const setPage = (payload) => ({ type: types.SET_PAGE_ASESORAMIENTO, payload });                       // 👈 definido
+
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload });
 export const clearAsesoramiento = (payload) => ({ type: types.CLEAR_ASESORAMIENTOS, payload });
