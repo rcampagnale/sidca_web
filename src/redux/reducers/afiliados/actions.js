@@ -200,7 +200,16 @@ export const afiliacion = (data) => {
   return async (dispatch, getState) => {
     dispatch(afiliacionProcess());
     try {
-      // 1) Contar cuántas afiliaciones previas hubo en "nuevoAfiliado" para este DNI
+      // 1) Verificar si el usuario YA EXISTE en "usuarios"
+      const qUser = await query(collection(db, 'usuarios'), where('dni', '==', data.dni));
+      const qUserSnap = await getDocs(qUser);
+
+      if (qUserSnap.size > 0) {
+        // ✅ Usuario ya está afiliado -> NO permitimos nueva afiliación
+        return dispatch(afiliacionError('Este DNI ya está afiliado. Descargá la app e ingresá con tu DNI, o bien comunícate con el Admonistrador del Sindicato.'));
+      }
+
+      // 2) Contar cuántas afiliaciones previas hubo en "nuevoAfiliado"
       const qReaf = await query(collection(db, 'nuevoAfiliado'), where('dni', '==', data.dni));
       const prev = await getDocs(qReaf);
       const nroAfiliacion = prev.size + 1; // 1 = primera, 2 = segunda, etc.
@@ -221,15 +230,13 @@ export const afiliacion = (data) => {
         establecimientos: data.establecimientos,
         fecha: fechaCompleta,
         cotizante: data.descuento,
-        nroAfiliacion, // 👈 nuevo campo
+        nroAfiliacion,
       };
 
-      // 2) Registrar SIEMPRE una nueva fila en "nuevoAfiliado"
+      // 3) Registrar SIEMPRE una nueva fila en "nuevoAfiliado"
       await addDoc(collection(db, 'nuevoAfiliado'), user);
 
-      // 3) En "usuarios": si NO existe ese DNI, lo creo. Si ya existe, NO duplico.
-      const qUser = await query(collection(db, 'usuarios'), where('dni', '==', data.dni));
-      const qUserSnap = await getDocs(qUser);
+      // 4) Crear en "usuarios" SOLO si no existe
       if (qUserSnap.size === 0) {
         await addDoc(collection(db, 'usuarios'), user);
       }
@@ -245,6 +252,7 @@ export const afiliacion = (data) => {
     }
   };
 };
+
 
 
 // -------------------------------
