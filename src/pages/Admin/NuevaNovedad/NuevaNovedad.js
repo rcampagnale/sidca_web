@@ -71,10 +71,13 @@ const NuevaNovedad = () => {
     ];
 
     const categorias = [
-        { label: 'Turismo', value: 'turismo' },
-        { label: 'Casa del Docente', value: 'casa' },
-        { label: 'Predio', value: 'predio' }
-    ]
+    { label: 'Turismo', value: 'turismo' },
+    { label: 'Casa del Docente', value: 'casa' },
+    { label: 'Predio', value: 'predio' },
+    { label: 'Convenio Comercio', value: 'convenio_comercio' },
+    { label: 'Convenio Hoteles', value: 'convenio_hoteles' }
+]
+
 
     const onUploadHandler = (e) => {
         let fileObj = e.files[0];

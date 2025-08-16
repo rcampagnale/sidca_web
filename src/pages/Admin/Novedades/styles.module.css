@@ -54,3 +54,16 @@
   margin-top: 10px;
   text-align: center;
 }
+.toolbarRightAligned {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.dropdownFiltro {
+  min-width: 280px;
+}
+
+
