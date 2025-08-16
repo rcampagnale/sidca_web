@@ -256,7 +256,7 @@ const Novedades = () => {
         <h3 className={styles.title}>Novedades</h3>
         <div>
           <Button
-            label="Nueva novedad"
+            label="Nueva Novedad"
             icon="pi pi-plus"
             onClick={() => history.push('/admin/nueva-novedad')}
             style={{ marginRight: 3 }}

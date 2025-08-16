@@ -37,11 +37,20 @@ export const novedadesReducer = (state = initialState, action) => {
     case types.UPLOAD_IMG:
       return { ...state, uploading: true, progress: 0 };
     case types.UPLOAD_IMG_SUCCESS:
-      return { ...state, uploading: false, status: 'SUCCESS_UPLOAD_IMG', img: action.payload };
+      return {
+        ...state,
+        uploading: false,
+        status: 'SUCCESS_UPLOAD_IMG',
+        img:
+          typeof action.payload === 'string'
+            ? action.payload
+            : (action.payload?.img || action.payload?.url || action.payload?.downloadURL || ''),
+        progress: 100,
+      };
     case types.UPLOAD_IMG_ERROR:
       return { ...state, uploading: false, status: 'FAILURE_UPLOAD_IMG', msg: action.payload };
     case types.UPLOAD_PROGRESS:
-      return { ...state, progress: action.payload };
+      return { ...state, uploading: true, progress: Math.round(Number(action.payload) || 0) };
 
     // === LISTAR ===
     case types.GET_NOVEDADES:
@@ -66,7 +75,6 @@ export const novedadesReducer = (state = initialState, action) => {
 
     // === DETALLE ===
     case types.GET_NOVEDAD:
-      // guardamos lo que llegue (puede ser id o el objeto seleccionado según tu flujo)
       return { ...state, novedad: action.payload };
 
     // === ELIMINAR ===

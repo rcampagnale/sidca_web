@@ -46,6 +46,11 @@ export const nuevaNovedad = (data) => {
       return dispatch(nuevaNovedadError('Categoría inválida. Usa: turismo, predio, casa, convenio_comercio o convenio_hoteles.'));
     }
 
+    // departamento solo aplica para convenio_comercio
+    const departamentoValue = categoriaNorm === 'convenio_comercio'
+      ? (data.departamento || '')
+      : ''; // <-- si preferís null, reemplazá '' por null
+
     const enlace = {
       titulo: `${data.titulo}`,
       link: `${data.link === '' ? false : data.link}`,
@@ -54,7 +59,8 @@ export const nuevaNovedad = (data) => {
       estado: `${data.estado}`,
       imagen: `${data.imagen === '' ? false : data.imagen}`,
       prioridad: Number.parseInt(data.prioridad, 10),
-      descarga: `${data.descarga === 'no' ? false : true}`
+      descarga: `${data.descarga === 'no' ? false : true}`,
+      departamento: departamentoValue, // 👈 NUEVO
     };
 
     try {
@@ -84,6 +90,11 @@ export const uploadNovedad = (data, id) => {
       return dispatch(uploadNovedadError('Categoría inválida. Usa: turismo, predio, casa, convenio_comercio o convenio_hoteles.'));
     }
 
+    // departamento solo aplica para convenio_comercio
+    const departamentoValue = categoriaNorm === 'convenio_comercio'
+      ? (data.departamento || '')
+      : '';
+
     const novedadObj = {
       titulo: `${data.titulo}`,
       link: `${data.link === '' ? false : data.link}`,
@@ -92,12 +103,13 @@ export const uploadNovedad = (data, id) => {
       estado: `${data.estado}`,
       imagen: `${data.imagen === '' ? false : data.imagen}`,
       prioridad: Number.parseInt(data.prioridad, 10),
-      descarga: `${data.descarga === 'no' ? false : true}`
+      descarga: `${data.descarga === 'no' ? false : true}`,
+      departamento: departamentoValue, // 👈 NUEVO
     };
 
     try {
       const refDoc = doc(db, 'novedades', id);
-      await setDoc(refDoc, novedadObj);
+      await setDoc(refDoc, novedadObj, { merge: true }); // merge para no pisar otros campos
       dispatch(uploadNovedadSuccess(`Novedad editado Correctamente. ID: ${id}`));
     } catch (error) {
       dispatch(uploadNovedadError('No se ha podido editar la novedad'));
@@ -182,7 +194,8 @@ export const getNovedades = (pagination, start, categoria = 'todas') => {
           link: data.link,
           imagen: data.imagen,
           prioridad: data.prioridad,
-          descarga: data.descarga
+          descarga: data.descarga,
+          departamento: data.departamento || '', // 👈 NUEVO
         });
       });
 
@@ -226,6 +239,7 @@ export const getNovedad = (id) => {
         imagen: data.imagen,
         prioridad: data.prioridad,
         descarga: data.descarga,
+        departamento: data.departamento || '', // 👈 NUEVO
       };
 
       dispatch({ type: types.GET_NOVEDAD, payload: novedad });
@@ -279,3 +293,4 @@ const setPage         = (payload) => ({ type: types.SET_PAGE_NOVEDAD, payload })
 
 export const clearStatus    = (payload) => ({ type: types.CLEAR_STATUS, payload });
 export const clearNovedades = (payload) => ({ type: types.CLEAR_NOVEDADES, payload });
+
