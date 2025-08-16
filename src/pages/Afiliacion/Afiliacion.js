@@ -144,7 +144,7 @@ const Afiliacion = () => {
 
   const successFooter = (
     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-      <Button label="Descargar la app" icon="pi pi-download" onClick={handleDownloadAndReset} />
+      <Button label="Descargar la App" icon="pi pi-download" onClick={handleDownloadAndReset} />
       <Button label="Cerrar" icon="pi pi-times" className="p-button-text" onClick={handleCloseDialog} />
     </div>
   );
@@ -293,7 +293,7 @@ const Afiliacion = () => {
       >
         <div className="p-message p-message-success" role="alert" style={{ padding: 12, marginBottom: 12 }}>
           <span className="p-message-text">
-            Ya podés <b>descargar la app</b> y <b>ingresar a tu cuenta usando tu DNI</b>.
+            Ya podés <b>descargar la App</b> e <b>ingresar a tu cuenta usando tu DNI</b>.
           </span>
         </div>
 
