@@ -5,7 +5,7 @@ import { useHistory } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import global from '../../../assets/styles/global.module.css';
 import styles from './styles.module.css';
-import { nuevaNovedad, uploadNovedad, uploadImg } from '../../../redux/reducers/novedades/actions';
+import { clearStatus, nuevaNovedad, uploadNovedad, uploadImg } from '../../../redux/reducers/novedades/actions';
 import Swal from 'sweetalert2';
 import { Spinner } from '../../../components/Spinner/Spinner';
 
@@ -72,6 +72,13 @@ const NuevaNovedad = () => {
 
   const esConvenioComercio = form.categoria === 'convenio_comercio';
 
+  // Helper: limpiar estado y forzar recarga de la lista
+  const goToListAndHardReload = () => {
+    dispatch(clearStatus());
+    // Evita estado residual de Redux/inputs
+    window.location.href = '/admin/novedades';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if ((form.titulo || '').trim() === '' || (form.categoria || '').trim() === '') {
@@ -93,7 +100,9 @@ const NuevaNovedad = () => {
     } else {
       await dispatch(nuevaNovedad(payload));
     }
-    history.push('/admin/novedades');
+
+    // Recargar la página para no dejar restos
+    goToListAndHardReload();
   };
 
   useEffect(() => {
@@ -108,7 +117,6 @@ const NuevaNovedad = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [novedades.novedad]);
 
-  // limpiar departamento si cambia la categoría
   useEffect(() => {
     if (!esConvenioComercio && form.departamento) {
       handleInputChange({ target: { name: 'departamento', value: '' } });
@@ -116,7 +124,6 @@ const NuevaNovedad = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.categoria]);
 
-  // ====== Subida de imagen con validación local ======
   const fileUploader = useRef();
   const MAX_SIZE = 1_000_000; // 1MB
   const ALLOWED = ['image/png','image/jpg','image/jpeg'];
@@ -136,13 +143,14 @@ const NuevaNovedad = () => {
       return;
     }
 
+    // Subir
     dispatch(uploadImg(fileObj));
     fileUploader.current?.clear();
   };
 
   useEffect(() => {
     if (novedades.img) {
-      handleInputChange({ target: { name: 'imagen', value: novedades.img } }); // novedades.img es URL string
+      handleInputChange({ target: { name: 'imagen', value: novedades.img } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [novedades.img]);
@@ -160,14 +168,24 @@ const NuevaNovedad = () => {
       });
       if (!res.isConfirmed) return;
     }
-    history.push('/admin/novedades');
+    // Recargar la página para no dejar restos
+    goToListAndHardReload();
   };
+
+  // Limpieza adicional al desmontar (por las dudas)
+  useEffect(() => {
+    return () => {
+      dispatch(clearStatus());
+      reset?.(); // limpia form local si tu hook lo soporta
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={styles.visibleContent}>
       <div className={styles.container}>
         <form onSubmit={handleSubmit} className={styles.formAdmin}>
-          <h2 className={styles.title}>{id ? 'Editar Novedad' : 'Nueva Novedad'}</h2>
+          <h2 className={styles.title}>{id ? 'Editar novedad' : 'Nueva novedad'}</h2>
 
           <span className={`p-float-label ${styles.inputSection}`}>
             <InputText className={styles.inputForm} value={form.titulo || ''} name="titulo" id="titulo" type="text" onChange={handleInputChange} />
@@ -220,7 +238,7 @@ const NuevaNovedad = () => {
             <FileUpload
               mode="basic"
               name="cargar_imagen"
-              accept=".png,.jpg,.jpeg"   // 👈 Restringimos formatos
+              accept=".png,.jpg,.jpeg"
               maxFileSize={1000000}
               uploadHandler={onUploadHandler}
               customUpload
@@ -260,4 +278,5 @@ const NuevaNovedad = () => {
 };
 
 export default NuevaNovedad;
+
 
