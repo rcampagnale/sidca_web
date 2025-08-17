@@ -1,6 +1,13 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
-  collection, query, orderBy, limit, getDocs, startAfter, doc, deleteDoc
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+  startAfter,
+  doc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config";
 
@@ -14,29 +21,39 @@ let _lastDoc = null;
 let _pageStarts = [];
 
 function baseQuery(ofield) {
-  return query(collection(db, COLLECTION), orderBy(ofield, "desc"), limit(PAGE_SIZE));
+  return query(
+    collection(db, COLLECTION),
+    orderBy(ofield, "desc"),
+    limit(PAGE_SIZE)
+  );
 }
 
 export const fetchAfiliadosFirstPage = createAsyncThunk(
   "afiliadoActualizado/fetchFirst",
   async () => {
-     const snap = await getDocs(collection(db, COLLECTION));
+    // 1) Traer sin orderBy (evita problemas de tipos/índices)
+    const snap = await getDocs(collection(db, COLLECTION));
     let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    // 🔹 Ordenar en cliente por "fecha" (formato "dd/mm/yyyy HH:MM:SS")
-    const parseFecha = (s) => {
-      if (typeof s !== "string") return 0;
-      const [dmy, hms = "00:00:00"] = s.trim().split(" ");
-      const [d, m, y] = (dmy || "").split("/").map((n) => parseInt(n, 10));
-      const [hh, mm, ss] = (hms || "").split(":").map((n) => parseInt(n, 10) || 0);
-      // Devuelve timestamp; si falta algo, cae a 0 para ir al final
-      return isFinite(y) && isFinite(m) && isFinite(d)
-        ? new Date(y, (m || 1) - 1, d || 1, hh, mm, ss).getTime()
-        : 0;
-    };
-    docs.sort((a, b) => parseFecha(b.fecha) - parseFecha(a.fecha));
+    // 2) Parser robusto para todos los formatos que tenés
+    const toTimestamp = (s) => {
+      if (!s || typeof s !== "string") return 0;
+      const raw = s.trim().replace(/-/g, "/"); // normaliza separadores
+      const [dmy, hms = "00:00:00"] = raw.split(" "); // "dd/mm/yyyy" [HH:mm[:ss]]
+      if (!dmy) return 0;
 
-    // 🔹 Desactivar paginación por ahora (rearmamos luego con orderBy)
+      const [d, m, y] = dmy.split("/").map((n) => parseInt(n, 10));
+      const parts = hms.split(":").map((n) => parseInt(n, 10) || 0);
+      const [hh = 0, mm = 0, ss = 0] = parts; // soporta HH:mm y HH:mm:ss
+
+      const dt = new Date(y, (m || 1) - 1, d || 1, hh, mm, ss);
+      return isNaN(dt.getTime()) ? 0 : dt.getTime();
+    };
+
+    // 3) Ordenar DESC por fecha (más reciente primero)
+    docs.sort((a, b) => toTimestamp(b.fecha) - toTimestamp(a.fecha));
+
+    // 4) Desactivar paginación por ahora (cursores nulos)
     _orderField = null;
     _lastDoc = null;
     _pageStarts = [];
@@ -50,11 +67,11 @@ export const fetchAfiliadosFirstPage = createAsyncThunk(
   }
 );
 
-
 export const fetchAfiliadosNextPage = createAsyncThunk(
   "afiliadoActualizado/fetchNext",
   async (_, { getState, rejectWithValue }) => {
-    if (!_orderField || !_lastDoc) return rejectWithValue("No hay página siguiente.");
+    if (!_orderField || !_lastDoc)
+      return rejectWithValue("No hay página siguiente.");
     const q = query(
       collection(db, COLLECTION),
       orderBy(_orderField, "desc"),
@@ -68,7 +85,7 @@ export const fetchAfiliadosNextPage = createAsyncThunk(
     }
     const { afiliadoActualizado } = getState();
     return {
-      docs: snap.docs.map(d => ({ id: d.id, ...d.data() })),
+      docs: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
       hasNext: snap.docs.length === PAGE_SIZE,
       page: afiliadoActualizado.page + 1,
     };
@@ -79,7 +96,11 @@ export const fetchAfiliadosPrevPage = createAsyncThunk(
   "afiliadoActualizado/fetchPrev",
   async (_, { getState, rejectWithValue }) => {
     const { afiliadoActualizado } = getState();
-    if (!_orderField || afiliadoActualizado.page <= 1 || _pageStarts.length < 2) {
+    if (
+      !_orderField ||
+      afiliadoActualizado.page <= 1 ||
+      _pageStarts.length < 2
+    ) {
       return rejectWithValue("No hay página anterior.");
     }
     _pageStarts.pop();
@@ -93,7 +114,7 @@ export const fetchAfiliadosPrevPage = createAsyncThunk(
     const snap = await getDocs(q);
     _lastDoc = snap.docs[snap.docs.length - 1] || null;
     return {
-      docs: snap.docs.map(d => ({ id: d.id, ...d.data() })),
+      docs: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
       hasNext: snap.docs.length === PAGE_SIZE,
       page: afiliadoActualizado.page - 1,
     };
@@ -123,49 +144,65 @@ const slice = createSlice({
   reducers: {
     reset(state) {
       Object.assign(state, initialState);
-      _orderField = null; _lastDoc = null; _pageStarts = [];
+      _orderField = null;
+      _lastDoc = null;
+      _pageStarts = [];
     },
-    clearError(state) { state.error = null; },
+    clearError(state) {
+      state.error = null;
+    },
   },
   extraReducers: (b) => {
-    b.addCase(fetchAfiliadosFirstPage.pending, (s) => { s.processing = true; s.error = null; })
-     .addCase(fetchAfiliadosFirstPage.fulfilled, (s, a) => {
+    b.addCase(fetchAfiliadosFirstPage.pending, (s) => {
+      s.processing = true;
+      s.error = null;
+    })
+      .addCase(fetchAfiliadosFirstPage.fulfilled, (s, a) => {
         s.processing = false;
         s.list = a.payload.docs;
         s.page = a.payload.page;
         s.hasNext = a.payload.hasNext;
         s.orderField = a.payload.orderField;
-     })
-     .addCase(fetchAfiliadosFirstPage.rejected, (s, a) => {
-        s.processing = false; s.error = a.error.message || "Error al cargar.";
-     })
+      })
+      .addCase(fetchAfiliadosFirstPage.rejected, (s, a) => {
+        s.processing = false;
+        s.error = a.error.message || "Error al cargar.";
+      })
 
-     .addCase(fetchAfiliadosNextPage.pending, (s) => { s.processing = true; s.error = null; })
-     .addCase(fetchAfiliadosNextPage.fulfilled, (s, a) => {
+      .addCase(fetchAfiliadosNextPage.pending, (s) => {
+        s.processing = true;
+        s.error = null;
+      })
+      .addCase(fetchAfiliadosNextPage.fulfilled, (s, a) => {
         s.processing = false;
         s.list = a.payload.docs;
         s.page = a.payload.page;
         s.hasNext = a.payload.hasNext;
-     })
-     .addCase(fetchAfiliadosNextPage.rejected, (s, a) => {
-        s.processing = false; s.error = a.payload || a.error.message || "No hay más páginas.";
-     })
+      })
+      .addCase(fetchAfiliadosNextPage.rejected, (s, a) => {
+        s.processing = false;
+        s.error = a.payload || a.error.message || "No hay más páginas.";
+      })
 
-     .addCase(fetchAfiliadosPrevPage.pending, (s) => { s.processing = true; s.error = null; })
-     .addCase(fetchAfiliadosPrevPage.fulfilled, (s, a) => {
+      .addCase(fetchAfiliadosPrevPage.pending, (s) => {
+        s.processing = true;
+        s.error = null;
+      })
+      .addCase(fetchAfiliadosPrevPage.fulfilled, (s, a) => {
         s.processing = false;
         s.list = a.payload.docs;
         s.page = a.payload.page;
         s.hasNext = a.payload.hasNext;
-     })
-     .addCase(fetchAfiliadosPrevPage.rejected, (s, a) => {
-        s.processing = false; s.error = a.payload || a.error.message || "No hay página anterior.";
-     })
+      })
+      .addCase(fetchAfiliadosPrevPage.rejected, (s, a) => {
+        s.processing = false;
+        s.error = a.payload || a.error.message || "No hay página anterior.";
+      })
 
-     .addCase(deleteAfiliadoById.fulfilled, (s, a) => {
-        s.list = s.list.filter(x => x.id !== a.payload);
-     });
-  }
+      .addCase(deleteAfiliadoById.fulfilled, (s, a) => {
+        s.list = s.list.filter((x) => x.id !== a.payload);
+      });
+  },
 });
 
 export const { reset, clearError } = slice.actions;
@@ -176,4 +213,3 @@ export const selectAfiliadosLoading = (s) => s.afiliadoActualizado.processing;
 export const selectAfiliadosError = (s) => s.afiliadoActualizado.error;
 export const selectAfiliadosPage = (s) => s.afiliadoActualizado.page;
 export const selectAfiliadosHasNext = (s) => s.afiliadoActualizado.hasNext;
-
