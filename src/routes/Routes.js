@@ -45,6 +45,7 @@ import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
 import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
+import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
 
 const AppRouter = () => {
 
@@ -95,6 +96,8 @@ const AppRouter = () => {
                 <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado} />
                 <AdminRoute exact path="/admin/nuevo-usuario/:id" component={NuevoAfiliado} />
                 <AdminRoute exact path="/admin/nuevos-afiliados" component={AfiliadosNuevos} />
+                <AdminRoute exact path="/admin/AfiliadoActualizado" component={AfiliadoActualizado} />
+                
 
                 <AdminRoute exact path="/admin/cursos" component={Cursos} />
                 <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />

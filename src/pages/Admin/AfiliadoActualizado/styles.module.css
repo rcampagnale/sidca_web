@@ -1,0 +1,157 @@
+/* styles.module.css */
+/* =========================
+   Variables y base
+   ========================= */
+:root {
+  --container-max: 1100px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
+  --gap-6: 24px;
+
+  --card-bg: var(--surface-card, #ffffff);
+  --card-border: var(--surface-300, #e5e5e5);
+  --text-700: var(--text-color, #2e2e2e);
+  --text-500: #666;
+}
+
+.container {
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(12px, 3vw, 24px);
+  max-width: var(--container-max);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-4);
+  color: var(--text-700);
+}
+
+/* =========================
+   Header + acciones
+   ========================= */
+.title_and_button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-3);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--text-700);
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+}
+
+/* =========================
+   Toolbar (buscador)
+   ========================= */
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+  flex-wrap: wrap;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* Cuando el toolbar se queda pegado arriba en pantallas chicas, queda lindo */
+@media (max-width: 480px) {
+  .toolbarRow {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(6px);
+  }
+}
+
+/* =========================
+   DataTable (ajustes útiles)
+   ========================= */
+
+/* Que la tabla respete palabras largas sin romper el layout */
+:global(.p-datatable) {
+  border-radius: 12px;
+  overflow: hidden; /* redondeo visible en header */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+:global(.p-datatable .p-datatable-thead > tr > th),
+:global(.p-datatable .p-datatable-tbody > tr > td) {
+  white-space: nowrap;       /* columnas compactas en desktop */
+  text-overflow: ellipsis;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  :global(.p-datatable .p-datatable-thead > tr > th),
+  :global(.p-datatable .p-datatable-tbody > tr > td) {
+    white-space: normal;     /* en mobile dejamos envolver */
+    word-break: break-word;
+  }
+}
+
+/* Zebra + hover suave */
+:global(.p-datatable .p-datatable-tbody > tr:nth-child(even)) {
+  background: color-mix(in srgb, var(--card-bg), #000 2%);
+}
+:global(.p-datatable .p-datatable-tbody > tr:hover) {
+  background: color-mix(in srgb, var(--card-bg), #000 4%);
+}
+
+/* Iconos y botones de acciones dentro de celdas */
+:global(.p-datatable .p-button.p-button-text.p-button-rounded) {
+  margin: 0 2px;
+}
+
+/* =========================
+   Cards / bloques (si los usás)
+   ========================= */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* =========================
+   Utilidades
+   ========================= */
+.center {
+  display: grid;
+  place-items: center;
+}
+
+.muted {
+  color: var(--text-500);
+  font-size: 0.92rem;
+}
+
+/* Espaciados verticales pequeños para stacks */
+.stack-sm {
+  display: grid;
+  gap: var(--gap-2);
+}
+.stack {
+  display: grid;
+  gap: var(--gap-3);
+}
+.stack-lg {
+  display: grid;
+  gap: var(--gap-6);
+}
