@@ -43,3 +43,16 @@
 .rowReafiliado {
   background-color: #fff9e6 !important; /* fila con fondo amarillo claro */
 }
+/* contenedor de los botones: derecha y en una sola línea */
+.actionsRight {
+  display: flex;
+  justify-content: flex-end; /* a la derecha */
+  align-items: center;
+  gap: 0.5rem;               /* espacio entre botones */
+  flex-wrap: nowrap;         /* no salta de línea */
+}
+
+/* por si el tema pone overflow hidden en la celda, lo anulamos solo en esta col */
+:global(.p-datatable .p-datatable-tbody > tr > td) .actionsRight {
+  overflow: visible;
+}
