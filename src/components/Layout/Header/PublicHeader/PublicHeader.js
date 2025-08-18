@@ -13,7 +13,7 @@ const PublicHeader = () => {
                 <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
             </a>
             <ul className={styles.headerNav}>
-                <li onClick={() => history.push('/afiliacion')}>Afiliate</li>
+                <li onClick={() => history.push('/admin')}>Administración del Sitio</li>
             </ul>
         </>
 

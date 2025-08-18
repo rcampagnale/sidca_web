@@ -152,7 +152,7 @@ const Afiliacion = () => {
   return (
     <div className={styles.visibleContent}>
       <Toast ref={toast} />
-      <Card title="Afiliate a SiDCa" style={styles.container}>
+      <Card title="Formulario de Afiliación a SiDCa" style={styles.container}>
         <form onSubmit={formik.handleSubmit} className="p-fluid p-mt-10">
           <div className={styles.inputSection}>
             <span className="p-float-label">
