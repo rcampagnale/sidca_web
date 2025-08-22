@@ -55,3 +55,159 @@
   margin-top: 10px;
   text-align: center;
 }
+
+/* Ícono del link */
+.linkIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.linkIconWrapper:hover {
+  background: rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+}
+
+.linkIcon {
+  font-size: 1rem;
+}
+
+.emptyField {
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+/* Acciones en columna: vertical */
+.actionsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+/* ====== Layout base (conserva lo que ya tenías) ====== */
+
+.container {
+  width: 100%;
+  display: flex;
+  flex-flow: column wrap;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+.title_and_button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.title{
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.errorBtn:hover {
+  cursor: default;
+}
+
+.prev{
+  margin-right: 5px;
+}
+
+.table_upload {
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* ====== Estética de tabla ====== */
+
+.prettyTable :global(.p-datatable) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.prettyTable :global(.p-datatable-thead > tr > th) {
+  background: #f5f7fa;
+  color: #2f3a4a;
+  font-weight: 600;
+  border: 0;
+}
+
+.prettyTable :global(.p-datatable-tbody > tr:nth-child(even)) {
+  background-color: #fafafa;
+}
+
+.prettyTable :global(.p-datatable-tbody > tr > td) {
+  border: 0;
+  vertical-align: top;
+}
+
+/* Centrado rápido de columnas compactas */
+.prettyTable :global(.p-datatable-tbody > tr > td),
+.prettyTable :global(.p-datatable-thead > tr > th) {
+  padding: 12px 14px;
+}
+
+/* ====== Ícono del link ====== */
+
+.linkIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: transform 0.12s ease, background 0.12s ease;
+  margin: 0 auto;            /* centrado en la celda */
+}
+
+.linkIconWrapper:hover {
+  background: rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+
+.linkIcon {
+  font-size: 1rem;
+}
+
+.emptyField {
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+/* ====== Columna Acciones: vertical y compacta ====== */
+
+.actionsCol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ====== Ajustes responsivos sutiles ====== */
+
+@media (max-width: 1100px) {
+  .title { font-size: 26px; }
+}
+
+@media (max-width: 840px) {
+  /* reduce un poco el padding en pantallas angostas */
+  .prettyTable :global(.p-datatable-tbody > tr > td),
+  .prettyTable :global(.p-datatable-thead > tr > th) {
+    padding: 10px 10px;
+  }
+}
+/* Padding adicional para la última columna (Acciones) */
+.prettyTable :global(td:last-child),
+.prettyTable :global(th:last-child) {
+  padding-right: 30px;   /* aleja Acciones del borde derecho */
+}
