@@ -42,3 +42,14 @@
   width: 100%;
   margin-bottom: 10px;
 }
+.actions {
+  display: flex;
+  justify-content: flex-end; /* Alinea a la derecha */
+  gap: 12px;                 /* Separación entre botones */
+  margin-top: 20px;
+}
+
+.actions :global(button) {
+  min-width: 140px;          /* Mismo ancho */
+  height: 42px;              /* Mismo alto */
+}

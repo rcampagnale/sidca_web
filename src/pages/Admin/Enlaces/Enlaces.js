@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import { DataTable } from 'primereact/datatable';
@@ -190,7 +190,11 @@ const Enlaces = () => {
     dispatch(getEnlaces());   // primera página otra vez
   };
 
-  // Columnas / templates
+  /* ============================
+   * Columnas / templates
+   * ============================ */
+
+  // 🔗 Link como íconos (sin texto largo)
   const LinkTemplate = (row) => {
     const openInNewTab = () => {
       if (row.link) window.open(row.link, '_blank', 'noopener,noreferrer');
@@ -220,29 +224,20 @@ const Enlaces = () => {
     };
 
     return (
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <a
-          href={row.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ wordBreak: 'break-all' }}
-          title={row.link}
-        >
-          {row.link}
-        </a>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
         <Button
           type="button"
           icon="pi pi-external-link"
-          className="p-button-text p-button-sm"
+          className="p-button-rounded p-button-text p-button-sm"
           onClick={openInNewTab}
-          title="Abrir en nueva pestaña"
+          title="Abrir enlace"
         />
         <Button
           type="button"
           icon="pi pi-copy"
-          className="p-button-text p-button-sm"
+          className="p-button-rounded p-button-text p-button-sm"
           onClick={copyToClipboard}
-          title="Copiar link"
+          title="Copiar enlace"
         />
       </div>
     );
@@ -267,11 +262,23 @@ const Enlaces = () => {
     </div>
   );
 
+  // Definición de columnas con anchos ajustados
   const columns = [
-    { field: 'prioridad', header: 'Prioridad' },
+    {
+      field: 'prioridad',
+      header: 'Prioridad',
+      style: { width: '100px' },         // ancho reducido
+      bodyStyle: { textAlign: 'center' } // centrado del valor
+    },
     { field: 'titulo', header: 'Título' },
     { field: 'descripcion', header: 'Descripción' },
-    { field: 'link', header: 'Link', body: LinkTemplate },
+    {
+      field: 'link',
+      header: 'Enlace',
+      body: LinkTemplate,
+      style: { width: '120px' },         // columna compacta para íconos
+      bodyStyle: { textAlign: 'center' }
+    },
     { field: 'id', header: 'Acciones', body: ActionsTemplate },
   ];
 
@@ -390,7 +397,9 @@ const Enlaces = () => {
                   field={col.field}
                   header={col.header}
                   body={col.body}
-                  bodyStyle={{ overflowWrap: 'break-word' }}
+                  style={col.style}
+                  headerStyle={col.headerStyle}
+                  bodyStyle={{ overflowWrap: 'break-word', ...(col.bodyStyle || {}) }}
                 />
               ))}
             </DataTable>
