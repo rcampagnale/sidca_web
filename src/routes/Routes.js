@@ -59,73 +59,62 @@ const AppRouter = () => {
   }, [categorias.categorias, dispatch]);
 
   return (
-    <BrowserRouter basename={'/'}>
-      <Switch>
+    // AppRouter.jsx
+<BrowserRouter basename={'/'}>
+  <Switch>
+    {/* WEB */}
+    {/* 👇 Ahora la raíz muestra LoginUser como página principal */}
+    <PublicRoute exact path="/" component={LoginUser} />
+     {/* ✅ Logout SIEMPRE público */}
+    <PublicRoute exact path="/logout" component={Logout} />
 
-        {/* WEB */}
-        {/* 👇 Ahora la raíz muestra Afiliación */}
-        <PublicRoute exact path="/" component={Afiliacion} />
+     {/* Rutas privadas de usuario */}
+    <PrivateRoute exact path="/home" component={Home} />
+    <PrivateRoute exact path="/nosotros" component={Nosotros} />
+    <PrivateRoute exact path="/contacto" component={Contacto} />
+    <PrivateRoute exact path="/novedades" component={NovedadesUser} />
+    <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
+    <PrivateRoute exact path="/capacitaciones/cursos/:type" component={CursosUser} />
+    <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
+    <PrivateRoute exact path="/turismo" component={Turismo} />
+    <PrivateRoute exact path="/predio" component={Predio} />
+    <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
-        {/* 👇 Movemos el login de usuario a /login */}
-        <PublicRoute exact path="/login" component={LoginUser} />
+    {/* ADMIN */}
+    <PublicRoute exact path="/admin/login" component={LoginAdmin} />
+    <AdminRoute exact path="/admin" component={Admin} />
+    <AdminRoute exact path="/admin/ListaAsistencia" component={ListaAsistencia} />
+    <AdminRoute exact path="/admin/botones" component={habilitarbotones} />
+    <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
+    <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
+    <AdminRoute exact path="/admin/nuevo-enlace/:id" component={NuevoEnlace} />
+    <AdminRoute exact path="/admin/cuotas" component={CuotasAdmin} />
+    <AdminRoute exact path="/admin/nueva-cuota/" component={NuevaCuota} />
+    <AdminRoute exact path="/admin/nueva-cuota/:id" component={NuevaCuota} />
+    <AdminRoute exact path="/admin/usuarios" component={Usuarios} />
+    <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado} />
+    <AdminRoute exact path="/admin/nuevo-usuario/:id" component={NuevoAfiliado} />
+    <AdminRoute exact path="/admin/nuevos-afiliados" component={AfiliadosNuevos} />
+    <AdminRoute exact path="/admin/AfiliadoActualizado" component={AfiliadoActualizado} />
+    <AdminRoute exact path="/admin/cursos" component={Cursos} />
+    <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />
+    <AdminRoute exact path="/admin/nuevo-curso/:id" component={NuevoCurso} />
+    <AdminRoute exact path="/admin/asesoramiento" component={Asesoramiento} />
+    <AdminRoute exact path="/admin/nuevo-asesoramiento" component={NuevoAsesoramiento} />
+    <AdminRoute exact path="/admin/nuevo-asesoramiento/:id" component={NuevoAsesoramiento} />
+    <AdminRoute exact path="/admin/novedades" component={Novedades} />
+    <AdminRoute exact path="/admin/nueva-novedad" component={NuevaNovedad} />
+    <AdminRoute exact path="/admin/nueva-novedad/:id" component={NuevaNovedad} />
+    <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
+    <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />
+    <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
+    <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
 
-        {/* 👇 Mantén /afiliacion por compatibilidad y redirige a / */}
-        <Route exact path="/afiliacion" render={() => <Redirect to="/" />} />
+    {/* Fallback */}
+    <Route component={NotFound} path="*" />
+  </Switch>
+</BrowserRouter>
 
-        <PrivateRoute exact path="/logout" component={Logout} />
-        <PrivateRoute exact path="/home/" component={Home} />
-        <PrivateRoute exact path="/nosotros" component={Nosotros} />
-        <PrivateRoute exact path="/contacto" component={Contacto} />
-        <PrivateRoute exact path="/novedades" component={NovedadesUser} />
-        <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
-        <PrivateRoute exact path="/capacitaciones/cursos/:type" component={CursosUser} />
-        <PrivateRoute exact path="/casa-del-docente" component={CasaDelDocente} />
-        <PrivateRoute exact path="/turismo" component={Turismo} />
-        <PrivateRoute exact path="/predio" component={Predio} />
-        <PrivateRoute exact path="/cuotas" component={Cuotas} />
-
-        {/* ADMIN */}
-        <PublicRoute exact path="/admin/login" component={LoginAdmin} />
-        <AdminRoute exact path="/admin" component={Admin} />
-        <AdminRoute exact path="/admin/ListaAsistencia" component={ListaAsistencia} />
-        <AdminRoute exact path="/admin/botones" component={habilitarbotones} />
-
-        <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
-        <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
-        <AdminRoute exact path="/admin/nuevo-enlace/:id" component={NuevoEnlace} />
-
-        <AdminRoute exact path="/admin/cuotas" component={CuotasAdmin} />
-        <AdminRoute exact path="/admin/nueva-cuota/" component={NuevaCuota} />
-        <AdminRoute exact path="/admin/nueva-cuota/:id" component={NuevaCuota} />
-
-        <AdminRoute exact path="/admin/usuarios" component={Usuarios} />
-        <AdminRoute exact path="/admin/nuevo-usuario" component={NuevoAfiliado} />
-        <AdminRoute exact path="/admin/nuevo-usuario/:id" component={NuevoAfiliado} />
-        <AdminRoute exact path="/admin/nuevos-afiliados" component={AfiliadosNuevos} />
-        <AdminRoute exact path="/admin/AfiliadoActualizado" component={AfiliadoActualizado} />
-
-        <AdminRoute exact path="/admin/cursos" component={Cursos} />
-        <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />
-        <AdminRoute exact path="/admin/nuevo-curso/:id" component={NuevoCurso} />
-
-        <AdminRoute exact path="/admin/asesoramiento" component={Asesoramiento} />
-        <AdminRoute exact path="/admin/nuevo-asesoramiento" component={NuevoAsesoramiento} />
-        <AdminRoute exact path="/admin/nuevo-asesoramiento/:id" component={NuevoAsesoramiento} />
-
-        <AdminRoute exact path="/admin/novedades" component={Novedades} />
-        <AdminRoute exact path="/admin/nueva-novedad" component={NuevaNovedad} />
-        <AdminRoute exact path="/admin/nueva-novedad/:id" component={NuevaNovedad} />
-
-        <AdminRoute exact path="/admin/transacciones" component={Transacciones} />
-        <AdminRoute exact path="/admin/nueva-transaccion" component={NuevaNovedad} />
-        <AdminRoute exact path="/admin/transacciones/usuario/:id" component={TransaccionesUsuario} />
-
-        <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
-
-        {/* Fallback */}
-        <Route component={NotFound} path="*" />
-      </Switch>
-    </BrowserRouter>
   );
 };
 
