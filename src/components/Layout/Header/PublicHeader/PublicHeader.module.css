@@ -1,16 +1,34 @@
+/* Barra negra fija arriba */
+.header {
+  position: fixed;   /* usa sticky si solo querés que siga el scroll */
+  top: 0;
+  left: 0;
+  z-index: 100;
+  background: #111;
+  color: #fff;
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+/* Logo */
 .headerLogo {
   width: 120px;
   margin-left: 10px;
 }
 
+/* Navegación */
 .headerNav {
   display: flex;
-  flex-flow: row wrap;
   align-items: center;
-  justify-content: flex-end;
-  flex-grow: 1;
-  margin-right: 25px;
   gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .headerNav li {
@@ -22,6 +40,5 @@
 
 .headerNav li:hover {
   color: #ccc;
-  cursor: pointer;
   font-size: 16px;
 }

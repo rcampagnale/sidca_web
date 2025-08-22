@@ -1,87 +1,126 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
 
+/* ====== Layout base ====== */
 .visibleContent {
-  height: 100%;
+  min-height: 100dvh;
   width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: "Roboto", sans-serif;
+  background: #fafafa;
 }
 
 .container {
+  width: 100%;
+  max-width: clamp(320px, 92vw, 560px);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  padding: clamp(20px, 5vw, 36px);
+  background: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
+}
+
+.imgContainer {
+  width: 100%;
+  display: flex;
   justify-content: center;
-  width: 575px;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-  padding: 4vh;
 }
 
-@media only screen and (min-width: 768px) {
-  .imgContainer {
-    height: 100%;
-    display: flex;
-    flex-flow: row wrap;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .img {
-    width: 100%;
-    /* position: absolute; */
-    margin: auto;
-  }
+.img {
+  width: min(320px, 100%);
+  height: auto;
 }
 
-@media only screen and (max-width: 767px) {
-
-  .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 400px;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-    padding: 4vh;
-  }
-
-  .imgContainer {
-    height: 100%;
-    display: flex;
-    flex-flow: row wrap;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .img {
-    width: 100%;
-  }
-}
-
+/* ====== Form ====== */
 .formAdmin {
-  width: 80%;
+  width: 100%;
+  max-width: 420px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .title {
-  margin: 0px 0 40px 0;
-  font-size: 30px;
-  color: rgb(82, 82, 82);
+  margin: 4px 0 16px 0;
+  font-size: clamp(24px, 3vw, 32px);
+  color: #525252;
   font-weight: bold;
 }
 
 .inputForm {
   width: 100%;
-  text-align: left;
-  margin-bottom: 10px;
 }
 
 .inputSection {
-  margin-bottom: 1.6rem;
+  margin-bottom: 0.8rem;
 }
 
-.submitButton {
+/* Mejor foco del InputText */
+:global(.p-inputtext) {
+  border-radius: 12px;
+}
+:global(.p-inputtext:focus) {
+  box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.2) !important; /* halo suave */
+  border-color: #ffa000 !important;
+}
+
+/* ====== Botones ====== */
+/* contenedor con separación consistente */
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* separación entre botones */
+  margin-top: 8px;
+}
+
+/* base para todos los botones */
+.btnBase {
   width: 100%;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 12px !important;
+  padding: 0.9rem 1.2rem !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  transition: transform 0.06s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btnBase:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.btnBase:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* colores por botón */
+.btnIngresar {
+  background-color: #f39c12 !important; /* naranja */
+}
+
+.btnAfiliarse {
+  background-color: #27ae60 !important; /* verde */
+}
+
+.btnSoporte {
+  background-color: #25d366 !important; /* verde WhatsApp */
+}
+
+/* Ícono de WhatsApp más grande/blanco a la derecha */
+.btnSoporte :global(.p-button-icon) {
+  font-size: 1.3rem;
+  color: #fff !important;
+  margin-left: 10px; /* separa texto e ícono */
+}
+
+/* ====== Media queries (opcional fino) ====== */
+@media (max-width: 480px) {
+  .container { padding: 18px; }
 }

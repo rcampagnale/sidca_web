@@ -67,6 +67,7 @@ const AppRouter = () => {
     <PublicRoute exact path="/" component={LoginUser} />
      {/* ✅ Logout SIEMPRE público */}
     <PublicRoute exact path="/logout" component={Logout} />
+    <Route exact path="/afiliacion" component={Afiliacion} />
 
      {/* Rutas privadas de usuario */}
     <PrivateRoute exact path="/home" component={Home} />

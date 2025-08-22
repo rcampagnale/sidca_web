@@ -16,6 +16,7 @@ import { Spinner } from '../../components/Spinner/Spinner';
 import { afiliacion, clearStatus } from '../../redux/reducers/afiliados/actions';
 import { departamentos } from '../../constants/departamentos';
 import styles from './styles.module.scss';
+import PublicHeader from '../../components/Layout/Header/PublicHeader/PublicHeader';
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.jakiro12.one&pcampaignid=web_share';
 
@@ -150,7 +151,9 @@ const Afiliacion = () => {
   );
 
   return (
-    <div className={styles.visibleContent}>
+    
+    <div className={styles.visibleContent} style={{ paddingTop: "70px" }}>
+      <PublicHeader />
       <Toast ref={toast} />
       <Card title="Formulario de Afiliación a SiDCa" style={styles.container}>
         <form onSubmit={formik.handleSubmit} className="p-fluid p-mt-10">
