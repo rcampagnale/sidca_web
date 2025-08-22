@@ -84,6 +84,10 @@ export const cursosReducer = (state = initialState, action) => {
                 status: 'FAILURE_UPLOAD',
                 msg: action.payload,
             };
+
+        // =======================
+        // CURSOS (listado general)
+        // =======================
         case types.GET_CURSOS:
             return {
                 ...state,
@@ -103,6 +107,30 @@ export const cursosReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+
+        // =======================
+        // CURSOS DISPONIBLES (nuevo)
+        // =======================
+        case types.GET_CURSOS_DISPONIBLES:
+            return {
+                ...state,
+                processing: true
+            };
+        case types.GET_CURSOS_DISPONIBLES_SUCCESS:
+            return {
+                ...state,
+                processing: false,
+                cursos: action.payload,
+                status: 'SUCCESS',
+            };
+        case types.GET_CURSOS_DISPONIBLES_ERROR:
+            return {
+                ...state,
+                processing: false,
+                status: 'FAILURE',
+                msg: action.payload,
+            };
+
         case types.GET_CURSO:
             return {
                 ...state,
@@ -123,6 +151,10 @@ export const cursosReducer = (state = initialState, action) => {
                 ...state,
                 page: action.payload
             };
+
+        // =======================
+        // POR CATEGORÍA
+        // =======================
         case types.GET_CURSOS_CATEGORY:
             return {
                 ...state,
@@ -142,6 +174,10 @@ export const cursosReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+
+        // =======================
+        // MIS CURSOS
+        // =======================
         case types.GET_MIS_CURSOS:
             return {
                 ...state,
@@ -161,6 +197,10 @@ export const cursosReducer = (state = initialState, action) => {
                 status: 'FAILURE',
                 msg: action.payload,
             };
+
+        // =======================
+        // ELIMINAR CURSO
+        // =======================
         case types.DELETE_CURSOS:
             return {
                 ...state,
@@ -181,7 +221,11 @@ export const cursosReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE_DELETE',
             };
-            case types.UPLOAD_CURSOS_USER_INFO:
+
+        // =======================
+        // SUBIR INFO DE USUARIO EN CURSOS
+        // =======================
+        case types.UPLOAD_CURSOS_USER_INFO:
             return {
                 ...state,
                 processing: true
@@ -202,6 +246,10 @@ export const cursosReducer = (state = initialState, action) => {
                 processing: false,
                 status: 'FAILURE_USER_INFO',
             };
+
+        // =======================
+        // LIMPIEZA
+        // =======================
         case types.CLEAR_STATUS:
             return {
                 ...state,

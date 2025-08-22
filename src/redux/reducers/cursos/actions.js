@@ -219,6 +219,45 @@ export const uploadUserCursosInfo = (curso, rows) => {
     }
 }
 
+// =======================
+// NUEVA ACCIÓN: Cursos Disponibles
+// =======================
+export const getCursosDisponibles = () => {
+    return async (dispatch, getState) => {
+        dispatch({ type: types.GET_CURSOS_DISPONIBLES });
+        try {
+            // Traemos todos ordenados por título (podés agregar limit(N) si lo necesitás)
+            const q = await query(collection(db, 'cursos'), orderBy('titulo', 'asc'));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.size === 0) {
+                dispatch({ type: types.GET_CURSOS_DISPONIBLES_ERROR, payload: 'No hay cursos disponibles' });
+            } else {
+                const arrayDocs = [];
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    // Mostramos solo los que NO están 'terminado'
+                    if (data && data.estado !== 'terminado') {
+                        arrayDocs.push({
+                            id: docSnap.id,
+                            titulo: data.titulo,
+                            descripcion: data.descripcion,
+                            estado: data.estado,
+                            categoria: data.categoria,
+                            link: data.link,
+                            imagen: data.imagen
+                        });
+                    }
+                });
+                dispatch({ type: types.GET_CURSOS_DISPONIBLES_SUCCESS, payload: arrayDocs });
+            }
+        } catch (error) {
+            console.log(error);
+            dispatch({ type: types.GET_CURSOS_DISPONIBLES_ERROR, payload: 'No se pudieron cargar los cursos disponibles' });
+        }
+    };
+};
+
 const nuevoCursoProcess = (payload) => ({ type: types.NUEVO_CURSO, payload })
 const nuevoCursoSuccess = (payload) => ({ type: types.NUEVO_CURSO_SUCCESS, payload })
 const nuevoCursoError = (payload) => ({ type: types.NUEVO_CURSO_ERROR, payload })
