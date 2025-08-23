@@ -1,3 +1,4 @@
+// src/pages/Convenios/Convenios.js
 import React, { useCallback, useMemo, useState } from "react";
 
 // PrimeReact
@@ -6,6 +7,7 @@ import { Dialog } from "primereact/dialog";
 import { Card } from "primereact/card";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
 
 import styles from "./convenios.module.css";
 
@@ -15,19 +17,44 @@ import convenio2 from "../../assets/convenio/convenio2.jpg";
 import convenio3 from "../../assets/convenio/convenio3.jpg";
 import convenio4 from "../../assets/convenio/convenio4.jpg";
 
-// Firebase
+// Firebase (solo lectura igual que MiRegistro.jsx)
 import { getFirestore, collection, getDocs, query, where, orderBy } from "firebase/firestore";
 
+// 🔹 Departamentos para filtro de comercios
+export const departamentos = {
+  AMBATO: "Ambato",
+  ANCASTI: "Ancasti",
+  ANDALGALA: "Andalgalá",
+  ANFOGASTA: "Antofagasta de la Sierra",
+  BELEN: "Belén",
+  CAPAYAN: "Capayán",
+  CAPITAL: "Capital",
+  EL_ALTO: "El Alto",
+  FRAY: "Fray Mamerto Esquiú",
+  LA_PAZ: "La Paz",
+  PACLIN: "Paclín",
+  POMAN: "Pomán",
+  SANTA_MARIA: "Santa María",
+  SANTA_ROSA: "Santa Rosa",
+  TINOGASTA: "Tinogasta",
+  VALLE_VIEJO: "Valle Viejo",
+};
+
 export default function Convenio() {
+  // Modales
   const [openComercios, setOpenComercios] = useState(false);
   const [openHoteles, setOpenHoteles] = useState(false);
 
+  // Loading + data
   const [loadingComercios, setLoadingComercios] = useState(false);
   const [loadingHoteles, setLoadingHoteles] = useState(false);
-
   const [comercios, setComercios] = useState([]);
   const [hoteles, setHoteles] = useState([]);
 
+  // Filtro por departamento (solo comercios)
+  const [depSeleccionado, setDepSeleccionado] = useState(null);
+
+  // Firestore
   const db = useMemo(() => getFirestore(), []);
   const novedadesCol = useMemo(() => collection(db, "novedades"), [db]);
 
@@ -36,7 +63,7 @@ export default function Convenio() {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  // 🔹 Lectura por categoría (usa índice compuesto)
+  // Lectura por categoría (usa índice compuesto categoria+prioridad)
   const fetchByCategoria = useCallback(
     async (categoria) => {
       const q = query(
@@ -50,6 +77,7 @@ export default function Convenio() {
     [novedadesCol]
   );
 
+  // Abrir Comercios
   const handleOpenComercios = useCallback(async () => {
     setLoadingComercios(true);
     setOpenComercios(true);
@@ -64,6 +92,7 @@ export default function Convenio() {
     }
   }, [fetchByCategoria]);
 
+  // Abrir Hoteles
   const handleOpenHoteles = useCallback(async () => {
     setLoadingHoteles(true);
     setOpenHoteles(true);
@@ -78,16 +107,30 @@ export default function Convenio() {
     }
   }, [fetchByCategoria]);
 
-  // 🔹 Render de cada item de convenio
+  // Opciones de dropdown para departamentos
+  const deptOptions = useMemo(
+    () => Object.values(departamentos).map((label) => ({ label, value: label })),
+    []
+  );
+
+  // Aplicar filtro de departamento sobre comercios
+  const comerciosFiltrados = useMemo(() => {
+    if (!depSeleccionado) return comercios;
+    return comercios.filter(
+      (c) =>
+        (c.departamento || "").toString().toLowerCase() ===
+        depSeleccionado.toString().toLowerCase()
+    );
+  }, [comercios, depSeleccionado]);
+
+  // Card de ítem (válido para ambas categorías)
   const CardItem = ({ item }) => {
-    const { titulo, descripcion, imagen, link, departamento, estado, descarga } = item || {};
+    const { titulo, descripcion, imagen, link, departamento, estado } = item || {};
 
     const header = (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span className={styles.cardTitle}>{titulo || "Sin título"}</span>
-        {estado && estado !== "undefined" ? (
-          <Tag value={estado} severity="info" rounded />
-        ) : null}
+        {estado && estado !== "undefined" ? <Tag value={estado} severity="info" rounded /> : null}
       </div>
     );
 
@@ -101,14 +144,7 @@ export default function Convenio() {
             onClick={() => safeOpen(link)}
           />
         )}
-        {descarga === "true" && (
-          <Button
-            label="Descargar"
-            icon="pi pi-download"
-            className="p-button-sm p-button-success ml-2"
-            onClick={() => safeOpen(imagen)}
-          />
-        )}
+        {/* ✅ Se eliminó el botón Descargar en ambas categorías */}
       </div>
     );
 
@@ -191,24 +227,46 @@ export default function Convenio() {
           />
         </div>
 
-        {/* Modal Comercios */}
+        {/* Modal Comercios (con filtro por departamento) */}
         <Dialog
           header="Lista de Comercios Adheridos"
           visible={openComercios}
-          style={{ width: "95%", maxWidth: 800 }}
+          style={{ width: "95%", maxWidth: 900 }}
           modal
           onHide={() => setOpenComercios(false)}
           dismissableMask
         >
           <div className={styles.dialogBody}>
+            {/* Filtro por Departamento */}
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+              <span><strong>Departamento:</strong></span>
+              <Dropdown
+                value={depSeleccionado}
+                options={deptOptions}
+                onChange={(e) => setDepSeleccionado(e.value)}
+                placeholder="Todos"
+                showClear
+                filter
+                style={{ minWidth: 260 }}
+              />
+              {depSeleccionado && (
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-times"
+                  className="p-button-text"
+                  onClick={() => setDepSeleccionado(null)}
+                />
+              )}
+            </div>
+
             {loadingComercios ? (
               <div className={styles.spinnerBox}>
                 <ProgressSpinner />
                 <span>Cargando…</span>
               </div>
-            ) : comercios.length ? (
+            ) : (comerciosFiltrados.length ? (
               <div className={styles.list}>
-                {comercios.map((item) => (
+                {comerciosFiltrados.map((item) => (
                   <CardItem key={item.id} item={item} />
                 ))}
               </div>
@@ -217,15 +275,15 @@ export default function Convenio() {
                 <i className="pi pi-info-circle" />
                 <span>No se encontraron resultados.</span>
               </div>
-            )}
+            ))}
           </div>
         </Dialog>
 
-        {/* Modal Hoteles */}
+        {/* Modal Hoteles (sin botón descargar) */}
         <Dialog
           header="Convenio Interprovincial Hoteleros"
           visible={openHoteles}
-          style={{ width: "95%", maxWidth: 800 }}
+          style={{ width: "95%", maxWidth: 900 }}
           modal
           onHide={() => setOpenHoteles(false)}
           dismissableMask
@@ -254,3 +312,4 @@ export default function Convenio() {
     </div>
   );
 }
+
