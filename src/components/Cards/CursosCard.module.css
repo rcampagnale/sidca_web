@@ -7,23 +7,32 @@
 
 .headerImg {
   width: 100%;
-  height: auto;            
-  max-height: 250px;         
-  object-fit: contain;       
+  height: auto;
+  max-height: 250px;
+  object-fit: contain;       /* muestra la imagen completa */
   border-radius: 8px;
-  background-color: #f5f5f5; 
-  padding: 5px;             
+  background-color: #f5f5f5;
+  padding: 5px;
 }
 
-
+/* ——— Descripción con clamp ——— */
 .descripcion {
-  text-align: justify;
-  line-height: 1.55;
+  text-align: justify;        /* texto justificado */
+  line-height: 1.6;           /* mejor lectura */
   font-size: 0.95rem;
-  margin: 12px 0 6px;
+  margin: 12px 0;
+  color: #333;
+
+  display: -webkit-box;       /* soporte WebKit para multi-línea */
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 30;      /* máximo 8 líneas visibles */
+  line-clamp: 8;              /* propiedad estándar para compatibilidad */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
 }
 
-/* --- NUEVO: estética "Aprobaste este curso" --- */
+/* --- Estética "Aprobaste este curso" --- */
 .statusWrapper {
   display: flex;
   flex-direction: column;
@@ -35,11 +44,11 @@
 .successTag {
   font-weight: 700;
   padding: .5rem .9rem;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, .25); /* verde */
+  box-shadow: 0 2px 8px rgba(22, 163, 74, .25);
 }
 
 .statusHelp {
-  color: #475569; /* slate-600 */
+  color: #475569;
   font-size: 0.85rem;
   text-align: center;
 }
@@ -64,7 +73,10 @@
 
 /* 📱 Responsive */
 @media (max-width: 767px) {
-  .headerImg { height: 10rem; }
-  .descripcion { font-size: 0.9rem; }
-  .successTag { font-size: 0.9rem; }
+  .headerImg { max-height: 200px; } /* un poco más baja en móvil */
+  .descripcion {
+    font-size: 0.9rem;
+    -webkit-line-clamp: 6;    /* menos líneas en celular */
+    line-clamp: 6;            /* propiedad estándar para compatibilidad */
+  }
 }
