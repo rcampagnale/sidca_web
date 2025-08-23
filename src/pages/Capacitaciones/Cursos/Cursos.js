@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import styles from './styles.module.css';
-import { useHistory, useParams } from 'react-router';
+import { useHistory, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from "react-redux";
 import CursosSkeleton from "../../../components/Cursos/CursosSkeleton";
 import CursosCard from "../../../components/Cards/CursosCard";
@@ -8,7 +8,7 @@ import {
   clearCursos,
   getCursosCategory,
   getMisCursos,
-  getCursosDisponibles, // 👈 nuevo import
+  getCursosDisponibles,
 } from "../../../redux/reducers/cursos/actions";
 import { Button } from "primereact/button";
 
@@ -22,38 +22,55 @@ const CursosUser = () => {
   useEffect(() => {
     if (!type) {
       history.push('/capacitaciones');
-    } else {
-      if (type === 'mis-cursos') {
-        dispatch(getMisCursos());
-      } else if (type === 'cursos-disponibles') {
-        dispatch(getCursosDisponibles()); // 👈 acá disparamos disponibles
-      } else {
-        dispatch(getCursosCategory(type));
-      }
+      return;
     }
+
+    if (type === 'mis-cursos') {
+      dispatch(getMisCursos());
+    } else if (type === 'cursos-disponibles') {
+      dispatch(getCursosDisponibles());
+    } else if (type === 'cursos-aprobados') {
+      dispatch(getMisCursos()); // traemos todos y filtramos en render
+    } else {
+      dispatch(getCursosCategory(type));
+    }
+
     return () => {
       dispatch(clearCursos());
     };
-    // Si querés que reaccione a cambios de ruta, podés usar [type, dispatch, history]
-  }, []); // eslint-disable-line
+  }, [type, dispatch, history]);
 
   const titulo =
     type === 'mis-cursos'
       ? 'Mis Cursos'
       : type === 'cursos-disponibles'
         ? 'Cursos Disponibles'
-        : `Cursos ${type}`;
+        : type === 'cursos-aprobados'
+          ? 'Cursos Aprobados'
+          : `Cursos ${type}`;
 
   const EmptyBox = ({ text }) => (
     <div className={styles.boxContainer}>
       <h1 className={styles.title}>{text}</h1>
-      <Button label="Volver" onClick={() => history.goBack()} />
+      <Button label="Volver" onClick={() => history.push('/capacitaciones')} />
     </div>
   );
+
+  const misCursosAprobados = (cursos.misCursos || []).filter(c => c.aprobo === true);
 
   return (
     <div className={styles.mainContainer}>
       <h1 className={styles.title}>{titulo}</h1>
+
+      {/* 👇 Botón siempre visible para volver a Capacitaciones */}
+      <div style={{ marginBottom: "1.5rem" }}>
+        <Button
+          label="Regresar a Capacitaciones"
+          icon="pi pi-arrow-left"
+          className="p-button-secondary"
+          onClick={() => history.push('/capacitaciones')}
+        />
+      </div>
 
       {cursos.processing ? (
         <CursosSkeleton />
@@ -67,12 +84,20 @@ const CursosUser = () => {
             ))}
           </div>
         )
+      ) : type === 'cursos-aprobados' ? (
+        misCursosAprobados.length === 0 ? (
+          <EmptyBox text="No tienes Cursos Aprobados" />
+        ) : (
+          <div className={styles.container}>
+            {misCursosAprobados.map(curso => (
+              <CursosCard key={curso.id} curso={curso} miCurso={true} />
+            ))}
+          </div>
+        )
       ) : cursos.cursos?.length === 0 ? (
-        <EmptyBox text={type === 'cursos-disponibles' ? "No hay cursos disponibles" : "No hay cursos en esta categoria"} />
+        <EmptyBox text={type === 'cursos-disponibles' ? "No hay cursos disponibles" : "No hay cursos en esta categoría"} />
       ) : (
         <div className={styles.container}>
-          {/* Para disponibles, respetamos el orden ascendente;
-              para el resto, mostramos últimos primero SIN mutar el estado */}
           {(type === 'cursos-disponibles'
             ? cursos.cursos
             : [...cursos.cursos].reverse()
@@ -86,3 +111,5 @@ const CursosUser = () => {
 };
 
 export default CursosUser;
+
+
