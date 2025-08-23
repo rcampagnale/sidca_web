@@ -1,0 +1,99 @@
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 8px 0 20px;
+}
+
+.card {
+  margin-bottom: 18px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .formGrid { grid-template-columns: 1fr; }
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.readonly :global(.p-inputtext) {
+  background: #f7f7f7 !important;
+  color: #666 !important;
+}
+
+.date { grid-column: 1 / -1; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* --- Sección de asistencias --- */
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.asisList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.asisItem {
+  padding: 12px 14px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.asisItemTitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.asisValue {
+  font-weight: 500;
+}
+
+.asisItemMeta {
+  opacity: 0.9;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* ← ambos en la misma altura/fila */
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.btnBack {
+  min-width: 220px;
+}
+
+.btnPrimary {
+  min-width: 220px;
+}
+
+
+

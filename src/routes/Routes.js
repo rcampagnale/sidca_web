@@ -44,6 +44,7 @@ import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 import Afiliacion from "../pages/Afiliacion/Afiliacion";
 import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
 import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
+import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
@@ -75,6 +76,26 @@ const AppRouter = () => {
         <PrivateRoute exact path="/contacto" component={Contacto} />
         <PrivateRoute exact path="/novedades" component={NovedadesUser} />
         <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
+
+        {/* ✅ Mi Registro (minúsculas + guiones) */}
+        <PrivateRoute
+          exact
+          path="/capacitaciones/registro-asistencia"
+          component={MiRegistro}
+        />
+
+        {/* Alias opcionales (usa Redirect si mantienes el import) */}
+        <Route
+          exact
+          path="/Capacitaciones/RegistroAsistencia"
+          render={() => <Redirect to="/capacitaciones/registro-asistencia" />}
+        />
+        <Route
+          exact
+          path="/mi-asistencia"
+          render={() => <Redirect to="/capacitaciones/registro-asistencia" />}
+        />
+
         <PrivateRoute
           exact
           path="/capacitaciones/:type"

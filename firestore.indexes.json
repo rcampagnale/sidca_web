@@ -4,42 +4,52 @@
       "collectionGroup": "asesoramiento",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "categoria",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "prioridad",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "categoria", "order": "ASCENDING" },
+        { "fieldPath": "prioridad", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "cursos",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "categoria",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "titulo",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "categoria", "order": "ASCENDING" },
+        { "fieldPath": "titulo", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "enlaces",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "prioridad",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "titulo",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "prioridad", "order": "ASCENDING" },
+        { "fieldPath": "titulo", "order": "ASCENDING" }
+      ]
+    },
+
+    
+    {
+      "collectionGroup": "asistencia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dni", "order": "ASCENDING" },
+        { "fieldPath": "fechaISO", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "asistencia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cursoId", "order": "ASCENDING" },
+        { "fieldPath": "fechaISO", "order": "DESCENDING" }
+      ]
+    },
+
+    
+    {
+      "collectionGroup": "cursos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "habilitarAsistencia", "order": "ASCENDING" },
+        { "fieldPath": "titulo", "order": "ASCENDING" }
       ]
     }
   ],

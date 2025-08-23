@@ -22,8 +22,12 @@ const LoginUser = () => {
     e.preventDefault();
     await dispatch(authenticateUser(form));
     reset();
+    const res = await dispatch(authenticateUser(form));
+    if (res?.ok) {
+      history.push("/home"); // o a donde quieras
+    }
+    reset();
   };
-
   const handleAfiliarse = () => {
     history.push("/afiliacion"); // ajusta la ruta si corresponde
   };
@@ -55,7 +59,9 @@ const LoginUser = () => {
             <label htmlFor="dni">DNI</label>
           </span>
 
-          <div style={{ display: "flex", justifyContent: "center", minHeight: 28 }}>
+          <div
+            style={{ display: "flex", justifyContent: "center", minHeight: 28 }}
+          >
             {user.processing && <Spinner />}
             {user.status === "AUTH_FAILURE" && (
               <small className="p-error">{user.msg}</small>
@@ -64,16 +70,24 @@ const LoginUser = () => {
 
           {/* Grupo de botones con gap consistente */}
           <div className={styles.buttonGroup}>
-            <Button type="submit" label="Ingresar" className={`${styles.btnBase} ${styles.btnIngresar}`} />
+            <Button
+              type="submit"
+              label="Ingresar"
+              className={`${styles.btnBase} ${styles.btnIngresar}`}
+            />
 
-            <Button type="button" label="Afiliarse" onClick={handleAfiliarse}
-              className={`${styles.btnBase} ${styles.btnAfiliarse}`} />
+            <Button
+              type="button"
+              label="Afiliarse"
+              onClick={handleAfiliarse}
+              className={`${styles.btnBase} ${styles.btnAfiliarse}`}
+            />
 
             <Button
               type="button"
               label="Soporte Técnico"
               icon="pi pi-whatsapp"
-              iconPos="right"               // ícono a la derecha del texto
+              iconPos="right" // ícono a la derecha del texto
               onClick={handleSoporte}
               className={`${styles.btnBase} ${styles.btnSoporte}`}
             />
@@ -85,4 +99,3 @@ const LoginUser = () => {
 };
 
 export default LoginUser;
-
