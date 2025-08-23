@@ -6,35 +6,26 @@
     justify-content: center;
     padding: 40px 20px;
   }
-  .mainSection div {
-    display: inherit;
+
+  /* SOLO el bloque de texto */
+  .intro {
+    display: flex;
     flex-flow: column wrap;
     align-items: center;
     justify-content: center;
   }
-  .title {
-    font-size: 2em;
-  }
-  .text {
-    margin-top: 40px;
-    line-height: 28px;
-  }
-  .titleReserva {
-    font-size: 1.8em;
-    margin: 60px 0 20px 0;
-  }
-  .btn {
-    margin: 60px 0 0 0;
-  }
+
+  .title { font-size: 2em; }
+  .text  { margin-top: 40px; line-height: 28px; }
+
+  .titleReserva { font-size: 1.8em; margin: 40px 0 20px 0; }
+  .btn { margin: 40px 0 0 0; }
+
   .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
-  .img {
-    margin-top: 60px;
-    width: 100%;
-  }
+  .whatsappBtn { border: none; text-decoration: none; }
+
+  /* Carrusel compacto en mobile */
+  .carouselItem { height: 180px; }
 }
 
 @media only screen and (min-width: 768px) {
@@ -45,36 +36,46 @@
     justify-content: center;
     padding: 40px 20px;
   }
-  .mainSection div {
-    display: inherit;
+
+  /* SOLO el bloque de texto */
+  .intro {
+    display: flex;
     flex-flow: column wrap;
     align-items: center;
     justify-content: center;
     width: 60%;
   }
-  .title {
-    font-size: 2em;
-    text-align: center;
-  }
-  .text {
-    margin-top: 40px;
-    line-height: 28px;
-    text-align: center;
-  }
-  .titleReserva {
-    font-size: 1.8em;
-    margin: 60px 0 20px 0;
-  }
-  .btn {
-    margin: 60px 0 0 0;
-  }
-  .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
-  .img {
-    margin-top: 60px;
-    width: 40%;
-  }
+
+  .title { font-size: 2em; text-align: center; }
+  .text  { margin-top: 40px; line-height: 28px; text-align: center; }
+
+  .titleReserva { font-size: 1.8em; margin: 40px 0 20px 0; }
+  .btn { margin: 40px 0 0 0; }
+
+  /* Carrusel compacto en desktop */
+  .carouselItem { height: 880px; }
 }
+
+/* --- Carrusel de Turismo --- */
+.p-carousel {
+  width: 100%;
+  margin-top: 30px;
+}
+
+.carouselItem {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+.carouselImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* usar 'contain' si no querés recorte */
+  display: block;
+}
+
