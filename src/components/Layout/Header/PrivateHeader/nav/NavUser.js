@@ -21,11 +21,11 @@ const NavUser = ({ active, setActive, user }) => {
     return (
         <Sidebar className={'p-sidebar-top'} style={{ backgroundColor: '#3b3b3b', minHeight: '60vh' }} visible={active} onHide={() => setActive(false)}>
             <ul className={styles.navUl} onClick={() => setActive(false)} >
+                <li onClick={() => history.push('/home')}>Inicio</li>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
                 <li onClick={() => history.push('/contacto')}>Contacto</li>
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>
                 {/* {user.profue.cotizante && } */}
-                <li onClick={() => history.push('/cuotas')}>Cuotas</li>
                 <li className={styles.logOut} onClick={confirm}>Cerrar sesión</li>
             </ul>
         </Sidebar>

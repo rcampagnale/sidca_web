@@ -32,9 +32,9 @@ const PrivateHeader = () => {
                 <img className={styles.headerLogo} src={logo} alt="SiDCa logo"/>
             </a>
             <ul className={styles.headerNav}>
+                <li onClick={() => history.push('/home')}>Inicio</li>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
                 {/* {user.profue.cotizante && } */}
-                <li onClick={() => history.push('/cuotas')}>Cuotas</li>
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>
                 <li onClick={() => history.push('/contacto')}>Contacto</li>
             </ul>
