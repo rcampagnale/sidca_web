@@ -1,32 +1,109 @@
-.product-item .product-item-content {
-    border: 1px solid var(--surface-d);
-    border-radius: 3px;
-    margin: .3rem;
-    text-align: center;
-    padding: 2rem 0;
-}
-
-.product-item .product-image {
-    width: 50%;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
-}
-
+/* === Carrusel compacto, sin deformar === */
 .carousel-demo {
-    width: 60em;
+  width: 100%;
+  max-width: 360px;     /* móvil */
+  margin: 0 auto;
+  padding: 0 8px;
 }
 
-.product-item-content div h4 {
-    margin-bottom: 20px;
+.nov-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  overflow: hidden;
+  background: #fff;
 }
 
-@media (max-width: 1400px) {
-    .carousel-demo {
-        width: 30em;
-    }
+.nov-card__header {
+  padding: 8px 10px 4px;
 }
 
-@media (max-width: 500px) {
-    .carousel-demo {
-        width: 16em;
-    }
+.nov-card__title {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.nov-card__chip { font-size: .78rem; }
+
+/* IMAGEN: no cortar texto (contain) + altura pequeña y estable */
+.nov-card__media {
+  position: relative;
+  width: 100%;
+  height: clamp(160px, 34vw, 240px);   /* pequeño en cel/pc */
+  background: #fff;                    /* fondo blanco para afiches */
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Evita recortes: contiene la imagen completa */
+.nov-card__image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;  /* 👈 clave para no deformar ni cortar texto */
+  display: block;
+}
+
+/* Descripción más corta */
+.nov-card__excerpt {
+  padding: 8px 10px 0;
+  font-size: .92rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  min-height: 3.6em;
+}
+
+.nov-card__footer {
+  padding: 8px 10px 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ====== Tablet ====== */
+@media (min-width: 768px) {
+  .carousel-demo { max-width: 560px; padding: 0 10px; }
+  .nov-card__media { height: clamp(180px, 28vw, 260px); }
+  .nov-card__title { font-size: 1rem; }
+}
+
+/* ====== Desktop ====== */
+@media (min-width: 1200px) {
+  .carousel-demo { max-width: 680px; }
+  .nov-card__media { height: clamp(200px, 22vw, 280px); }
+}
+
+/* ====== Desktop grande (opcional) ====== */
+@media (min-width: 1440px) {
+  .carousel-demo { max-width: 760px; }
+}
+
+/* --- Reducir flechas e indicadores de PrimeReact --- */
+.p-carousel .p-carousel-prev, 
+.p-carousel .p-carousel-next {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 50%;
+  opacity: .8;
+}
+
+.p-carousel .p-carousel-indicators .p-carousel-indicator button {
+  width: 6px;
+  height: 6px;
+  margin: 0 3px;
+}
+
+@media (max-width: 767px) {
+  .p-carousel .p-carousel-prev, 
+  .p-carousel .p-carousel-next { width: 24px; height: 24px; }
+  .p-carousel .p-carousel-indicators .p-carousel-indicator button {
+    width: 5px; height: 5px; margin: 0 2px;
+  }
 }
