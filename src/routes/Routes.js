@@ -48,6 +48,7 @@ import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
+import Convenio from "../pages/Convenios/Convenios";
 
 const AppRouter = () => {
   const categorias = useSelector((state) => state.categorias);
@@ -76,6 +77,7 @@ const AppRouter = () => {
         <PrivateRoute exact path="/contacto" component={Contacto} />
         <PrivateRoute exact path="/novedades" component={NovedadesUser} />
         <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
+        <PrivateRoute exact path="/Convenios" component={Convenio} />
 
         {/* ✅ Mi Registro (minúsculas + guiones) */}
         <PrivateRoute

@@ -36,6 +36,7 @@ const PrivateHeader = () => {
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
                 {/* {user.profue.cotizante && } */}
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>
+                <li onClick={() => history.push('/convenios')}>Convenios</li>
                 <li onClick={() => history.push('/contacto')}>Contacto</li>
             </ul>
             <div className={styles.btnExit}>

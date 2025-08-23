@@ -23,8 +23,9 @@ const NavUser = ({ active, setActive, user }) => {
             <ul className={styles.navUl} onClick={() => setActive(false)} >
                 <li onClick={() => history.push('/home')}>Inicio</li>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
-                <li onClick={() => history.push('/contacto')}>Contacto</li>
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>
+                <li onClick={() => history.push('/Convenios')}>Convenios</li>
+                <li onClick={() => history.push('/contacto')}>Contacto</li>
                 {/* {user.profue.cotizante && } */}
                 <li className={styles.logOut} onClick={confirm}>Cerrar sesión</li>
             </ul>
