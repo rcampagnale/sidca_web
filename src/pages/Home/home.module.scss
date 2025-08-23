@@ -35,7 +35,7 @@
     justify-content: center;
 
     &__img {
-      width: 100%;
+      width: 95%;
       margin: 18px auto;
     }
   }
@@ -45,4 +45,84 @@
   font-size: 1.5em;
   margin: 50px;
   text-align: center;
+}
+/* ============================
+   Estilos para pantalla móvil
+   ============================ */
+@media only screen and (max-width: 767px) {
+  .componentContainer {
+    width: 100%;
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .container {
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .container__imgContainer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+
+    &__img {
+      max-width: 90%;
+      height: auto;
+      border-radius: 10px;
+    }
+  }
+
+  .h1 {
+    font-size: 1.6em;
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  /* Ajuste de carrusel en móviles */
+  .carousel-demo {
+    width: 100%;
+
+    .card {
+      box-shadow: none;
+      border: none;
+    }
+
+    .product-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+
+      .product-item-content {
+        padding: 10px;
+
+        h4 {
+          font-size: 1.2em;
+        }
+
+        p {
+          font-size: 0.9em;
+          line-height: 1.4em;
+        }
+
+        .product-image {
+          width: 100%;
+          max-width: 280px;
+          height: auto;
+          border-radius: 8px;
+        }
+      }
+    }
+  }
+
+  /* Ajuste del chip en móviles */
+  .chip {
+    font-size: 0.8em;
+    padding: 4px 8px;
+  }
 }

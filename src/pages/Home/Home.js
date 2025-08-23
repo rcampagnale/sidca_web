@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './home.module.scss';
-import logo from '../../assets/img/logo-01.png';
+import logo from '../../assets/img/somos3.jpg';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserCuotas } from '../../redux/reducers/cuotas/actions';
 import { getNovedades } from '../../redux/reducers/novedades/actions';
