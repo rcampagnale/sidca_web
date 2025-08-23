@@ -34,7 +34,7 @@ const LoginUser = () => {
 
   const handleSoporte = () => {
     // Reemplaza por el número real con código de país y área, sin signos
-    window.open("https://wa.me/5493834000000", "_blank");
+    window.open("https://wa.me/5493832437803", "_blank");
   };
 
   return (
