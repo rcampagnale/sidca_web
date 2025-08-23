@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 // PrimeReact
 import { Button } from "primereact/button";
@@ -9,48 +9,14 @@ import { Tag } from "primereact/tag";
 
 import styles from "./convenios.module.css";
 
-/* ✅ IMPORTA TUS IMÁGENES DESDE src/assests/convenio */
+// Imágenes locales del carrusel
 import convenio1 from "../../assets/convenio/convenio1.jpg";
 import convenio2 from "../../assets/convenio/convenio2.jpg";
 import convenio3 from "../../assets/convenio/convenio3.jpg";
 import convenio4 from "../../assets/convenio/convenio4.jpg";
 
-/* Mock local (seguirá funcionando sin Firebase) */
-const MOCK_COMERCIOS = [
-  {
-    categoria: "predio",
-    nombre: "Librería San Martín",
-    rubro: "Librería",
-    descuento: "15% presentando credencial",
-    telefono: "3834-123456",
-    direccion: "San Martín 123, SFVC",
-    link: "https://maps.google.com/?q=San+Mart%C3%ADn+123+Catamarca",
-    img: "",
-  },
-  {
-    categoria: "predio",
-    nombre: "Indumentaria Centro",
-    rubro: "Ropa",
-    descuento: "10% en efectivo",
-    telefono: "3834-987654",
-    direccion: "Rivadavia 456, SFVC",
-    link: "",
-    img: "",
-  },
-];
-
-const MOCK_HOTELES = [
-  {
-    categoria: "casa",
-    nombre: "Hotel Norte",
-    rubro: "Hotel",
-    descuento: "20% temporada baja",
-    telefono: "011-5555-5555",
-    direccion: "Av. Siempre Viva 742, Salta",
-    link: "https://sitio-hotel-norte.example.com",
-    img: "",
-  },
-];
+// Firebase
+import { getFirestore, collection, getDocs, query, where, orderBy } from "firebase/firestore";
 
 export default function Convenio() {
   const [openComercios, setOpenComercios] = useState(false);
@@ -58,52 +24,91 @@ export default function Convenio() {
 
   const [loadingComercios, setLoadingComercios] = useState(false);
   const [loadingHoteles, setLoadingHoteles] = useState(false);
+
   const [comercios, setComercios] = useState([]);
   const [hoteles, setHoteles] = useState([]);
 
-  const handleOpenComercios = useCallback(() => {
-    setLoadingComercios(true);
-    setOpenComercios(true);
-    setTimeout(() => {
-      setComercios(MOCK_COMERCIOS);
-      setLoadingComercios(false);
-    }, 400);
-  }, []);
-
-  const handleOpenHoteles = useCallback(() => {
-    setLoadingHoteles(true);
-    setOpenHoteles(true);
-    setTimeout(() => {
-      setHoteles(MOCK_HOTELES);
-      setLoadingHoteles(false);
-    }, 400);
-  }, []);
+  const db = useMemo(() => getFirestore(), []);
+  const novedadesCol = useMemo(() => collection(db, "novedades"), [db]);
 
   const safeOpen = useCallback((url) => {
-    if (!url) return;
+    if (!url || url === "false") return;
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
+  // 🔹 Lectura por categoría (usa índice compuesto)
+  const fetchByCategoria = useCallback(
+    async (categoria) => {
+      const q = query(
+        novedadesCol,
+        where("categoria", "==", categoria),
+        orderBy("prioridad", "asc")
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    [novedadesCol]
+  );
+
+  const handleOpenComercios = useCallback(async () => {
+    setLoadingComercios(true);
+    setOpenComercios(true);
+    try {
+      const rows = await fetchByCategoria("convenio_comercio");
+      setComercios(rows);
+    } catch (e) {
+      console.error(e);
+      setComercios([]);
+    } finally {
+      setLoadingComercios(false);
+    }
+  }, [fetchByCategoria]);
+
+  const handleOpenHoteles = useCallback(async () => {
+    setLoadingHoteles(true);
+    setOpenHoteles(true);
+    try {
+      const rows = await fetchByCategoria("convenio_hoteles");
+      setHoteles(rows);
+    } catch (e) {
+      console.error(e);
+      setHoteles([]);
+    } finally {
+      setLoadingHoteles(false);
+    }
+  }, [fetchByCategoria]);
+
+  // 🔹 Render de cada item de convenio
   const CardItem = ({ item }) => {
-    const { nombre, rubro, descuento, telefono, direccion, link, img } = item || {};
+    const { titulo, descripcion, imagen, link, departamento, estado, descarga } = item || {};
 
     const header = (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span className={styles.cardTitle}>{nombre || "Sin nombre"}</span>
-        {rubro ? <Tag value={rubro} severity="info" rounded /> : null}
+        <span className={styles.cardTitle}>{titulo || "Sin título"}</span>
+        {estado && estado !== "undefined" ? (
+          <Tag value={estado} severity="info" rounded />
+        ) : null}
       </div>
     );
 
     const footer = (
       <div>
-        {link ? (
+        {link && link !== "false" && (
           <Button
             label="Abrir enlace"
             icon="pi pi-external-link"
             className="p-button-sm p-button-info"
             onClick={() => safeOpen(link)}
           />
-        ) : null}
+        )}
+        {descarga === "true" && (
+          <Button
+            label="Descargar"
+            icon="pi pi-download"
+            className="p-button-sm p-button-success ml-2"
+            onClick={() => safeOpen(imagen)}
+          />
+        )}
       </div>
     );
 
@@ -111,18 +116,33 @@ export default function Convenio() {
       <Card header={header} footer={footer}>
         <div className={styles.cardRow}>
           <div>
-            {img ? (
-              <img src={img} alt={nombre || "imagen"} className={styles.imgThumb} />
+            {imagen ? (
+              <img src={imagen} alt={titulo || "imagen"} className={styles.imgThumb} />
             ) : (
-              <div className={styles.imgThumb} style={{ display: "grid", placeItems: "center", color: "#888", fontSize: 12 }}>
-                sin img
+              <div
+                className={styles.imgThumb}
+                style={{ display: "grid", placeItems: "center", color: "#888", fontSize: 12 }}
+              >
+                sin imagen
               </div>
             )}
           </div>
           <div>
-            {descuento && <div className={styles.info}><strong>Descuento:</strong> {descuento}</div>}
-            {direccion && <div className={styles.info}><strong>Dirección:</strong> {direccion}</div>}
-            {telefono && <div className={styles.info}><strong>Teléfono:</strong> {telefono}</div>}
+            {descripcion && (
+              <div className={styles.info}>
+                <strong>Descripción:</strong> {descripcion}
+              </div>
+            )}
+            {departamento && (
+              <div className={styles.info}>
+                <strong>Departamento:</strong> {departamento}
+              </div>
+            )}
+            {estado && estado !== "undefined" && (
+              <div className={styles.info}>
+                <strong>Estado:</strong> {estado}
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -132,10 +152,12 @@ export default function Convenio() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        {/* Título */}
         <div className={styles.titleBox}>
           <h1 className={styles.title}>Red de Convenios</h1>
         </div>
 
+        {/* Intro */}
         <div className={styles.intro}>
           El Sindicato de Docentes de Catamarca ha firmado convenios con diversas empresas de la ciudad y
           hoteles en distintas provincias del país, ofreciendo a sus afiliados descuentos especiales y condiciones
@@ -143,7 +165,7 @@ export default function Convenio() {
           fácilmente a estos beneficios. ¡Disfrutá de ventajas exclusivas para afiliados!
         </div>
 
-        {/* Carrusel con TUS imágenes locales */}
+        {/* Carrusel */}
         <div className={styles.carouselWrap}>
           <div className={styles.carousel}>
             <img src={convenio1} className={styles.img} alt="Convenio 1" />
@@ -153,6 +175,7 @@ export default function Convenio() {
           </div>
         </div>
 
+        {/* Botones */}
         <div className={styles.buttons}>
           <Button
             label="Lista de Comercios Adheridos"
@@ -183,10 +206,10 @@ export default function Convenio() {
                 <ProgressSpinner />
                 <span>Cargando…</span>
               </div>
-            ) : comercios?.length ? (
+            ) : comercios.length ? (
               <div className={styles.list}>
-                {comercios.map((item, idx) => (
-                  <CardItem key={idx} item={item} />
+                {comercios.map((item) => (
+                  <CardItem key={item.id} item={item} />
                 ))}
               </div>
             ) : (
@@ -213,10 +236,10 @@ export default function Convenio() {
                 <ProgressSpinner />
                 <span>Cargando…</span>
               </div>
-            ) : hoteles?.length ? (
+            ) : hoteles.length ? (
               <div className={styles.list}>
-                {hoteles.map((item, idx) => (
-                  <CardItem key={idx} item={item} />
+                {hoteles.map((item) => (
+                  <CardItem key={item.id} item={item} />
                 ))}
               </div>
             ) : (
