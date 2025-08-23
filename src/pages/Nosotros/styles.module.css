@@ -91,3 +91,19 @@
     width: 40%;
   }
 }
+/* En pantallas grandes */
+@media only screen and (min-width: 768px) {
+  .btnSection {
+    max-width: 70%;
+    margin: 50px auto;       /* Centrado automático con más aire */
+  }
+}
+
+/* En mobile, apilamos */
+@media only screen and (max-width: 767px) {
+  .btnSection {
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+  }
+}
