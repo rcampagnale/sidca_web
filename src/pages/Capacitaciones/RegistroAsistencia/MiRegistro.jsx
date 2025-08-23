@@ -21,19 +21,31 @@ import { Card } from "primereact/card";
 import { Message } from "primereact/message";
 import styles from "./miRegistro.module.css";
 
-const toISO = (d) => {
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-const toDisplay = (d) => {
-  const p = (n) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
-};
+// Helpers fecha
+const pad2 = (n) => String(n).padStart(2, "0");
+const toDisplay = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 const parseDisplay = (s) => {
   if (!s) return null;
   const [dd, mm, yyyy] = s.split("/").map((n) => parseInt(n, 10));
   if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy)) return null;
   return new Date(yyyy, mm - 1, dd);
+};
+
+// Normaliza “Afiliado”
+const nombreAfiliado = (apellido, nombre) => {
+  const ap = (apellido || "").trim();
+  const no = (nombre || "").trim();
+  const combinado = ap && no ? `${ap}, ${no}` : (ap || no);
+  return combinado.replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim();
+};
+
+// Toma el primer valor disponible entre varias claves posibles
+const pick = (obj, keys) => {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+  }
+  return "";
 };
 
 const NIVELES = [
@@ -51,70 +63,88 @@ export default function MiRegistro() {
   const docId = user?.docId || localStorage.getItem("sidca_user_docId") || "";
   const dni = user?.dni || localStorage.getItem("sidca_user_dni") || "";
 
+  // Perfil
   const [perfil, setPerfil] = useState({ apellido: "", nombre: "", dni: "", departamento: "" });
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
   const [perfilNoEncontrado, setPerfilNoEncontrado] = useState(false);
 
-  const [cursos, setCursos] = useState([]);         // array de strings (títulos)
+  // Cursos (títulos)
+  const [cursos, setCursos] = useState([]);
   const [cargandoCursos, setCargandoCursos] = useState(true);
   const [cursosError, setCursosError] = useState("");
   const [cursoNombre, setCursoNombre] = useState("");
 
+  // Selecciones
   const [nivel, setNivel] = useState("");
 
+  // Guardado / botón global
   const [guardando, setGuardando] = useState(false);
   const [botonHabilitado, setBotonHabilitado] = useState(false);
   const [cargandoBoton, setCargandoBoton] = useState(true);
 
+  // Asistencias
   const [asistencias, setAsistencias] = useState([]);
   const [cargandoAsistencias, setCargandoAsistencias] = useState(false);
   const [asisError, setAsisError] = useState("");
 
   const hoy = useMemo(() => new Date(), []);
-  const fechaISO = toISO(hoy);
   const fechaDisplay = toDisplay(hoy);
 
-  // Perfil por docId -> fallback por dni
+  // ---- PERFIL: usuarios + fallback a nuevoAfiliado para departamento ----
   useEffect(() => {
     (async () => {
       try {
         setCargandoPerfil(true);
         setPerfilNoEncontrado(false);
 
+        let data = null;
+
+        // a) por docId
         if (docId) {
           const ref = doc(db, "usuarios", docId);
           const snap = await getDoc(ref);
-          if (snap.exists()) {
-            const data = snap.data() || {};
-            setPerfil({
-              apellido: data.apellido || "",
-              nombre: data.nombre || "",
-              dni: data.dni || dni || "",
-              departamento: data.departamento || "",
-            });
-            return;
-          }
+          if (snap.exists()) data = snap.data();
         }
-        if (!dni) {
+
+        // b) por DNI
+        if (!data && dni) {
+          const qUsr = query(collection(db, "usuarios"), where("dni", "==", dni), limit(1));
+          const snap = await getDocs(qUsr);
+          if (!snap.empty) data = snap.docs[0].data();
+        }
+
+        if (!data) {
           setPerfilNoEncontrado(true);
-          setPerfil({ apellido: "", nombre: "", dni: "", departamento: "" });
+          setPerfil({ apellido: "", nombre: "", dni: dni || "", departamento: "" });
           return;
         }
-        const qUsr = query(collection(db, "usuarios"), where("dni", "==", dni), limit(1));
-        const snap = await getDocs(qUsr);
-        if (snap.empty) {
-          setPerfilNoEncontrado(true);
-          setPerfil({ apellido: "", nombre: "", dni, departamento: "" });
-          return;
-        }
-        const docRef = snap.docs[0];
-        const data = docRef.data();
-        setPerfil({
+
+        // Perfil base desde usuarios
+        let basePerfil = {
           apellido: data.apellido || "",
           nombre: data.nombre || "",
-          dni: data.dni || dni,
-          departamento: data.departamento || "",
-        });
+          dni: data.dni || dni || "",
+          departamento: pick(data, ["departamento", "depto", "departamentoNombre"]),
+        };
+
+        // Fallback: si departamento vacío, buscar en nuevoAfiliado por DNI
+        if (!basePerfil.departamento && basePerfil.dni) {
+          const qNA = query(
+            collection(db, "nuevoAfiliado"),
+            where("dni", "==", basePerfil.dni),
+            limit(1)
+          );
+          const sNA = await getDocs(qNA);
+          if (!sNA.empty) {
+            const dNA = sNA.docs[0].data();
+            const depFallback = pick(dNA, ["departamento", "depto", "departamentoNombre"]);
+            if (depFallback) {
+              basePerfil.departamento = depFallback;
+            }
+          }
+        }
+
+        setPerfil(basePerfil);
       } catch (e) {
         console.error("Error cargando perfil:", e);
         setPerfilNoEncontrado(true);
@@ -124,7 +154,7 @@ export default function MiRegistro() {
     })();
   }, [db, docId, dni]);
 
-  // Cursos (todos, solo el nombre)
+  // ---- Cursos (solo nombres) ----
   useEffect(() => {
     (async () => {
       try {
@@ -146,15 +176,14 @@ export default function MiRegistro() {
     })();
   }, [db]);
 
-  // Botón global (cod/boton.cargar)
+  // ---- Botón global (cod/boton.cargar) ----
   useEffect(() => {
     (async () => {
       try {
         setCargandoBoton(true);
         const ref = doc(db, "cod", "boton");
         const snap = await getDoc(ref);
-        if (!snap.exists()) setBotonHabilitado(false);
-        else setBotonHabilitado(String(snap.data()?.cargar).trim().toLowerCase() === "si");
+        setBotonHabilitado(snap.exists() && String(snap.data()?.cargar).trim().toLowerCase() === "si");
       } catch (e) {
         console.error("Error consultando 'cod/boton.cargar':", e);
         setBotonHabilitado(false);
@@ -164,7 +193,7 @@ export default function MiRegistro() {
     })();
   }, [db]);
 
-  // Asistencias por DNI
+  // ---- Asistencias por DNI ----
   const fetchAsistencias = async (dniValue) => {
     if (!dniValue) return;
     try {
@@ -193,13 +222,12 @@ export default function MiRegistro() {
       setCargandoAsistencias(false);
     }
   };
-
   useEffect(() => {
     if (perfil?.dni) fetchAsistencias(perfil.dni);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfil?.dni]);
 
-  // Registrar (colección raíz 'asistencia')
+  // ---- Registrar (colección raíz 'asistencia') ----
   const registrar = async () => {
     if (!perfil?.dni) return alert("No se encontró el DNI del usuario.");
     if (perfilNoEncontrado) return alert("No se encontró el usuario en 'usuarios'.");
@@ -209,11 +237,13 @@ export default function MiRegistro() {
 
     try {
       setGuardando(true);
+
       const qDup = query(collection(db, "asistencia"), where("dni", "==", perfil.dni));
       const sDup = await getDocs(qDup);
       const yaExiste = sDup.docs.some((d) => {
         const x = d.data();
         return x?.fecha === fechaDisplay && x?.curso === cursoNombre;
+        // Si quieres, agrega también un match por nivelEducativo
       });
       if (yaExiste) return alert("Ya registraste asistencia para este curso en esta fecha.");
 
@@ -252,6 +282,11 @@ export default function MiRegistro() {
 
   const goBackToCaps = () => history.push("/capacitaciones");
 
+  const afiliadoLabel = useMemo(
+    () => nombreAfiliado(perfil.apellido, perfil.nombre),
+    [perfil.apellido, perfil.nombre]
+  );
+
   return (
     <div className={styles.page}>
       <h2 className={styles.title}>Mi registro de asistencia</h2>
@@ -259,13 +294,9 @@ export default function MiRegistro() {
       {/* Perfil */}
       <Card className={styles.card}>
         <div className={`${styles.formGrid} ${styles.readonly}`}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="apellido">Apellido</label>
-            <InputText id="apellido" value={perfil.apellido} disabled />
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="nombre">Nombre</label>
-            <InputText id="nombre" value={perfil.nombre} disabled />
+          <div className={`${styles.field} ${styles.colSpan2}`}>
+            <label className={styles.label} htmlFor="afiliado">Afiliado</label>
+            <InputText id="afiliado" value={afiliadoLabel} disabled />
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="dni">DNI</label>
@@ -345,7 +376,6 @@ export default function MiRegistro() {
         {!cargandoCursos && cursos.length === 0 && !cursosError && (
           <Message severity="warn" text="No hay cursos disponibles." />
         )}
-      
       </Card>
 
       {/* Asistencias cargadas */}
@@ -377,6 +407,7 @@ export default function MiRegistro() {
     </div>
   );
 }
+
 
 
 
