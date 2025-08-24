@@ -23,11 +23,13 @@ import styles from "./miRegistro.module.css";
 
 // Helpers fecha
 const pad2 = (n) => String(n).padStart(2, "0");
-const toDisplay = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+const toDisplay = (d) =>
+  `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 const parseDisplay = (s) => {
   if (!s) return null;
   const [dd, mm, yyyy] = s.split("/").map((n) => parseInt(n, 10));
-  if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy)) return null;
+  if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy))
+    return null;
   return new Date(yyyy, mm - 1, dd);
 };
 
@@ -35,15 +37,19 @@ const parseDisplay = (s) => {
 const nombreAfiliado = (apellido, nombre) => {
   const ap = (apellido || "").trim();
   const no = (nombre || "").trim();
-  const combinado = ap && no ? `${ap}, ${no}` : (ap || no);
-  return combinado.replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim();
+  const combinado = ap && no ? `${ap}, ${no}` : ap || no;
+  return combinado
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s+/g, " ")
+    .trim();
 };
 
 // Toma el primer valor disponible entre varias claves posibles
 const pick = (obj, keys) => {
   for (const k of keys) {
     const v = obj?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+    if (v !== undefined && v !== null && String(v).trim() !== "")
+      return String(v).trim();
   }
   return "";
 };
@@ -64,7 +70,12 @@ export default function MiRegistro() {
   const dni = user?.dni || localStorage.getItem("sidca_user_dni") || "";
 
   // Perfil
-  const [perfil, setPerfil] = useState({ apellido: "", nombre: "", dni: "", departamento: "" });
+  const [perfil, setPerfil] = useState({
+    apellido: "",
+    nombre: "",
+    dni: "",
+    departamento: "",
+  });
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
   const [perfilNoEncontrado, setPerfilNoEncontrado] = useState(false);
 
@@ -108,14 +119,23 @@ export default function MiRegistro() {
 
         // b) por DNI
         if (!data && dni) {
-          const qUsr = query(collection(db, "usuarios"), where("dni", "==", dni), limit(1));
+          const qUsr = query(
+            collection(db, "usuarios"),
+            where("dni", "==", dni),
+            limit(1)
+          );
           const snap = await getDocs(qUsr);
           if (!snap.empty) data = snap.docs[0].data();
         }
 
         if (!data) {
           setPerfilNoEncontrado(true);
-          setPerfil({ apellido: "", nombre: "", dni: dni || "", departamento: "" });
+          setPerfil({
+            apellido: "",
+            nombre: "",
+            dni: dni || "",
+            departamento: "",
+          });
           return;
         }
 
@@ -124,7 +144,11 @@ export default function MiRegistro() {
           apellido: data.apellido || "",
           nombre: data.nombre || "",
           dni: data.dni || dni || "",
-          departamento: pick(data, ["departamento", "depto", "departamentoNombre"]),
+          departamento: pick(data, [
+            "departamento",
+            "depto",
+            "departamentoNombre",
+          ]),
         };
 
         // Fallback: si departamento vacío, buscar en nuevoAfiliado por DNI
@@ -137,7 +161,11 @@ export default function MiRegistro() {
           const sNA = await getDocs(qNA);
           if (!sNA.empty) {
             const dNA = sNA.docs[0].data();
-            const depFallback = pick(dNA, ["departamento", "depto", "departamentoNombre"]);
+            const depFallback = pick(dNA, [
+              "departamento",
+              "depto",
+              "departamentoNombre",
+            ]);
             if (depFallback) {
               basePerfil.departamento = depFallback;
             }
@@ -169,7 +197,9 @@ export default function MiRegistro() {
       } catch (err) {
         console.error("Error cargando cursos:", err);
         setCursos([]);
-        setCursosError("No se pudieron cargar los cursos. Verifique la conexión o permisos.");
+        setCursosError(
+          "No se pudieron cargar los cursos. Verifique la conexión o permisos."
+        );
       } finally {
         setCargandoCursos(false);
       }
@@ -183,7 +213,10 @@ export default function MiRegistro() {
         setCargandoBoton(true);
         const ref = doc(db, "cod", "boton");
         const snap = await getDoc(ref);
-        setBotonHabilitado(snap.exists() && String(snap.data()?.cargar).trim().toLowerCase() === "si");
+        setBotonHabilitado(
+          snap.exists() &&
+            String(snap.data()?.cargar).trim().toLowerCase() === "si"
+        );
       } catch (e) {
         console.error("Error consultando 'cod/boton.cargar':", e);
         setBotonHabilitado(false);
@@ -199,7 +232,10 @@ export default function MiRegistro() {
     try {
       setCargandoAsistencias(true);
       setAsisError("");
-      const qA = query(collection(db, "asistencia"), where("dni", "==", dniValue));
+      const qA = query(
+        collection(db, "asistencia"),
+        where("dni", "==", dniValue)
+      );
       const snap = await getDocs(qA);
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       items.sort((a, b) => {
@@ -230,22 +266,30 @@ export default function MiRegistro() {
   // ---- Registrar (colección raíz 'asistencia') ----
   const registrar = async () => {
     if (!perfil?.dni) return alert("No se encontró el DNI del usuario.");
-    if (perfilNoEncontrado) return alert("No se encontró el usuario en 'usuarios'.");
+    if (perfilNoEncontrado)
+      return alert("No se encontró el usuario en 'usuarios'.");
     if (!nivel) return alert("Seleccione un nivel educativo.");
     if (!cursoNombre) return alert("Seleccione un curso.");
-    if (!botonHabilitado) return alert("El registro de asistencia está deshabilitado.");
+    if (!botonHabilitado)
+      return alert("El registro de asistencia está deshabilitado.");
 
     try {
       setGuardando(true);
 
-      const qDup = query(collection(db, "asistencia"), where("dni", "==", perfil.dni));
+      const qDup = query(
+        collection(db, "asistencia"),
+        where("dni", "==", perfil.dni)
+      );
       const sDup = await getDocs(qDup);
       const yaExiste = sDup.docs.some((d) => {
         const x = d.data();
         return x?.fecha === fechaDisplay && x?.curso === cursoNombre;
         // Si quieres, agrega también un match por nivelEducativo
       });
-      if (yaExiste) return alert("Ya registraste asistencia para este curso en esta fecha.");
+      if (yaExiste)
+        return alert(
+          "Ya registraste asistencia para este curso en esta fecha."
+        );
 
       await addDoc(collection(db, "asistencia"), {
         apellido: perfil.apellido || "Sin apellido",
@@ -295,22 +339,33 @@ export default function MiRegistro() {
       <Card className={styles.card}>
         <div className={`${styles.formGrid} ${styles.readonly}`}>
           <div className={`${styles.field} ${styles.colSpan2}`}>
-            <label className={styles.label} htmlFor="afiliado">Afiliado</label>
+            <label className={styles.label} htmlFor="afiliado">
+              Afiliado
+            </label>
             <InputText id="afiliado" value={afiliadoLabel} disabled />
           </div>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="dni">DNI</label>
+            <label className={styles.label} htmlFor="dni">
+              DNI
+            </label>
             <InputText id="dni" value={perfil.dni} disabled />
           </div>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="depto">Departamento</label>
+            <label className={styles.label} htmlFor="depto">
+              Departamento
+            </label>
             <InputText id="depto" value={perfil.departamento} disabled />
           </div>
         </div>
 
-        {cargandoPerfil && <Message severity="info" text="Cargando perfil..." />}
+        {cargandoPerfil && (
+          <Message severity="info" text="Cargando perfil..." />
+        )}
         {!cargandoPerfil && perfilNoEncontrado && (
-          <Message severity="warn" text="No se encontró el usuario con el DNI provisto." />
+          <Message
+            severity="warn"
+            text="No se encontró el usuario con el DNI provisto."
+          />
         )}
       </Card>
 
@@ -318,7 +373,9 @@ export default function MiRegistro() {
       <Card className={styles.card}>
         <div className={styles.formGrid}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="nivel">Nivel Educativo</label>
+            <label className={styles.label} htmlFor="nivel">
+              Nivel Educativo
+            </label>
             <Dropdown
               id="nivel"
               value={nivel}
@@ -333,17 +390,26 @@ export default function MiRegistro() {
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="curso">Curso</label>
+            <label className={styles.label} htmlFor="curso">
+              Curso
+            </label>
             <Dropdown
               id="curso"
               value={cursoNombre}
               onChange={(e) => setCursoNombre(e.value)}
-              options={cursos.map((titulo) => ({ label: titulo, value: titulo }))}
+              options={cursos.map((titulo) => ({
+                label: titulo,
+                value: titulo,
+              }))}
               optionLabel="label"
               optionValue="value"
-              placeholder={cargandoCursos ? "Cargando cursos..." : "Seleccione un curso"}
+              placeholder={
+                cargandoCursos ? "Cargando cursos..." : "Seleccione un curso"
+              }
               className="w-full"
-              disabled={perfilNoEncontrado || cargandoCursos || cursos.length === 0}
+              disabled={
+                perfilNoEncontrado || cargandoCursos || cursos.length === 0
+              }
               filter
               filterBy="label"
               showClear
@@ -379,10 +445,13 @@ export default function MiRegistro() {
       </Card>
 
       {/* Asistencias cargadas */}
+      {/* Asistencias cargadas */}
       <Card className={styles.card}>
         <h3 className={styles.sectionTitle}>Asistencias cargadas</h3>
 
-        {cargandoAsistencias && <Message severity="info" text="Cargando asistencias..." />}
+        {cargandoAsistencias && (
+          <Message severity="info" text="Cargando asistencias..." />
+        )}
         {asisError && <Message severity="error" text={asisError} />}
 
         {!cargandoAsistencias && !asisError && asistencias.length === 0 && (
@@ -391,13 +460,25 @@ export default function MiRegistro() {
 
         {!cargandoAsistencias && asistencias.length > 0 && (
           <div className={styles.asisList}>
-            {asistencias.map((a) => (
-              <div key={a.id} className={styles.asisItem}>
+            {Object.entries(
+              asistencias.reduce((acc, a) => {
+                const curso = a.curso || "(Sin curso)";
+                if (!acc[curso]) acc[curso] = [];
+                acc[curso].push(a.fecha || "-");
+                return acc;
+              }, {})
+            ).map(([curso, fechas]) => (
+              <div key={curso} className={styles.asisItem}>
                 <div className={styles.asisItemTitle}>
-                  Curso: <span className={styles.asisValue}>{a.curso || "(Sin curso)"}</span>
+                  Curso: <span className={styles.asisValue}>{curso}</span>
                 </div>
                 <div className={styles.asisItemMeta}>
-                  Fecha: <span>{a.fecha || "-"}</span>
+                  Fechas:
+                  <ul>
+                    {fechas.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             ))}
@@ -407,7 +488,3 @@ export default function MiRegistro() {
     </div>
   );
 }
-
-
-
-
