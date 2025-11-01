@@ -1,3 +1,4 @@
+// src/redux/reducers/afiliadoActualizado/slice.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
   collection,
@@ -8,6 +9,8 @@ import {
   startAfter,
   doc,
   deleteDoc,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config";
 
@@ -28,6 +31,9 @@ function baseQuery(ofield) {
   );
 }
 
+// =======================
+// Thunks de lectura
+// =======================
 export const fetchAfiliadosFirstPage = createAsyncThunk(
   "afiliadoActualizado/fetchFirst",
   async () => {
@@ -129,6 +135,30 @@ export const deleteAfiliadoById = createAsyncThunk(
   }
 );
 
+// =======================
+// Thunk de actualización
+// =======================
+export const updateAfiliadoById = createAsyncThunk(
+  "afiliadoActualizado/updateById",
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const ref = doc(db, COLLECTION, id);
+      const payload = {
+        ...data,
+        updatedAt: serverTimestamp(),
+      };
+      await updateDoc(ref, payload);
+      return { id, changes: data };
+    } catch (err) {
+      console.error("Error actualizando afiliado:", err);
+      return rejectWithValue(err?.message || "No se pudo actualizar");
+    }
+  }
+);
+
+// =======================
+// Slice
+// =======================
 const initialState = {
   list: [],
   processing: false,
@@ -201,15 +231,33 @@ const slice = createSlice({
 
       .addCase(deleteAfiliadoById.fulfilled, (s, a) => {
         s.list = s.list.filter((x) => x.id !== a.payload);
+      })
+
+      // ======= UPDATE =======
+      .addCase(updateAfiliadoById.pending, (s) => {
+        // sin bloquear la grilla; el componente maneja su "saving"
+        s.error = null;
+      })
+      .addCase(updateAfiliadoById.fulfilled, (s, a) => {
+        const { id, changes } = a.payload || {};
+        const idx = s.list.findIndex((it) => it.id === id);
+        if (idx !== -1) {
+          s.list[idx] = { ...s.list[idx], ...changes };
+        }
+      })
+      .addCase(updateAfiliadoById.rejected, (s, a) => {
+        s.error = a.payload || "No se pudo actualizar el afiliado";
       });
   },
 });
 
 export const { reset, clearError } = slice.actions;
-export default slice.reducer;
 
+// Selectores
 export const selectAfiliadosList = (s) => s.afiliadoActualizado.list;
 export const selectAfiliadosLoading = (s) => s.afiliadoActualizado.processing;
 export const selectAfiliadosError = (s) => s.afiliadoActualizado.error;
 export const selectAfiliadosPage = (s) => s.afiliadoActualizado.page;
 export const selectAfiliadosHasNext = (s) => s.afiliadoActualizado.hasNext;
+
+export default slice.reducer;

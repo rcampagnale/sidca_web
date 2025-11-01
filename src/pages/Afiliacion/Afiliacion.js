@@ -1,3 +1,4 @@
+// src/pages/Afiliacion/Afiliacion.js
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
@@ -20,7 +21,7 @@ import PublicHeader from '../../components/Layout/Header/PublicHeader/PublicHead
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.jakiro12.one&pcampaignid=web_share';
 
-// —————————— Helpers de mensaje (por si luego querés volver al “compartir”) ——————————
+// —————————— Helpers de mensaje ——————————
 const buildShareText = ({ nombre, apellido, dni }) => {
   const fullName = [nombre, apellido].filter(Boolean).join(' ');
   return (
@@ -61,6 +62,7 @@ const Afiliacion = () => {
     dni: '',
     email: '',
     celular: '',
+    tituloGrado: '',
     departamento: '',
     establecimientos: '',
     descuento: false
@@ -72,36 +74,44 @@ const Afiliacion = () => {
       let errors = {};
       if (!data.nombre) errors.nombre = 'El nombre es requerido.';
       if (!data.apellido) errors.apellido = 'El apellido es requerido.';
-      if (!data.dni) errors.dni = 'El dni es requerido.';
+      if (!data.dni) errors.dni = 'El DNI es requerido.';
       if (!data.celular) errors.celular = 'El celular es requerido.';
       if (!data.departamento) errors.departamento = 'El departamento es requerido.';
       if (!data.email) {
         errors.email = 'El Email es requerido.';
       } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(data.email)) {
-        errors.email = 'Direccion de Email invalida. Ej: su@email.com';
+        errors.email = 'Dirección de Email inválida. Ej: su@email.com';
       }
-      if (!data.descuento) errors.descuento = 'Tienes que autorizar el descuento de haberes';
+      // ——— Requerido: Título de grado ———
+      if (!data.tituloGrado || !data.tituloGrado.trim()) {
+        errors.tituloGrado = 'El título de grado (nombre de la carrera) es requerido.';
+      }
+      // ——— Requerido: Descuento ———
+      if (!data.descuento) {
+        errors.descuento = 'Debes autorizar el descuento para continuar.';
+      }
       return errors;
     },
     onSubmit: (data) => {
-      dispatch(afiliacion(data));
+      const clean = {
+        ...data,
+        tituloGrado: data.tituloGrado.trim(),
+      };
+      dispatch(afiliacion(clean));
     }
   });
 
   const isFormFieldValid = (name) => !!(formik.touched[name] && formik.errors[name]);
-  const getFormErrorMessage = (name) => isFormFieldValid(name) && <small className="p-error">{formik.errors[name]}</small>;
+  const getFormErrorMessage = (name) =>
+    isFormFieldValid(name) && <small className="p-error">{formik.errors[name]}</small>;
 
   // —————————— Reiniciar pantalla para nueva carga ——————————
   const resetAfiliacionScreen = () => {
-    // Limpia formulario
     formik.resetForm({ values: INITIAL_VALUES });
-    // Limpia estados de diálogo/mensaje
     setShowSuccessDialog(false);
     setDniShare('');
     setShareMsg('');
-    // Opcional: limpiar estados de Redux que dejen “restos”
     dispatch(clearStatus());
-    // Enfocar primer input
     setTimeout(() => firstInputRef.current?.focus(), 0);
   };
 
@@ -110,7 +120,6 @@ const Afiliacion = () => {
     if (afiliado.status === 'SUCCESS_AF') {
       toast.current?.show({ severity: 'success', summary: '¡Afiliación exitosa!', detail: afiliado.msg, life: 3500 });
 
-      // Prepara texto (por si luego querés habilitar compartir)
       const mensaje = buildShareText({
         nombre: formik.values.nombre,
         apellido: formik.values.apellido,
@@ -119,10 +128,7 @@ const Afiliacion = () => {
       setDniShare(formik.values.dni);
       setShareMsg(mensaje);
 
-      // Mostrar diálogo de éxito
       setShowSuccessDialog(true);
-
-      // Limpia status para evitar re-disparos
       dispatch(clearStatus());
     }
 
@@ -136,11 +142,11 @@ const Afiliacion = () => {
   // —————————— Acciones del diálogo ——————————
   const handleDownloadAndReset = () => {
     window.open(PLAY_STORE_URL, '_blank', 'noopener,noreferrer');
-    resetAfiliacionScreen(); // ← al ir a Play Store, reinicia todo para una nueva carga
+    resetAfiliacionScreen();
   };
 
   const handleCloseDialog = () => {
-    resetAfiliacionScreen(); // ← al cerrar el diálogo, también reinicia todo
+    resetAfiliacionScreen();
   };
 
   const successFooter = (
@@ -151,12 +157,13 @@ const Afiliacion = () => {
   );
 
   return (
-    
     <div className={styles.visibleContent} style={{ paddingTop: "70px" }}>
       <PublicHeader />
       <Toast ref={toast} />
       <Card title="Formulario de Afiliación a SiDCa" style={styles.container}>
         <form onSubmit={formik.handleSubmit} className="p-fluid p-mt-10">
+
+          {/* Nombre */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -173,6 +180,7 @@ const Afiliacion = () => {
             {getFormErrorMessage('nombre')}
           </div>
 
+          {/* Apellido */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -188,6 +196,7 @@ const Afiliacion = () => {
             {getFormErrorMessage('apellido')}
           </div>
 
+          {/* DNI */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -204,6 +213,7 @@ const Afiliacion = () => {
             {getFormErrorMessage('dni')}
           </div>
 
+          {/* Email */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -219,6 +229,7 @@ const Afiliacion = () => {
             {getFormErrorMessage('email')}
           </div>
 
+          {/* Celular */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -234,6 +245,30 @@ const Afiliacion = () => {
             {getFormErrorMessage('celular')}
           </div>
 
+          {/* ——— OBLIGATORIO: Título de grado ——— */}
+          <div className={styles.inputSection}>
+            <span className="p-float-label">
+              <InputText
+                className={classNames({ 'p-invalid': isFormFieldValid('tituloGrado') })}
+                value={formik.values.tituloGrado}
+                name="tituloGrado"
+                id="tituloGrado"
+                type="text"
+                onChange={formik.handleChange}
+                required
+                aria-required="true"
+              />
+              <label
+                className={classNames({ 'p-error': isFormFieldValid('tituloGrado') })}
+                htmlFor="tituloGrado"
+              >
+                Título de grado (nombre de la carrera)*
+              </label>
+            </span>
+            {getFormErrorMessage('tituloGrado')}
+          </div>
+
+          {/* Departamento */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <Dropdown
@@ -245,11 +280,14 @@ const Afiliacion = () => {
                 onChange={formik.handleChange}
                 options={dptos}
               />
-              <label className={classNames({ 'p-error': isFormFieldValid('departamento') })} htmlFor="departamento">Departamento de la Escula donde trabajas*</label>
+              <label className={classNames({ 'p-error': isFormFieldValid('departamento') })} htmlFor="departamento">
+                Departamento (domicilio real)*
+              </label>
             </span>
             {getFormErrorMessage('departamento')}
           </div>
 
+          {/* Establecimientos */}
           <div className={styles.inputSection}>
             <span className="p-float-label">
               <InputText
@@ -264,19 +302,37 @@ const Afiliacion = () => {
             </span>
           </div>
 
+          {/* Descuento (OBLIGATORIO) */}
           <div className={styles.inputSection}>
             <div className={`field-checkbox ${styles.inputSection}`}>
               <Checkbox
                 name="descuento"
                 inputId="descuento"
                 checked={formik.values.descuento}
-                onChange={formik.handleChange}
+                onChange={(e) => {
+                  formik.setFieldValue('descuento', e.checked);
+                  formik.setFieldTouched('descuento', true, true);
+                }}
                 className={classNames({ 'p-invalid': isFormFieldValid('descuento') })}
+                required
+                aria-required="true"
+                aria-invalid={isFormFieldValid('descuento')}
+                aria-describedby="descuento_error"
               />
-              <label htmlFor="descuento" style={{ marginLeft: 10 }} className={classNames({ 'p-error': isFormFieldValid('descuento') })}>
+              <label
+                htmlFor="descuento"
+                style={{ marginLeft: 10 }}
+                className={classNames({ 'p-error': isFormFieldValid('descuento') })}
+              >
                 Autorizo realizar descuentos de mis haberes en concepto de cuotas y/o servicios sociales
+                <span aria-hidden="true"> *</span>
               </label>
             </div>
+            {isFormFieldValid('descuento') && (
+              <small id="descuento_error" className="p-error">
+                {formik.errors.descuento}
+              </small>
+            )}
           </div>
 
           <Button type="submit" label="AFILIARME" className="mt-2" />
@@ -291,7 +347,7 @@ const Afiliacion = () => {
         visible={showSuccessDialog}
         style={{ width: 'min(620px, 96vw)' }}
         modal
-        onHide={handleCloseDialog}  // ← Al cerrar, reinicia
+        onHide={handleCloseDialog}
         footer={successFooter}
       >
         <div className="p-message p-message-success" role="alert" style={{ padding: 12, marginBottom: 12 }}>
@@ -299,8 +355,6 @@ const Afiliacion = () => {
             Ya podés <b>descargar la App</b> e <b>ingresar a tu cuenta usando tu DNI</b>.
           </span>
         </div>
-
-      
       </Dialog>
     </div>
   );

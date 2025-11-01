@@ -21,6 +21,7 @@ const NavUser = ({ active, setActive }) => {
     return (
         <Sidebar className={'p-sidebar-top'} style={{ backgroundColor: '#3b3b3b', minHeight: '60vh' }} visible={active} onHide={() => setActive(false)}>
             <ul className={styles.navUl} onClick={() => setActive(false)} >
+                <li onClick={() => history.push('/admin/Adherentes')}>Afiliado Adherentes</li>
                 <li onClick={() => history.push('/admin/ListaAsistencia')}>Lista de Asistencia</li>
                 <li onClick={() => history.push('/admin/botones')}>Habilitar Botones</li>
                 <li onClick={() => history.push('/admin/enlaces')}>Enlaces</li>

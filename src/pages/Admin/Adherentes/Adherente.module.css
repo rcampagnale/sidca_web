@@ -1,0 +1,55 @@
+/* Adherente.module.css */
+.container { padding: 16px; }
+.header { margin-bottom: 8px; }
+.subtitle { color: #6b7280; margin: 4px 0 0 0; }
+
+.toolbar { margin: 12px 0 16px 0; border-radius: 10px; }
+.toolbarLeft { display: flex; align-items: center; gap: .5rem; }
+.toolbarRight { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.filterItem { min-width: 200px; }
+
+.table { border-radius: 10px; overflow: hidden; }
+
+.actions { display: flex; gap: .25rem; justify-content: center; }
+
+/* Columnas largas */
+.observacionesCol {
+  white-space: pre-wrap;
+  max-width: 480px;
+  overflow-wrap: anywhere;
+}
+
+/* Formulario */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.formRow { display: flex; flex-direction: column; gap: 6px; }
+.formRowFull { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+
+.formRowSwitch {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.switchInline { display: flex; align-items: center; gap: 10px; }
+.switchLabel { font-weight: 600; color: #374151; }
+
+.dialogActions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+/* Importación Excel */
+.importGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.fileHint { color: #374151; }
+.help { color: #6b7280; display: block; margin-top: 6px; }
+
+/* Ya existentes, por si faltan */
+.actions { display: flex; gap: .25rem; justify-content: center; flex-wrap: wrap; }
+.viewGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.viewRowFull { grid-column: 1 / -1; margin-top: 8px; }

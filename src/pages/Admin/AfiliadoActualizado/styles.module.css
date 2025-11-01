@@ -1,7 +1,5 @@
 /* styles.module.css */
-/* =========================
-   Variables y base
-   ========================= */
+
 :root {
   --container-max: 1100px;
   --gap-2: 8px;
@@ -68,7 +66,6 @@
   padding: 10px 12px;
 }
 
-/* Cuando el toolbar se queda pegado arriba en pantallas chicas, queda lindo */
 @media (max-width: 480px) {
   .toolbarRow {
     position: sticky;
@@ -79,29 +76,49 @@
 }
 
 /* =========================
-   DataTable (ajustes útiles)
+   WRAP de DataTable con scroll horizontal
    ========================= */
-
-/* Que la tabla respete palabras largas sin romper el layout */
-:global(.p-datatable) {
-  border-radius: 12px;
-  overflow: hidden; /* redondeo visible en header */
+.tableWrap {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden; /* redondeo visible */
 }
 
+/* El contenedor interno de PrimeReact que envuelve la tabla */
+:global(.p-datatable .p-datatable-wrapper) {
+  overflow-x: auto !important;      /* scroll horizontal cuando sea necesario */
+}
+
+/* El root de la datatable NO debe recortar nada */
+:global(.p-datatable) {
+  background: transparent;
+  border: 0;
+  overflow: visible !important;
+}
+
+/* Ancho mínimo realista para que entre la columna Acciones */
+:global(.p-datatable-table) {
+  min-width: 980px;                 /* ajustá según tus columnas */
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Encabezados y celdas: truncado prolijo */
 :global(.p-datatable .p-datatable-thead > tr > th),
 :global(.p-datatable .p-datatable-tbody > tr > td) {
-  white-space: nowrap;       /* columnas compactas en desktop */
+  white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
   vertical-align: middle;
+  padding: 10px 12px;
 }
 
+/* En móvil permitimos envolver texto */
 @media (max-width: 768px) {
   :global(.p-datatable .p-datatable-thead > tr > th),
   :global(.p-datatable .p-datatable-tbody > tr > td) {
-    white-space: normal;     /* en mobile dejamos envolver */
+    white-space: normal;
     word-break: break-word;
   }
 }
@@ -114,13 +131,32 @@
   background: color-mix(in srgb, var(--card-bg), #000 4%);
 }
 
-/* Iconos y botones de acciones dentro de celdas */
+/* Botones de acción compactos dentro de celdas */
 :global(.p-datatable .p-button.p-button-text.p-button-rounded) {
   margin: 0 2px;
 }
 
 /* =========================
-   Cards / bloques (si los usás)
+   Columna Acciones sticky a la derecha
+   ========================= */
+:global(.col-actions) {
+  width: 96px;
+  min-width: 96px;
+  text-align: center;
+}
+
+:global(th.sticky-right),
+:global(td.sticky-right) {
+  position: sticky;
+  right: 0;
+  background: var(--card-bg);
+  box-shadow: -6px 0 12px rgba(0,0,0,.03), -1px 0 0 var(--card-border);
+  z-index: 2; /* por encima del resto */
+}
+:global(th.sticky-right) { z-index: 3; }
+
+/* =========================
+   Utilidades / Cards
    ========================= */
 .card {
   background: var(--card-bg);
@@ -129,29 +165,16 @@
   padding: 12px;
 }
 
-/* =========================
-   Utilidades
-   ========================= */
-.center {
-  display: grid;
-  place-items: center;
-}
+.center { display: grid; place-items: center; }
+.muted  { color: var(--text-500); font-size: 0.92rem; }
 
-.muted {
-  color: var(--text-500);
-  font-size: 0.92rem;
-}
+.stack-sm { display: grid; gap: var(--gap-2); }
+.stack    { display: grid; gap: var(--gap-3); }
+.stack-lg { display: grid; gap: var(--gap-6); }
 
-/* Espaciados verticales pequeños para stacks */
-.stack-sm {
-  display: grid;
-  gap: var(--gap-2);
-}
-.stack {
-  display: grid;
-  gap: var(--gap-3);
-}
-.stack-lg {
-  display: grid;
-  gap: var(--gap-6);
+/* Tamaño compacto y tipografía consistente en inputs del modal */
+:global(.p-dialog .p-inputtext-sm),
+:global(.p-dialog .p-dropdown),
+:global(.p-dialog .p-inputtextarea) {
+  font-size: 0.95rem;
 }

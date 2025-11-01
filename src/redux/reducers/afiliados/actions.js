@@ -1,3 +1,4 @@
+// actions.js
 import types from './types'
 import { db } from '../../../firebase/firebase-config';
 import {
@@ -25,6 +26,14 @@ const separarFechaYHora = (fechaStr) => {
   if (!fechaStr || typeof fechaStr !== 'string') return { fecha: '', hora: '' };
   const partes = fechaStr.split(' ');
   return { fecha: partes[0] || '', hora: partes[1] || '' };
+};
+
+// Normaliza descuento para UI/export (prioriza string; si no hay, deriva de booleano 'cotizante')
+const getDescuentoSiNo = (data) => {
+  if (typeof data?.descuento === 'string') return data.descuento; // "si" | "no"
+  if (typeof data?.cotizante === 'boolean') return data.cotizante ? 'si' : 'no';
+  if (typeof data?.cotizante === 'string') return data.cotizante; // por si existe legacy como string
+  return ""; // sin dato
 };
 
 // -------------------------------
@@ -71,7 +80,10 @@ export const getAfiliadosNuevos = (pagination, start) => {
             establecimientos: data.establecimientos,
             error: data.error,
             departamento: data.departamento,
-            nroAfiliacion: data.nroAfiliacion ?? 1, // 👈 importante para la UI
+            nroAfiliacion: data.nroAfiliacion ?? 1,
+            tituloGrado: data.tituloGrado || "",
+            // ✅ ahora disponible normalizado
+            descuento: getDescuentoSiNo(data),
           });
         });
 
@@ -88,7 +100,6 @@ export const getAfiliadosNuevos = (pagination, start) => {
     }
   };
 };
-
 
 // -------------------------------
 // Descargar afiliados nuevos (todo)
@@ -119,7 +130,10 @@ export const descargarAfiliadosNuevos = () => {
             establecimientos: data.establecimientos,
             error: data.error,
             departamento: data.departamento,
-            nroAfiliacion: data.nroAfiliacion ?? 1, // 👈 nuevo
+            nroAfiliacion: data.nroAfiliacion ?? 1,
+            tituloGrado: data.tituloGrado || "",
+            // ✅ normalizado para export
+            descuento: getDescuentoSiNo(data),
           });
         });
 
@@ -141,7 +155,6 @@ export const descargarAfiliadosNuevos = () => {
 
 // -------------------------------
 // Eliminar un registro de "nuevoAfiliado" por id (individual)
-// (SIN cambios, lo dejo por si lo usás en otra pantalla)
 // -------------------------------
 export const deleteAfiliadosNuevos = (id) => {
   return async (dispatch, getState) => {
@@ -157,8 +170,8 @@ export const deleteAfiliadosNuevos = (id) => {
 };
 
 // -------------------------------
-/* Crear nuevo afiliado básico en "usuarios"
-   (SIN cambios: lo dejo igual, por si lo usás) */
+// Crear nuevo afiliado básico en "usuarios" (se mantiene igual)
+// -------------------------------
 export const nuevoAfiliado = (data) => {
   return async (dispatch, getState) => {
     dispatch(newUserProcess());
@@ -194,7 +207,7 @@ export const nuevoAfiliado = (data) => {
 };
 
 // -------------------------------
-// NUEVA ESTRATEGIA: Afiliación (reafiliaciones contabilizadas)
+// Afiliación (reafiliaciones contabilizadas)
 // -------------------------------
 export const afiliacion = (data) => {
   return async (dispatch, getState) => {
@@ -205,21 +218,22 @@ export const afiliacion = (data) => {
       const qUserSnap = await getDocs(qUser);
 
       if (qUserSnap.size > 0) {
-        // ✅ Usuario ya está afiliado -> NO permitimos nueva afiliación
         return dispatch(afiliacionError('Este DNI ya está afiliado. Descargá la app e ingresá con tu DNI, o bien comunícate con el Admonistrador del Sindicato.'));
       }
 
-      // 2) Contar cuántas afiliaciones previas hubo en "nuevoAfiliado"
+      // 2) Contar reafiliaciones previas
       const qReaf = await query(collection(db, 'nuevoAfiliado'), where('dni', '==', data.dni));
       const prev = await getDocs(qReaf);
-      const nroAfiliacion = prev.size + 1; // 1 = primera, 2 = segunda, etc.
+      const nroAfiliacion = prev.size + 1; // 1=primera, 2=segunda, etc.
 
       const hoy = new Date();
       const fechaFormateada = hoy.toLocaleDateString();
       const horaFormateada = hoy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const fechaCompleta = `${fechaFormateada} ${horaFormateada}`;
 
-      // Objeto común
+      // ✅ Guardamos ambos: 'descuento' (si/no) y 'cotizante' (boolean) por compatibilidad
+      const descuentoSiNo = data.descuento ? 'si' : 'no';
+
       const user = {
         nombre: data.nombre,
         apellido: data.apellido,
@@ -229,16 +243,23 @@ export const afiliacion = (data) => {
         email: data.email,
         establecimientos: data.establecimientos,
         fecha: fechaCompleta,
-        cotizante: data.descuento,
+        // antes: cotizante: data.descuento
+        descuento: descuentoSiNo,          // <-- lo que pediste
+        cotizante: !!data.descuento,       // <-- legacy/compat
         nroAfiliacion,
+        tituloGrado: data.tituloGrado?.trim() || "",
       };
 
       // 3) Registrar SIEMPRE una nueva fila en "nuevoAfiliado"
       await addDoc(collection(db, 'nuevoAfiliado'), user);
 
-      // 4) Crear en "usuarios" SOLO si no existe
+      // 4) Crear en "usuarios" SOLO si no existe (minimalista)
       if (qUserSnap.size === 0) {
-        await addDoc(collection(db, 'usuarios'), user);
+        await addDoc(collection(db, 'usuarios'), {
+          nombre: `${data.apellido}, ${data.nombre}`,
+          dni: `${data.dni}`,
+          fecha: fechaCompleta
+        });
       }
 
       const msg = nroAfiliacion === 1
@@ -252,8 +273,6 @@ export const afiliacion = (data) => {
     }
   };
 };
-
-
 
 // -------------------------------
 // Buscar usuario por DNI
@@ -309,7 +328,7 @@ export const updateUser = (data, id) => {
 };
 
 // -------------------------------
-// Eliminar SOLO en "usuarios" (se mantiene tu estrategia actual)
+// Eliminar SOLO en "usuarios"
 // -------------------------------
 export const deleteUser = (id) => {
   return async (dispatch, getState) => {
@@ -370,4 +389,3 @@ export const clearStatus = (payload) => ({ type: types.CLEAR_AFILIADOS_STATUS, p
 export const clearDownload = (payload) => ({ type: types.CLEAR_DOWNLOAD, payload })
 
 export const clearAfiliados = (payload) => ({ type: types.CLEAR_AFILIADOS, payload })
-
