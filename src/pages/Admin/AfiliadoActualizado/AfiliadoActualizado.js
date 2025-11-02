@@ -41,7 +41,13 @@ import {
   query as fsQuery,
   where,
   getDocs as fsGetDocs,
+  doc as fsDoc,
+  setDoc as fsSetDoc,
+  deleteDoc as fsDeleteDoc,
+  updateDoc as fsUpdateDoc, // 👈 Asegurate de tener esto
 } from "firebase/firestore";
+
+
 
 /* =========================
    Helpers
@@ -638,49 +644,104 @@ const AfiliadoActualizado = () => {
   };
 
   const handleSaveEdit = async ({ payload, error }) => {
-    if (error)
-      return toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error,
-        life: 4000,
-      });
+  if (error) {
+    return toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: error,
+      life: 4000,
+    });
+  }
 
-    try {
-      setSaving(true);
+  try {
+    setSaving(true);
 
-      if (payload.nroAfiliacion !== "") {
-        const duplicated = await validateDuplicateNroAfiliacion(
-          payload.dni,
-          payload.nroAfiliacion,
-          rowId
-        );
-        if (duplicated) {
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: "El N° de afiliación ya existe para ese DNI.",
-            life: 4000,
-          });
-          setSaving(false);
-          return;
-        }
-      }
-
-      const res = await dispatch(
-        updateAfiliadoById({ id: rowId, data: payload })
+    // (Opcional) Validación N° de afiliación duplicado
+    if (payload.nroAfiliacion !== "") {
+      const duplicated = await validateDuplicateNroAfiliacion(
+        payload.dni,
+        payload.nroAfiliacion,
+        rowId
       );
-      if (res?.meta?.requestStatus === "rejected")
-        throw new Error(res?.payload || "No se pudo actualizar");
-
-      showSuccess("Afiliado actualizado correctamente.");
-      closeEdit();
-    } catch (err) {
-      showError(err?.message || "Error al actualizar el afiliado.");
-    } finally {
-      setSaving(false);
+      if (duplicated) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "El N° de afiliación ya existe para ese DNI.",
+          life: 4000,
+        });
+        setSaving(false);
+        return;
+      }
     }
-  };
+
+    const prevAdherente = !!initialForm.adherente;
+    const nextAdherente = !!payload.adherente;
+    const dniKey = String(payload.dni || "").trim();
+
+    // --- REGLA QUE PEDISTE ---
+    // Si cambia de SÍ -> NO: primero actualizar SOLO 'observaciones' en nuevoAfiliado
+    if (prevAdherente && !nextAdherente) {
+      await fsUpdateDoc(fsDoc(db, "nuevoAfiliado", String(rowId)), {
+        observaciones: payload.observaciones ?? "",
+      });
+    }
+
+    // Actualizar el doc completo en nuevoAfiliado (mantiene la UI/store en sync)
+    const res = await dispatch(updateAfiliadoById({ id: rowId, data: payload }));
+    if (res?.meta?.requestStatus === "rejected") {
+      throw new Error(res?.payload || "No se pudo actualizar el afiliado.");
+    }
+
+    // Alta/limpieza en 'adherentes' según el cambio del switch
+    if (!prevAdherente && nextAdherente) {
+      // pasó a SÍ: limpiar duplicados por DNI y dejar 1 doc con ID=rowId
+      const qDup = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
+      const dupSnap = await fsGetDocs(qDup);
+      await Promise.all(
+        dupSnap.docs.map((d) => (d.id !== String(rowId) ? fsDeleteDoc(d.ref) : Promise.resolve()))
+      );
+
+      const espejo = {
+        apellido: payload.apellido ?? initialForm.apellido ?? "",
+        nombre: payload.nombre ?? initialForm.nombre ?? "",
+        dni: dniKey,
+        nroAfiliacion:
+          payload.nroAfiliacion !== "" && payload.nroAfiliacion != null
+            ? Number(payload.nroAfiliacion)
+            : null,
+        tituloGrado: payload.tituloGrado ?? initialForm.tituloGrado ?? "",
+        descuento:
+          typeof payload.descuento === "string" ? payload.descuento : (initialForm.descuento ?? ""),
+        departamento: payload.departamento ?? initialForm.departamento ?? "",
+        establecimientos: payload.establecimientos ?? initialForm.establecimientos ?? "",
+        celular: payload.celular ?? initialForm.celular ?? "",
+        email: payload.email ?? initialForm.email ?? "",
+        estado: typeof initialForm.estado === "boolean" ? initialForm.estado : true,
+        observaciones: payload.observaciones ?? initialForm.observaciones ?? "",
+        adherente: true,
+      };
+
+      await fsSetDoc(fsDoc(db, "adherentes", String(rowId)), espejo, { merge: true });
+    }
+
+    if (prevAdherente && !nextAdherente) {
+      // pasó a NO: borrar en 'adherentes' por DNI (puede haber docs con otro ID)
+      const q = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
+      const snap = await fsGetDocs(q);
+      if (!snap.empty) {
+        await Promise.all(snap.docs.map((d) => fsDeleteDoc(d.ref)));
+      }
+    }
+
+    showSuccess("Afiliado actualizado correctamente.");
+    closeEdit();
+  } catch (err) {
+    showError(err?.message || "Error al actualizar el afiliado.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <div className={styles.container}>
