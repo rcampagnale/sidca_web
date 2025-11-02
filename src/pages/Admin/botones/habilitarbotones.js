@@ -1,54 +1,78 @@
+// src/pages/Admin/HabilitarBotones/habilitarbotones.js
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import { ProgressSpinner } from "primereact/progressspinner";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { Dropdown } from "primereact/dropdown";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  deleteField,
+} from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config";
 import styles from "./habilitarbotones.module.css";
 
 const HabilitarBotones = () => {
   const toast = useRef(null);
 
-  // ===== Pantalla de carga inicial =====
+  // ===== Carga inicial =====
   const [bootLoading, setBootLoading] = useState(true);
 
-  // ===== ASISTENCIA (cod/boton.cargar: 'si'|'no') =====
+  // ===== Asistencia =====
+  // En 'cod/boton' SOLO guardamos: { cargar: "si" | "no" }
   const [asistenciaHabilitada, setAsistenciaHabilitada] = useState(null); // null|'si'|'no'
   const [visibleDialogAsistencia, setVisibleDialogAsistencia] = useState(false);
   const [loadingAsistencia, setLoadingAsistencia] = useState(false);
 
-  // ===== LINK DE MEET (cuotas/sala: link, descripcion) =====
+  // En 'cod/asistencia' guardamos la config completa (habilitada, cursoId, cursoTitulo)
+  const [asistenciaConfig, setAsistenciaConfig] = useState({
+    habilitada: false,
+    cursoId: null,
+    cursoTitulo: "",
+  });
+
+  // Cursos (Dropdown controlado por ID)
+  const [cursos, setCursos] = useState([]); // [{ value, label }]
+  const [loadingCursos, setLoadingCursos] = useState(false);
+  const [selectedCursoId, setSelectedCursoId] = useState(null); // string (id)
+
+  // ===== Link Meet =====
   const [visibleDialogMeet, setVisibleDialogMeet] = useState(false);
   const [linkMeet, setLinkMeet] = useState("");
   const [descripcionMeet, setDescripcionMeet] = useState("");
   const [loadingMeet, setLoadingMeet] = useState(false);
   const linkInputRef = useRef(null);
 
-  // ===== HS CÁTEDRA SECUNDARIA (cod/secundaria.valor) =====
+  // ===== HS Cátedra Secundaria =====
   const [visibleDialogHsSec, setVisibleDialogHsSec] = useState(false);
   const [valorHsSec, setValorHsSec] = useState("");
   const [loadingHsSec, setLoadingHsSec] = useState(false);
 
-  // ===== HS CÁTEDRA SUPERIOR (cod/superior.anual | cuatrimestral) =====
+  // ===== HS Cátedra Superior =====
   const [visibleDialogHsSup, setVisibleDialogHsSup] = useState(false);
   const [valorAnualSup, setValorAnualSup] = useState("");
   const [valorCuatrSup, setValorCuatrSup] = useState("");
   const [loadingHsSup, setLoadingHsSup] = useState(false);
 
-  // ===== SEGURO DE VIDA OBLIGATORIO (cod/seguroVidaObligatorio.valor) =====
+  // ===== Seguro de Vida =====
   const [visibleDialogSeguro, setVisibleDialogSeguro] = useState(false);
   const [valorSeguro, setValorSeguro] = useState("");
   const [loadingSeguro, setLoadingSeguro] = useState(false);
 
-  // ===== SUBSIDIO SEPELIO (cod/subsidioSepelio.valor) =====
+  // ===== Subsidio Sepelio =====
   const [visibleDialogSepelio, setVisibleDialogSepelio] = useState(false);
   const [valorSepelio, setValorSepelio] = useState("");
   const [loadingSepelio, setLoadingSepelio] = useState(false);
 
-  // ---------- Lecturas individuales ----------
-  const cargarAsistencia = async () => {
+  // ---------- Lecturas ----------
+  const cargarAsistenciaFlag = async () => {
     try {
       const snap = await getDoc(doc(db, "cod", "boton"));
       if (snap.exists()) {
@@ -58,8 +82,48 @@ const HabilitarBotones = () => {
         setAsistenciaHabilitada(null);
       }
     } catch (err) {
-      console.error("Asistencia (leer):", err);
+      console.error("Asistencia (leer flag):", err);
       toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cargar Asistencia." });
+    }
+  };
+
+  const cargarAsistenciaConfig = async () => {
+    try {
+      const snap = await getDoc(doc(db, "cod", "asistencia"));
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        const habilitada = !!data.habilitada;
+        const cursoId = data.cursoId ?? null;
+        const cursoTitulo = data.cursoTitulo ?? "";
+        setAsistenciaConfig({ habilitada, cursoId, cursoTitulo });
+        setSelectedCursoId(cursoId || null);
+      } else {
+        setAsistenciaConfig({ habilitada: false, cursoId: null, cursoTitulo: "" });
+        setSelectedCursoId(null);
+      }
+    } catch (err) {
+      console.error("Asistencia (leer config):", err);
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la configuración de asistencia." });
+    }
+  };
+
+  const cargarCursos = async () => {
+    setLoadingCursos(true);
+    try {
+      const qry = query(collection(db, "cursos"), orderBy("titulo", "asc"));
+      const snap = await getDocs(qry);
+      const items = [];
+      snap.forEach((d) => {
+        const data = d.data() || {};
+        const label = (data.titulo ?? data.nombre ?? `Curso ${d.id}`).toString();
+        items.push({ value: d.id, label });
+      });
+      setCursos(items);
+    } catch (err) {
+      console.error("Cursos (leer):", err);
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudieron cargar los cursos." });
+    } finally {
+      setLoadingCursos(false);
     }
   };
 
@@ -126,13 +190,15 @@ const HabilitarBotones = () => {
     }
   };
 
-  // ---------- Carga inicial en paralelo ----------
+  // ---------- Carga inicial ----------
   useEffect(() => {
     const loadAll = async () => {
       setBootLoading(true);
       try {
         await Promise.all([
-          cargarAsistencia(),
+          cargarAsistenciaFlag(),
+          cargarAsistenciaConfig(),
+          cargarCursos(),
           cargarMeet(),
           cargarHsSec(),
           cargarHsSup(),
@@ -147,30 +213,93 @@ const HabilitarBotones = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Acciones ----------
-  const seleccionarOpcionAsistencia = async (habilitar) => {
-    if ((habilitar && asistenciaHabilitada === "si") || (!habilitar && asistenciaHabilitada === "no")) {
-      setVisibleDialogAsistencia(false);
+  // ---------- Acciones Asistencia ----------
+  const abrirDialogAsistencia = () => {
+    setVisibleDialogAsistencia(true);
+    if (cursos.length === 0) cargarCursos();
+  };
+
+  const habilitarAsistencia = async () => {
+    if (!selectedCursoId) {
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "Seleccioná un curso para habilitar." });
       return;
     }
+    const curso = cursos.find((c) => c.value === selectedCursoId);
+    const cursoTitulo = curso?.label ?? "";
+
     setLoadingAsistencia(true);
     try {
-      await setDoc(doc(db, "cod", "boton"), { cargar: habilitar ? "si" : "no" }, { merge: true });
-      setAsistenciaHabilitada(habilitar ? "si" : "no");
-      toast.current?.show({ severity: "success", summary: "Guardado", detail: `Asistencia ${habilitar ? "habilitada" : "deshabilitada"}.` });
+      // En 'boton' SOLO el flag y limpiamos restos de curso
+      await setDoc(
+        doc(db, "cod", "boton"),
+        { cargar: "si", cursoId: deleteField(), cursoTitulo: deleteField() },
+        { merge: true }
+      );
+
+      // En 'asistencia' guardamos TODO
+      await setDoc(
+        doc(db, "cod", "asistencia"),
+        { habilitada: true, cursoId: selectedCursoId, cursoTitulo },
+        { merge: true }
+      );
+
+      setAsistenciaHabilitada("si");
+      setAsistenciaConfig({ habilitada: true, cursoId: selectedCursoId, cursoTitulo });
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Guardado",
+        detail: `Asistencia habilitada para: ${cursoTitulo}`,
+      });
+      setVisibleDialogAsistencia(false);
     } catch (err) {
-      console.error("Asistencia (guardar):", err);
-      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo guardar Asistencia." });
+      console.error("Asistencia (habilitar):", err);
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo habilitar Asistencia." });
     } finally {
       setLoadingAsistencia(false);
-      setVisibleDialogAsistencia(false);
     }
   };
 
+  const deshabilitarAsistencia = async () => {
+    setLoadingAsistencia(true);
+    try {
+      // En 'boton' solo el flag y sin curso
+      await setDoc(
+        doc(db, "cod", "boton"),
+        { cargar: "no", cursoId: deleteField(), cursoTitulo: deleteField() },
+        { merge: true }
+      );
+
+      // En 'asistencia' limpiamos y deshabilitamos
+      await setDoc(
+        doc(db, "cod", "asistencia"),
+        { habilitada: false, cursoId: deleteField(), cursoTitulo: deleteField() },
+        { merge: true }
+      );
+
+      setAsistenciaHabilitada("no");
+      setSelectedCursoId(null);
+      setAsistenciaConfig({ habilitada: false, cursoId: null, cursoTitulo: "" });
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Guardado",
+        detail: "Asistencia deshabilitada y curso eliminado.",
+      });
+      setVisibleDialogAsistencia(false);
+    } catch (err) {
+      console.error("Asistencia (deshabilitar):", err);
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo deshabilitar Asistencia." });
+    } finally {
+      setLoadingAsistencia(false);
+    }
+  };
+
+  // ---------- Acciones extra ----------
   const guardarLinkMeet = async () => {
     const link = (linkMeet ?? "").trim();
     const desc = (descripcionMeet ?? "").trim();
-    if (link === "") {
+    if (!link) {
       toast.current?.show({ severity: "warn", summary: "Atención", detail: "Pegá un enlace de Meet." });
       return;
     }
@@ -315,10 +444,15 @@ const HabilitarBotones = () => {
 
   // ---------- Labels / iconos ----------
   const botonLabelAsistencia =
-    asistenciaHabilitada === null ? "Habilitar Asistencia" : asistenciaHabilitada === "si" ? "Asistencia: Sí" : "Asistencia: No";
+    asistenciaHabilitada === null
+      ? "Habilitar Asistencia"
+      : asistenciaHabilitada === "si"
+      ? `Asistencia: Sí${asistenciaConfig?.cursoTitulo ? ` (${asistenciaConfig.cursoTitulo})` : ""}`
+      : "Asistencia: No";
   const botonIconAsistencia =
     asistenciaHabilitada === null ? "pi pi-check-square" : asistenciaHabilitada === "si" ? "pi pi-check" : "pi pi-times";
-  const botonSeverityAsistencia = asistenciaHabilitada === null ? "secondary" : asistenciaHabilitada === "si" ? "success" : "danger";
+  const botonSeverityAsistencia =
+    asistenciaHabilitada === null ? "secondary" : asistenciaHabilitada === "si" ? "success" : "danger";
 
   const hayLinkMeet = (linkMeet ?? "").trim() !== "";
   const botonLabelMeet = hayLinkMeet ? "Link Meet Cargado" : "Cargar Link de Meet";
@@ -345,7 +479,7 @@ const HabilitarBotones = () => {
   const botonIconSepelio = hayValorSepelio ? "pi pi-check-circle" : "pi pi-briefcase";
   const botonSeveritySepelio = hayValorSepelio ? "success" : "help";
 
-  // ---------- Splash de carga inicial ----------
+  // ---------- Splash ----------
   if (bootLoading) {
     return (
       <div
@@ -378,7 +512,7 @@ const HabilitarBotones = () => {
           label={botonLabelAsistencia}
           icon={botonIconAsistencia}
           severity={botonSeverityAsistencia}
-          onClick={() => setVisibleDialogAsistencia(true)}
+          onClick={abrirDialogAsistencia}
           loading={loadingAsistencia}
         />
 
@@ -430,30 +564,61 @@ const HabilitarBotones = () => {
 
       {/* ===== Modal Asistencia ===== */}
       <Dialog
-        header="Habilitar Asistencia"
+        header="Configurar Asistencia"
         visible={visibleDialogAsistencia}
-        style={{ width: "350px" }}
+        style={{ width: 480, maxWidth: "95vw" }}
         modal
         onHide={() => setVisibleDialogAsistencia(false)}
       >
-        <p>¿Desea habilitar la asistencia?</p>
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1rem" }}>
-          <Button
-            label="Sí"
-            icon="pi pi-check"
-            severity="success"
-            outlined={asistenciaHabilitada !== "si"}
-            onClick={() => seleccionarOpcionAsistencia(true)}
-            loading={loadingAsistencia}
-          />
-          <Button
-            label="No"
-            icon="pi pi-times"
-            severity="danger"
-            outlined={asistenciaHabilitada !== "no"}
-            onClick={() => seleccionarOpcionAsistencia(false)}
-            loading={loadingAsistencia}
-          />
+        <div style={{ display: "grid", gap: 12 }}>
+          <p>Primero seleccioná el <b>curso</b> y luego habilitá la asistencia.</p>
+
+          <div>
+            <label><strong>Curso a habilitar:</strong></label>
+            <Dropdown
+              value={selectedCursoId}
+              onChange={(e) => setSelectedCursoId(e.value)}
+              options={cursos}
+              optionLabel="label"
+              optionValue="value"
+              placeholder={loadingCursos ? "Cargando cursos..." : "Seleccioná un curso"}
+              loading={loadingCursos}
+              filter
+              showClear
+              style={{ width: "100%", marginTop: 6 }}
+            />
+            {asistenciaConfig?.cursoId && !selectedCursoId && (
+              <small style={{ color: "#64748b" }}>
+                Último curso configurado: <b>{asistenciaConfig.cursoTitulo}</b>
+              </small>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <Button
+              label="Habilitar"
+              icon="pi pi-check"
+              severity="success"
+              onClick={habilitarAsistencia}
+              disabled={!selectedCursoId || loadingAsistencia || asistenciaHabilitada === "si"}
+              loading={loadingAsistencia}
+            />
+            <Button
+              label="Deshabilitar"
+              icon="pi pi-times"
+              severity="danger"
+              onClick={deshabilitarAsistencia}
+              disabled={loadingAsistencia || asistenciaHabilitada !== "si"}
+              outlined
+            />
+            <Button
+              label="Cerrar"
+              icon="pi pi-times"
+              severity="secondary"
+              onClick={() => setVisibleDialogAsistencia(false)}
+              disabled={loadingAsistencia}
+            />
+          </div>
         </div>
       </Dialog>
 
