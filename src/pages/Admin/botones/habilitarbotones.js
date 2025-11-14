@@ -1,11 +1,12 @@
-// src/pages/Admin/HabilitarBotones/habilitarbotones.js
-import React, { useEffect, useRef, useState } from "react";
+// src/pages/Admin/botones/habilitarbotones.js
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Dropdown } from "primereact/dropdown";
+import { InputSwitch } from "primereact/inputswitch";
 import QRCode from "react-qr-code";
 import {
   doc,
@@ -19,6 +20,8 @@ import {
   orderBy,
   deleteField,
   deleteDoc,
+  limit,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config";
 import styles from "./habilitarbotones.module.css";
@@ -46,6 +49,35 @@ const nowPlusMinutesLocalStr = (mins) => {
   return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
 };
 
+/** ---------- Borrado masivo por lotes ---------- */
+async function vaciarColeccion(path, batchSize = 400) {
+  const colRef = collection(db, path);
+  while (true) {
+    const snap = await getDocs(query(colRef, orderBy("__name__"), limit(batchSize)));
+    if (snap.empty) break;
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+/** ---------- Deshabilitar y borrar TODAS las sesiones ---------- */
+async function deshabilitarYBorrarTodasLasSesiones() {
+  await setDoc(
+    doc(db, "cod", "asistencia"),
+    {
+      habilitada: false,
+      sessionId: deleteField(),
+      cursoId: deleteField(),
+      cursoTitulo: deleteField(),
+      modalidad: deleteField(),
+      metodo: deleteField(),
+    },
+    { merge: true }
+  );
+  await vaciarColeccion("asistencia_sesiones");
+}
+
 const HabilitarBotones = () => {
   const toast = useRef(null);
 
@@ -63,23 +95,23 @@ const HabilitarBotones = () => {
     cursoId: null,
     cursoTitulo: "",
     modalidad: null, // 'virtual' | 'presencial'
-    metodo: null, // 'qr_static' (solo si presencial)
+    metodo: null, // 'qr_static'
     sessionId: null,
   });
 
   // ===== Cursos =====
-  const [cursos, setCursos] = useState([]); // [{ value, label }]
+  const [cursos, setCursos] = useState([]);
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [selectedCursoId, setSelectedCursoId] = useState(null);
 
   // ===== Modalidad =====
-  const [selectedModalidad, setSelectedModalidad] = useState(null); // 'virtual' | 'presencial'
+  const [selectedModalidad, setSelectedModalidad] = useState(null);
   const opcionesModalidad = [
     { label: "Virtual", value: "virtual" },
     { label: "Presencial (QR estático)", value: "presencial" },
   ];
 
-  // ===== Otros modales (Meet / valores) que ya tenías =====
+  // ===== Otros modales (Meet / valores) =====
   const [visibleDialogMeet, setVisibleDialogMeet] = useState(false);
   const [linkMeet, setLinkMeet] = useState("");
   const [descripcionMeet, setDescripcionMeet] = useState("");
@@ -104,15 +136,70 @@ const HabilitarBotones = () => {
   const [loadingSepelio, setLoadingSepelio] = useState(false);
 
   // ===== Sesión presencial (QR estático) =====
-  const [sesionActual, setSesionActual] = useState(null); // {id, cursoId, cursoTitulo, estado, desde, hasta, codigo, qrPayload}
+  
+  const [sesionActual, setSesionActual] = useState(null);
   const [desdeLocal, setDesdeLocal] = useState("");
   const [hastaLocal, setHastaLocal] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
   const [loadingSesion, setLoadingSesion] = useState(false);
   const [renovandoCodigo, setRenovandoCodigo] = useState(false);
-  // === QR: refs y estado de descarga ===
   const qrContainerRef = useRef(null);
   const [downloadingQR, setDownloadingQR] = useState(false);
+
+  // ====== 🔔 Config actualización app (simple: solo 3 campos) ======
+  const [latestVersion, setLatestVersion] = useState(0);
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
+  const [visibleDialogUpdate, setVisibleDialogUpdate] = useState(false);
+
+  const CFG_REF = useMemo(() => doc(db, "config", "app"), []);
+
+  /** Lee solo los 3 campos */
+  const cargarConfigUpdate = useCallback(async () => {
+    try {
+      const snap = await getDoc(CFG_REF);
+      if (snap.exists()) {
+        const d = snap.data() || {};
+        setLatestVersion(Number(d.latestAndroidVersionCode || 0));
+        setForceUpdate(!!d.forceUpdate);
+        setMessage(
+          typeof d.message === "string" && d.message.trim()
+            ? d.message
+            : 'Hay una nueva versión disponible. Toca “Actualizar ahora” y te llevamos directo a Play Store para descargarla.'
+        );
+      } else {
+        setLatestVersion(0);
+        setForceUpdate(false);
+        setMessage('Hay una nueva versión disponible. Toca “Actualizar ahora” y te llevamos directo a Play Store para descargarla.');
+      }
+    } catch (e) {
+      toast.current?.show({ severity: "error", summary: "Error", detail: String(e) });
+    }
+  }, [CFG_REF]);
+
+  /** Guarda solo los 3 campos */
+  const guardarCambiosActualizacion = useCallback(async () => {
+    setLoadingUpdate(true);
+    try {
+      const payload = {
+        latestAndroidVersionCode: Number(latestVersion) || 0,
+        forceUpdate: !!forceUpdate,
+        message: String(message ?? ""),
+      };
+      try {
+        await updateDoc(CFG_REF, payload);
+      } catch {
+        await setDoc(CFG_REF, payload, { merge: true });
+      }
+      toast.current?.show({ severity: "success", summary: "Guardado", detail: "Se actualizaron los datos de la app." });
+      await cargarConfigUpdate();
+    } catch (e) {
+      toast.current?.show({ severity: "error", summary: "Error", detail: String(e) });
+    } finally {
+      setLoadingUpdate(false);
+    }
+  }, [CFG_REF, latestVersion, forceUpdate, message, cargarConfigUpdate]);
 
   // ---------- Lecturas ----------
   const cargarAsistenciaFlag = async () => {
@@ -120,19 +207,13 @@ const HabilitarBotones = () => {
       const snap = await getDoc(doc(db, "cod", "boton"));
       if (snap.exists()) {
         const valor = snap.data()?.cargar;
-        setAsistenciaHabilitada(
-          valor === "si" || valor === "no" ? valor : null
-        );
+        setAsistenciaHabilitada(valor === "si" || valor === "no" ? valor : null);
       } else {
         setAsistenciaHabilitada(null);
       }
     } catch (err) {
       console.error("Asistencia (leer flag):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar Asistencia.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cargar Asistencia." });
     }
   };
 
@@ -152,7 +233,6 @@ const HabilitarBotones = () => {
         setAsistenciaConfig(cfg);
         setSelectedCursoId(cfg.cursoId || null);
         setSelectedModalidad(cfg.modalidad || null);
-
         if (cfg.sessionId) {
           await cargarSesionActiva(cfg.sessionId);
         } else {
@@ -173,11 +253,7 @@ const HabilitarBotones = () => {
       }
     } catch (err) {
       console.error("Asistencia (leer config):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar la configuración de asistencia.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la configuración de asistencia." });
     }
   };
 
@@ -192,11 +268,7 @@ const HabilitarBotones = () => {
       }
     } catch (err) {
       console.error("Sesión (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar la sesión activa.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la sesión activa." });
     }
   };
 
@@ -208,21 +280,13 @@ const HabilitarBotones = () => {
       const items = [];
       snap.forEach((d) => {
         const data = d.data() || {};
-        const label = (
-          data.titulo ??
-          data.nombre ??
-          `Curso ${d.id}`
-        ).toString();
+        const label = (data.titulo ?? data.nombre ?? `Curso ${d.id}`).toString();
         items.push({ value: d.id, label });
       });
       setCursos(items);
     } catch (err) {
       console.error("Cursos (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudieron cargar los cursos.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudieron cargar los cursos." });
     } finally {
       setLoadingCursos(false);
     }
@@ -234,150 +298,315 @@ const HabilitarBotones = () => {
       if (snap.exists()) {
         const data = snap.data();
         setLinkMeet(typeof data?.link === "string" ? data.link : "");
-        setDescripcionMeet(
-          typeof data?.descripcion === "string" ? data.descripcion : ""
-        );
+        setDescripcionMeet(typeof data?.descripcion === "string" ? data.descripcion : "");
       } else {
         setLinkMeet("");
         setDescripcionMeet("");
       }
-    } catch (err) {
-      console.error("Meet (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar el enlace de Meet.",
-      });
-    }
+    } catch (err) {}
   };
 
   const cargarHsSec = async () => {
     try {
       const snap = await getDoc(doc(db, "cod", "secundaria"));
-      setValorHsSec(
-        snap.exists() && typeof snap.data()?.valor === "string"
-          ? snap.data().valor
-          : ""
-      );
-    } catch (err) {
-      console.error("Hs Secundaria (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar Hs Cát. Secundaria.",
-      });
-    }
+      setValorHsSec(snap.exists() && typeof snap.data()?.valor === "string" ? snap.data().valor : "");
+    } catch (err) {}
   };
 
   const cargarHsSup = async () => {
     try {
       const snap = await getDoc(doc(db, "cod", "superior"));
       if (snap.exists()) {
-        setValorAnualSup(
-          typeof snap.data()?.anual === "string" ? snap.data().anual : ""
-        );
-        setValorCuatrSup(
-          typeof snap.data()?.cuatrimestral === "string"
-            ? snap.data().cuatrimestral
-            : ""
-        );
+        setValorAnualSup(typeof snap.data()?.anual === "string" ? snap.data().anual : "");
+        setValorCuatrSup(typeof snap.data()?.cuatrimestral === "string" ? snap.data().cuatrimestral : "");
       } else {
         setValorAnualSup("");
         setValorCuatrSup("");
       }
-    } catch (err) {
-      console.error("Hs Superior (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar Hs Cát. Superior.",
-      });
-    }
+    } catch (err) {}
   };
 
   const cargarSeguro = async () => {
     try {
       const snap = await getDoc(doc(db, "cod", "seguroVidaObligatorio"));
-      setValorSeguro(
-        snap.exists() && typeof snap.data()?.valor === "string"
-          ? snap.data().valor
-          : ""
-      );
-    } catch (err) {
-      console.error("Seguro Vida (leer):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar Seguro de Vida Obligatorio.",
-      });
-    }
+      setValorSeguro(snap.exists() && typeof snap.data()?.valor === "string" ? snap.data().valor : "");
+    } catch (err) {}
   };
 
   const cargarSepelio = async () => {
     try {
       const snap = await getDoc(doc(db, "cod", "subsidioSepelio"));
-      setValorSepelio(
-        snap.exists() && typeof snap.data()?.valor === "string"
-          ? snap.data().valor
-          : ""
-      );
-    } catch (err) {
-      console.error("Sepelio (leer):", err);
+      setValorSepelio(snap.exists() && typeof snap.data()?.valor === "string" ? snap.data().valor : "");
+    } catch (err) {}
+  };
+
+  // ======= FUNCIONES Meet y valores =======
+  const guardarLinkMeet = async () => {
+    const link = (linkMeet ?? "").trim();
+    const desc = (descripcionMeet ?? "").trim();
+    if (!link) {
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "Pegá un enlace de Meet." });
+      return;
+    }
+    const meetRegex = /^https?:\/\/meet\.google\.com\/[^\s]+$/i;
+    if (!meetRegex.test(link)) {
       toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar Subsidio Sepelio.",
+        severity: "warn",
+        summary: "Formato",
+        detail: "El enlace debe ser de Google Meet (https://meet.google.com/...).",
       });
+      return;
+    }
+    setLoadingMeet(true);
+    try {
+      await setDoc(doc(db, "cuotas", "sala"), { link, descripcion: desc }, { merge: true });
+      setLinkMeet(link);
+      setDescripcionMeet(desc);
+      toast.current?.show({ severity: "success", summary: "Guardado", detail: "Enlace de Meet guardado." });
+      setVisibleDialogMeet(false);
+    } catch (err) {
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo guardar el enlace." });
+    } finally {
+      setLoadingMeet(false);
     }
   };
 
-  // Refresca la sesión (por si el código cambió) y abre el modal de QR
-  const abrirModalQR = async () => {
-    if (asistenciaConfig?.sessionId) {
-      await cargarSesionActiva(asistenciaConfig.sessionId);
+  const borrarLinkMeet = async () => {
+    setLoadingMeet(true);
+    try {
+      await setDoc(doc(db, "cuotas", "sala"), { link: "", descripcion: "" }, { merge: true });
+      setLinkMeet("");
+      setDescripcionMeet("");
+      toast.current?.show({ severity: "success", summary: "Eliminado", detail: "Se borró el enlace y la descripción." });
+      setVisibleDialogMeet(false);
+    } catch (err) {
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo borrar el enlace." });
+    } finally {
+      setLoadingMeet(false);
     }
+  };
+
+  // 💾 Guardar valor Hora Cátedra Secundaria
+const guardarValorHsSec = async () => {
+  // Permitimos que el usuario use coma o punto
+  const raw = (valorHsSec ?? "").toString().replace(",", ".");
+  const num = parseFloat(raw);
+
+  if (isNaN(num)) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese un número válido.",
+    });
+    return;
+  }
+
+  const formateado = num.toFixed(2); // siempre 2 decimales
+
+  setLoadingHsSec(true);
+  try {
+    await setDoc(
+      doc(db, "cod", "secundaria"),
+      { valor: formateado },
+      { merge: true }
+    );
+
+    setValorHsSec(formateado); // actualizamos el estado con lo que se guardó
+    toast.current?.show({
+      severity: "success",
+      summary: "Guardado",
+      detail: "Valor guardado correctamente.",
+    });
+    setVisibleDialogHsSec(false);
+  } catch (err) {
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: "No se pudo guardar el valor.",
+    });
+  } finally {
+    setLoadingHsSec(false);
+  }
+};
+
+
+  // 💾 Guardar valores Hora Cátedra Superior (anual y cuatrimestral)
+const guardarValorHsSup = async () => {
+  const rawAnual = (valorAnualSup ?? "").toString().replace(",", ".");
+  const rawCuatr = (valorCuatrSup ?? "").toString().replace(",", ".");
+
+  const numAnual = parseFloat(rawAnual);
+  const numCuatr = parseFloat(rawCuatr);
+
+  if (isNaN(numAnual) || isNaN(numCuatr)) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese ambos valores numéricos.",
+    });
+    return;
+  }
+
+  const anualForm = numAnual.toFixed(2);
+  const cuatrForm = numCuatr.toFixed(2);
+
+  setLoadingHsSup(true);
+  try {
+    await setDoc(
+      doc(db, "cod", "superior"),
+      { anual: anualForm, cuatrimestral: cuatrForm },
+      { merge: true }
+    );
+
+    setValorAnualSup(anualForm);
+    setValorCuatrSup(cuatrForm);
+    toast.current?.show({
+      severity: "success",
+      summary: "Guardado",
+      detail: "Valores guardados correctamente.",
+    });
+    setVisibleDialogHsSup(false);
+  } catch (err) {
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: "No se pudieron guardar los valores.",
+    });
+  } finally {
+    setLoadingHsSup(false);
+  }
+};
+
+
+  // 💾 Guardar Seguro de Vida
+const guardarValorSeguro = async () => {
+  const raw = (valorSeguro ?? "").toString().trim();
+  if (!raw) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese un valor.",
+    });
+    return;
+  }
+
+  // Permitimos "1000", "1.000", "1,000.50", etc.
+  const num = parseFloat(raw.replace(/\./g, "").replace(",", "."));
+  if (isNaN(num)) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese un número válido.",
+    });
+    return;
+  }
+
+  const formateado = num.toLocaleString("es-AR"); // ej: 1.000 o 30.000
+
+  setLoadingSeguro(true);
+  try {
+    await setDoc(
+      doc(db, "cod", "seguroVidaObligatorio"),
+      { valor: formateado },
+      { merge: true }
+    );
+    setValorSeguro(formateado);
+    toast.current?.show({
+      severity: "success",
+      summary: "Guardado",
+      detail: "Valor guardado correctamente.",
+    });
+    setVisibleDialogSeguro(false);
+  } catch (err) {
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: "No se pudo guardar el valor.",
+    });
+  } finally {
+    setLoadingSeguro(false);
+  }
+};
+
+  // 💾 Guardar Subsidio por Sepelio
+const guardarValorSepelio = async () => {
+  const raw = (valorSepelio ?? "").toString().trim();
+  if (!raw) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese un valor.",
+    });
+    return;
+  }
+
+  const num = parseFloat(raw.replace(/\./g, "").replace(",", "."));
+  if (isNaN(num)) {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Atención",
+      detail: "Ingrese un número válido.",
+    });
+    return;
+  }
+
+  const formateado = num.toLocaleString("es-AR");
+
+  setLoadingSepelio(true);
+  try {
+    await setDoc(
+      doc(db, "cod", "subsidioSepelio"),
+      { valor: formateado },
+      { merge: true }
+    );
+    setValorSepelio(formateado);
+    toast.current?.show({
+      severity: "success",
+      summary: "Guardado",
+      detail: "Valor guardado correctamente.",
+    });
+    setVisibleDialogSepelio(false);
+  } catch (err) {
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: "No se pudo guardar el valor.",
+    });
+  } finally {
+    setLoadingSepelio(false);
+  }
+};
+
+  // ======= FIN funciones faltantes =======
+
+  // Refresca QR y abre modal
+  const abrirModalQR = async () => {
+    if (asistenciaConfig?.sessionId) await cargarSesionActiva(asistenciaConfig.sessionId);
     setQrVisible(true);
   };
 
-  // Copia el texto del código al portapapeles
   const copiarCodigo = async () => {
     try {
       if (!sesionActual?.codigo) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Código",
-          detail: "No hay código disponible.",
-        });
+        toast.current?.show({ severity: "warn", summary: "Código", detail: "No hay código disponible." });
         return;
       }
       await navigator.clipboard.writeText(sesionActual.codigo);
-      toast.current?.show({
-        severity: "success",
-        summary: "Copiado",
-        detail: "Código copiado al portapapeles.",
-      });
+      toast.current?.show({ severity: "success", summary: "Copiado", detail: "Código copiado al portapapeles." });
     } catch {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo copiar el código.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo copiar el código." });
     }
   };
 
-  // Descarga el QR como PNG (imagen)
   const downloadQRAsPNG = async (scale = 4) => {
     setDownloadingQR(true);
     try {
       const svg = qrContainerRef.current?.querySelector("svg");
       if (!svg) throw new Error("No se encontró el SVG del QR.");
-
-      // Serializar el SVG actual
       const xml = new XMLSerializer().serializeToString(svg);
       const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(svgBlob);
 
-      // Crear imagen y dibujar en canvas
       const img = new Image();
       const rect = svg.getBoundingClientRect();
       const base = Math.max(rect.width || 320, rect.height || 320);
@@ -386,7 +615,6 @@ const HabilitarBotones = () => {
         canvas.width = base * scale;
         canvas.height = base * scale;
         const ctx = canvas.getContext("2d");
-        // Fondo blanco (opcional; queda bien para imprimir o enviar)
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -394,74 +622,25 @@ const HabilitarBotones = () => {
 
         const pngUrl = canvas.toDataURL("image/png");
         const a = document.createElement("a");
-        const safeCourse = (sesionActual?.cursoTitulo || "curso").replace(
-          /[^\w\-]+/g,
-          "_"
-        );
-        const safeCode = (sesionActual?.codigo || "QR").replace(
-          /[^\w\-]+/g,
-          "_"
-        );
+        const safeCourse = (sesionActual?.cursoTitulo || "curso").replace(/[^\w\-]+/g, "_");
+        const safeCode = (sesionActual?.codigo || "QR").replace(/[^\w\-]+/g, "_");
         a.download = `${safeCourse}-${safeCode}.png`;
         a.href = pngUrl;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
-        toast.current?.show({
-          severity: "success",
-          summary: "Descargado",
-          detail: "QR descargado como PNG.",
-        });
+        toast.current?.show({ severity: "success", summary: "Descargado", detail: "QR descargado como PNG." });
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudo generar la imagen del QR.",
-        });
+        toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo generar la imagen del QR." });
       };
       img.src = url;
     } catch (err) {
-      console.error(err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo descargar el QR.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo descargar el QR." });
     } finally {
       setDownloadingQR(false);
-    }
-  };
-
-  // Descarga el QR como SVG (vector)
-  const downloadQRAsSVG = () => {
-    try {
-      const svg = qrContainerRef.current?.querySelector("svg");
-      if (!svg) throw new Error("No se encontró el SVG del QR.");
-      const xml = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const safeCourse = (sesionActual?.cursoTitulo || "curso").replace(
-        /[^\w\-]+/g,
-        "_"
-      );
-      const safeCode = (sesionActual?.codigo || "QR").replace(/[^\w\-]+/g, "_");
-      a.download = `${safeCourse}-${safeCode}.svg`;
-      a.href = url;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo descargar el SVG del QR.",
-      });
     }
   };
 
@@ -479,6 +658,7 @@ const HabilitarBotones = () => {
           cargarHsSup(),
           cargarSeguro(),
           cargarSepelio(),
+          cargarConfigUpdate(),
         ]);
       } finally {
         setBootLoading(false);
@@ -491,35 +671,20 @@ const HabilitarBotones = () => {
   const seleccionarOpcionAsistencia = async (habilitar) => {
     setLoadingAsistencia(true);
     try {
-      // Siempre dejamos en 'cod/boton' SOLO el flag (y limpiamos restos viejos de curso)
       await setDoc(
         doc(db, "cod", "boton"),
-        {
-          cargar: habilitar ? "si" : "no",
-          cursoId: deleteField(),
-          cursoTitulo: deleteField(),
-        },
+        { cargar: habilitar ? "si" : "no", cursoId: deleteField(), cursoTitulo: deleteField() },
         { merge: true }
       );
 
       if (habilitar) {
-        // ===== HABILITAR =====
-        // Validaciones: primero curso y modalidad
         if (!selectedCursoId) {
-          toast.current?.show({
-            severity: "warn",
-            summary: "Atención",
-            detail: "Seleccioná un curso.",
-          });
+          toast.current?.show({ severity: "warn", summary: "Atención", detail: "Seleccioná un curso." });
           setLoadingAsistencia(false);
           return;
         }
         if (!selectedModalidad) {
-          toast.current?.show({
-            severity: "warn",
-            summary: "Atención",
-            detail: "Seleccioná la modalidad (virtual o presencial).",
-          });
+          toast.current?.show({ severity: "warn", summary: "Atención", detail: "Seleccioná la modalidad." });
           setLoadingAsistencia(false);
           return;
         }
@@ -528,7 +693,6 @@ const HabilitarBotones = () => {
         const cursoTitulo = curso?.label ?? "";
 
         if (selectedModalidad === "virtual") {
-          // Si hubiese una sesión abierta de antes, la cierro y limpio QR
           const sessionId = asistenciaConfig?.sessionId;
           if (sessionId) {
             try {
@@ -537,60 +701,28 @@ const HabilitarBotones = () => {
                 codigo: deleteField(),
                 qrPayload: deleteField(),
               });
-            } catch (_) {}
+              await deleteDoc(doc(db, "asistencia_sesiones", sessionId));
+            } catch {}
           }
 
-          // Guardamos como antes: sin sesión, sin método
           await setDoc(
             doc(db, "cod", "asistencia"),
-            {
-              habilitada: true,
-              cursoId: selectedCursoId,
-              cursoTitulo,
-              modalidad: "virtual",
-              metodo: deleteField(),
-              sessionId: deleteField(),
-            },
+            { habilitada: true, cursoId: selectedCursoId, cursoTitulo, modalidad: "virtual", metodo: deleteField(), sessionId: deleteField() },
             { merge: true }
           );
 
-          setAsistenciaConfig({
-            habilitada: true,
-            cursoId: selectedCursoId,
-            cursoTitulo,
-            modalidad: "virtual",
-            metodo: null,
-            sessionId: null,
-          });
+          setAsistenciaConfig({ habilitada: true, cursoId: selectedCursoId, cursoTitulo, modalidad: "virtual", metodo: null, sessionId: null });
           setSesionActual(null);
         } else {
-          // presencial (QR estático), sin abrir sesión todavía
           await setDoc(
             doc(db, "cod", "asistencia"),
-            {
-              habilitada: true,
-              cursoId: selectedCursoId,
-              cursoTitulo,
-              modalidad: "presencial",
-              metodo: "qr_static",
-              sessionId: deleteField(), // se setea al abrir sesión
-            },
+            { habilitada: true, cursoId: selectedCursoId, cursoTitulo, modalidad: "presencial", metodo: "qr_static", sessionId: deleteField() },
             { merge: true }
           );
 
-          setAsistenciaConfig((prev) => ({
-            ...prev,
-            habilitada: true,
-            cursoId: selectedCursoId,
-            cursoTitulo,
-            modalidad: "presencial",
-            metodo: "qr_static",
-            sessionId: null,
-          }));
+          setAsistenciaConfig((prev) => ({ ...prev, habilitada: true, cursoId: selectedCursoId, cursoTitulo, modalidad: "presencial", metodo: "qr_static", sessionId: null }));
         }
       } else {
-        // ===== DESHABILITAR =====
-        // 1) Si hay sesión abierta: cerrar y BORRAR QR
         const sessionId = asistenciaConfig?.sessionId;
         if (sessionId) {
           try {
@@ -599,94 +731,54 @@ const HabilitarBotones = () => {
               codigo: deleteField(),
               qrPayload: deleteField(),
             });
-          } catch (_) {
-            // si no existe, seguimos
-          }
+          } catch {}
+          try {
+            await deleteDoc(doc(db, "asistencia_sesiones", sessionId));
+          } catch {}
         }
 
-        // 2) Borrar por completo el REGISTRO de configuración (virtual o presencial)
-        try {
-          await deleteDoc(doc(db, "cod", "asistencia"));
-        } catch (_) {
-          // si no existía, seguimos
-        }
+        await deshabilitarYBorrarTodasLasSesiones();
 
-        // 3) Reset visual de UI
         setQrVisible(false);
         setSesionActual(null);
-        setAsistenciaConfig({
-          habilitada: false,
-          cursoId: null,
-          cursoTitulo: "",
-          modalidad: null,
-          metodo: null,
-          sessionId: null,
-        });
+        setAsistenciaConfig({ habilitada: false, cursoId: null, cursoTitulo: "", modalidad: null, metodo: null, sessionId: null });
         setSelectedCursoId(null);
         setSelectedModalidad(null);
       }
 
       setAsistenciaHabilitada(habilitar ? "si" : "no");
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: `Asistencia ${habilitar ? "habilitada" : "deshabilitada"}.`,
-      });
+      toast.current?.show({ severity: "success", summary: "Guardado", detail: `Asistencia ${habilitar ? "habilitada" : "deshabilitada"}.` });
       setVisibleDialogAsistencia(false);
     } catch (err) {
-      console.error("Asistencia (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar Asistencia.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo guardar Asistencia." });
     } finally {
       setLoadingAsistencia(false);
     }
   };
 
-  // ---------- Sesión QR (solo presencial) ----------
+  // ---------- Sesión QR ----------
   const abrirSesion = async () => {
     if (asistenciaHabilitada !== "si") {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Primero habilitá la asistencia.",
-      });
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "Primero habilitá la asistencia." });
       return;
     }
     if (asistenciaConfig?.modalidad !== "presencial") {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "La sesión QR es solo para modalidad Presencial.",
-      });
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "La sesión QR es solo para Presencial." });
       return;
     }
     if (!selectedCursoId) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Seleccioná un curso.",
-      });
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "Seleccioná un curso." });
       return;
     }
     if (!desdeLocal || !hastaLocal) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Indicá 'desde' y 'hasta'.",
-      });
+      toast.current?.show({ severity: "warn", summary: "Atención", detail: "Indicá 'desde' y 'hasta'." });
       return;
     }
 
     const curso = cursos.find((c) => c.value === selectedCursoId);
     const cursoTitulo = curso?.label ?? "";
     const codigo = genCodigo();
-    // QR: la app puede leer el sessionId desde cod/asistencia; usamos s=auto para mantener payload simple
-    const qrPayload = `sidca://asistencia?s=${encodeURIComponent(
-      "auto"
-    )}&c=${encodeURIComponent(codigo)}&v=1`;
+    const qrPayload = `sidca://asistencia?s=${encodeURIComponent("auto")}&c=${encodeURIComponent(codigo)}&v=1`;
     const desdeISO = toISO(desdeLocal);
     const hastaISO = toISO(hastaLocal);
 
@@ -703,51 +795,15 @@ const HabilitarBotones = () => {
         metodo: "qr_static",
       });
 
-      await setDoc(
-        doc(db, "cod", "asistencia"),
-        {
-          sessionId: ref.id,
-          cursoId: selectedCursoId,
-          cursoTitulo,
-          modalidad: "presencial",
-          metodo: "qr_static",
-        },
-        { merge: true }
-      );
+      await setDoc(doc(db, "cod", "asistencia"), { sessionId: ref.id, cursoId: selectedCursoId, cursoTitulo, modalidad: "presencial", metodo: "qr_static" }, { merge: true });
 
-      const sesion = {
-        id: ref.id,
-        cursoId: selectedCursoId,
-        cursoTitulo,
-        estado: "abierta",
-        desde: desdeISO,
-        hasta: hastaISO,
-        codigo,
-        qrPayload,
-        metodo: "qr_static",
-      };
+      const sesion = { id: ref.id, cursoId: selectedCursoId, cursoTitulo, estado: "abierta", desde: desdeISO, hasta: hastaISO, codigo, qrPayload, metodo: "qr_static" };
       setSesionActual(sesion);
-      setAsistenciaConfig((prev) => ({
-        ...prev,
-        sessionId: ref.id,
-        cursoId: selectedCursoId,
-        cursoTitulo,
-        modalidad: "presencial",
-        metodo: "qr_static",
-      }));
+      setAsistenciaConfig((prev) => ({ ...prev, sessionId: ref.id, cursoId: selectedCursoId, cursoTitulo, modalidad: "presencial", metodo: "qr_static" }));
 
-      toast.current?.show({
-        severity: "success",
-        summary: "Sesión abierta",
-        detail: `Código: ${codigo}`,
-      });
+      toast.current?.show({ severity: "success", summary: "Sesión abierta", detail: `Código: ${codigo}` });
     } catch (err) {
-      console.error("Sesión (abrir):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo abrir la sesión.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo abrir la sesión." });
     } finally {
       setLoadingSesion(false);
     }
@@ -758,26 +814,12 @@ const HabilitarBotones = () => {
     setRenovandoCodigo(true);
     try {
       const codigo = genCodigo();
-      const qrPayload = `sidca://asistencia?s=${encodeURIComponent(
-        sesionActual.id
-      )}&c=${encodeURIComponent(codigo)}&v=1`;
-      await updateDoc(doc(db, "asistencia_sesiones", sesionActual.id), {
-        codigo,
-        qrPayload,
-      });
+      const qrPayload = `sidca://asistencia?s=${encodeURIComponent("auto")}&c=${encodeURIComponent(codigo)}&v=1`;
+      await updateDoc(doc(db, "asistencia_sesiones", sesionActual.id), { codigo, qrPayload });
       setSesionActual((prev) => ({ ...prev, codigo, qrPayload }));
-      toast.current?.show({
-        severity: "success",
-        summary: "Código renovado",
-        detail: `Nuevo código: ${codigo}`,
-      });
+      toast.current?.show({ severity: "success", summary: "Código renovado", detail: `Nuevo código: ${codigo}` });
     } catch (err) {
-      console.error("Sesión (renovar código):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo renovar el código.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo renovar el código." });
     } finally {
       setRenovandoCodigo(false);
     }
@@ -787,279 +829,16 @@ const HabilitarBotones = () => {
     if (!sesionActual?.id) return;
     setLoadingSesion(true);
     try {
-      await updateDoc(doc(db, "asistencia_sesiones", sesionActual.id), {
-        estado: "cerrada",
-        codigo: deleteField(),
-        qrPayload: deleteField(),
-      });
-      await setDoc(
-        doc(db, "cod", "asistencia"),
-        { sessionId: deleteField() },
-        { merge: true }
-      );
-
+      await deleteDoc(doc(db, "asistencia_sesiones", sesionActual.id));
+      await setDoc(doc(db, "cod", "asistencia"), { sessionId: deleteField() }, { merge: true });
       setQrVisible(false);
       setSesionActual(null);
       setAsistenciaConfig((prev) => ({ ...prev, sessionId: null }));
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Sesión cerrada",
-        detail: "La sesión fue cerrada y los QR fueron eliminados.",
-      });
+      toast.current?.show({ severity: "success", summary: "Sesión cerrada", detail: "La sesión fue cerrada y el documento se eliminó." });
     } catch (err) {
-      console.error("Sesión (cerrar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cerrar la sesión.",
-      });
+      toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo cerrar la sesión." });
     } finally {
       setLoadingSesion(false);
-    }
-  };
-
-  // ---------- Otros (Meet / valores) ----------
-  const guardarLinkMeet = async () => {
-    const link = (linkMeet ?? "").trim();
-    const desc = (descripcionMeet ?? "").trim();
-    if (!link) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Pegá un enlace de Meet.",
-      });
-      return;
-    }
-    const meetRegex = /^https?:\/\/meet\.google\.com\/[^\s]+$/i;
-    if (!meetRegex.test(link)) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Formato",
-        detail:
-          "El enlace debe ser de Google Meet (https://meet.google.com/...).",
-      });
-      return;
-    }
-    setLoadingMeet(true);
-    try {
-      await setDoc(
-        doc(db, "cuotas", "sala"),
-        { link, descripcion: desc },
-        { merge: true }
-      );
-      setLinkMeet(link);
-      setDescripcionMeet(desc);
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: "Enlace de Meet guardado.",
-      });
-      setVisibleDialogMeet(false);
-    } catch (err) {
-      console.error("Meet (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el enlace.",
-      });
-    } finally {
-      setLoadingMeet(false);
-    }
-  };
-
-  const borrarLinkMeet = async () => {
-    setLoadingMeet(true);
-    try {
-      await setDoc(
-        doc(db, "cuotas", "sala"),
-        { link: "", descripcion: "" },
-        { merge: true }
-      );
-      setLinkMeet("");
-      setDescripcionMeet("");
-      toast.current?.show({
-        severity: "success",
-        summary: "Eliminado",
-        detail: "Se borró el enlace y la descripción.",
-      });
-      setVisibleDialogMeet(false);
-    } catch (err) {
-      console.error("Meet (borrar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo borrar el enlace.",
-      });
-    } finally {
-      setLoadingMeet(false);
-    }
-  };
-
-  const guardarValorHsSec = async () => {
-    const num = parseFloat(valorHsSec);
-    if (isNaN(num)) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Ingrese un número válido.",
-      });
-      return;
-    }
-    const formateado = num.toFixed(2);
-    if (formateado === valorHsSec) {
-      setVisibleDialogHsSec(false);
-      return;
-    }
-    setLoadingHsSec(true);
-    try {
-      await setDoc(
-        doc(db, "cod", "secundaria"),
-        { valor: formateado },
-        { merge: true }
-      );
-      setValorHsSec(formateado);
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: "Valor guardado correctamente.",
-      });
-      setVisibleDialogHsSec(false);
-    } catch (err) {
-      console.error("Hs Secundaria (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el valor.",
-      });
-    } finally {
-      setLoadingHsSec(false);
-    }
-  };
-
-  const guardarValorHsSup = async () => {
-    const numAnual = parseFloat(valorAnualSup);
-    const numCuatr = parseFloat(valorCuatrSup);
-    if (isNaN(numAnual) || isNaN(numCuatr)) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Ingrese ambos valores numéricos.",
-      });
-      return;
-    }
-    const anualForm = numAnual.toFixed(2);
-    const cuatrForm = numCuatr.toFixed(2);
-    if (anualForm === valorAnualSup && cuatrForm === valorCuatrSup) {
-      setVisibleDialogHsSup(false);
-      return;
-    }
-    setLoadingHsSup(true);
-    try {
-      await setDoc(
-        doc(db, "cod", "superior"),
-        { anual: anualForm, cuatrimestral: cuatrForm },
-        { merge: true }
-      );
-      setValorAnualSup(anualForm);
-      setValorCuatrSup(cuatrForm);
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: "Valores guardados correctamente.",
-      });
-      setVisibleDialogHsSup(false);
-    } catch (err) {
-      console.error("Hs Superior (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudieron guardar los valores.",
-      });
-    } finally {
-      setLoadingHsSup(false);
-    }
-  };
-
-  const guardarValorSeguro = async () => {
-    const num = parseFloat(valorSeguro.replace(/\./g, "").replace(",", "."));
-    if (isNaN(num)) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Ingrese un número válido.",
-      });
-      return;
-    }
-    const formateado = num.toLocaleString("es-AR");
-    if (formateado === valorSeguro) {
-      setVisibleDialogSeguro(false);
-      return;
-    }
-    setLoadingSeguro(true);
-    try {
-      await setDoc(
-        doc(db, "cod", "seguroVidaObligatorio"),
-        { valor: formateado },
-        { merge: true }
-      );
-      setValorSeguro(formateado);
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: "Valor guardado correctamente.",
-      });
-      setVisibleDialogSeguro(false);
-    } catch (err) {
-      console.error("Seguro Vida (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el valor.",
-      });
-    } finally {
-      setLoadingSeguro(false);
-    }
-  };
-
-  const guardarValorSepelio = async () => {
-    const num = parseFloat(valorSepelio.replace(/\./g, "").replace(",", "."));
-    if (isNaN(num)) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Atención",
-        detail: "Ingrese un número válido.",
-      });
-      return;
-    }
-    const formateado = num.toLocaleString("es-AR");
-    if (formateado === valorSepelio) {
-      setVisibleDialogSepelio(false);
-      return;
-    }
-    setLoadingSepelio(true);
-    try {
-      await setDoc(
-        doc(db, "cod", "subsidioSepelio"),
-        { valor: formateado },
-        { merge: true }
-      );
-      setValorSepelio(formateado);
-      toast.current?.show({
-        severity: "success",
-        summary: "Guardado",
-        detail: "Valor guardado correctamente.",
-      });
-      setVisibleDialogSepelio(false);
-    } catch (err) {
-      console.error("Sepelio (guardar):", err);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el valor.",
-      });
-    } finally {
-      setLoadingSepelio(false);
     }
   };
 
@@ -1068,80 +847,45 @@ const HabilitarBotones = () => {
     asistenciaHabilitada === null
       ? "Habilitar Asistencia"
       : asistenciaHabilitada === "si"
-      ? `Asistencia: Sí${
-          asistenciaConfig?.cursoTitulo
-            ? ` (${asistenciaConfig.cursoTitulo})`
-            : ""
-        }`
+      ? `Asistencia: Sí${asistenciaConfig?.cursoTitulo ? ` (${asistenciaConfig.cursoTitulo})` : ""}`
       : "Asistencia: No";
-  const botonIconAsistencia =
-    asistenciaHabilitada === null
-      ? "pi pi-check-square"
-      : asistenciaHabilitada === "si"
-      ? "pi pi-check"
-      : "pi pi-times";
-  const botonSeverityAsistencia =
-    asistenciaHabilitada === null
-      ? "secondary"
-      : asistenciaHabilitada === "si"
-      ? "success"
-      : "danger";
+  const botonIconAsistencia = asistenciaHabilitada === null ? "pi pi-check-square" : asistenciaHabilitada === "si" ? "pi pi-check" : "pi pi-times";
+  const botonSeverityAsistencia = asistenciaHabilitada === null ? "secondary" : asistenciaHabilitada === "si" ? "success" : "danger";
 
   const hayLinkMeet = (linkMeet ?? "").trim() !== "";
-  const botonLabelMeet = hayLinkMeet
-    ? "Link Meet Cargado"
-    : "Cargar Link de Meet";
+  const botonLabelMeet = hayLinkMeet ? "Link Meet Cargado" : "Cargar Link de Meet";
   const botonIconMeet = hayLinkMeet ? "pi pi-link" : "pi pi-video";
   const botonSeverityMeet = hayLinkMeet ? "success" : "info";
 
   const hayValorHsSec = valorHsSec.trim() !== "";
-  const botonLabelHsSec = hayValorHsSec
-    ? `Hs Cát. Sec.: $ ${valorHsSec}`
-    : "Valor de la Hs Cátedra Secundaria.";
+  const botonLabelHsSec = hayValorHsSec ? `Hs Cát. Sec.: $ ${valorHsSec}` : "Valor de la Hs Cátedra Secundaria.";
   const botonIconHsSec = hayValorHsSec ? "pi pi-check-circle" : "pi pi-dollar";
   const botonSeverityHsSec = hayValorHsSec ? "success" : "warning";
 
-  const hayValorHsSup =
-    valorAnualSup.trim() !== "" && valorCuatrSup.trim() !== "";
-  const botonLabelHsSup = hayValorHsSup
-    ? `Hs Cát. Sup.: Anual $${valorAnualSup} / Cuatr. $${valorCuatrSup}`
-    : "Valor de la Hs Cátedra Superior.";
+  const hayValorHsSup = valorAnualSup.trim() !== "" && valorCuatrSup.trim() !== "";
+  const botonLabelHsSup = hayValorHsSup ? `Hs Cát. Sup.: Anual $${valorAnualSup} / Cuatr. $${valorCuatrSup}` : "Valor de la Hs Cátedra Superior.";
   const botonIconHsSup = hayValorHsSup ? "pi pi-check-circle" : "pi pi-dollar";
   const botonSeverityHsSup = hayValorHsSup ? "success" : "warning";
 
   const hayValorSeguro = valorSeguro.trim() !== "";
-  const botonLabelSeguro = hayValorSeguro
-    ? `Seguro Vida: $ ${valorSeguro}`
-    : "Seguro de Vida Obligatorio";
-  const botonIconSeguro = hayValorSeguro
-    ? "pi pi-check-circle"
-    : "pi pi-shield";
+  const botonLabelSeguro = hayValorSeguro ? `Seguro Vida: $ ${valorSeguro}` : "Seguro de Vida Obligatorio";
+  const botonIconSeguro = hayValorSeguro ? "pi pi-check-circle" : "pi pi-shield";
   const botonSeveritySeguro = hayValorSeguro ? "success" : "help";
 
   const hayValorSepelio = valorSepelio.trim() !== "";
-  const botonLabelSepelio = hayValorSepelio
-    ? `Sepelio: $ ${valorSepelio}`
-    : "Subsidio Sepelio";
-  const botonIconSepelio = hayValorSepelio
-    ? "pi pi-check-circle"
-    : "pi pi-briefcase";
+  const botonLabelSepelio = hayValorSepelio ? `Sepelio: $ ${valorSepelio}` : "Subsidio Sepelio";
+  const botonIconSepelio = hayValorSepelio ? "pi pi-check-circle" : "pi pi-briefcase";
   const botonSeveritySepelio = hayValorSepelio ? "success" : "help";
+
+  // Aviso actualización: etiqueta neutra
+  const botonLabelUpdate = "Aviso de actualización de app";
+  const botonIconUpdate = "pi pi-bell";
+  const botonSeverityUpdate = "help";
 
   // ---------- Splash ----------
   if (bootLoading) {
     return (
-      <div
-        style={{
-          minHeight: 220,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: "0.75rem",
-          background: "rgba(255,255,255,0.6)",
-          borderRadius: 12,
-        }}
-      >
+      <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "0.75rem", background: "rgba(255,255,255,0.6)", borderRadius: 12 }}>
         <ProgressSpinner />
         <span style={{ color: "#64748b" }}>Cargando configuración…</span>
       </div>
@@ -1155,655 +899,233 @@ const HabilitarBotones = () => {
       <h3 className={styles.habilitar_titulo}>🛠 Habilitar Botones</h3>
 
       <div className={styles.habilitar_botones}>
-        {/* Asistencia */}
-        <Button
-          label={botonLabelAsistencia}
-          icon={botonIconAsistencia}
-          severity={botonSeverityAsistencia}
-          onClick={() => setVisibleDialogAsistencia(true)}
-          loading={loadingAsistencia}
-        />
-
-        {/* Otros botones que ya tenías */}
-        <Button
-          label={botonLabelMeet}
-          icon={botonIconMeet}
-          severity={botonSeverityMeet}
-          onClick={() => setVisibleDialogMeet(true)}
-          loading={loadingMeet}
-        />
-        <Button
-          label={botonLabelHsSec}
-          icon={botonIconHsSec}
-          severity={botonSeverityHsSec}
-          onClick={() => setVisibleDialogHsSec(true)}
-          loading={loadingHsSec}
-        />
-        <Button
-          label={botonLabelHsSup}
-          icon={botonIconHsSup}
-          severity={botonSeverityHsSup}
-          onClick={() => setVisibleDialogHsSup(true)}
-          loading={loadingHsSup}
-        />
-        <Button
-          label={botonLabelSeguro}
-          icon={botonIconSeguro}
-          severity={botonSeveritySeguro}
-          onClick={() => setVisibleDialogSeguro(true)}
-          loading={loadingSeguro}
-        />
-        <Button
-          label={botonLabelSepelio}
-          icon={botonIconSepelio}
-          severity={botonSeveritySepelio}
-          onClick={() => setVisibleDialogSepelio(true)}
-          loading={loadingSepelio}
-        />
+        <Button label={botonLabelAsistencia} icon={botonIconAsistencia} severity={botonSeverityAsistencia} onClick={() => setVisibleDialogAsistencia(true)} loading={loadingAsistencia} />
+        <Button label={botonLabelMeet} icon={botonIconMeet} severity={botonSeverityMeet} onClick={() => setVisibleDialogMeet(true)} loading={loadingMeet} />
+        <Button label={botonLabelHsSec} icon={botonIconHsSec} severity={botonSeverityHsSec} onClick={() => setVisibleDialogHsSec(true)} loading={loadingHsSec} />
+        <Button label={botonLabelHsSup} icon={botonIconHsSup} severity={botonSeverityHsSup} onClick={() => setVisibleDialogHsSup(true)} loading={loadingHsSup} />
+        <Button label={botonLabelSeguro} icon={botonIconSeguro} severity={botonSeveritySeguro} onClick={() => setVisibleDialogSeguro(true)} loading={loadingSeguro} />
+        <Button label={botonLabelSepelio} icon={botonIconSepelio} severity={botonSeveritySepelio} onClick={() => setVisibleDialogSepelio(true)} loading={loadingSepelio} />
+        <Button label={botonLabelUpdate} icon={botonIconUpdate} severity={botonSeverityUpdate} onClick={() => setVisibleDialogUpdate(true)} loading={loadingUpdate} />
       </div>
 
-      {/* ===== Modal Asistencia ===== */}
+      {/* Modal: aviso actualización (SIMPLE) */}
       <Dialog
-        header="Configurar Asistencia — Paso 1: Curso · Paso 2: Modalidad · Paso 3: Habilitar"
-        visible={visibleDialogAsistencia}
-        style={{ width: 620, maxWidth: "95vw" }}
+        header="Aviso de actualización de la App (Android) — Edición simple"
+        visible={visibleDialogUpdate}
+        style={{ width: 560, maxWidth: "95vw" }}
         modal
-        onHide={() => setVisibleDialogAsistencia(false)}
+        onHide={() => setVisibleDialogUpdate(false)}
       >
+        <div className={styles.formGrid}>
+          <div className={styles.formRow}>
+            <label>Última versión (latestAndroidVersionCode)</label>
+            <InputText
+              value={String(latestVersion)}
+              onChange={(e) => setLatestVersion(e.target.value.replace(/\D/g, ""))}
+              placeholder="Ej: 18"
+            />
+          </div>
+
+          <div className={styles.formRow}>
+            <label>Forzar actualización (forceUpdate)</label>
+            <div>
+              <InputSwitch checked={forceUpdate} onChange={(e) => setForceUpdate(e.value)} />
+            </div>
+          </div>
+
+          <div className={styles.formRow}>
+            <label>Mensaje (message)</label>
+            <InputText
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder='Ej: "Hay una nueva versión disponible..."'
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <Button
+            label="Guardar cambios"
+            icon="pi pi-save"
+            onClick={guardarCambiosActualizacion}
+            loading={loadingUpdate}
+          />
+          <Button
+            label="Recargar"
+            icon="pi pi-refresh"
+            className="p-button-text"
+            onClick={cargarConfigUpdate}
+            disabled={loadingUpdate}
+          />
+          <Button
+            label="Cerrar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={() => setVisibleDialogUpdate(false)}
+            disabled={loadingUpdate}
+          />
+        </div>
+
+        <small style={{ display: "block", marginTop: 8, opacity: 0.8 }}>
+          Este panel solo edita <code>latestAndroidVersionCode</code>, <code>forceUpdate</code> y <code>message</code> en <code>config/app</code>.
+        </small>
+      </Dialog>
+
+      {/* ===== Modal Asistencia ===== */}
+      <Dialog header="Configurar Asistencia — Paso 1: Curso · Paso 2: Modalidad · Paso 3: Habilitar" visible={visibleDialogAsistencia} style={{ width: 620, maxWidth: "95vw" }} modal onHide={() => setVisibleDialogAsistencia(false)}>
         <div style={{ display: "grid", gap: 12 }}>
-          {/* Paso 1: Curso */}
           <div>
-            <label>
-              <strong>1) Curso:</strong>
-            </label>
-            <Dropdown
-              value={selectedCursoId}
-              onChange={(e) => setSelectedCursoId(e.value)}
-              options={cursos}
-              optionLabel="label"
-              optionValue="value"
-              placeholder={
-                loadingCursos ? "Cargando cursos..." : "Seleccioná un curso"
-              }
-              loading={loadingCursos}
-              filter
-              showClear
-              style={{ width: "100%", marginTop: 6 }}
-              disabled={asistenciaHabilitada === "si" && !!sesionActual?.id}
-            />
-            {asistenciaConfig?.cursoId && !selectedCursoId && (
-              <small style={{ color: "#64748b" }}>
-                Último curso configurado: <b>{asistenciaConfig.cursoTitulo}</b>
-              </small>
-            )}
+            <label><strong>1) Curso:</strong></label>
+            <Dropdown value={selectedCursoId} onChange={(e) => setSelectedCursoId(e.value)} options={cursos} optionLabel="label" optionValue="value" placeholder={loadingCursos ? "Cargando cursos..." : "Seleccioná un curso"} loading={loadingCursos} filter showClear style={{ width: "100%", marginTop: 6 }} disabled={asistenciaHabilitada === "si" && !!sesionActual?.id} />
+            {asistenciaConfig?.cursoId && !selectedCursoId && <small style={{ color: "#64748b" }}>Último curso configurado: <b>{asistenciaConfig.cursoTitulo}</b></small>}
           </div>
 
-          {/* Paso 2: Modalidad */}
           <div>
-            <label>
-              <strong>2) Modalidad:</strong>
-            </label>
-            <Dropdown
-              value={selectedModalidad}
-              onChange={(e) => setSelectedModalidad(e.value)}
-              options={opcionesModalidad}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Elegí la modalidad"
-              style={{ width: "100%", marginTop: 6 }}
-              disabled={asistenciaHabilitada === "si" && !!sesionActual?.id}
-            />
-            {selectedModalidad === "virtual" && (
-              <small style={{ color: "#64748b" }}>
-                Modo virtual: se habilita como antes (sin sesión/QR).
-              </small>
-            )}
-            {selectedModalidad === "presencial" && (
-              <small style={{ color: "#64748b" }}>
-                Modo presencial: al habilitar, vas a poder abrir una sesión con
-                QR estático.
-              </small>
-            )}
+            <label><strong>2) Modalidad:</strong></label>
+            <Dropdown value={selectedModalidad} onChange={(e) => setSelectedModalidad(e.value)} options={opcionesModalidad} optionLabel="label" optionValue="value" placeholder="Elegí la modalidad" style={{ width: "100%", marginTop: 6 }} disabled={asistenciaHabilitada === "si" && !!sesionActual?.id} />
+            {selectedModalidad === "virtual" && <small style={{ color: "#64748b" }}>Modo virtual: se habilita sin sesión/QR.</small>}
+            {selectedModalidad === "presencial" && <small style={{ color: "#64748b" }}>Modo presencial: vas a poder abrir una sesión con QR estático.</small>}
           </div>
 
-          {/* Paso 3: Habilitar/Deshabilitar */}
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Button
-              label="Habilitar"
-              icon="pi pi-check"
-              severity="success"
-              onClick={() => seleccionarOpcionAsistencia(true)}
-              disabled={
-                !selectedCursoId ||
-                !selectedModalidad ||
-                loadingAsistencia ||
-                asistenciaHabilitada === "si"
-              }
-            />
-            <Button
-              label="Deshabilitar"
-              icon="pi pi-times"
-              severity="danger"
-              onClick={() => seleccionarOpcionAsistencia(false)}
-              disabled={loadingAsistencia || asistenciaHabilitada !== "si"}
-              outlined
-            />
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <Button label="Habilitar" icon="pi pi-check" severity="success" onClick={() => seleccionarOpcionAsistencia(true)} disabled={!selectedCursoId || !selectedModalidad || loadingAsistencia || asistenciaHabilitada === "si"} />
+            <Button label="Deshabilitar" icon="pi pi-times" severity="danger" onClick={() => seleccionarOpcionAsistencia(false)} disabled={loadingAsistencia || asistenciaHabilitada !== "si"} outlined />
           </div>
 
-          {/* Gestión de sesión (solo si habilitada y modalidad presencial) */}
-          {asistenciaHabilitada === "si" &&
-            asistenciaConfig?.modalidad === "presencial" && (
-              <div
-                className={styles.card_like}
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 8,
-                  padding: 12,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                  }}
-                >
-                  <strong>Sesión de Asistencia — QR estático</strong>
-                  {sesionActual?.estado === "abierta" ? (
-                    <span className="p-tag p-tag-success">Abierta</span>
-                  ) : (
-                    <span className="p-tag">Sin sesión</span>
-                  )}
-                </div>
-
-                {!sesionActual?.id && (
-                  <>
-                    <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                      <div>
-                        <label>
-                          <strong>Desde:</strong>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={desdeLocal}
-                          onChange={(e) => setDesdeLocal(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: 8,
-                            borderRadius: 6,
-                            border: "1px solid #ddd",
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label>
-                          <strong>Hasta:</strong>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={hastaLocal}
-                          onChange={(e) => setHastaLocal(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: 8,
-                            borderRadius: 6,
-                            border: "1px solid #ddd",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {!desdeLocal && !hastaLocal && (
-                      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                        <Button
-                          label="Usar +90 min"
-                          icon="pi pi-clock"
-                          severity="secondary"
-                          outlined
-                          onClick={() => {
-                            const nowStr = nowPlusMinutesLocalStr(0);
-                            setDesdeLocal(nowStr);
-                            setHastaLocal(nowPlusMinutesLocalStr(90));
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        justifyContent: "center",
-                        marginTop: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <Button
-                        label="Abrir sesión"
-                        icon="pi pi-play"
-                        severity="success"
-                        onClick={abrirSesion}
-                        loading={loadingSesion}
-                        disabled={
-                          loadingSesion ||
-                          !selectedCursoId ||
-                          !desdeLocal ||
-                          !hastaLocal
-                        }
-                      />
-                    </div>
-                  </>
-                )}
-
-                {sesionActual?.id && (
-                  <>
-                    <div
-                      style={{ marginTop: 10, fontSize: 14, color: "#475569" }}
-                    >
-                      <div>
-                        <b>Curso:</b> {sesionActual.cursoTitulo}
-                      </div>
-                      <div>
-                        <b>Desde:</b> {sesionActual.desde}
-                      </div>
-                      <div>
-                        <b>Hasta:</b> {sesionActual.hasta}
-                      </div>
-                      <div>
-                        <b>Código:</b>{" "}
-                        <span style={{ fontFamily: "monospace" }}>
-                          {sesionActual.codigo}
-                        </span>
-                      </div>
-                      <div>
-                        <b>SessionId:</b>{" "}
-                        <span style={{ fontFamily: "monospace" }}>
-                          {sesionActual.id}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        justifyContent: "center",
-                        marginTop: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <Button
-                        label="Mostrar QR"
-                        icon="pi pi-qrcode"
-                        onClick={() => setQrVisible(true)}
-                        severity="info"
-                      />
-                      <Button
-                        label="Renovar código"
-                        icon="pi pi-refresh"
-                        onClick={renovarCodigo}
-                        loading={renovandoCodigo}
-                        severity="warning"
-                        outlined
-                      />
-                      <Button
-                        label="Cerrar sesión"
-                        icon="pi pi-stop"
-                        onClick={cerrarSesion}
-                        loading={loadingSesion}
-                        severity="danger"
-                      />
-                    </div>
-                  </>
-                )}
+          {asistenciaHabilitada === "si" && asistenciaConfig?.modalidad === "presencial" && (
+            <div className={styles.card_like} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <strong>Sesión de Asistencia — QR estático</strong>
+                {sesionActual?.estado === "abierta" ? <span className="p-tag p-tag-success">Abierta</span> : <span className="p-tag">Sin sesión</span>}
               </div>
-            )}
+
+              {!sesionActual?.id && (
+                <>
+                  <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                    <div>
+                      <label><strong>Desde:</strong></label>
+                      <input type="datetime-local" value={desdeLocal} onChange={(e) => setDesdeLocal(e.target.value)} style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
+                    </div>
+                    <div>
+                      <label><strong>Hasta:</strong></label>
+                      <input type="datetime-local" value={hastaLocal} onChange={(e) => setHastaLocal(e.target.value)} style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
+                    </div>
+                  </div>
+
+                  {!desdeLocal && !hastaLocal && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <Button label="Usar +90 min" icon="pi pi-clock" severity="secondary" outlined onClick={() => { const nowStr = nowPlusMinutesLocalStr(0); setDesdeLocal(nowStr); setHastaLocal(nowPlusMinutesLocalStr(90)); }} />
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
+                    <Button label="Abrir sesión" icon="pi pi-play" severity="success" onClick={abrirSesion} loading={loadingSesion} disabled={loadingSesion || !selectedCursoId || !desdeLocal || !hastaLocal} />
+                  </div>
+                </>
+              )}
+
+              {sesionActual?.id && (
+                <>
+                  <div style={{ marginTop: 10, fontSize: 14, color: "#475569" }}>
+                    <div><b>Curso:</b> {sesionActual.cursoTitulo}</div>
+                    <div><b>Desde:</b> {sesionActual.desde}</div>
+                    <div><b>Hasta:</b> {sesionActual.hasta}</div>
+                    <div><b>Código:</b> <span style={{ fontFamily: "monospace" }}>{sesionActual.codigo}</span></div>
+                    <div><b>SessionId:</b> <span style={{ fontFamily: "monospace" }}>{sesionActual.id}</span></div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
+                    <Button label="Mostrar QR" icon="pi pi-qrcode" onClick={() => setQrVisible(true)} severity="info" />
+                    <Button label="Renovar código" icon="pi pi-refresh" onClick={renovarCodigo} loading={renovandoCodigo} severity="warning" outlined />
+                    <Button label="Cerrar sesión" icon="pi pi-stop" onClick={cerrarSesion} loading={loadingSesion} severity="danger" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </Dialog>
 
       {/* ===== Modal QR ===== */}
-      <Dialog
-        header="QR de Asistencia (proyectá esta pantalla)"
-        visible={qrVisible}
-        style={{ width: 560, maxWidth: "95vw" }}
-        modal
-        onHide={() => setQrVisible(false)}
-      >
+      <Dialog header="QR de Asistencia (proyectá esta pantalla)" visible={qrVisible} style={{ width: 560, maxWidth: "95vw" }} modal onHide={() => setQrVisible(false)}>
         {sesionActual?.qrPayload ? (
           <div style={{ display: "grid", placeItems: "center", gap: 12 }}>
-            {/* Contenedor referenciado para tomar el SVG */}
-            <div ref={qrContainerRef}>
-              <QRCode value={sesionActual.qrPayload} size={320} />
-            </div>
-
-            {/* Texto grande del código (visible para leerlo a simple vista) */}
+            <div ref={qrContainerRef}><QRCode value={sesionActual.qrPayload} size={320} /></div>
             <div style={{ textAlign: "center", color: "#111827" }}>
-              <div style={{ fontSize: 18, marginBottom: 4 }}>
-                <b>Curso:</b> {sesionActual.cursoTitulo}
-              </div>
-              <div
-                style={{
-                  fontSize: 28,
-                  fontFamily: "monospace",
-                  letterSpacing: 2,
-                }}
-              >
-                {sesionActual.codigo || "—"}
-              </div>
-              <small style={{ color: "#6b7280" }}>
-                Si la cámara falla, ingresá el código manualmente en la app.
-              </small>
+              <div style={{ fontSize: 18, marginBottom: 4 }}><b>Curso:</b> {sesionActual.cursoTitulo}</div>
+              <div style={{ fontSize: 28, fontFamily: "monospace", letterSpacing: 2 }}>{sesionActual.codigo || "—"}</div>
+              <small style={{ color: "#6b7280" }}>Si la cámara falla, ingresá el código manualmente en la app.</small>
             </div>
-
-            {/* Acciones de descarga */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                justifyContent: "center",
-              }}
-            >
-              <Button
-                label="Descargar PNG"
-                icon="pi pi-download"
-                onClick={() => downloadQRAsPNG(4)}
-                loading={downloadingQR}
-                severity="success"
-              />
-             
-              <Button
-                label="Copiar código"
-                icon="pi pi-copy"
-                onClick={copiarCodigo}
-                severity="info"
-                outlined
-              />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              <Button label="Descargar PNG" icon="pi pi-download" onClick={() => downloadQRAsPNG(4)} loading={downloadingQR} severity="success" />
+              <Button label="Copiar código" icon="pi pi-copy" onClick={copiarCodigo} severity="info" outlined />
             </div>
           </div>
         ) : (
-          <div
-            style={{ display: "grid", placeItems: "center", minHeight: 220 }}
-          >
+          <div style={{ display: "grid", placeItems: "center", minHeight: 220 }}>
             <span>No hay QR disponible.</span>
           </div>
         )}
       </Dialog>
 
-      {/* ===== Otros modales existentes (Meet, valores) ===== */}
-      <Dialog
-        header="Cargar Link de Meet"
-        visible={visibleDialogMeet}
-        style={{ width: "460px" }}
-        modal
-        onShow={() => linkInputRef.current?.focus?.()}
-        onHide={() => setVisibleDialogMeet(false)}
-      >
+      {/* ===== Otros modales (Meet, valores) ===== */}
+      <Dialog header="Cargar Link de Meet" visible={visibleDialogMeet} style={{ width: "460px" }} modal onShow={() => linkInputRef.current?.focus?.()} onHide={() => setVisibleDialogMeet(false)}>
         <p>Pegá el enlace de Google Meet y una descripción opcional.</p>
         <div style={{ marginBottom: "1rem" }}>
-          <label>
-            <strong>Enlace (https://meet.google.com/...):</strong>
-          </label>
-          <InputText
-            ref={linkInputRef}
-            value={linkMeet}
-            onChange={(e) => setLinkMeet(e.target.value)}
-            placeholder="https://meet.google.com/abc-defg-hij"
-            style={{ width: "100%" }}
-          />
+          <label><strong>Enlace (https://meet.google.com/...):</strong></label>
+          <InputText ref={linkInputRef} value={linkMeet} onChange={(e) => setLinkMeet(e.target.value)} placeholder="https://meet.google.com/abc-defg-hij" style={{ width: "100%" }} />
         </div>
         <div>
-          <label>
-            <strong>Descripción:</strong>
-          </label>
-          <InputText
-            value={descripcionMeet}
-            onChange={(e) => setDescripcionMeet(e.target.value)}
-            placeholder="Reunión mensual / Docentes 3° año"
-            style={{ width: "100%" }}
-          />
+          <label><strong>Descripción:</strong></label>
+          <InputText value={descripcionMeet} onChange={(e) => setDescripcionMeet(e.target.value)} placeholder="Reunión mensual / Docentes 3° año" style={{ width: "100%" }} />
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "0.75rem",
-            justifyContent: "center",
-            marginTop: "1.5rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <Button
-            label="Guardar"
-            icon="pi pi-check"
-            severity="success"
-            onClick={guardarLinkMeet}
-            disabled={loadingMeet}
-            loading={loadingMeet}
-          />
-          <Button
-            label="Borrar"
-            icon="pi pi-trash"
-            severity="warning"
-            onClick={borrarLinkMeet}
-            disabled={
-              loadingMeet ||
-              (linkMeet.trim() === "" && descripcionMeet.trim() === "")
-            }
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            severity="danger"
-            onClick={() => setVisibleDialogMeet(false)}
-            disabled={loadingMeet}
-          />
+        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1.5rem", flexWrap: "wrap" }}>
+          <Button label="Guardar" icon="pi pi-check" severity="success" onClick={guardarLinkMeet} disabled={loadingMeet} loading={loadingMeet} />
+          <Button label="Borrar" icon="pi pi-trash" severity="warning" onClick={borrarLinkMeet} disabled={loadingMeet || (linkMeet.trim() === "" && descripcionMeet.trim() === "")} />
+          <Button label="Cancelar" icon="pi pi-times" severity="danger" onClick={() => setVisibleDialogMeet(false)} disabled={loadingMeet} />
         </div>
       </Dialog>
 
-      {/* Secundaria */}
-      <Dialog
-        header="Valor de la Hora Cátedra Secundaria"
-        visible={visibleDialogHsSec}
-        style={{ width: "420px" }}
-        modal
-        onHide={() => setVisibleDialogHsSec(false)}
-      >
-        <p>
-          Ingrese el valor (se guardará como texto con 2 decimales, ej:
-          32706.56).
-        </p>
-        <InputText
-          type="number"
-          step="0.01"
-          value={valorHsSec}
-          onChange={(e) => setValorHsSec(e.target.value)}
-          placeholder="Ej: 32706.56"
-          style={{ width: "100%" }}
-        />
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "center",
-            marginTop: "1.5rem",
-          }}
-        >
-          <Button
-            label="Guardar"
-            icon="pi pi-check"
-            severity="success"
-            onClick={guardarValorHsSec}
-            disabled={valorHsSec.trim() === "" || loadingHsSec}
-            loading={loadingHsSec}
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            severity="danger"
-            onClick={() => setVisibleDialogHsSec(false)}
-            disabled={loadingHsSec}
-          />
+      <Dialog header="Valor de la Hora Cátedra Secundaria" visible={visibleDialogHsSec} style={{ width: "420px" }} modal onHide={() => setVisibleDialogHsSec(false)}>
+        <p>Ingrese el valor (se guardará como texto con 2 decimales, ej: 32706.56).</p>
+        <InputText type="number" step="0.01" value={valorHsSec} onChange={(e) => setValorHsSec(e.target.value)} placeholder="Ej: 32706.56" style={{ width: "100%" }} />
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1.5rem" }}>
+          <Button label="Guardar" icon="pi pi-check" severity="success" onClick={guardarValorHsSec} disabled={valorHsSec.trim() === "" || loadingHsSec} loading={loadingHsSec} />
+          <Button label="Cancelar" icon="pi pi-times" severity="danger" onClick={() => setVisibleDialogHsSec(false)} disabled={loadingHsSec} />
         </div>
       </Dialog>
 
-      {/* Superior */}
-      <Dialog
-        header="Valor de la Hora Cátedra Superior"
-        visible={visibleDialogHsSup}
-        style={{ width: "460px" }}
-        modal
-        onHide={() => setVisibleDialogHsSup(false)}
-      >
+      <Dialog header="Valor de la Hora Cátedra Superior" visible={visibleDialogHsSup} style={{ width: "460px" }} modal onHide={() => setVisibleDialogHsSup(false)}>
         <p>Ingrese los valores (se guardarán como texto con 2 decimales).</p>
         <div style={{ marginBottom: "1rem" }}>
-          <label>
-            <strong>Anual:</strong>
-          </label>
-          <InputText
-            type="number"
-            step="0.01"
-            value={valorAnualSup}
-            onChange={(e) => setValorAnualSup(e.target.value)}
-            placeholder="Ej: 32706.56"
-            style={{ width: "100%" }}
-          />
+          <label><strong>Anual:</strong></label>
+          <InputText type="number" step="0.01" value={valorAnualSup} onChange={(e) => setValorAnualSup(e.target.value)} placeholder="Ej: 32706.56" style={{ width: "100%" }} />
         </div>
         <div>
-          <label>
-            <strong>Cuatrimestral:</strong>
-          </label>
-          <InputText
-            type="number"
-            step="0.01"
-            value={valorCuatrSup}
-            onChange={(e) => setValorCuatrSup(e.target.value)}
-            placeholder="Ej: 16353.28"
-            style={{ width: "100%" }}
-          />
+          <label><strong>Cuatrimestral:</strong></label>
+          <InputText type="number" step="0.01" value={valorCuatrSup} onChange={(e) => setValorCuatrSup(e.target.value)} placeholder="Ej: 16353.28" style={{ width: "100%" }} />
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "center",
-            marginTop: "1.5rem",
-          }}
-        >
-          <Button
-            label="Guardar"
-            icon="pi pi-check"
-            severity="success"
-            onClick={guardarValorHsSup}
-            disabled={
-              valorAnualSup.trim() === "" ||
-              valorCuatrSup.trim() === "" ||
-              loadingHsSup
-            }
-            loading={loadingHsSup}
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            severity="danger"
-            onClick={() => setVisibleDialogHsSup(false)}
-            disabled={loadingHsSup}
-          />
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1.5rem" }}>
+          <Button label="Guardar" icon="pi pi-check" severity="success" onClick={guardarValorHsSup} disabled={valorAnualSup.trim() === "" || valorCuatrSup.trim() === "" || loadingHsSup} loading={loadingHsSup} />
+          <Button label="Cancelar" icon="pi pi-times" severity="danger" onClick={() => setVisibleDialogHsSup(false)} disabled={loadingHsSup} />
         </div>
       </Dialog>
 
-      {/* Seguro Vida */}
-      <Dialog
-        header="Seguro de Vida Obligatorio"
-        visible={visibleDialogSeguro}
-        style={{ width: "420px" }}
-        modal
-        onHide={() => setVisibleDialogSeguro(false)}
-      >
-        <p>
-          Ingrese el valor (se guardará como texto con separador de miles, ej:
-          1.000).
-        </p>
-        <InputText
-          value={valorSeguro}
-          onChange={(e) => setValorSeguro(e.target.value)}
-          placeholder="Ej: 1.000"
-          style={{ width: "100%" }}
-        />
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "center",
-            marginTop: "1.5rem",
-          }}
-        >
-          <Button
-            label="Guardar"
-            icon="pi pi-check"
-            severity="success"
-            onClick={guardarValorSeguro}
-            disabled={valorSeguro.trim() === "" || loadingSeguro}
-            loading={loadingSeguro}
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            severity="danger"
-            onClick={() => setVisibleDialogSeguro(false)}
-            disabled={loadingSeguro}
-          />
+      <Dialog header="Seguro de Vida Obligatorio" visible={visibleDialogSeguro} style={{ width: "420px" }} modal onHide={() => setVisibleDialogSeguro(false)}>
+        <p>Ingrese el valor (se guardará como texto con separador de miles, ej: 1.000).</p>
+        <InputText value={valorSeguro} onChange={(e) => setValorSeguro(e.target.value)} placeholder="Ej: 1.000" style={{ width: "100%" }} />
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1.5rem" }}>
+          <Button label="Guardar" icon="pi pi-check" severity="success" onClick={guardarValorSeguro} disabled={valorSeguro.trim() === "" || loadingSeguro} loading={loadingSeguro} />
+          <Button label="Cancelar" icon="pi pi-times" severity="danger" onClick={() => setVisibleDialogSeguro(false)} disabled={loadingSeguro} />
         </div>
       </Dialog>
 
-      {/* Sepelio */}
-      <Dialog
-        header="Subsidio Sepelio"
-        visible={visibleDialogSepelio}
-        style={{ width: "420px" }}
-        modal
-        onHide={() => setVisibleDialogSepelio(false)}
-      >
-        <p>
-          Ingrese el valor (se guardará como texto con separador de miles, ej:
-          30.000).
-        </p>
-        <InputText
-          value={valorSepelio}
-          onChange={(e) => setValorSepelio(e.target.value)}
-          placeholder="Ej: 30.000"
-          style={{ width: "100%" }}
-        />
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "center",
-            marginTop: "1.5rem",
-          }}
-        >
-          <Button
-            label="Guardar"
-            icon="pi pi-check"
-            severity="success"
-            onClick={guardarValorSepelio}
-            disabled={valorSepelio.trim() === "" || loadingSepelio}
-            loading={loadingSepelio}
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            severity="danger"
-            onClick={() => setVisibleDialogSepelio(false)}
-            disabled={loadingSepelio}
-          />
+      <Dialog header="Subsidio Sepelio" visible={visibleDialogSepelio} style={{ width: "420px" }} modal onHide={() => setVisibleDialogSepelio(false)}>
+        <p>Ingrese el valor (se guardará como texto con separador de miles, ej: 30.000).</p>
+        <InputText value={valorSepelio} onChange={(e) => setValorSepelio(e.target.value)} placeholder="Ej: 30.000" style={{ width: "100%" }} />
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1.5rem" }}>
+          <Button label="Guardar" icon="pi pi-check" severity="success" onClick={guardarValorSepelio} disabled={valorSepelio.trim() === "" || loadingSepelio} loading={loadingSepelio} />
+          <Button label="Cancelar" icon="pi pi-times" severity="danger" onClick={() => setVisibleDialogSepelio(false)} disabled={loadingSepelio} />
         </div>
       </Dialog>
     </div>

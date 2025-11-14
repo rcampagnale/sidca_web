@@ -33,6 +33,7 @@ const PrivateHeader = () => {
             </a>
             <ul className={styles.headerNav}>
                 <li onClick={() => history.push('/home')}>Inicio</li>
+                <li onClick={() => history.push('/credencial')}>Credencial</li>
                 <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
                 {/* {user.profue.cotizante && } */}
                 <li onClick={() => history.push('/nosotros')}>Nosotros</li>

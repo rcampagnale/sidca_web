@@ -46,6 +46,7 @@ import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
 import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
 import Adherentes from "../pages/Admin/Adherentes/Adherentes";
 import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
+import Credencial from "../pages/Credencial/Credencial";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
@@ -74,6 +75,7 @@ const AppRouter = () => {
 
         {/* Rutas privadas de usuario */}
         <PrivateRoute exact path="/home" component={Home} />
+        <PrivateRoute exact path="/Credencial" component={Credencial} />
         <PrivateRoute exact path="/nosotros" component={Nosotros} />
         <PrivateRoute exact path="/contacto" component={Contacto} />
         <PrivateRoute exact path="/novedades" component={NovedadesUser} />
@@ -88,6 +90,11 @@ const AppRouter = () => {
         />
 
         {/* Alias opcionales (usa Redirect si mantienes el import) */}
+        <Route
+          exact
+          path="/Credencial/"
+          render={() => <Redirect to="/Credencial/credencial.js" />}
+        />
         <Route
           exact
           path="/Capacitaciones/RegistroAsistencia"

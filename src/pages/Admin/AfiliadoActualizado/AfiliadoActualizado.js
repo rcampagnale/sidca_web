@@ -1,457 +1,64 @@
+// src/pages/Admin/AfiliadoActualizado/AfiliadoActualizado.js
 import React, {
   useEffect,
   useMemo,
-  useState,
   useRef,
+  useState,
   useCallback,
-  memo,
 } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { InputText } from "primereact/inputtext";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
+import { useDispatch } from "react-redux";
 import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Toast } from "primereact/toast";
-import { InputTextarea } from "primereact/inputtextarea";
-import { InputSwitch } from "primereact/inputswitch";
-import { Dropdown } from "primereact/dropdown";
-import { Tag } from "primereact/tag";
 import { Menu } from "primereact/menu";
+import { Dialog } from "primereact/dialog";
+import { ProgressBar } from "primereact/progressbar";
 import exportFromJSON from "export-from-json";
-import styles from "./styles.module.css";
 
+// ✅ Componentes + hook + utils
 import {
-  fetchAfiliadosFirstPage,
-  fetchAfiliadosNextPage,
-  fetchAfiliadosPrevPage,
-  deleteAfiliadoById,
-  selectAfiliadosList,
-  selectAfiliadosLoading,
-  selectAfiliadosPage,
-  selectAfiliadosHasNext,
-  updateAfiliadoById,
-} from "../../../redux/reducers/afiliadoActualizado/slice";
+  AfiliadosTable,
+  EditAfiliadoDialog,
+  ViewDialog,
+  FiltersBar,
+  useUsuariosOnce,
+  toRow,
+  toTimestamp,
+  norm,
+  departamentosOptionsFrom,
+  toSiNo,
+} from "../../../components/afiliados";
 
-import { db } from "../../../firebase/firebase-config";
+// ✅ Firestore
 import {
   collection as fsCollection,
   query as fsQuery,
-  where,
   getDocs as fsGetDocs,
+  getDoc as fsGetDoc, // 👈 agregado para upsert
+  where,
   doc as fsDoc,
   setDoc as fsSetDoc,
   deleteDoc as fsDeleteDoc,
-  updateDoc as fsUpdateDoc, // 👈 Asegurate de tener esto
+  updateDoc as fsUpdateDoc,
+  orderBy as fsOrderBy,
+  startAfter as fsStartAfter,
+  limit as fsLimit,
+  documentId,
 } from "firebase/firestore";
+import { db } from "../../../firebase/firebase-config.js";
 
+// ✅ Redux thunks SOLO para update/delete (nuevoAfiliado)
+import {
+  updateAfiliadoById,
+  deleteAfiliadoById,
+} from "../../../redux/reducers/afiliadoActualizado/slice.js";
 
+// ======================
+const PAGE_SIZE = 50;
+// ======================
 
-/* =========================
-   Helpers
-   ========================= */
-const splitFechaHora = (fechaStr) => {
-  if (!fechaStr || typeof fechaStr !== "string") return { fecha: "", hora: "" };
-  const [f, h] = fechaStr.trim().split(" ");
-  return { fecha: f || "", hora: h || "" };
-};
-const clean = (v) => (typeof v === "string" ? v.trim() : v);
-
-// Normaliza descuento priorizando string ("si"/"no"); si no, deriva de cotizante (bool/string)
-const getDescuentoValue = (d) => {
-  if (typeof d?.descuento === "string") return d.descuento.trim().toLowerCase();
-  if (typeof d?.cotizante === "boolean") return d.cotizante ? "si" : "no";
-  if (typeof d?.cotizante === "string") return d.cotizante.trim().toLowerCase();
-  return "";
-};
-// Para UI: muestra Sí/No a partir de string/bool
-const toSiNo = (v) => {
-  if (typeof v === "string") {
-    const s = v.trim().toLowerCase();
-    if (s === "si" || s === "sí" || s === "true") return "Sí";
-    if (s === "no" || s === "false") return "No";
-  }
-  if (typeof v === "boolean") return v ? "Sí" : "No";
-  return "";
-};
-// Normaliza entradas del modal a "si"/"no"
-const normalizeDescuentoInput = (val) => {
-  const s = (val ?? "").toString().trim().toLowerCase();
-  if (["si", "sí", "true", "1"].includes(s)) return "si";
-  if (["no", "false", "0"].includes(s)) return "no";
-  return "";
-};
-
-const toRow = (d) => {
-  const { fecha: f, hora: h } = splitFechaHora(d.fecha);
-  return {
-    id: d.id,
-    fecha: f,
-    hora: h,
-    nombre: clean(d.nombre) || "",
-    apellido: clean(d.apellido) || "",
-    dni: clean(d.dni) || "",
-    nroAfiliacion: Number(d.nroAfiliacion ?? 1),
-    departamento: clean(d.departamento) || "",
-    establecimientos: clean(d.establecimientos) || "",
-    celular: clean(d.celular) || "",
-    email: clean(d.email) || clean(d["correo electrónico"]) || "",
-    tituloGrado: clean(d.tituloGrado) || "",
-    cod: d.cod ?? "",
-    descuento: getDescuentoValue(d), // "si" | "no" | ""
-    observaciones: clean(d.observaciones) || "",
-    activo: typeof d.activo === "boolean" ? d.activo : true,
-    adherente: (d.adherente ?? d.activo) === true,
-  };
-};
-
-const toTimestamp = (s) => {
-  if (!s || typeof s !== "string") return 0;
-  const raw = s.trim().replace(/-/g, "/");
-  const [dmy, hms = "00:00:00"] = raw.split(" ");
-  if (!dmy) return 0;
-  const [d, m, y] = dmy.split("/").map((n) => parseInt(n, 10));
-  const parts = hms.split(":").map((n) => parseInt(n, 10) || 0);
-  const [hh = 0, mm = 0, ss = 0] = parts;
-  const dt = new Date(y, (m || 1) - 1, d || 1, hh, mm, ss);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
-};
-const norm = (s) =>
-  (s ?? "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-
-/* =========================
-   Componentes Memorizados
-   ========================= */
-const AfiliadosTable = memo(function AfiliadosTable({
-  data,
-  loading,
-  page,
-  hasNext,
-  onPrev,
-  onNext,
-  onActionClick,
-}) {
-  const afiliacionTemplate = (row) => {
-    const n = Number(row.nroAfiliacion);
-    if (!Number.isFinite(n) || n <= 0)
-      return <Tag value="Sin dato" severity="info" />;
-    if (n === 1) return <Tag value="1ª afiliación" severity="success" />;
-    return <Tag value={`${n}ª reafiliación`} severity="warning" />;
-  };
-
-  const adherenteTemplate = (row) =>
-    row.adherente ? (
-      <Tag value="Sí" severity="success" />
-    ) : (
-      <Tag value="No" severity="danger" />
-    );
-
-  const actionBodyTemplate = (row) => (
-    <Button
-      icon="pi pi-ellipsis-v"
-      rounded
-      text
-      onClick={(e) => onActionClick(e, row)}
-      aria-haspopup
-      aria-controls="row_actions_menu"
-    />
-  );
-
-  return (
-    <>
-      <div className={styles.actionsRow}>
-        <Button
-          label="Anterior"
-          icon="pi pi-chevron-left"
-          onClick={onPrev}
-          disabled={loading || page <= 1}
-          className="p-button-sm p-button-outlined"
-        />
-        <Button
-          label="Siguiente"
-          icon="pi pi-chevron-right"
-          onClick={onNext}
-          disabled={loading || !hasNext}
-          className="p-button-sm p-button-outlined"
-        />
-        <span className={styles.muted}>Página {page}</span>
-      </div>
-
-      <div className={styles.tableWrap}>
-        <DataTable
-          value={data}
-          emptyMessage="No hay registros de afiliados actualizados."
-          responsiveLayout="scroll"
-          tableStyle={{ tableLayout: "auto" }}
-          loading={loading}
-        >
-          <Column field="fecha" header="Fecha" />
-          <Column field="hora" header="Hora" />
-          <Column field="nombre" header="Nombre" />
-          <Column field="apellido" header="Apellido" />
-          <Column field="dni" header="DNI" />
-          <Column
-            field="nroAfiliacion"
-            header="Afiliación"
-            body={afiliacionTemplate}
-          />
-          {/* ❌ Sin columna de "Título de grado" */}
-          <Column
-            field="adherente"
-            header="Adherente"
-            body={adherenteTemplate}
-          />
-          <Column
-            header="Acciones"
-            body={actionBodyTemplate}
-            headerClassName="col-actions sticky-right"
-            bodyClassName="col-actions sticky-right"
-            style={{ width: 96, textAlign: "center" }}
-          />
-        </DataTable>
-      </div>
-    </>
-  );
-});
-
-const EditAfiliadoDialog = memo(function EditAfiliadoDialog({
-  visible,
-  initialForm,
-  departamentosOptions,
-  onCancel,
-  onSave,
-  saving,
-}) {
-  const [form, setForm] = useState(initialForm);
-
-  useEffect(() => {
-    if (visible) setForm(initialForm);
-  }, [visible, initialForm]);
-
-  const validate = () => {
-    if (!form.nombre.trim()) return "El nombre es obligatorio.";
-    if (!form.apellido.trim()) return "El apellido es obligatorio.";
-    if (!form.dni.trim()) return "El DNI es obligatorio.";
-    if (!/^\d{6,9}$/.test(form.dni))
-      return "El DNI debe ser numérico (6 a 9 dígitos).";
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      return "El email no es válido.";
-    if (form.nroAfiliacion && !/^\d+$/.test(form.nroAfiliacion))
-      return "El N° de afiliación debe ser numérico.";
-    return null;
-  };
-
-  const handleSave = () => {
-    const err = validate();
-    if (err) return onSave({ error: err });
-
-    const descuentoNorm = normalizeDescuentoInput(form.descuento); // "si" | "no" | ""
-    const payload = {
-      nombre: form.nombre.trim(),
-      apellido: form.apellido.trim(),
-      dni: form.dni.trim(),
-      email: form.email.trim(),
-      celular: form.celular.trim(),
-      departamento: form.departamento,
-      establecimientos: form.establecimientos,
-      descuento: descuentoNorm,
-      cotizante:
-        descuentoNorm === "si"
-          ? true
-          : descuentoNorm === "no"
-          ? false
-          : undefined,
-      nroAfiliacion: form.nroAfiliacion ? Number(form.nroAfiliacion) : "",
-      observaciones: form.observaciones ?? "",
-      activo: !!form.activo,
-      adherente: !!form.adherente,
-      tituloGrado: form.tituloGrado ? form.tituloGrado.trim() : "",
-    };
-
-    onSave({ payload });
-  };
-
-  return (
-    <Dialog
-      header="Editar afiliado"
-      visible={visible}
-      style={{ width: "min(720px, 96vw)" }}
-      breakpoints={{ "960px": "95vw", "640px": "98vw" }}
-      modal
-      onHide={onCancel}
-      footer={
-        <div className="flex gap-2 justify-content-end">
-          <Button label="Cancelar" text onClick={onCancel} disabled={saving} />
-          <Button
-            label="Guardar cambios"
-            icon="pi pi-save"
-            onClick={handleSave}
-            loading={saving}
-          />
-        </div>
-      }
-    >
-      {/* ========= FORMULARIO (estado local) ========= */}
-      <div className="p-fluid formgrid grid">
-        <div className="field col-12 md:col-4">
-          <label htmlFor="apellido">Apellido</label>
-          <InputText
-            id="apellido"
-            value={form.apellido}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, apellido: e.target.value }))
-            }
-          />
-        </div>
-
-        <div className="field col-12 md:col-4">
-          <label htmlFor="nombre">Nombre</label>
-          <InputText
-            id="nombre"
-            value={form.nombre}
-            onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-          />
-        </div>
-
-        <div className="field col-12 md:col-4">
-          <label htmlFor="dni">DNI</label>
-          <InputText
-            id="dni"
-            value={form.dni}
-            onChange={(e) => setForm((f) => ({ ...f, dni: e.target.value }))}
-          />
-        </div>
-
-        <div className="field col-12 md:col-6">
-          <label htmlFor="email">Email</label>
-          <InputText
-            id="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          />
-        </div>
-
-        <div className="field col-12 md:col-6">
-          <label htmlFor="celular">Celular</label>
-          <InputText
-            id="celular"
-            value={form.celular}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, celular: e.target.value }))
-            }
-          />
-        </div>
-
-        <div className="field col-12 md:col-6">
-          <label htmlFor="departamento">Departamento</label>
-          <Dropdown
-            id="departamento"
-            value={form.departamento}
-            onChange={(e) => setForm((f) => ({ ...f, departamento: e.value }))}
-            options={departamentosOptions}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar…"
-            filter
-            filterBy="label,value"
-            showClear
-            disabled={departamentosOptions.length === 0}
-          />
-        </div>
-
-        <div className="field col-12 md:col-6">
-          <label htmlFor="establecimientos">Establecimientos</label>
-          <InputText
-            id="establecimientos"
-            value={form.establecimientos}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, establecimientos: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Título de grado */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="tituloGrado">
-            Título de grado (nombre de la carrera)
-          </label>
-          <InputText
-            id="tituloGrado"
-            value={form.tituloGrado}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, tituloGrado: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Descuento */}
-        <div className="field col-12 md:col-6">
-          <label htmlFor="descuento">Descuento</label>
-          <InputText
-            id="descuento"
-            value={form.descuento}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, descuento: e.target.value }))
-            }
-            placeholder='Escribí "si" o "no"'
-          />
-        </div>
-
-        <div className="field col-12 md:col-3">
-          <label htmlFor="nroAfiliacion">N° de afiliación</label>
-          <InputText
-            id="nroAfiliacion"
-            value={form.nroAfiliacion}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, nroAfiliacion: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Observaciones: sin autoResize para evitar recálculos por tecla */}
-        <div className="field col-12">
-          <label htmlFor="observaciones">Observaciones</label>
-          <InputTextarea
-            id="observaciones"
-            autoResize={false}
-            rows={4}
-            value={form.observaciones || ""}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, observaciones: e.target.value }))
-            }
-          />
-        </div>
-
-        <div
-          className="field col-12 md:col-3"
-          style={{ display: "flex", alignItems: "center", gap: 8 }}
-        >
-          <label htmlFor="adherente" className="mb-0">
-            Adherente
-          </label>
-          <InputSwitch
-            id="adherente"
-            checked={!!form.adherente}
-            onChange={(e) => setForm((f) => ({ ...f, adherente: e.value }))}
-          />
-          <span>{form.adherente ? "Sí" : "No"}</span>
-        </div>
-      </div>
-    </Dialog>
-  );
-});
-
-/* =========================
-   Estado inicial de edición
-   ========================= */
-const emptyForm = {
+const EMPTY_FORM = {
   nombre: "",
   apellido: "",
   dni: "",
@@ -459,100 +66,343 @@ const emptyForm = {
   celular: "",
   departamento: "",
   establecimientos: "",
-  descuento: "", // "si"/"no"
+  descuento: "",
   nroAfiliacion: "",
   observaciones: "",
   adherente: false,
   tituloGrado: "",
+  activo: true,
+  // 👇 nuevos
+  motivo: "",
+  cotizante: false,
 };
 
-/* =========================
-   Página principal
-   ========================= */
-const AfiliadoActualizado = () => {
+// 🔸 Normaliza descuento a "si"/"no"/""
+const normalizeDescuentoInput = (val) => {
+  const s = (val ?? "").toString().trim().toLowerCase();
+  if (["si", "sí", "true", "1"].includes(s)) return "si";
+  if (["no", "false", "0"].includes(s)) return "no";
+  return "";
+};
+
+// 🔸 Mapeos a filas
+const mapUsuarioDocToRow = (d) => {
+  const base = { id: d.id, ...d.data() };
+  const r = { ...toRow(base), origen: "usuarios" };
+  const haystack = norm(
+    `${r.apellido} ${r.nombre} ${String(r.dni || "")} ${r.email || ""} ${r.departamento || ""} ${r.motivo || ""}`
+  );
+  return { ...r, haystack };
+};
+
+const mapNuevoDocToRow = (d) => {
+  const base = { id: d.id, ...d.data() };
+  const row = { ...toRow(base), origen: "nuevoAfiliado" };
+  const haystack = norm(
+    `${row.apellido} ${row.nombre} ${row.dni} ${row.nroAfiliacion} ${row.email} ${row.departamento} ${row.motivo || ""}`
+  );
+  return { ...row, haystack };
+};
+
+// 🔸 Combinar arrays por id (B sobrescribe A)
+const mergeUniqueById = (a, b) => {
+  const map = new Map();
+  a.forEach((x) => map.set(String(x.id), x));
+  b.forEach((x) => map.set(String(x.id), x));
+  return Array.from(map.values());
+};
+
+// 🔸 Lee TODA una colección en lotes por documentId()
+async function fetchAllDocsPaged(collectionName, mapFn, batch = 1000) {
+  const out = [];
+  let q = fsQuery(
+    fsCollection(db, collectionName),
+    fsOrderBy(documentId()),
+    fsLimit(batch)
+  );
+  let snap = await fsGetDocs(q);
+  while (!snap.empty) {
+    snap.docs.forEach((docSnap) => out.push(mapFn(docSnap)));
+    const last = snap.docs[snap.docs.length - 1];
+    q = fsQuery(
+      fsCollection(db, collectionName),
+      fsOrderBy(documentId()),
+      fsStartAfter(last),
+      fsLimit(batch)
+    );
+    snap = await fsGetDocs(q);
+  }
+  return out;
+}
+
+// 🔸 Unificación por DNI (si está en ambas → 1 fila con origen "ambos")
+const unifyByDni = (arrNuevo, arrUsuarios) => {
+  const toKey = (dni) => String(dni ?? "").trim();
+  const mapN = new Map();
+  const mapU = new Map();
+  arrNuevo.forEach((r) => mapN.set(toKey(r.dni), r));
+  arrUsuarios.forEach((r) => mapU.set(toKey(r.dni), r));
+
+  const allKeys = new Set([...mapN.keys(), ...mapU.keys()]);
+  const pick = (a, b) => {
+    const s = (a ?? "").toString().trim();
+    return s ? a : b;
+  };
+
+  const out = [];
+  for (const k of allKeys) {
+    const nr = mapN.get(k);
+    const ur = mapU.get(k);
+    if (nr && ur) {
+      const merged = {
+        id: nr.id || ur.id,     // id visual estable
+        idNuevo: nr.id,
+        idUsuario: ur.id,
+        rowNuevo: nr,
+        rowUsuario: ur,
+        origen: "ambos",
+        nombre: pick(nr.nombre, ur.nombre),
+        apellido: pick(nr.apellido, ur.apellido),
+        dni: pick(nr.dni, ur.dni),
+        email: pick(nr.email, ur.email),
+        celular: pick(nr.celular, ur.celular),
+        departamento: pick(nr.departamento, ur.departamento),
+        establecimientos: pick(nr.establecimientos, ur.establecimientos),
+        descuento: pick(nr.descuento, ur.descuento),
+        nroAfiliacion: pick(nr.nroAfiliacion, ur.nroAfiliacion),
+        observaciones: pick(nr.observaciones, ur.observaciones),
+        adherente:
+          typeof nr.adherente === "boolean"
+            ? nr.adherente
+            : (typeof ur.adherente === "boolean" ? ur.adherente : false),
+        tituloGrado: pick(nr.tituloGrado, ur.tituloGrado),
+        activo:
+          typeof nr.activo === "boolean"
+            ? nr.activo
+            : (typeof ur.activo === "boolean" ? ur.activo : true),
+        fecha: pick(nr.fecha, ur.fecha),
+        hora: pick(nr.hora, ur.hora),
+        cod: pick(nr.cod, ur.cod),
+        motivo: pick(nr.motivo, ur.motivo),
+        cotizante:
+          typeof nr.cotizante === "boolean"
+            ? nr.cotizante
+            : (typeof ur.cotizante === "boolean" ? ur.cotizante : false),
+      };
+      merged.haystack = norm(
+        `${merged.apellido} ${merged.nombre} ${merged.dni} ${merged.email || ""} ${merged.departamento || ""} ${merged.motivo || ""}`
+      );
+      out.push(merged);
+    } else if (nr) {
+      out.push(nr);
+    } else if (ur) {
+      out.push(ur);
+    }
+  }
+  return out;
+};
+
+// 🔸 Sincroniza adherentes (evita duplicados, usa preferredId)
+async function syncAdherentesForPayload(dniKey, payload, preferredId) {
+  const qDup = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
+  const dupSnap = await fsGetDocs(qDup);
+
+  if (payload.adherente) {
+    await Promise.all(
+      dupSnap.docs.map((d) =>
+        d.id !== String(preferredId) ? fsDeleteDoc(d.ref) : Promise.resolve()
+      )
+    );
+
+    const espejo = {
+      apellido: payload.apellido ?? "",
+      nombre: payload.nombre ?? "",
+      dni: dniKey,
+      nroAfiliacion:
+        payload.nroAfiliacion !== "" && payload.nroAfiliacion != null
+          ? Number(payload.nroAfiliacion)
+          : null,
+      tituloGrado: payload.tituloGrado ?? "",
+      descuento: typeof payload.descuento === "string" ? payload.descuento : "",
+      departamento: payload.departamento ?? "",
+      establecimientos: payload.establecimientos ?? "",
+      celular: payload.celular ?? "",
+      email: payload.email ?? "",
+      observaciones: payload.observaciones ?? "",
+      adherente: true,
+      activo: true,
+      estado: true,
+    };
+
+    await fsSetDoc(fsDoc(db, "adherentes", String(preferredId)), espejo, { merge: true });
+  } else {
+    if (!dupSnap.empty) {
+      await Promise.all(dupSnap.docs.map((d) => fsDeleteDoc(d.ref)));
+    }
+  }
+}
+
+export default function AfiliadoActualizado() {
   const dispatch = useDispatch();
   const toast = useRef(null);
+  const actionMenuRef = useRef(null);
 
-  const list = useSelector(selectAfiliadosList);
-  const loading = useSelector(selectAfiliadosLoading);
-  const page = useSelector(selectAfiliadosPage);
-  const hasNext = useSelector(selectAfiliadosHasNext);
+  // Estado base
+  const [loadingNuevo, setLoadingNuevo] = useState(true);
+  const [rowsNuevo, setRowsNuevo] = useState([]);
 
-  const [search, setSearch] = useState("");
+  const [rowsUsuarios, loadingUsuarios] = useUsuariosOnce({
+    orderField: "updatedAt",
+    pageSize: 5000,
+  });
+
+  const [rowsUsuariosLocal, setRowsUsuariosLocal] = useState([]);
+  useEffect(() => setRowsUsuariosLocal(rowsUsuarios || []), [rowsUsuarios]);
+
+  const [extraUsuariosRows, setExtraUsuariosRows] = useState([]);
+  const [dniFetchLoading, setDniFetchLoading] = useState(false);
+
+  const [source, setSource] = useState("ambos");
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+
+  const [page, setPage] = useState(1);
+
   const [showDetail, setShowDetail] = useState(false);
   const [rowDetail, setRowDetail] = useState(null);
 
-  // Edición
   const [editVisible, setEditVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [rowId, setRowId] = useState(null);
-  const [initialForm, setInitialForm] = useState(emptyForm);
+  const [rowId, setRowId] = useState(null);                 // para edición simple
+  const [rowIdBoth, setRowIdBoth] = useState({ nuevo: null, usuario: null }); // para edición ambas
+  const [initialForm, setInitialForm] = useState(EMPTY_FORM);
+  const [editOrigin, setEditOrigin] = useState("nuevoAfiliado");
 
-  // Menú Acciones
-  const actionMenuRef = useRef(null);
   const [currentRow, setCurrentRow] = useState(null);
 
+  // Export bloqueante
+  const [exporting, setExporting] = useState(false);
+  const [exportModal, setExportModal] = useState(false);
+  const [exportMsg, setExportMsg] = useState("Preparando…");
+
   const showSuccess = (msg) =>
-    toast.current?.show({
-      severity: "success",
-      summary: "OK",
-      detail: msg,
-      life: 3000,
-    });
+    toast.current?.show({ severity: "success", summary: "OK", detail: msg, life: 3000 });
   const showError = (msg) =>
-    toast.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: msg,
-      life: 4000,
-    });
+    toast.current?.show({ severity: "error", summary: "Error", detail: msg, life: 4000 });
 
-  useEffect(() => {
-    dispatch(fetchAfiliadosFirstPage());
-  }, [dispatch]);
+  // 1) Cargar nuevoAfiliado (una vez)
+  const fetchAllNuevoAfiliado = useCallback(async () => {
+    try {
+      setLoadingNuevo(true);
+      const ref = fsCollection(db, "nuevoAfiliado");
+      const snap = await fsGetDocs(ref);
+      setRowsNuevo(snap.docs.map(mapNuevoDocToRow));
+    } catch (e) {
+      showError(e?.message || "No se pudo leer nuevoAfiliado");
+    } finally {
+      setLoadingNuevo(false);
+    }
+  }, []);
 
-  const rows = useMemo(() => (list || []).map(toRow), [list]);
+  useEffect(() => { fetchAllNuevoAfiliado(); }, [fetchAllNuevoAfiliado]);
 
-  // Opciones de Departamento dinámicas
-  const departamentosOptions = useMemo(() => {
-    const map = new Map();
-    rows.forEach((r) => {
-      const val = (r.departamento || "").toString().trim();
-      const key = norm(val);
-      if (val && key && !map.has(key)) map.set(key, val);
-    });
-    return Array.from(map.values())
-      .sort((a, b) => a.localeCompare(b))
-      .map((v) => ({ label: v, value: v }));
-  }, [rows]);
+  // 2) Consulta puntual en usuarios por DNI
+  const fetchUsuariosByDniIfNeeded = useCallback(async (term) => {
+    const onlyDigits = /^\d{3,}$/.test((term || "").trim());
+    setExtraUsuariosRows([]);
+    if (!onlyDigits) return;
+    try {
+      setDniFetchLoading(true);
+      const results = [];
+      const qStr = fsQuery(fsCollection(db, "usuarios"), where("dni", "==", String(term).trim()));
+      const snapStr = await fsGetDocs(qStr);
+      snapStr.forEach((d) => results.push(mapUsuarioDocToRow(d)));
+      const dniNum = Number(term);
+      if (!Number.isNaN(dniNum)) {
+        const qNum = fsQuery(fsCollection(db, "usuarios"), where("dni", "==", dniNum));
+        const snapNum = await fsGetDocs(qNum);
+        snapNum.forEach((d) => results.push(mapUsuarioDocToRow(d)));
+      }
+      setExtraUsuariosRows(mergeUniqueById([], results));
+    } finally {
+      setDniFetchLoading(false);
+    }
+  }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const ordered = [...rows].sort((a, b) => {
-      const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha;
-      const sb = b.hora ? `${b.fecha} ${b.hora}` : b.fecha;
+  // 3) Combinar / ordenar (unificando por DNI cuando source=ambos)
+  const rowsUsuariosMerged = useMemo(
+    () => mergeUniqueById(rowsUsuariosLocal, extraUsuariosRows),
+    [rowsUsuariosLocal, extraUsuariosRows]
+  );
+
+  const combinedRows = useMemo(() => {
+    let arr = [];
+    if (source === "nuevoAfiliado") arr = rowsNuevo;
+    else if (source === "usuarios") arr = rowsUsuariosMerged;
+    else arr = unifyByDni(rowsNuevo, rowsUsuariosMerged);
+
+    return [...arr].sort((a, b) => {
+      const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha || "";
+      const sb = b.hora ? `${b.fecha} ${b.hora}` : b.fecha || "";
       return toTimestamp(sb) - toTimestamp(sa);
     });
-    if (!q) return ordered;
+  }, [rowsNuevo, rowsUsuariosMerged, source]);
 
-    return ordered.filter((r) => {
-      const nombreCompleto = `${r.apellido} ${r.nombre}`.toLowerCase();
-      return (
-        nombreCompleto.includes(q) ||
-        String(r.dni).includes(q) ||
-        String(r.nroAfiliacion).includes(q)
-      );
-    });
-  }, [rows, search]);
+  // 4) Filtro local por texto
+  const filteredRows = useMemo(() => {
+    const qn = norm(query);
+    if (!qn) return combinedRows;
+    return combinedRows.filter((r) => r.haystack.includes(qn));
+  }, [combinedRows, query]);
+
+  // Reset de página
+  useEffect(() => setPage(1), [source, query, rowsNuevo.length, rowsUsuariosMerged.length]);
+
+  // 5) Paginación
+  const countNuevo = rowsNuevo.length;
+  const countUsuarios = rowsUsuariosMerged.length;
+  const totalFiltered = filteredRows.length;
+  const lastPage = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  const pageRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return filteredRows.slice(start, end);
+  }, [filteredRows, page]);
+  const hasNext = page < lastPage;
+  const hasPrev = page > 1;
+  const loading = loadingNuevo || loadingUsuarios;
+
+  // 6) Buscar / Limpiar
+  const doSearch = async () => {
+    const term = (searchInput || "").trim();
+    await fetchUsuariosByDniIfNeeded(term);
+    setQuery(term);
+  };
+  const onSearch = () => { void doSearch(); };
+  const onClear = () => {
+    setSearchInput("");
+    setQuery("");
+    setPage(1);
+    setExtraUsuariosRows([]);
+    setDniFetchLoading(false);
+  };
+  const onKeyDown = (e) => { if (e.key === "Enter") onSearch(); };
+
+  // 7) Acciones
+  const onActionClick = useCallback((e, row) => {
+    setCurrentRow(row);
+    actionMenuRef.current?.toggle(e);
+  }, []);
 
   const onVerDetalle = (row) => {
     if (!row) return;
-    setRowDetail(row); // 1) primero setear la fila
-    actionMenuRef.current?.hide?.(); // opcional: cerrar el menú
-    setShowDetail(true); // 2) recién después abrir el modal
+    setRowDetail(row); // para "ambos" muestra la unificada
+    actionMenuRef.current?.hide?.();
+    setShowDetail(true);
   };
 
   const onEliminar = (row) => {
+    if (!row) return;
     confirmDialog({
       message: `¿Eliminar el registro de ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
       header: "Confirmar eliminación",
@@ -561,73 +411,203 @@ const AfiliadoActualizado = () => {
       rejectLabel: "Cancelar",
       acceptClassName: "p-button-danger",
       accept: async () => {
-        await dispatch(deleteAfiliadoById(row.id));
+        try {
+          if (row.origen === "nuevoAfiliado") {
+            const res = await dispatch(deleteAfiliadoById(row.id));
+            if (res?.meta?.requestStatus === "rejected") {
+              throw new Error(res?.payload || "No se pudo eliminar");
+            }
+            setRowsNuevo((prev) => prev.filter((x) => x.id !== row.id));
+          } else {
+            await fsDeleteDoc(fsDoc(db, "usuarios", String(row.id)));
+            setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.id));
+            setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.id));
+          }
+          showSuccess("Eliminado correctamente");
+        } catch (e) {
+          showError(e?.message || "Error al eliminar");
+        }
       },
     });
   };
 
-  const onActionClick = useCallback((e, row) => {
-    setCurrentRow(row);
-    actionMenuRef.current?.toggle(e);
-  }, []);
-
-  const handleExportExcel = () => {
-    const ordered = [...list].sort(
-      (a, b) => toTimestamp(b.fecha) - toTimestamp(a.fecha)
-    );
-    const data = ordered.map((d) => {
-      const { fecha, hora } = splitFechaHora(d.fecha || "");
-      const email = d.email || d["correo electrónico"] || "";
-      const desc = toSiNo(getDescuentoValue(d));
-      return {
-        Fecha: fecha,
-        Hora: hora,
-        Nombre: clean(d.nombre) || "",
-        Apellido: clean(d.apellido) || "",
-        DNI: clean(d.dni) || "",
-        Afiliación: Number(d.nroAfiliacion ?? 1),
-        Departamento: clean(d.departamento) || "",
-        Establecimientos: clean(d.establecimientos) || "",
-        Celular: clean(d.celular) || "",
-        Email: clean(email) || "",
-        "Título de grado (nombre de la carrera)": clean(d.tituloGrado) || "",
-        Descuento: desc || "",
-        Código: d.cod ?? "",
-        ID: d.id,
-      };
-    });
-
-    exportFromJSON({
-      data,
-      fileName: "afiliados_actualizados",
-      exportType: "xls",
+  // 🔹 NUEVO: eliminar en ambas
+  const onEliminarAmbos = (row) => {
+    if (!row) return;
+    confirmDialog({
+      message: `¿Eliminar en ambas colecciones a ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
+      header: "Confirmar eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar en ambas",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          if (row.idNuevo) {
+            const res = await dispatch(deleteAfiliadoById(row.idNuevo));
+            if (res?.meta?.requestStatus === "rejected") {
+              throw new Error(res?.payload || "No se pudo eliminar en nuevoAfiliado");
+            }
+            setRowsNuevo((prev) => prev.filter((x) => x.id !== row.idNuevo));
+          }
+          if (row.idUsuario) {
+            await fsDeleteDoc(fsDoc(db, "usuarios", String(row.idUsuario)));
+            setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.idUsuario));
+            setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.idUsuario));
+          }
+          showSuccess("Eliminado en ambas colecciones.");
+        } catch (e) {
+          showError(e?.message || "Error al eliminar en ambas colecciones");
+        }
+      },
     });
   };
 
-  // Editar
   const openEdit = (row) => {
-    const dep = (row.departamento || "").toString().trim();
     setRowId(row.id);
+    setEditOrigin(row.origen === "usuarios" ? "usuarios" : "nuevoAfiliado");
     setInitialForm({
       nombre: row.nombre ?? "",
       apellido: row.apellido ?? "",
       dni: row.dni ?? "",
       email: row.email ?? "",
       celular: row.celular ?? "",
-      departamento: dep,
+      departamento: (row.departamento || "").toString().trim(),
       establecimientos: row.establecimientos ?? "",
       descuento: row.descuento ?? "",
       nroAfiliacion: String(row.nroAfiliacion ?? ""),
       observaciones: row.observaciones ?? "",
       adherente: typeof row.adherente === "boolean" ? row.adherente : false,
       tituloGrado: row.tituloGrado ?? "",
+      activo: typeof row.activo === "boolean" ? row.activo : true,
+      // nuevos
+      motivo: row.motivo ?? "",
+      cotizante: typeof row.cotizante === "boolean" ? row.cotizante : false,
     });
     setEditVisible(true);
   };
+
+  // 🔹 NUEVO: editar ambas colecciones
+  const openEditBoth = (row) => {
+    setRowIdBoth({ nuevo: row.idNuevo, usuario: row.idUsuario });
+    setEditOrigin("ambas");
+    setInitialForm({
+      nombre: row.nombre ?? "",
+      apellido: row.apellido ?? "",
+      dni: row.dni ?? "",
+      email: row.email ?? "",
+      celular: row.celular ?? "",
+      departamento: (row.departamento || "").toString().trim(),
+      establecimientos: row.establecimientos ?? "",
+      descuento: row.descuento ?? "",
+      nroAfiliacion: String(row.nroAfiliacion ?? ""),
+      observaciones: row.observaciones ?? "",
+      adherente: typeof row.adherente === "boolean" ? row.adherente : false,
+      tituloGrado: row.tituloGrado ?? "",
+      activo: typeof row.activo === "boolean" ? row.activo : true,
+      // nuevos
+      motivo: row.motivo ?? "",
+      cotizante: typeof row.cotizante === "boolean" ? row.cotizante : false,
+    });
+    setEditVisible(true);
+  };
+
+  // Menú dinámico (unificado cuando origen=ambos)
+  const menuModel = useMemo(() => {
+    if (!currentRow) return [];
+    if (currentRow.origen === "ambos") {
+      return [
+        { label: "Ver", icon: "pi pi-eye", command: () => onVerDetalle(currentRow) },
+        { label: "Editar (ambas)", icon: "pi pi-pencil", command: () => openEditBoth(currentRow) },
+        { separator: true },
+        { label: "Eliminar (ambas)", icon: "pi pi-trash", className: "p-menuitem-danger", command: () => onEliminarAmbos(currentRow) },
+      ];
+    }
+    return [
+      { label: "Ver", icon: "pi pi-eye", command: () => onVerDetalle(currentRow) },
+      { label: "Editar", icon: "pi pi-pencil", command: () => openEdit(currentRow) },
+      { separator: true },
+      { label: "Eliminar", icon: "pi pi-trash", className: "p-menuitem-danger", command: () => onEliminar(currentRow) },
+    ];
+  }, [currentRow]);
+
+  // 8) Exportar TODO (bloqueando con barra de progreso) — UNIFICADO POR DNI
+const handleExportExcel = async () => {
+  try {
+    setExporting(true);
+    setExportModal(true);
+    setExportMsg("Leyendo colección nuevoAfiliado…");
+
+    // Traemos TODAS las filas de ambas colecciones
+    const allNuevoPromise = fetchAllDocsPaged("nuevoAfiliado", mapNuevoDocToRow, 1000);
+    const allUsuariosPromise = (async () => {
+      const allNuevo = await allNuevoPromise;
+      setExportMsg("Leyendo colección usuarios…");
+      const allUsuarios = await fetchAllDocsPaged("usuarios", mapUsuarioDocToRow, 1000);
+      return { allNuevo, allUsuarios };
+    })();
+
+    const { allNuevo, allUsuarios } = await allUsuariosPromise;
+
+    // 🔸 Unificamos por DNI igual que en pantalla (origen => "ambos" si corresponde)
+    setExportMsg("Unificando registros por DNI…");
+    const unified = unifyByDni(allNuevo, allUsuarios);
+
+    // Ordenamos por fecha/hora desc, y aplicamos (si hay) el filtro de búsqueda
+    setExportMsg("Preparando datos…");
+    const sorted = [...unified].sort((a, b) => {
+      const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha || "";
+      const sb = b.hora ? `${b.fecha} ${b.hora}` : b.fecha || "";
+      return toTimestamp(sb) - toTimestamp(sa);
+    });
+
+    const qn = norm(query);
+    const dataset = qn ? sorted.filter((r) => r.haystack.includes(qn)) : sorted;
+
+    // Mapeo a columnas del Excel
+    setExportMsg("Generando Excel…");
+    const data = dataset.map((d) => ({
+      Fecha: d.fecha || "",
+      Hora: d.hora || "",
+      Nombre: d.nombre || "",
+      Apellido: d.apellido || "",
+      DNI: d.dni || "",
+      Afiliación: d.nroAfiliacion ? Number(d.nroAfiliacion) : "",
+      Departamento: d.departamento || "",
+      Establecimientos: d.establecimientos || "",
+      Celular: d.celular || "",
+      Email: d.email || "",
+      "Título de grado (nombre de la carrera)": d.tituloGrado || "",
+      Descuento: toSiNo(d.descuento) || "",
+      Código: d.cod ?? "",
+      Origen: d.origen,                // "nuevoAfiliado" | "usuarios" | "ambos"
+      ID: d.id,                        // id visual (si es "ambos" es el de nuevo/usuario según merge)
+    }));
+
+    const fileName = qn
+      ? "afiliados_usuarios_resultado_unificado"
+      : "afiliados_usuarios_base_unificada";
+
+    exportFromJSON({ data, fileName, exportType: "xls" });
+    showSuccess("Excel generado (unificado por DNI).");
+  } catch (e) {
+    console.error(e);
+    showError(e?.message || "No se pudo generar el Excel unificado.");
+  } finally {
+    setExporting(false);
+    setExportModal(false);
+    setExportMsg("Preparando…");
+  }
+};
+
+
+  // 9) Guardar edición (soporta: nuevoAfiliado | usuarios | ambas)
   const closeEdit = () => {
     setEditVisible(false);
     setRowId(null);
-    setInitialForm(emptyForm);
+    setRowIdBoth({ nuevo: null, usuario: null });
+    setInitialForm(EMPTY_FORM);
+    setEditOrigin("nuevoAfiliado");
   };
 
   const validateDuplicateNroAfiliacion = async (dni, nro, currentId) => {
@@ -644,270 +624,239 @@ const AfiliadoActualizado = () => {
   };
 
   const handleSaveEdit = async ({ payload, error }) => {
-  if (error) {
-    return toast.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: error,
-      life: 4000,
-    });
-  }
+    if (error) {
+      return toast.current?.show({ severity: "error", summary: "Error", detail: error, life: 4000 });
+    }
 
-  try {
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    // (Opcional) Validación N° de afiliación duplicado
-    if (payload.nroAfiliacion !== "") {
-      const duplicated = await validateDuplicateNroAfiliacion(
-        payload.dni,
-        payload.nroAfiliacion,
-        rowId
-      );
-      if (duplicated) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "El N° de afiliación ya existe para ese DNI.",
-          life: 4000,
-        });
-        setSaving(false);
+      // 🔹 NUEVO: edición unificada
+      if (editOrigin === "ambas") {
+        const idN = rowIdBoth.nuevo;
+        const idU = rowIdBoth.usuario;
+
+        if (payload.nroAfiliacion !== "" && idN) {
+          const duplicated = await validateDuplicateNroAfiliacion(payload.dni, payload.nroAfiliacion, idN);
+          if (duplicated) {
+            toast.current?.show({ severity: "error", summary: "Error", detail: "El N° de afiliación ya existe para ese DNI.", life: 4000 });
+            setSaving(false);
+            return;
+          }
+        }
+
+        // nuevoAfiliado
+        if (idN) {
+          const res = await dispatch(updateAfiliadoById({ id: idN, data: payload }));
+          if (res?.meta?.requestStatus === "rejected") throw new Error(res?.payload || "No se pudo actualizar nuevoAfiliado.");
+          setRowsNuevo((prev) => prev.map((r) => (r.id === idN ? { ...r, ...payload } : r)));
+        }
+
+        // usuarios (upsert seguro)
+        const payloadUsuarios = {
+          nombre: payload.nombre ?? "",
+          apellido: payload.apellido ?? "",
+          dni: payload.dni ?? "",
+          email: payload.email ?? "",
+          celular: payload.celular ?? "",
+          departamento: payload.departamento ?? "",
+          establecimientos: payload.establecimientos ?? "",
+          tituloGrado: payload.tituloGrado ?? "",
+          observaciones: payload.observaciones ?? "",
+          adherente: !!payload.adherente,
+          descuento: normalizeDescuentoInput(payload.descuento),
+          activo: typeof payload.activo === "boolean" ? payload.activo : true,
+          motivo: payload.motivo ?? "",
+          cotizante: !!payload.cotizante,
+        };
+
+        if (idU) {
+          const ref = fsDoc(db, "usuarios", String(idU));
+          const snap = await fsGetDoc(ref);
+          if (snap.exists()) {
+            await fsUpdateDoc(ref, payloadUsuarios);
+          } else {
+            await fsSetDoc(ref, payloadUsuarios, { merge: true });
+          }
+          setRowsUsuariosLocal((prev) => prev.map((r) => (r.id === idU ? { ...r, ...payloadUsuarios } : r)));
+          setExtraUsuariosRows((prev) => prev.map((r) => (r.id === idU ? { ...r, ...payloadUsuarios } : r)));
+        } else {
+          // sin idUsuario: usamos DNI como ID
+          const altId = String(payload.dni).trim();
+          const refAlt = fsDoc(db, "usuarios", altId);
+          await fsSetDoc(refAlt, payloadUsuarios, { merge: true });
+          // reflejo en UI (si estuviera presente)
+          setRowsUsuariosLocal((prev) => prev.map((r) => (r.id === altId ? { ...r, ...payloadUsuarios } : r)));
+          setExtraUsuariosRows((prev) => prev.map((r) => (r.id === altId ? { ...r, ...payloadUsuarios } : r)));
+        }
+
+        // adherentes (preferimos idNuevo si existe; sino idUsuario o altId por DNI)
+        const dniKey = String(payload.dni || "").trim();
+        await syncAdherentesForPayload(dniKey, payload, idN || rowIdBoth.usuario || dniKey);
+
+        showSuccess("Registro actualizado en ambas colecciones.");
+        closeEdit();
         return;
       }
-    }
 
-    const prevAdherente = !!initialForm.adherente;
-    const nextAdherente = !!payload.adherente;
-    const dniKey = String(payload.dni || "").trim();
+      // ====== nuevoAfiliado ======
+      if (editOrigin === "nuevoAfiliado") {
+        if (payload.nroAfiliacion !== "") {
+          const duplicated = await validateDuplicateNroAfiliacion(payload.dni, payload.nroAfiliacion, rowId);
+          if (duplicated) {
+            toast.current?.show({ severity: "error", summary: "Error", detail: "El N° de afiliación ya existe para ese DNI.", life: 4000 });
+            setSaving(false);
+            return;
+          }
+        }
 
-    // --- REGLA QUE PEDISTE ---
-    // Si cambia de SÍ -> NO: primero actualizar SOLO 'observaciones' en nuevoAfiliado
-    if (prevAdherente && !nextAdherente) {
-      await fsUpdateDoc(fsDoc(db, "nuevoAfiliado", String(rowId)), {
-        observaciones: payload.observaciones ?? "",
-      });
-    }
+        const res = await dispatch(updateAfiliadoById({ id: rowId, data: payload }));
+        if (res?.meta?.requestStatus === "rejected") {
+          throw new Error(res?.payload || "No se pudo actualizar el afiliado.");
+        }
 
-    // Actualizar el doc completo en nuevoAfiliado (mantiene la UI/store en sync)
-    const res = await dispatch(updateAfiliadoById({ id: rowId, data: payload }));
-    if (res?.meta?.requestStatus === "rejected") {
-      throw new Error(res?.payload || "No se pudo actualizar el afiliado.");
-    }
+        setRowsNuevo((prevArr) => prevArr.map((r) => (r.id === rowId ? { ...r, ...payload } : r)));
 
-    // Alta/limpieza en 'adherentes' según el cambio del switch
-    if (!prevAdherente && nextAdherente) {
-      // pasó a SÍ: limpiar duplicados por DNI y dejar 1 doc con ID=rowId
-      const qDup = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
-      const dupSnap = await fsGetDocs(qDup);
-      await Promise.all(
-        dupSnap.docs.map((d) => (d.id !== String(rowId) ? fsDeleteDoc(d.ref) : Promise.resolve()))
-      );
+        const prevAdherente = initialForm.adherente === true;
+        const nextAdherente = !!payload.adherente;
+        const prevActivo = typeof initialForm.activo === "boolean" ? initialForm.activo : true;
+        const nextActivo = typeof payload.activo === "boolean" ? payload.activo : true;
+        const dniKey = String(payload.dni || "").trim();
 
-      const espejo = {
-        apellido: payload.apellido ?? initialForm.apellido ?? "",
-        nombre: payload.nombre ?? initialForm.nombre ?? "",
-        dni: dniKey,
-        nroAfiliacion:
-          payload.nroAfiliacion !== "" && payload.nroAfiliacion != null
-            ? Number(payload.nroAfiliacion)
-            : null,
-        tituloGrado: payload.tituloGrado ?? initialForm.tituloGrado ?? "",
-        descuento:
-          typeof payload.descuento === "string" ? payload.descuento : (initialForm.descuento ?? ""),
-        departamento: payload.departamento ?? initialForm.departamento ?? "",
-        establecimientos: payload.establecimientos ?? initialForm.establecimientos ?? "",
-        celular: payload.celular ?? initialForm.celular ?? "",
-        email: payload.email ?? initialForm.email ?? "",
-        estado: typeof initialForm.estado === "boolean" ? initialForm.estado : true,
-        observaciones: payload.observaciones ?? initialForm.observaciones ?? "",
-        adherente: true,
-      };
+        if (prevAdherente && !nextAdherente) {
+          await fsUpdateDoc(fsDoc(db, "nuevoAfiliado", String(rowId)), {
+            observaciones: payload.observaciones ?? "",
+          });
+        }
 
-      await fsSetDoc(fsDoc(db, "adherentes", String(rowId)), espejo, { merge: true });
-    }
+        if (!nextAdherente || !nextActivo) {
+          const q = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
+          const snap = await fsGetDocs(q);
+          if (!snap.empty) await Promise.all(snap.docs.map((d) => fsDeleteDoc(d.ref)));
+        } else {
+          await syncAdherentesForPayload(dniKey, payload, rowId);
+        }
+      } else {
+        // ====== USUARIOS ======
+        const ref = fsDoc(db, "usuarios", String(rowId));
+        const payloadUsuarios = {
+          nombre: payload.nombre ?? "",
+          apellido: payload.apellido ?? "",
+          dni: payload.dni ?? "",
+          email: payload.email ?? "",
+          celular: payload.celular ?? "",
+          departamento: payload.departamento ?? "",
+          establecimientos: payload.establecimientos ?? "",
+          tituloGrado: payload.tituloGrado ?? "",
+          observaciones: payload.observaciones ?? "",
+          adherente: !!payload.adherente,
+          descuento: normalizeDescuentoInput(payload.descuento),
+          activo: typeof payload.activo === "boolean" ? payload.activo : true,
+          motivo: payload.motivo ?? "",
+          cotizante: !!payload.cotizante,
+        };
+        await fsUpdateDoc(ref, payloadUsuarios);
 
-    if (prevAdherente && !nextAdherente) {
-      // pasó a NO: borrar en 'adherentes' por DNI (puede haber docs con otro ID)
-      const q = fsQuery(fsCollection(db, "adherentes"), where("dni", "==", dniKey));
-      const snap = await fsGetDocs(q);
-      if (!snap.empty) {
-        await Promise.all(snap.docs.map((d) => fsDeleteDoc(d.ref)));
+        const dniKey = String(payload.dni || "").trim();
+        await syncAdherentesForPayload(dniKey, payload, rowId); // usa rowId de usuarios si no hay nuevoAfiliado
+
+        setRowsUsuariosLocal((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...payloadUsuarios } : r)));
+        setExtraUsuariosRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...payloadUsuarios } : r)));
       }
-    }
 
-    showSuccess("Afiliado actualizado correctamente.");
-    closeEdit();
-  } catch (err) {
-    showError(err?.message || "Error al actualizar el afiliado.");
-  } finally {
-    setSaving(false);
-  }
-};
+      showSuccess("Registro actualizado correctamente.");
+      closeEdit();
+    } catch (err) {
+      showError(err?.message || "Error al actualizar el registro.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className={styles.container}>
+    <div style={{ display: "grid", gap: 12 }}>
       <Toast ref={toast} />
       <ConfirmDialog />
-      <Menu
-        model={[
-          {
-            label: "Ver",
-            icon: "pi pi-eye",
-            command: () => currentRow && onVerDetalle(currentRow),
-          },
-          {
-            label: "Editar",
-            icon: "pi pi-pencil",
-            command: () => currentRow && openEdit(currentRow),
-          },
-          { separator: true },
-          {
-            label: "Eliminar",
-            icon: "pi pi-trash",
-            className: "p-menuitem-danger",
-            command: () => currentRow && onEliminar(currentRow),
-          },
-        ]}
-        popup
-        ref={actionMenuRef}
-        id="row_actions_menu"
-      />
+      <Menu model={menuModel} popup ref={actionMenuRef} id="row_actions_menu" />
 
-      <div className={styles.title_and_button}>
-        <h3 className={styles.title}>Afiliado Actualizado</h3>
-        <Button
-          label="Descargar Lista de Afiliados"
-          icon="pi pi-download"
-          className="p-button-success p-button-sm"
-          onClick={handleExportExcel}
-          disabled={loading || (list?.length ?? 0) === 0}
-        />
+      {/* Header + contadores + export */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <h3 style={{ margin: 0 }}>Afiliado Actualizado</h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className="p-tag p-tag-info">nuevoAfiliado: {countNuevo}</span>
+          <span className="p-tag p-tag-secondary">usuarios: {countUsuarios}</span>
+          <span className="p-tag">mostrando: {pageRows.length} / {totalFiltered}</span>
+          <Button
+            label={exporting ? "Preparando Excel..." : "Descargar Lista (Base/resultado completo)"}
+            icon={exporting ? "pi pi-spin pi-spinner" : "pi pi-download"}
+            className="p-button-success p-button-sm"
+            onClick={handleExportExcel}
+            disabled={loading || exporting || totalFiltered === 0}
+          />
+        </div>
       </div>
 
-      {loading && (list?.length ?? 0) === 0 ? (
-        <div className={styles.center} style={{ padding: 48, minHeight: 240 }}>
+      {/* Filtros */}
+      <FiltersBar
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        onSearch={onSearch}
+        onClear={onClear}
+        onKeyDown={onKeyDown}
+        disabled={loading}
+        isPending={dniFetchLoading}
+        source={source}
+        onSourceChange={setSource}
+      />
+
+      {/* Tabla */}
+      {loading ? (
+        <div style={{ padding: 48, minHeight: 240, display: "grid", placeItems: "center" }}>
           <ProgressSpinner />
         </div>
       ) : (
-        <>
-          <div className={styles.toolbarRow}>
-            <span className="p-input-icon-left" style={{ width: 360 }}>
-              <i className="pi pi-search" />
-              <InputText
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nombre, apellido o DNI…"
-                style={{ width: "100%" }}
-                disabled={loading}
-              />
-            </span>
-          </div>
-
-          {/* DataTable aislada: NO se re-renderiza al tipear en el modal */}
-          <AfiliadosTable
-            data={filtered}
-            loading={loading}
-            page={page}
-            hasNext={hasNext}
-            onPrev={() => dispatch(fetchAfiliadosPrevPage())}
-            onNext={() => dispatch(fetchAfiliadosNextPage())}
-            onActionClick={onActionClick}
-          />
-        </>
+        <AfiliadosTable
+          data={pageRows}
+          loading={false}
+          isPending={dniFetchLoading}
+          page={page}
+          hasNext={hasNext}
+          onPrev={hasPrev ? () => setPage(page - 1) : () => {}}
+          onNext={hasNext ? () => setPage(page + 1) : () => {}}
+          onActionClick={(e, row) => {
+            setCurrentRow(row);
+            actionMenuRef.current?.toggle(e);
+          }}
+        />
       )}
 
-      {/* ----- Modal Detalle (Ver) ----- */}
-      <Dialog
-        header="Detalle del afiliado"
+      {/* Modales */}
+      <ViewDialog
         visible={showDetail}
-        style={{ width: "min(520px, 96vw)" }}
-         onHide={() => { setShowDetail(false); setRowDetail(null); }}
-        draggable={false}
-        resizable={false}
-      >
-        {rowDetail ? (
-          <div className="p-3">
-            <div className={styles.stack}>
-              <div>
-                <b>Apellido y Nombre:</b> {rowDetail.apellido},{" "}
-                {rowDetail.nombre}
-              </div>
-              <div>
-                <b>DNI:</b> {rowDetail.dni}
-              </div>
-              <div>
-                <b>Fecha:</b> {rowDetail.fecha} — <b>Hora:</b> {rowDetail.hora}
-              </div>
-              <div>
-                <b>Afiliación:</b> {rowDetail.nroAfiliacion}ª
-              </div>
-              {rowDetail.tituloGrado && (
-                <div>
-                  <b>Título de grado:</b> {rowDetail.tituloGrado}
-                </div>
-              )}
-              <div>
-                <b>Descuento:</b> {toSiNo(rowDetail.descuento) || "—"}
-              </div>
-              {rowDetail.departamento && (
-                <div>
-                  <b>Departamento:</b> {rowDetail.departamento}
-                </div>
-              )}
-              {rowDetail.establecimientos && (
-                <div>
-                  <b>Establecimiento:</b> {rowDetail.establecimientos}
-                </div>
-              )}
-              {rowDetail.celular && (
-                <div>
-                  <b>Celular:</b> {rowDetail.celular}
-                </div>
-              )}
-              {rowDetail.email && (
-                <div>
-                  <b>Email:</b> {rowDetail.email}
-                </div>
-              )}
-              {rowDetail.observaciones && (
-                <div>
-                  <b>Observaciones:</b> {rowDetail.observaciones}
-                </div>
-              )}
-              <div>
-                <b>Adherente:</b>{" "}
-                {rowDetail.adherente ?? rowDetail.activo ? "Sí" : "No"}
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: 16,
-              }}
-            >
-              <Button
-                label="Cerrar"
-                icon="pi pi-check"
-                onClick={() => setShowDetail(false)}
-              />
-            </div>
-          </div>
-        ) : (
-          <p>No hay datos para mostrar.</p>
-        )}
-      </Dialog>
+        data={rowDetail}
+        onClose={() => { setShowDetail(false); setRowDetail(null); }}
+      />
 
-      {/* ----- Modal Editar (aislado y memorizado) ----- */}
       <EditAfiliadoDialog
         visible={editVisible}
         initialForm={initialForm}
-        departamentosOptions={departamentosOptions}
+        departamentosOptions={departamentosOptionsFrom(combinedRows)}
         onCancel={closeEdit}
         onSave={handleSaveEdit}
         saving={saving}
+        showActivo={false}
       />
+
+      {/* Modal bloqueante de progreso (export) */}
+      <Dialog header="Exportando Excel" visible={exportModal} modal closable={false} blockScroll style={{ width: 480, maxWidth: "90vw" }} contentStyle={{ paddingTop: 8 }}>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ fontSize: 14 }}>{exportMsg}</div>
+          <ProgressBar mode="indeterminate" style={{ height: 6 }} />
+          <div style={{ fontSize: 12, opacity: 0.8 }}>Esto puede tardar unos segundos. No cierres esta ventana.</div>
+        </div>
+      </Dialog>
     </div>
   );
-};
+}
 
-export default AfiliadoActualizado;
+

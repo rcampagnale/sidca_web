@@ -96,5 +96,18 @@
 }
 .colSpan2 { grid-column: 1 / -1; }
 
+/* Chips para estado y modalidad */
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  border: 1px solid #e5e5e5;
+  background: #f5f5f5;
+  margin-right: 6px;
+}
+.chipOk { background: #e6ffed; border-color: #b7f5c2; }
+.chipWarn { background: #fff4e5; border-color: #ffd8a8; }
+.chipMode { background: #eef3ff; border-color: #d0dcff; }
 
 

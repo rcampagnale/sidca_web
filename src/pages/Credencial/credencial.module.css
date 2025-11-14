@@ -1,0 +1,135 @@
+/* src/pages/Credencial/credencial.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loader {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #666;
+}
+
+.muted {
+  color: #777;
+  margin: 0;
+}
+
+/* ===========================
+   CARD + IMAGEN (auto-fit)
+   =========================== */
+/* ===== Contenedor imagen ===== */
+.card {
+  display: inline-block;
+  padding: 0;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #eee;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  overflow: hidden;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.credencialPreview {
+  position: relative;
+  display: inline-block;
+  border: none;
+  border-radius: 0;
+}
+.credencialImg {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+}
+
+/* ===== Overlay base (posicionado absoluto, no empuja) ===== */
+.infoOverlay {
+  position: absolute;
+  display: flex;
+  gap: 24px;
+  pointer-events: none;
+}
+
+/* Alineaciones horizontales rápidas si necesitás */
+.overlayLeft   { left: 10px; right: auto; transform: none; }
+.overlayCenter { left: 50%; right: auto; transform: translateX(-50%); }
+.overlayRight  { right: 10px; left: auto; transform: none; }
+
+/* ===== Overlay del TÍTULO (posición y color independientes) ===== */
+.infoTitleOverlay {
+  top: 05%;                /* ← mueve este valor para ubicarlo verticalmente */
+  left: 62%;
+  transform: translateX(-50%);
+}
+.infoTitle {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  font-weight: 900;
+  font-size: clamp(1rem, 2.6vw, 1.6rem);
+  color: #ffffff;           /* ← color propio del título */
+  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+  letter-spacing: 0.02em;
+}
+
+/* ===== Overlay de DATOS (Afiliado, DNI, Departamento) ===== */
+.infoDataOverlay {
+  top: 40%;
+  left: 10%;                /* ← baja o sube el bloque de datos desde acá */
+}
+.infoUnit {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.infoLabel {
+  font-weight: 700;
+  color: #111827;           /* ← color distinto al título */
+  font-size: 1rem;
+  margin: 0 0 6px 0;
+}
+.infoValue {
+  font-weight: 700;
+  color: #111827;
+  font-size: 1rem;
+}
+
+/* Helper del pie */
+.helper {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 8px;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .credencialPreview { max-width: 100%; }
+}
+@media (min-width: 1024px) {
+  .credencialImg { max-width: 420px; }
+}

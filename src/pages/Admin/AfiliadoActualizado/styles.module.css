@@ -178,3 +178,21 @@
 :global(.p-dialog .p-inputtextarea) {
   font-size: 0.95rem;
 }
+/* Ensanchar solo esta pantalla */
+.wide {
+  --container-max: 1600px; /* subí a gusto: 1400, 1600, 1800... */
+}
+
+/* La tabla ocupa todo el ancho disponible */
+.tableWrap {
+  width: 100%;
+}
+
+/* Con CSS Modules hay que usar :global para clases de PrimeReact */
+.datatableFull :global(.p-datatable) {
+  width: 100%;
+}
+
+.datatableFull :global(.p-datatable-wrapper) {
+  overflow-x: auto; /* por si en algún monitor se pasa */
+}
