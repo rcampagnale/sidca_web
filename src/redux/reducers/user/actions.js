@@ -1,12 +1,6 @@
 import * as types from "./types";
 import { db } from "../../../firebase/firebase-config";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-} from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { clearAfiliados } from "../afiliados/actions";
 import { clearAsesoramiento } from "../asesoramiento/actions";
@@ -41,7 +35,10 @@ export const adminLogin = (data) => {
         localStorage.removeItem("sidca_user_dni");
 
         dispatch(
-          authenticateAdminSuccess({ uid: user.uid, accessToken: user.accessToken })
+          authenticateAdminSuccess({
+            uid: user.uid,
+            accessToken: user.accessToken,
+          })
         );
         return { ok: true };
       })
@@ -52,47 +49,144 @@ export const adminLogin = (data) => {
   };
 };
 
-/* ================= USER (colección 'usuarios') ================= */
+/* =========== USER (usuarios + nuevoAfiliado) =========== */
 
+/**
+ * 🔎 Busca un documento por DNI en la colección indicada:
+ *    - primero como string
+ *    - luego como number
+ * Devuelve { id, ...data, _from } o null.
+ */
+const getByDniFromCollection = async (collectionName, dniRaw) => {
+  const dni = normalizeDni(dniRaw);
+  if (!dni) return null;
+
+  const colRef = collection(db, collectionName);
+
+  // 1) Buscar por DNI como string
+  let snap = await getDocs(query(colRef, where("dni", "==", dni), limit(1)));
+  if (!snap.empty) {
+    const docSnap = snap.docs[0];
+    return { id: docSnap.id, ...docSnap.data(), _from: collectionName };
+  }
+
+  // 2) Buscar por DNI como number (por compatibilidad)
+  const dniNum = Number(dni);
+  if (!Number.isNaN(dniNum)) {
+    snap = await getDocs(query(colRef, where("dni", "==", dniNum), limit(1)));
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      return { id: docSnap.id, ...docSnap.data(), _from: collectionName };
+    }
+  }
+
+  return null;
+};
+
+/**
+ * 👤 Devuelve los datos unificados de la persona por DNI
+ *    buscando en 'usuarios' y 'nuevoAfiliado'.
+ *    Si existe en ambas, prioriza los datos de 'nuevoAfiliado'.
+ */
+const findAfiliadoByDni = async (dniRaw) => {
+  const [fromUsuarios, fromNuevo] = await Promise.all([
+    getByDniFromCollection("usuarios", dniRaw),
+    getByDniFromCollection("nuevoAfiliado", dniRaw),
+  ]);
+
+  if (!fromUsuarios && !fromNuevo) return null;
+  if (fromUsuarios && !fromNuevo) return fromUsuarios;
+  if (!fromUsuarios && fromNuevo) return fromNuevo;
+
+  // Merge: datos de nuevoAfiliado pisan a los de usuarios
+  return {
+    ...fromUsuarios,
+    ...fromNuevo,
+    _from: "usuarios+nuevoAfiliado",
+  };
+};
+
+/**
+ * Login por DNI con reglas:
+ *  - Si el DNI NO existe en ninguna colección → error.
+ *  - Si adherente === false → permite el ingreso.
+ *  - Si adherente === true:
+ *      - activo === true  → permite el ingreso.
+ *      - activo === false → NO permite, muestra mensaje de cuenta suspendida con motivo.
+ */
 export const authenticateUser = (data) => {
   return async (dispatch) => {
     dispatch(authenticateUserProcess());
     try {
       const dni = normalizeDni(data?.dni);
       if (!dni) {
-        dispatch(authenticateUserError("Ingrese un DNI válido."));
+        dispatch(authenticateUserError("Ingresá un DNI válido."));
         return { ok: false };
       }
 
-      // Buscar en colección 'usuarios' por DNI (solo 1)
-      const q = query(
-        collection(db, "usuarios"),
-        where("dni", "==", dni),
-        limit(1)
-      );
-      const snap = await getDocs(q);
+      // 🔎 Buscar datos en 'usuarios' + 'nuevoAfiliado'
+      const afiliado = await findAfiliadoByDni(dni);
 
-      if (snap.empty) {
-        dispatch(authenticateUserError("DNI incorrecto"));
+      // 1) No existe en ninguna colección
+      if (!afiliado) {
+        dispatch(
+          authenticateUserError(
+            "DNI no encontrado. Verificá que estés registrado en el sistema."
+          )
+        );
         return { ok: false };
       }
 
-      const docSnap = snap.docs[0];
-      const user = { id: docSnap.id, ...docSnap.data() };
+      const esAdherente = Boolean(afiliado.adherente);
+      const estaActivo = afiliado.activo !== false; // si falta el campo, lo tomamos como activo
+
+      if (esAdherente) {
+        // Es adherente: debemos chequear estado activo
+        if (!estaActivo) {
+          const motivo =
+            afiliado.motivo || afiliado.observaciones || "No informado.";
+
+          const msg = `Estimado/a docente, su afiliación figura como Afiliado en carácter de Adherente y actualmente se encuentra SUSPENDIDA.
+
+MOTIVO: ${motivo}
+
+Por favor, escríbanos por WhatsApp al Área Afiliado Adherente (solo mensajes; no llamadas).
+Horario de atención: Lunes a Viernes 8:00–12:00 y 16:00–18:00 Hs.
+Días no laborables: Feriados, Asuetos, Sábado y Domingo no se atiende.
+
+*Hasta regularizar sus aranceles, los servicios del Sindicato permanecerán suspendidos.`;
+
+          dispatch(authenticateUserError(msg));
+          return { ok: false };
+        }
+        // adherente === true y activo !== false → deja pasar
+      }
+      // Si NO es adherente, también deja pasar (según tu regla)
+
+      const userSession = {
+        ...afiliado,
+        dni, // normalizado como string
+      };
 
       // Persistir sesión:
       // - sessionStorage: objeto completo (compatibilidad actual)
       // - localStorage: claves mínimas para otras pantallas (MiRegistro, etc.)
-      sessionStorage.setItem("user", JSON.stringify(user));
+      sessionStorage.setItem("user", JSON.stringify(userSession));
       sessionStorage.setItem("es_admin", "false");
-      localStorage.setItem("sidca_user_docId", docSnap.id);
-      localStorage.setItem("sidca_user_dni", user.dni);
+      if (afiliado.id) {
+        localStorage.setItem("sidca_user_docId", afiliado.id);
+      }
+      localStorage.setItem("sidca_user_dni", dni);
 
-      dispatch(authenticateUserSuccess(user));
+      dispatch(authenticateUserSuccess(userSession));
       return { ok: true };
     } catch (error) {
       console.error("[authenticateUser] error:", error);
-      dispatch(authenticateUserError("No se ha ingresar"));
+      dispatch(
+        authenticateUserError(
+          "No se pudo completar el ingreso. Intentá nuevamente más tarde."
+        )
+      );
       return { ok: false };
     }
   };
@@ -157,9 +251,7 @@ export const logout = () => {
 
       return { ok: true };
     } catch (error) {
-      dispatch(
-        logoutError("Algo ha salido mal al intentar cerrar sesión")
-      );
+      dispatch(logoutError("Algo ha salido mal al intentar cerrar sesión"));
       return { ok: false };
     }
   };
