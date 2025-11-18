@@ -1,0 +1,619 @@
+/* ===== Layout general del dashboard ===== */
+
+.container {
+  padding: 1.75rem;
+}
+
+.header {
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+/* ===== Tabs superiores del dashboard ===== */
+
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.tabButton {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 9999px 9999px 0 0;
+  cursor: pointer;
+  color: #495057;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tabButton:hover {
+  background-color: #f1f3f5;
+}
+
+.tabButtonActive {
+  background-color: #ffffff;
+  color: #212529;
+  font-weight: 600;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid #dee2e6;
+  border-bottom-color: #ffffff;
+}
+
+.tabContent {
+  margin-top: 0.75rem;
+}
+
+/* ===== Filtros superiores ===== */
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filterItem {
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterLabel {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.filterDropdown :global(.p-dropdown-label) {
+  font-size: 0.9rem;
+}
+
+/* ===== Panel genérico ===== */
+
+.panel {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 1rem 1.25rem 1.25rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelHeader {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+
+.panelBody {
+  flex: 1;
+}
+
+/* Mensajes de error genéricos del dashboard */
+.errorText {
+  color: #c0392b;
+  font-size: 0.85rem;
+}
+
+/* =========================================================
+   BLOQUE: Afiliados por departamento (mapas + lista)
+   ========================================================= */
+
+.deptRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1.75rem;
+  align-items: stretch;
+}
+
+.deptMapCol {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout: mapa a la izquierda, lista a la derecha dentro de cada panel */
+.mapLayout {
+  display: flex;
+  gap: 1rem;
+  height: 100%;
+}
+
+/* Contenedor del mapa con imagen de fondo */
+.mapImageWrapper {
+  position: relative;
+  flex: 0 0 55%;
+  min-height: 280px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+.mapImage {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Burbujas con porcentaje de afiliados */
+.mapMarker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+/* Lista a la derecha del mapa */
+.mapListWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mapHint {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.4rem;
+}
+
+.mapList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.mapListItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed #e1e4e8;
+}
+
+.mapListItem:last-child {
+  border-bottom: none;
+}
+
+.mapDeptName {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Número de departamento en la lista */
+.mapDeptId {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background-color: #f1f3f5;
+  color: #495057;
+}
+
+.mapListColorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background-color: #e3f2fd;
+}
+
+.mapDeptValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.mapDeptPercent {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-left: 0.25rem;
+}
+
+.mapEmpty {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* Leyenda (si la usás) */
+.mapLegend {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6c757d;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.mapLegendLabel {
+  font-weight: 500;
+}
+
+.mapLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mapLegendColor {
+  width: 16px;
+  height: 8px;
+  border-radius: 9999px;
+  background-color: #e3f2fd;
+}
+
+/* =========================================================
+   BLOQUE: Altas / Bajas mensuales
+   ========================================================= */
+
+.altasBajasMonthlyRow {
+  margin-top: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.altasBajasMonthlyKpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.altasBajasMonthlyKpi {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.altasBajasMonthlyLabel {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.altasBajasMonthlyValue {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* =========================================================
+   BLOQUE: Panel Afiliado Adherente (KPIs + doughnut + mapa)
+   ========================================================= */
+
+.adherentesRow {
+  margin-top: 1.5rem;
+  margin-bottom: 2.5rem; /* antes ~1.75rem, más espacio con el siguiente bloque */
+}
+
+.adherentesKpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.adherentesKpiCard {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.adherentesKpiLabel {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.adherentesKpiValue {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.adherentesKpiSub {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+/* Contenedor del gráfico de Afiliado Adherente */
+.adherentesChartWrapper {
+  margin-top: 1.25rem;
+  max-width: 280px;
+  height: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* =========================================================
+   BLOQUE: Cursos
+   ========================================================= */
+
+/* Fila superior: gráfico de barras a todo el ancho */
+.coursesTopRow {
+  margin-top: 2rem;
+}
+
+.coursesTopCol {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fila inferior: resumen (izquierda) + tabla (derecha) */
+.coursesBottomRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.coursesBottomCol {
+  display: flex;
+  flex-direction: column;
+}
+
+/* KPIs de cursos */
+.coursesKpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.coursesKpiCard {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.coursesKpiLabel {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.coursesKpiValue {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Tabla de cursos */
+.tableWrapper {
+  margin-top: 0.25rem;
+}
+
+/* Doughnut global de aprobación de cursos */
+.coursesDonutWrapper {
+  margin-top: 0.9rem;
+  max-width: 240px;
+  height: 310px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* =========================================================
+   BLOQUE: Registro de asistencia
+   ========================================================= */
+
+.asistenciaRow {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.asistenciaKpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.asistenciaKpiCard {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.asistenciaKpiLabel {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.asistenciaKpiValue {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .deptRow {
+    grid-template-columns: 1fr;
+  }
+
+  .mapLayout {
+    flex-direction: column;
+  }
+
+  .mapImageWrapper {
+    flex: 0 0 auto;
+  }
+
+  .altasBajasMonthlyKpis {
+    grid-template-columns: 1fr;
+  }
+
+  .coursesBottomRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .adherentesKpis {
+    grid-template-columns: 1fr;
+  }
+
+  .adherentesChartWrapper {
+    max-width: 220px;
+    height: 220px;
+  }
+
+  .asistenciaKpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   BLOQUE: Información del Afiliado (DetalleInformacionAfiliado)
+   ========================================================= */
+
+.infoAfiliadoRow {
+  margin-top: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+/* Fila de búsqueda por DNI */
+.infoSearchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.infoSearchInput {
+  flex: 1 1 220px;
+}
+
+.infoDniInput {
+  width: 100%;
+}
+
+/* Resumen de completitud de campos */
+.infoResumenCampos {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  color: #495057;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.infoResumenSub {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+/* Barra de progreso */
+.infoCompletenessBar {
+  margin-top: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+/* Resumen de campos faltantes (chips) */
+.infoMissingSummary {
+  margin-bottom: 0.9rem;
+  font-size: 0.8rem;
+  color: #495057;
+}
+
+.infoMissingTitle {
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+.infoMissingChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.infoMissingChip {
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  background-color: #fff4f4;
+  color: #c0392b;
+  border: 1px solid #ffe3e3;
+}
+
+/* Detalle campo por campo */
+.infoFieldsGrid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.infoField {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #f1f3f5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.infoFieldMissing {
+  background-color: #fff5f5;
+  border-color: #ffe3e3;
+}
+
+.infoFieldLabel {
+  font-weight: 600;
+  color: #495057;
+}
+
+.infoFieldValue {
+  font-size: 0.82rem;
+  color: #343a40;
+}
+
+/* Si querés remarcar aún más el texto de “Dato incompleto” */
+.infoFieldMissing .infoFieldValue {
+  color: #c0392b;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .infoFieldsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .infoSearchRow {
+    align-items: stretch;
+  }
+}
+

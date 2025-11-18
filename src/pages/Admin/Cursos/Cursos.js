@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+// src/pages/Admin/Cursos/Cursos.js
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useHistory } from "react-router-dom";
+
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -19,274 +21,323 @@ import {
 } from "../../../redux/reducers/cursos/actions";
 import SubirCursosUsuarios from "./SubirCursosUsuarios";
 
+/** Config básica de columnas (sin JSX) */
+const COLUMNS = [
+  { field: "titulo", header: "Titulo" },
+  { field: "descripcion", header: "Descripcion" },
+  { field: "estado", header: "Estado" },
+  { field: "categoria", header: "Categoria" },
+  { field: "link", header: "Link" },
+  { field: "id", header: "Acciones" },
+];
+
+/** Valida si un link es “usable” */
+const isValidLink = (val) => {
+  if (!val) return false;
+  const s = String(val).trim().toLowerCase();
+  if (s === "undefined" || s === "false" || s === "-") return false;
+  return /^https?:\/\//.test(s);
+};
+
 const Cursos = () => {
   const dispatch = useDispatch();
   const history = useHistory();
 
-  const columns = [
-    { field: "titulo", header: "Titulo" },
-    { field: "descripcion", header: "Descripcion" },
-    { field: "estado", header: "Estado" },
-    { field: "categoria", header: "Categoria" },
-    { field: "link", header: "Link" },
-    { field: "id", header: "Acciones" },
-  ];
+  const cursosState = useSelector((state) => state.cursos);
+  const { cursos, noSubidos, page, firstCurso, lastCurso, processing } =
+    cursosState;
 
-  const cursos = useSelector((state) => state.cursos);
-  const noSubidos = useSelector((state) => state.cursos.noSubidos);
-  const page = useSelector((state) => state.cursos.page);
-
-  const [prevDisable, setPrevDisable] = useState(false);
-  const [nextDisable, setNextDisable] = useState(false);
   const [cursoSelect, setCursoSelect] = useState(undefined);
   const [subirCursosActive, setSubirCursosActive] = useState(false);
 
-  const handleEdit = async (id) => {
-    await dispatch(getCurso(id));
-    history.push(`/admin/nuevo-curso/${id}`);
-  };
-
-  const handlePagination = async (pagination) => {
-    if (pagination === "prev" && page === 1) {
-      return setPrevDisable(true);
-    } else {
-      setPrevDisable(false);
-    }
-    dispatch(
-      getCursos(
-        pagination,
-        pagination === "next" ? cursos.lastCurso : cursos.firstCurso
-      )
-    );
-  };
-
+  // 👉 Cargar primera página de cursos al montar
   useEffect(() => {
     dispatch(getCursos());
   }, [dispatch]);
 
-  const acceptDelete = (id) => {
-    dispatch(deleteCursos(id));
-  };
+  // 🔹 Editar curso: trae el curso y navega
+  const handleEdit = useCallback(
+    async (id) => {
+      await dispatch(getCurso(id));
+      history.push(`/admin/nuevo-curso/${id}`);
+    },
+    [dispatch, history]
+  );
 
-  const confirmDelete = (id) => {
-    confirmDialog({
-      message: "Esta seguro que desea Eliminar?",
-      header: "Atención",
-      icon: "pi pi-exclamation-triangle",
-      accept: () => acceptDelete(id),
-      reject: () => {},
-    });
-  };
+  // 🔹 Paginación: prev / next usando firstCurso / lastCurso
+  const handlePagination = useCallback(
+    (direction) => {
+      if (direction === "prev") {
+        if (page <= 1 || !firstCurso) return;
+      } else if (direction === "next") {
+        if (!lastCurso) return;
+      }
 
-  const acceptUpload = (curso) => {
+      dispatch(
+        getCursos(
+          direction,
+          direction === "next" ? lastCurso : firstCurso
+        )
+      );
+    },
+    [dispatch, page, firstCurso, lastCurso]
+  );
+
+  // 🔹 Eliminar curso (queda disponible, aunque hoy no tengas botón en la tabla)
+  const acceptDelete = useCallback(
+    (id) => {
+      dispatch(deleteCursos(id));
+    },
+    [dispatch]
+  );
+
+  const confirmDelete = useCallback(
+    (id) => {
+      confirmDialog({
+        message: "¿Está seguro que desea eliminar este curso?",
+        header: "Atención",
+        icon: "pi pi-exclamation-triangle",
+        accept: () => acceptDelete(id),
+      });
+    },
+    [acceptDelete]
+  );
+
+  // 🔹 Cargar usuarios para un curso
+  const acceptUpload = useCallback((curso) => {
     setCursoSelect(curso);
     setSubirCursosActive(true);
-  };
+  }, []);
 
-  const confirmUpload = (id) => {
-    confirmDialog({
-      message: "Esta seguro que desea Eliminar?",
-      header: "Atención",
-      icon: "pi pi-exclamation-triangle",
-      accept: () => acceptUpload(id),
-      reject: () => {},
-    });
-  };
-
-  // --- Link como ícono ---
-  const isValidLink = (val) => {
-    if (!val) return false;
-    const s = String(val).trim().toLowerCase();
-    if (s === "undefined" || s === "false" || s === "-") return false;
-    return /^https?:\/\//.test(s);
-  };
-
-  const linkBody = (row) => {
-    const val = row.link;
-    if (!isValidLink(val)) return <span className={styles.emptyField}>—</span>;
-    return (
-      <a
-        href={val}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Abrir enlace"
-        className={styles.linkIconWrapper}
-      >
-        <i className={`pi pi-external-link ${styles.linkIcon}`} />
-      </a>
-    );
-  };
-
-  // --- Columnas dinámicas con widths más compactos y mejor estética ---
-  const dynamicColumns = columns.map((col) => {
- if (col.field === 'id') {
-  return (
-    <Column
-      key={col.field}
-      header={col.header}
-      body={(curso) => (
-        <div className={styles.actionsCol}>
-          <Button
-            label="Editar"
-            icon="pi pi-pencil"
-            className="p-button-sm p-button-warning"
-            onClick={() => handleEdit(curso.id)}
-          />
-          <Button
-            label="Cargar usuarios"
-            icon="pi pi-file"
-            className="p-button-sm p-button-help"
-            onClick={() => acceptUpload(curso)}
-          />
-        </div>
-      )}
-      headerStyle={{ textAlign: 'center', minWidth: '160px' }}   // más ancho
-      style={{ textAlign: 'center', minWidth: '160px' }}
-    />
+  const confirmUpload = useCallback(
+    (curso) => {
+      confirmDialog({
+        message: "¿Está seguro que desea cargar usuarios para este curso?",
+        header: "Atención",
+        icon: "pi pi-exclamation-triangle",
+        accept: () => acceptUpload(curso),
+      });
+    },
+    [acceptUpload]
   );
-}
 
-
-    if (col.field === "link") {
+  // 🔹 Renderizado de link como ícono
+  const linkBody = useCallback(
+    (row) => {
+      const val = row.link;
+      if (!isValidLink(val)) {
+        return <span className={styles.emptyField}>—</span>;
+      }
       return (
-        <Column
-          key={col.field}
-          header={col.header}
-          body={linkBody}
-          headerStyle={{ textAlign: "center", width: "72px" }}
-          style={{ textAlign: "center", width: "72px" }}
-        />
+        <a
+          href={val}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir enlace"
+          className={styles.linkIconWrapper}
+        >
+          <i className={`pi pi-external-link ${styles.linkIcon}`} />
+        </a>
       );
-    }
+    },
+    []
+  );
 
-    if (col.field === "estado") {
-      return (
-        <Column
-          key={col.field}
-          field={col.field}
-          header={col.header}
-          headerStyle={{ textAlign: "center", width: "104px" }}
-          style={{ textAlign: "center", width: "104px" }}
-        />
-      );
-    }
+  // 🔹 Columnas de DataTable, memoizadas
+  const dynamicColumns = useMemo(
+    () =>
+      COLUMNS.map((col) => {
+        if (col.field === "id") {
+          return (
+            <Column
+              key={col.field}
+              header={col.header}
+              body={(curso) => (
+                <div className={styles.actionsCol}>
+                  <Button
+                    label="Editar"
+                    icon="pi pi-pencil"
+                    className="p-button-sm p-button-warning"
+                    onClick={() => handleEdit(curso.id)}
+                  />
+                  <Button
+                    label="Cargar usuarios"
+                    icon="pi pi-file"
+                    className="p-button-sm p-button-help"
+                    onClick={() => confirmUpload(curso)}
+                  />
+                  {/* Si quisieras activar eliminar, podés mostrar este botón:
+                  <Button
+                    label="Eliminar"
+                    icon="pi pi-trash"
+                    className="p-button-sm p-button-danger"
+                    onClick={() => confirmDelete(curso.id)}
+                  />
+                  */}
+                </div>
+              )}
+              headerStyle={{ textAlign: "center", minWidth: "200px" }}
+              style={{ textAlign: "center", minWidth: "200px" }}
+            />
+          );
+        }
 
-    if (col.field === "categoria") {
-      return (
-        <Column
-          key={col.field}
-          field={col.field}
-          header={col.header}
-          headerStyle={{ textAlign: "center", width: "112px" }}
-          style={{ textAlign: "center", width: "112px" }}
-        />
-      );
-    }
+        if (col.field === "link") {
+          return (
+            <Column
+              key={col.field}
+              header={col.header}
+              body={linkBody}
+              headerStyle={{ textAlign: "center", width: "72px" }}
+              style={{ textAlign: "center", width: "72px" }}
+            />
+          );
+        }
 
-    if (col.field === "titulo") {
-      return (
-        <Column
-          key={col.field}
-          field={col.field}
-          header={col.header}
-          bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
-          headerStyle={{ minWidth: "150px", maxWidth: "180px" }}
-          style={{ minWidth: "150px", maxWidth: "180px" }}
-        />
-      );
-    }
+        if (col.field === "estado") {
+          return (
+            <Column
+              key={col.field}
+              field={col.field}
+              header={col.header}
+              headerStyle={{ textAlign: "center", width: "104px" }}
+              style={{ textAlign: "center", width: "104px" }}
+            />
+          );
+        }
 
-    if (col.field === "descripcion") {
-      return (
-        <Column
-          key={col.field}
-          field={col.field}
-          header={col.header}
-          bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
-          headerStyle={{ minWidth: "220px", maxWidth: "260px" }}
-          style={{ minWidth: "220px", maxWidth: "260px" }}
-        />
-      );
-    }
+        if (col.field === "categoria") {
+          return (
+            <Column
+              key={col.field}
+              field={col.field}
+              header={col.header}
+              headerStyle={{ textAlign: "center", width: "112px" }}
+              style={{ textAlign: "center", width: "112px" }}
+            />
+          );
+        }
 
-    // fallback
-    return <Column key={col.field} field={col.field} header={col.header} />;
-  });
+        if (col.field === "titulo") {
+          return (
+            <Column
+              key={col.field}
+              field={col.field}
+              header={col.header}
+              bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
+              headerStyle={{ minWidth: "150px", maxWidth: "180px" }}
+              style={{ minWidth: "150px", maxWidth: "180px" }}
+            />
+          );
+        }
 
-  // Mensajes
+        if (col.field === "descripcion") {
+          return (
+            <Column
+              key={col.field}
+              field={col.field}
+              header={col.header}
+              bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
+              headerStyle={{ minWidth: "220px", maxWidth: "260px" }}
+              style={{ minWidth: "220px", maxWidth: "260px" }}
+            />
+          );
+        }
+
+        // fallback
+        return (
+          <Column key={col.field} field={col.field} header={col.header} />
+        );
+      }),
+    [handleEdit, confirmUpload, confirmDelete, linkBody]
+  );
+
+  // 🔹 Mensajes (Swal) según estado
   useEffect(() => {
-    if (cursos.status === "SUCCESS_ADD" || cursos.status === "SUCCESS_UPLOAD") {
+    const { status, msg, noSubidos: ns } = cursosState;
+    if (!status) return;
+
+    if (status === "SUCCESS_ADD" || status === "SUCCESS_UPLOAD") {
       Swal.fire({
         title: "Solicitud Exitosa",
-        text: cursos.msg,
+        text: msg,
         icon: "success",
         confirmButtonText: "Continuar",
+      }).then(() => {
+        dispatch(clearStatus());
       });
-      dispatch(clearStatus());
-    }
-    if (
-      cursos.status === "FAILURE_ADD" ||
-      cursos.status === "FAILURE_UPLOAD" ||
-      cursos.status === "FAILURE_USER_INFO"
+    } else if (
+      status === "FAILURE_ADD" ||
+      status === "FAILURE_UPLOAD" ||
+      status === "FAILURE_USER_INFO"
     ) {
       Swal.fire({
-        title: "Error!",
-        text: cursos.msg,
+        title: "Error",
+        text: msg,
         icon: "error",
         confirmButtonText: "Continuar",
+      }).then(() => {
+        dispatch(clearStatus());
       });
-      dispatch(clearStatus());
-    }
-    if (cursos.status === "SUCCESS_USER_INFO") {
+    } else if (status === "SUCCESS_USER_INFO") {
       Swal.fire({
         title:
-          noSubidos.length > 0
-            ? "Algunos usuarios no fueron cargados con sus cursos!"
+          ns && ns.length > 0
+            ? "Algunos usuarios no fueron cargados con sus cursos"
             : "Se actualizaron los datos correctamente",
         text:
-          noSubidos.length > 0
-            ? "Los siguientes dni no fueron subidos: \n" +
-              noSubidos.join(" - \n")
+          ns && ns.length > 0
+            ? "Los siguientes DNI no fueron subidos:\n" +
+              ns.join(" - \n")
             : "",
         icon: "success",
         confirmButtonText: "Continuar",
+      }).then(() => {
+        // Cerramos el modo "Subir cursos" y limpiamos estado
+        setSubirCursosActive(false);
+        setCursoSelect(undefined);
+        dispatch(clearStatus());
       });
     }
-  }, [cursos.status, cursos.msg, noSubidos, dispatch]);
+  }, [cursosState, dispatch]);
 
-  const template2 = {
-    layout: "PrevPageLink CurrentPageReport NextPageLink",
-    PrevPageLink: (options) => (
-      <button
-        type="button"
-        className={options.className}
-        onClick={() => handlePagination("prev")}
-        disabled={prevDisable}
-      >
-        <span className="p-3">Anterior</span>
-      </button>
-    ),
-    NextPageLink: (options) => (
-      <button
-        type="button"
-        className={options.className}
-        onClick={() => handlePagination("next")}
-        disabled={nextDisable}
-      >
-        <span className="p-3">Siguiente</span>
-      </button>
-    ),
-    CurrentPageReport: (options) => (
-      <button
-        type="button"
-        className={options.className}
-        onClick={options.onClick}
-      >
-        {page}
-        <Ripple />
-      </button>
-    ),
-  };
+  // 🔹 Template del Paginator, memoizado
+  const template2 = useMemo(
+    () => ({
+      layout: "PrevPageLink CurrentPageReport NextPageLink",
+      PrevPageLink: (options) => (
+        <button
+          type="button"
+          className={options.className}
+          onClick={() => handlePagination("prev")}
+          disabled={page <= 1 || processing}
+        >
+          <span className="p-3">Anterior</span>
+        </button>
+      ),
+      NextPageLink: (options) => (
+        <button
+          type="button"
+          className={options.className}
+          onClick={() => handlePagination("next")}
+          disabled={processing}
+        >
+          <span className="p-3">Siguiente</span>
+        </button>
+      ),
+      CurrentPageReport: (options) => (
+        <button
+          type="button"
+          className={options.className}
+          onClick={options.onClick}
+        >
+          {page}
+          <Ripple />
+        </button>
+      ),
+    }),
+    [handlePagination, page, processing]
+  );
 
   return (
     <div className={styles.container}>
@@ -302,9 +353,9 @@ const Cursos = () => {
           {subirCursosActive && (
             <Button
               label="Ver Cursos"
-              icon={"pi pi-search"}
+              icon="pi pi-search"
               onClick={() => {
-                setSubirCursosActive(!subirCursosActive);
+                setSubirCursosActive(false);
                 setCursoSelect(undefined);
               }}
             />
@@ -315,20 +366,22 @@ const Cursos = () => {
       <div className={styles.table_upload}>
         {subirCursosActive ? (
           <SubirCursosUsuarios curso={cursoSelect} noSubidos={noSubidos} />
-        ) : cursos.cursos.length > 0 ? (
+        ) : cursos && cursos.length > 0 ? (
           <>
             <DataTable
-              value={cursos.cursos}
+              value={cursos}
               responsiveLayout="scroll"
-              loading={cursos.processing}
-              tableStyle={{ tableLayout: "fixed" }} // respeta los widths
+              loading={processing}
+              dataKey="id"
+              tableStyle={{ tableLayout: "fixed" }}
               className={`p-datatable-sm ${styles.prettyTable}`}
             >
               {dynamicColumns}
             </DataTable>
+
             <Paginator template={template2} />
           </>
-        ) : cursos.processing ? (
+        ) : processing ? (
           <ProgressSpinner className="loader" />
         ) : (
           <Button
@@ -342,3 +395,4 @@ const Cursos = () => {
 };
 
 export default Cursos;
+

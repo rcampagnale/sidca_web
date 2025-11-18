@@ -31,6 +31,9 @@ const NavUser = ({ active, setActive }) => {
                 <li onClick={() => history.push('/admin/novedades')}>Novedades</li>
                 <li onClick={() => history.push('/admin/nuevos-afiliados')}>Afiliados</li>
                  <li onClick={() => history.push('/admin/AfiliadoActualizado')}>Afiliados Actualizados</li>
+                 <li onClick={() => history.push('/admin/AfiliadosDashboard')}>
+  Dashboard de Afiliados
+</li>
                 <li className={styles.logOut} onClick={confirm}>Cerrar sesión</li>
             </ul>
         </Sidebar>

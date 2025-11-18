@@ -47,6 +47,7 @@ import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
 import Adherentes from "../pages/Admin/Adherentes/Adherentes";
 import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
 import Credencial from "../pages/Credencial/Credencial";
+import AfiliadosDashboard from "../pages/Admin/AfiliadosDashboard/AfiliadosDashboard";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
@@ -167,6 +168,13 @@ const AppRouter = () => {
           path="/admin/AfiliadoActualizado"
           component={AfiliadoActualizado}
         />
+        <AdminRoute
+          exact
+          path="/admin/AfiliadosDashboard"
+          component={AfiliadosDashboard}
+        />
+        
+
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
         <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />
         <AdminRoute
