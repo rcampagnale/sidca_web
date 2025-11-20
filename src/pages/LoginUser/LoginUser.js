@@ -18,9 +18,23 @@ const normalizeDni = (dniRaw) =>
     .replace(/[^\d]/g, "")
     .slice(0, 12);
 
-// Frase clave para detectar que el error es de suspensión
-const SUSPENDED_PREFIX =
-  "Estimado/a docente, su afiliación figura como Afiliado en carácter de Adherente";
+/**
+ * Detecta si el mensaje corresponde a una cuenta
+ * Afiliado en carácter de Adherente SUSPENDIDA.
+ */
+const isSuspendedMessage = (msg) => {
+  if (typeof msg !== "string") return false;
+  const text = msg.toLowerCase();
+  return (
+    text.includes("afiliado en carácter de adherente") &&
+    text.includes("suspendida")
+  );
+};
+
+// Datos de WhatsApp del Área Afiliado Adherente
+const WHATSAPP_NUMBER = "5493834539754";
+const WHATSAPP_BASE_MESSAGE =
+  "Estimados/as, solicito ayuda para normalizar mi situación de Afiliado Adherente y restablecer el acceso a la app/web SiDCa. Muchas gracias.";
 
 const LoginUser = () => {
   const dispatch = useDispatch();
@@ -34,16 +48,20 @@ const LoginUser = () => {
   const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
   const [suspendedMsg, setSuspendedMsg] = useState("");
 
-  const isSuspendedMsg =
-    typeof user.msg === "string" &&
-    user.msg.startsWith(SUSPENDED_PREFIX);
+  // ✅ Nuevo: solo abrimos modal si hubo intento de login en esta visita
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
+
+  const suspended = isSuspendedMessage(user.msg);
 
   useEffect(() => {
-    if (user.status === "AUTH_FAILURE" && isSuspendedMsg) {
+    // Si todavía no hubo intento de login en esta visita, no mostramos nada
+    if (!hasAttemptedLogin) return;
+
+    if (user.status === "AUTH_FAILURE" && suspended) {
       setSuspendedMsg(user.msg || "");
       setShowSuspendedDialog(true);
     }
-  }, [user.status, user.msg, isSuspendedMsg]);
+  }, [user.status, user.msg, suspended, hasAttemptedLogin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,9 +72,12 @@ const LoginUser = () => {
       return;
     }
 
+    // Marcamos que hubo un intento de login en esta visita
+    setHasAttemptedLogin(true);
+
     const res = await dispatch(authenticateUser({ dni: dniNormalizado }));
     if (res?.ok) {
-      history.push("/home"); // o la ruta que corresponda
+      history.push("/home"); // Ruta de inicio del afiliado
       reset();
     }
   };
@@ -65,17 +86,18 @@ const LoginUser = () => {
     history.push("/afiliacion"); // ajusta la ruta si corresponde
   };
 
-  const WHATSAPP_NUMBER = "5493834539754"; // Área Afiliado Adherente
-const WHATSAPP_BASE_MESSAGE =
-  "Estimados/as, solicito ayuda para normalizar mi situación de Afiliado Adherente y restablecer el acceso a la app/web SiDCa. Muchas gracias.";
+  const handleSoporte = () => {
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+      WHATSAPP_BASE_MESSAGE
+    )}`;
+    window.open(url, "_blank");
+  };
 
-const handleSoporte = () => {
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    WHATSAPP_BASE_MESSAGE
-  )}`;
-  window.open(url, "_blank");
-};
-
+  const handleCloseSuspendedDialog = () => {
+    setShowSuspendedDialog(false);
+    // opcional: si querés, podés resetear el flag local
+    // setHasAttemptedLogin(false);
+  };
 
   return (
     <div className={styles.visibleContent}>
@@ -105,7 +127,7 @@ const handleSoporte = () => {
             style={{ display: "flex", justifyContent: "center", minHeight: 28 }}
           >
             {user.processing && <Spinner />}
-            {user.status === "AUTH_FAILURE" && !isSuspendedMsg && (
+            {user.status === "AUTH_FAILURE" && !suspended && (
               <small className="p-error">{user.msg}</small>
             )}
           </div>
@@ -143,7 +165,7 @@ const handleSoporte = () => {
         visible={showSuspendedDialog}
         style={{ width: "90%", maxWidth: "600px" }}
         modal
-        onHide={() => setShowSuspendedDialog(false)}
+        onHide={handleCloseSuspendedDialog}
       >
         <div style={{ whiteSpace: "pre-line", marginBottom: 16 }}>
           {suspendedMsg}
@@ -168,7 +190,7 @@ const handleSoporte = () => {
             type="button"
             label="Cerrar"
             className="p-button-secondary"
-            onClick={() => setShowSuspendedDialog(false)}
+            onClick={handleCloseSuspendedDialog}
           />
         </div>
       </Dialog>
@@ -177,4 +199,3 @@ const handleSoporte = () => {
 };
 
 export default LoginUser;
-
