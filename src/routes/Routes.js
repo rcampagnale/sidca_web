@@ -48,6 +48,9 @@ import Adherentes from "../pages/Admin/Adherentes/Adherentes";
 import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
 import Credencial from "../pages/Credencial/Credencial";
 import AfiliadosDashboard from "../pages/Admin/AfiliadosDashboard/AfiliadosDashboard";
+import ReservaCasaDocente from "../pages/ReservaCasaDocente/ReservaCasaDocente";
+import ReservaCasaDocenteAdmin from "../pages/Admin/ReservaCasaDocente/ReservaCasaDocenteAdmin";
+
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
@@ -71,6 +74,13 @@ const AppRouter = () => {
         {/* 👇 Ahora la raíz muestra LoginUser como página principal */}
         <PublicRoute exact path="/" component={LoginUser} />
         {/* ✅ Logout SIEMPRE público */}
+        <PublicRoute
+          exact
+          path="/reserva-casa-docente"
+          component={ReservaCasaDocente}
+          allowAuthenticated={true}
+        />
+
         <PublicRoute exact path="/logout" component={Logout} />
         <Route exact path="/afiliacion" component={Afiliacion} />
 
@@ -126,6 +136,11 @@ const AppRouter = () => {
         <PublicRoute exact path="/admin/login" component={LoginAdmin} />
         <AdminRoute exact path="/admin" component={Admin} />
         <AdminRoute exact path="/admin/Adherentes" component={Adherentes} />
+        <AdminRoute
+          exact
+          path="/admin/reserva-casa-docente"
+          component={ReservaCasaDocenteAdmin}
+        />
 
         <AdminRoute
           exact
@@ -173,7 +188,6 @@ const AppRouter = () => {
           path="/admin/AfiliadosDashboard"
           component={AfiliadosDashboard}
         />
-        
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
         <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />

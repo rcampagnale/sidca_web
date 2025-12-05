@@ -72,6 +72,11 @@ export const toRow = (d) => {
     nombre: clean(d.nombre) || "",
     apellido: clean(d.apellido) || "",
     dni: clean(d.dni) || "",
+
+    // 🆕 Campos de votación
+    mesaNro: clean(d.mesaNro) || clean(d.mesa) || "",
+    lugarVotacion: clean(d.lugarVotacion) || "",
+
     nroAfiliacion: Number(d.nroAfiliacion ?? 1),
     departamento: clean(d.departamento) || "",
     establecimientos: clean(d.establecimientos) || "",
@@ -82,10 +87,10 @@ export const toRow = (d) => {
     descuento: getDescuentoValue(d),
     observaciones: clean(d.observaciones) || "",
     activo: typeof d.activo === "boolean" ? d.activo : true,
-    // compat: muchos datasets usan "adherente" o infieren desde "activo"
     adherente: (d.adherente ?? d.activo) === true,
   };
 };
+
 
 /** Crea opciones únicas de departamentos (para Dropdown) desde un array de filas */
 export function departamentosOptionsFrom(rows) {

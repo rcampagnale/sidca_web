@@ -69,6 +69,8 @@ const EMPTY_FORM = {
   celular: "",
   departamento: "",
   establecimientos: "",
+  mesaNro: "", // 🆕
+  lugarVotacion: "", // 🆕
   descuento: "",
   nroAfiliacion: "",
   observaciones: "",
@@ -107,7 +109,7 @@ const mapUsuarioDocToRow = (d) => {
   const haystack = norm(
     `${r.apellido} ${r.nombre} ${String(r.dni || "")} ${r.email || ""} ${
       r.departamento || ""
-    } ${r.motivo || ""}`
+    } ${r.motivo || ""} ${r.mesaNro || ""} ${r.lugarVotacion || ""}`
   );
   return { ...r, haystack };
 };
@@ -124,7 +126,9 @@ const mapNuevoDocToRow = (d) => {
   const haystack = norm(
     `${row.apellido} ${row.nombre} ${row.dni} ${row.nroAfiliacion} ${
       row.email
-    } ${row.departamento} ${row.motivo || ""}`
+    } ${row.departamento} ${row.motivo || ""} ${row.mesaNro || ""} ${
+      row.lugarVotacion || ""
+    }`
   );
   return { ...row, haystack };
 };
@@ -192,6 +196,11 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
         celular: pick(nr.celular, ur.celular),
         departamento: pick(nr.departamento, ur.departamento),
         establecimientos: pick(nr.establecimientos, ur.establecimientos),
+
+        // 🆕 Campos votación
+        mesaNro: pick(nr.mesaNro, ur.mesaNro),
+        lugarVotacion: pick(nr.lugarVotacion, ur.lugarVotacion),
+
         descuento: pick(nr.descuento, ur.descuento),
         nroAfiliacion: pick(nr.nroAfiliacion, ur.nroAfiliacion),
         observaciones: pick(nr.observaciones, ur.observaciones),
@@ -222,7 +231,9 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
       merged.haystack = norm(
         `${merged.apellido} ${merged.nombre} ${merged.dni} ${
           merged.email || ""
-        } ${merged.departamento || ""} ${merged.motivo || ""}`
+        } ${merged.departamento || ""} ${merged.motivo || ""} ${
+          merged.mesaNro || ""
+        } ${merged.lugarVotacion || ""}`
       );
       out.push(merged);
     } else if (nr) {
@@ -278,6 +289,7 @@ async function syncAdherentesForPayload(dniKey, payload, preferredId) {
     }
   }
 }
+
 // =======================
 // Helpers para DEPARTAMENTO
 // =======================
@@ -378,6 +390,23 @@ const normalizeFieldName = (raw) => {
     case "institucion":
     case "institución":
       return "establecimientos";
+
+    // 🆕 Mesa N°
+    case "mesa n°":
+    case "mesa nº":
+    case "mesa nro":
+    case "mesa":
+      return "mesaNro";
+
+    // 🆕 Lugar de votación
+    case "lugar de votación":
+    case "lugar de votacion":
+    case "lugar votación":
+    case "lugar votacion":
+    case "lugar de voto":
+    case "lugar voto":
+      return "lugarVotacion";
+
     case "descuento":
       return "descuento";
     case "nro afiliacion":
@@ -400,6 +429,8 @@ const normalizeFieldName = (raw) => {
   }
 };
 
+
+
 // 🔹 SOLO mostramos estos campos en el modal de importación
 const FIELD_LABELS = {
   nroAfiliacion: "Afiliación",
@@ -409,7 +440,10 @@ const FIELD_LABELS = {
   establecimientos: "Establecimiento",
   celular: "Celular",
   email: "Email",
+  mesaNro: "Mesa N°",                 // 🆕
+  lugarVotacion: "Lugar de Votación", // 🆕
 };
+
 
 const normalizeExcelValue = (field, raw) => {
   if (raw == null) return "";
@@ -620,6 +654,7 @@ export default function AfiliadoActualizado() {
       return toTimestamp(sb) - toTimestamp(sa);
     });
   }, [rowsNuevo, rowsUsuariosMerged, source]);
+
   // 🔹 Opciones de DEPARTAMENTO normalizadas y sin duplicados
   const departamentosOptions = useMemo(() => {
     const baseOpts = departamentosOptionsFrom(combinedRows) || [];
@@ -784,6 +819,8 @@ export default function AfiliadoActualizado() {
       celular: row.celular ?? "",
       departamento: (row.departamento || "").toString().trim(),
       establecimientos: row.establecimientos ?? "",
+      mesaNro: row.mesaNro ?? "", // 🆕
+      lugarVotacion: row.lugarVotacion ?? "", // 🆕
       descuento: row.descuento ?? "",
       nroAfiliacion: String(row.nroAfiliacion ?? ""),
       observaciones: row.observaciones ?? "",
@@ -807,6 +844,8 @@ export default function AfiliadoActualizado() {
       celular: row.celular ?? "",
       departamento: (row.departamento || "").toString().trim(),
       establecimientos: row.establecimientos ?? "",
+      mesaNro: row.mesaNro ?? "", // 🆕
+      lugarVotacion: row.lugarVotacion ?? "", // 🆕
       descuento: row.descuento ?? "",
       nroAfiliacion: String(row.nroAfiliacion ?? ""),
       observaciones: row.observaciones ?? "",
@@ -912,6 +951,8 @@ export default function AfiliadoActualizado() {
         DNI: d.dni || "",
         Afiliación: d.nroAfiliacion ? Number(d.nroAfiliacion) : "",
         Departamento: d.departamento || "",
+        "Lugar de Votación": d.lugarVotacion || "", // 🆕
+        "Mesa N°": d.mesaNro || "", // 🆕
         Establecimientos: d.establecimientos || "",
         Celular: d.celular || "",
         Email: d.email || "",
@@ -1024,6 +1065,8 @@ export default function AfiliadoActualizado() {
           activo: typeof payload.activo === "boolean" ? payload.activo : true,
           motivo: payload.motivo ?? "",
           cotizante: !!payload.cotizante,
+          mesaNro: payload.mesaNro ?? "", // 🆕
+          lugarVotacion: payload.lugarVotacion ?? "", // 🆕
         };
 
         if (idU) {
@@ -1045,10 +1088,14 @@ export default function AfiliadoActualizado() {
           const refAlt = fsDoc(db, "usuarios", altId);
           await fsSetDoc(refAlt, payloadUsuarios, { merge: true });
           setRowsUsuariosLocal((prev) =>
-            prev.map((r) => (r.id === altId ? { ...r, ...payloadUsuarios } : r))
+            prev.map((r) =>
+              r.id === altId ? { ...r, ...payloadUsuarios } : r
+            )
           );
           setExtraUsuariosRows((prev) =>
-            prev.map((r) => (r.id === altId ? { ...r, ...payloadUsuarios } : r))
+            prev.map((r) =>
+              r.id === altId ? { ...r, ...payloadUsuarios } : r
+            )
           );
         }
 
@@ -1138,6 +1185,8 @@ export default function AfiliadoActualizado() {
           activo: typeof payload.activo === "boolean" ? payload.activo : true,
           motivo: payload.motivo ?? "",
           cotizante: !!payload.cotizante,
+          mesaNro: payload.mesaNro ?? "", // 🆕
+          lugarVotacion: payload.lugarVotacion ?? "", // 🆕
         };
         await fsUpdateDoc(ref, payloadUsuarios);
 
@@ -1697,7 +1746,7 @@ export default function AfiliadoActualizado() {
           </div>
           <ProgressBar value={importProgress} />
           <div style={{ fontSize: 12, opacity: 0.8 }}>
-            Progreso: {importProgress}%
+            Progreso: {importProgress}%{" "}
           </div>
         </div>
       </Dialog>

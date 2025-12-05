@@ -1,8 +1,16 @@
 // src/pages/Credencial/Credencial.js
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { useSelector } from "react-redux";
 import { Toast } from "primereact/toast";
 import { ProgressSpinner } from "primereact/progressspinner";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import {
   collection,
   getDocs,
@@ -19,7 +27,7 @@ import credencialImg from "../../assets/credencial/credencial.jpg";
 /* =========================
    Utilidades compartidas
    ========================= */
-// Toma el primer valor no vacío entre varias claves
+
 const pick = (obj, keys) => {
   for (const k of keys) {
     const v = obj?.[k];
@@ -30,15 +38,16 @@ const pick = (obj, keys) => {
   return "";
 };
 
-// “Apellido, Nombre”
 const nombreAfiliado = (apellido, nombre) => {
   const ap = (apellido || "").trim();
   const no = (nombre || "").trim();
   const combinado = ap && no ? `${ap}, ${no}` : ap || no;
-  return combinado.replace(/\s*,\s*/g, ", ").replace(/\s+/g, " ").trim();
+  return combinado
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s+/g, " ")
+    .trim();
 };
 
-// Busca por DNI aceptando string/number/solo dígitos y campos "dni"/"DNI"
 const getByDni = async (colRef, dniRaw) => {
   const valuesToTry = [];
   const rawStr = String(dniRaw ?? "").trim();
@@ -64,30 +73,28 @@ export default function Credencial() {
 
   const [loading, setLoading] = useState(true);
   const [perfil, setPerfil] = useState(null);
+  const [showWhereVote, setShowWhereVote] = useState(false);
 
-  /* =========================
-     Resolver docId y dni del login
-     (Redux -> localStorage -> ?dni=)
-     ========================= */
+  // 🗳 Configuración de voto en credencial (cod/votoCredencial)
+  const [votoConfig, setVotoConfig] = useState({
+    habilitado: false,
+    link: "",
+    texto: "",
+  });
+
   const resolveIds = useCallback(() => {
-    // 1) Redux (como en MiRegistro)
     const docIdFromStore = user?.docId || "";
     const dniFromStore = user?.dni || "";
 
-    // 2) localStorage (mismas claves que usa MiRegistro)
     const docIdLS =
       docIdFromStore || localStorage.getItem("sidca_user_docId") || "";
-    const dniLS =
-      dniFromStore || localStorage.getItem("sidca_user_dni") || "";
+    const dniLS = dniFromStore || localStorage.getItem("sidca_user_dni") || "";
 
-    // 3) QueryString opcional ?dni=
     let dniQS = "";
     try {
       const qs = new URLSearchParams(window.location.search);
       dniQS = qs.get("dni") || "";
-    } catch {
-      /* no-op */
-    }
+    } catch {}
 
     return {
       docId: String(docIdLS || "").trim(),
@@ -95,12 +102,6 @@ export default function Credencial() {
     };
   }, [user]);
 
-  /* =========================
-     Carga de perfil:
-     1) usuarios por docId
-     2) usuarios por dni
-     3) nuevoAfiliado por dni (para completar depto si falta)
-     ========================= */
   const loadPerfil = useCallback(async () => {
     setLoading(true);
     try {
@@ -120,42 +121,74 @@ export default function Credencial() {
 
       let data = null;
 
-      // 1) Intentar por docId en "usuarios"
       if (docId) {
         const ref = doc(db, "usuarios", docId);
         const snap = await getDoc(ref);
         if (snap.exists()) data = snap.data();
       }
 
-      // 2) Si no hay, probar por dni en "usuarios"
       if (!data && dni) {
         const usuariosRef = collection(db, "usuarios");
         const foundUsr = await getByDni(usuariosRef, dni);
         if (foundUsr) data = foundUsr;
       }
 
-      // 3) Si aún no hay, probar en "nuevoAfiliado" (o usarlo para completar depto)
       let depto = pick(data, ["departamento", "depto", "departamentoNombre"]);
+      let mesa = pick(data, ["mesaNro", "mesa", "MesaNro"]);
+      let lugarVotacion = pick(data, [
+        "lugarVotacion",
+        "lugar_de_votacion",
+        "lugarVotacionNombre",
+      ]);
+
       if (!data && dni) {
         const nuevoAfiliadoRef = collection(db, "nuevoAfiliado");
         const foundNA = await getByDni(nuevoAfiliadoRef, dni);
         if (foundNA) {
           data = foundNA;
+
           if (!depto) {
-            depto = pick(foundNA, ["departamento", "depto", "departamentoNombre"]);
+            depto = pick(foundNA, [
+              "departamento",
+              "depto",
+              "departamentoNombre",
+            ]);
+          }
+          if (!mesa) {
+            mesa = pick(foundNA, ["mesaNro", "mesa", "MesaNro"]);
+          }
+          if (!lugarVotacion) {
+            lugarVotacion = pick(foundNA, [
+              "lugarVotacion",
+              "lugar_de_votacion",
+              "lugarVotacionNombre",
+            ]);
           }
         }
-      } else if (data && !depto && dni) {
-        // completar depto desde nuevoAfiliado si en usuarios no está
+      } else if (data && dni && (!depto || !mesa || !lugarVotacion)) {
         const nuevoAfiliadoRef = collection(db, "nuevoAfiliado");
         const foundNA = await getByDni(nuevoAfiliadoRef, dni);
         if (foundNA) {
-          const depFallback = pick(foundNA, [
-            "departamento",
-            "depto",
-            "departamentoNombre",
-          ]);
-          if (depFallback) depto = depFallback;
+          if (!depto) {
+            const depFallback = pick(foundNA, [
+              "departamento",
+              "depto",
+              "departamentoNombre",
+            ]);
+            if (depFallback) depto = depFallback;
+          }
+          if (!mesa) {
+            const mesaFallback = pick(foundNA, ["mesaNro", "mesa", "MesaNro"]);
+            if (mesaFallback) mesa = mesaFallback;
+          }
+          if (!lugarVotacion) {
+            const lugarFallback = pick(foundNA, [
+              "lugarVotacion",
+              "lugar_de_votacion",
+              "lugarVotacionNombre",
+            ]);
+            if (lugarFallback) lugarVotacion = lugarFallback;
+          }
         }
       }
 
@@ -170,16 +203,15 @@ export default function Credencial() {
         return;
       }
 
-      const dniFinal =
-        data?.dni ??
-        dni ??
-        ""; // conserva el dni resuelto si el documento no trae el campo
+      const dniFinal = data?.dni ?? dni ?? "";
 
       const perfilBase = {
         apellido: data?.apellido || "",
         nombre: data?.nombre || "",
         dni: String(dniFinal),
         departamento: depto || "Departamento",
+        mesa: mesa || "",
+        lugarVotacion: lugarVotacion || "",
       };
 
       setPerfil(perfilBase);
@@ -197,13 +229,38 @@ export default function Credencial() {
     }
   }, [resolveIds]);
 
+  // 🗳 Cargar configuración de voto (cod/votoCredencial)
+  useEffect(() => {
+    const loadVotoConfig = async () => {
+      try {
+        const snap = await getDoc(doc(db, "cod", "votoCredencial"));
+        if (snap.exists()) {
+          const d = snap.data() || {};
+          setVotoConfig({
+            habilitado: !!d.habilitado,
+            link: typeof d.link === "string" ? d.link : "",
+            texto: typeof d.texto === "string" ? d.texto : "",
+          });
+        } else {
+          setVotoConfig({
+            habilitado: false,
+            link: "",
+            texto: "",
+          });
+        }
+      } catch (err) {
+        console.error("[Credencial] Error cargando votoCredencial:", err);
+        setVotoConfig((prev) => ({ ...prev, habilitado: false }));
+      }
+    };
+
+    loadVotoConfig();
+  }, []);
+
   useEffect(() => {
     loadPerfil();
   }, [loadPerfil]);
 
-  /* =========================
-     Derivados para la UI
-     ========================= */
   const displayName = useMemo(
     () =>
       perfil && (perfil.apellido || perfil.nombre)
@@ -214,10 +271,23 @@ export default function Credencial() {
 
   const displayDni = perfil?.dni || "xxxxxxx";
   const displayDepto = perfil?.departamento || "Departamento";
+  const displayMesa = perfil?.mesa || "Sin dato";
+  const displayLugarVotacion =
+    perfil?.lugarVotacion || "Sin información de lugar";
+
+  // Label del botón: usa texto opcional si está configurado, si no, usa el default
+  const whereVoteLabel = useMemo(() => {
+    const txt = (votoConfig.texto || "").trim();
+    return txt || "¿Dónde voto?";
+  }, [votoConfig.texto]);
 
   return (
     <div className={styles.container}>
       <Toast ref={toastRef} />
+
+      <div className={styles.titleRow}>
+        <h1 className={styles.title}>Mi credencial</h1>
+      </div>
 
       {loading && (
         <div className={styles.loader}>
@@ -228,12 +298,12 @@ export default function Credencial() {
 
       <div className={styles.card}>
         <div className={styles.credencialPreview}>
-          {/* Título */}
+          {/* Título vertical */}
           <div className={`${styles.infoOverlay} ${styles.infoTitleOverlay}`}>
             <div className={styles.infoTitle}>Credencial de Afiliado</div>
           </div>
 
-          {/* Datos a la izquierda */}
+          {/* Datos: Departamento / DNI / Afiliado */}
           <div
             className={`${styles.infoOverlay} ${styles.infoDataOverlay} ${styles.overlayLeft}`}
           >
@@ -253,6 +323,19 @@ export default function Credencial() {
             </div>
           </div>
 
+          {/* 👉 Botón "Dónde voto" SOLO si está habilitado en cod/votoCredencial */}
+          {votoConfig.habilitado && (
+            <div className={`${styles.infoOverlay} ${styles.whereVoteOverlay}`}>
+              <Button
+                label={whereVoteLabel}
+                icon="pi pi-map-marker"
+                className={`${styles.whereVoteButton} p-button-sm`}
+                onClick={() => setShowWhereVote(true)}
+                disabled={!perfil}
+              />
+            </div>
+          )}
+
           <img
             src={credencialImg}
             alt="Credencial"
@@ -265,7 +348,51 @@ export default function Credencial() {
       <p className={styles.helper}>
         Si algún dato no coincide, comunícate con Soporte Técnico.
       </p>
+
+      <Dialog
+        header="¿Dónde voto?"
+        visible={showWhereVote}
+        style={{ width: "90%", maxWidth: "420px" }}
+        modal
+        onHide={() => setShowWhereVote(false)}
+      >
+        {perfil ? (
+          <div className={styles.whereVoteContent}>
+            <p>
+              <strong>Mesa N°:</strong> {displayMesa}
+            </p>
+            <p>
+              <strong>Lugar de votación:</strong> {displayLugarVotacion}
+            </p>
+            <p className={styles.whereVoteHint}>
+              Si la mesa o el lugar de votación que figuran aquí no coinciden
+              con tu domicilio actual, Sin dato, Sin información de luga, o querés solicitar un cambio, comunicate
+              con SIDCA al siguiente número.
+            </p>
+
+            
+            {/* Botón de WhatsApp SIDCA */}
+            <div
+              style={{
+                marginTop: "1rem",
+                display: "flex",
+                justifyContent: "flex-start",
+              }}
+            >
+              <Button
+                label="SIDCA WhatsApp"
+                icon="pi pi-comments" // 👈 nuevo ícono de chat
+                className={`${styles.whatsappButton} p-button-sm`}
+                onClick={() =>
+                  window.open("https://wa.me/543834250139", "_blank")
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <p>No se encontraron datos de votación para este afiliado.</p>
+        )}
+      </Dialog>
     </div>
   );
 }
-

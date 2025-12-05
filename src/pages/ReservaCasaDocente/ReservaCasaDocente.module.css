@@ -1,0 +1,863 @@
+/* ===============================
+ * LAYOUT GENERAL
+ * =============================== */
+
+/* Página a ancho completo, sin franjas blancas laterales */
+.page {
+  width: 100vw;
+  min-height: calc(100vh - 80px);
+  background: #606060; /* fondo gris de la zona del banner */
+  display: flex;
+  flex-direction: column;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: -18px; /* come la franja blanca bajo el header */
+}
+
+/* ===============================
+ * HERO: TÍTULO + BANNER
+ * =============================== */
+
+.heroSection {
+  width: 100%;
+  max-width: 1200px;
+  margin: 1rem auto 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem; /* separación título / banner */
+}
+
+/* Título fuera de la imagen */
+.heroTitle {
+  margin: 0;
+  display: inline-block;
+  padding: 0.7rem 2.6rem;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: center;
+
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+/* Banner centrado, sin deformar */
+.hero {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  border-radius: 16px;
+  border: 3px solid #ffffff;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  background: #000;
+  aspect-ratio: 16 / 7; /* proporción fija */
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Overlay para oscurecer un poco la foto */
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0.15),
+    rgba(15, 23, 42, 0.85)
+  );
+  pointer-events: none;
+}
+
+/* ===============================
+ * CAROUSEL (texto + imagen)
+ * =============================== */
+
+.carouselSection {
+  width: 100%;
+  background: #c7bba0; /* fondo beige del carrusel */
+  padding: 2.5rem 1.5rem 3rem;
+  border-top: 3px solid #b8aa90; /* corte visual entre gris y beige */
+}
+
+.carouselInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.carouselText {
+  flex: 2;
+}
+
+.carouselTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: #111827;
+}
+
+.carouselDescription {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #111827;
+}
+
+/* Imagen del carrusel (desktop) */
+.carouselImageWrapper {
+  flex: 0 0 320px;
+  max-width: 320px;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 0.4rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+  margin-left: auto;
+}
+
+.carouselImage {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  object-fit: cover;
+}
+
+/* Puntitos del carrusel */
+.carouselControls {
+  max-width: 1200px;
+  margin: 1.25rem auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.carouselDots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.carouselDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(31, 41, 55, 0.3);
+  cursor: pointer;
+}
+
+.carouselDotActive {
+  width: 20px;
+  background: #111827;
+}
+
+/* ===============================
+ * SECCIÓN: ESTILOS / TIPOS DE HABITACIÓN
+ * =============================== */
+
+.roomStylesSection {
+  width: 100%;
+  background: #f3ede1; /* color diferente al gris y beige */
+  padding: 2.5rem 1.5rem 3rem;
+  border-top: 2px solid #d4c7af;
+  margin-bottom: -15px; /* elimina franja blanca antes del footer */
+}
+
+.roomStylesInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.roomStylesTitle {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: #1f2933;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.roomStylesSubtitle {
+  font-size: 1rem;
+  color: #4b5563;
+  margin: 0 0 1.8rem;
+}
+
+/* Grid de tarjetas */
+.roomStylesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+  min-height: 80px;
+}
+
+/* Estados (cargando / error / vacío) */
+.roomStatusText,
+.roomStatusTextError {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+}
+
+.roomStatusText {
+  color: #6b7280;
+}
+
+.roomStatusTextError {
+  color: #b91c1c;
+}
+
+/* ===============================
+ * TARJETA DE HABITACIÓN (pública)
+ * =============================== */
+
+.roomCard {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.4rem;
+}
+
+/* Imagen + flechas */
+.roomCardImageWrapper {
+  width: 100%;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.roomCardImage {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Controles del mini-carrusel (flechas) */
+.roomCardImageControls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.45rem;
+  pointer-events: none; /* las flechas vuelven a habilitar eventos */
+}
+
+.roomCardArrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background-color: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  pointer-events: auto;
+  transition: background-color 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+
+.roomCardArrow:hover {
+  background-color: rgba(15, 23, 42, 0.9);
+  transform: translateY(-1px);
+}
+
+/* Título / subtítulo / features */
+.roomCardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #111827;
+}
+
+.roomCardTag {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+}
+
+.roomCardFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 0.2rem 0 0.4rem 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.roomCardFeatures li + li {
+  margin-top: 0.15rem;
+}
+
+/* Servicios con íconos */
+.roomCardServices {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.7rem;
+}
+
+.serviceItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+.serviceIcon {
+  font-size: 1rem;
+}
+
+.serviceLabel {
+  white-space: nowrap;
+}
+
+/* Precio */
+.roomCardPrice {
+  font-size: 0.85rem;
+  color: #111827;
+  margin: 0.5rem 0 0;
+}
+
+.roomCardPrice span {
+  font-weight: 600;
+}
+
+/* ===============================
+ * RESPONSIVE
+ * =============================== */
+
+@media (max-width: 900px) {
+  .heroSection {
+    margin: 0.75rem auto 1.5rem;
+    gap: 1rem;
+  }
+
+  .heroTitle {
+    font-size: 1.6rem;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 2.1rem;
+  }
+
+  .hero {
+    max-width: 720px;
+    border-radius: 12px;
+    border-width: 2px;
+  }
+
+  .carouselInner {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem; /* mucho más cerca imagen y texto */
+  }
+
+  .carouselText {
+    order: 2;
+  }
+
+  /* En tablet/celu: solo la foto con sombra, sin tarjeta blanca */
+  .carouselImageWrapper {
+    order: 1;
+    max-width: 260px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .carouselImage {
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+  }
+
+  .roomStylesInner {
+    padding: 0 0.5rem;
+  }
+
+  .roomStylesTitle {
+    font-size: 1.4rem;
+  }
+
+  .roomStylesSubtitle {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    min-height: calc(100vh - 64px);
+  }
+
+  .carouselSection {
+    padding: 1.7rem 1rem 2.3rem; /* menos alto */
+  }
+
+  .heroTitle {
+    font-size: 1.2rem;
+    line-height: 1.4;
+    padding: 0.5rem 1.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .hero {
+    max-width: 90%;
+    aspect-ratio: 16 / 5; /* más achatado en vertical */
+  }
+
+  .roomStylesSection {
+    padding: 2rem 1rem 2.5rem;
+  }
+
+  .roomStylesInner {
+    padding: 0 0.75rem;
+  }
+
+  .roomCardImage {
+    height: 160px;
+  }
+}
+
+.roomCardDivider {
+  width: 40%;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0.3rem 0 0.35rem;
+}
+
+.roomCardSubtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  margin: 0 0 0.35rem;
+}
+
+.roomCardReserveButton {
+  margin-top: 0.6rem;
+  padding: 0.45rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.roomCardReserveButton:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+}
+
+.roomCardReserveButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+/* ===============================
+ * MODAL RESERVA (calendario)
+ * =============================== */
+
+.reservaModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* margen para que el modal no pegue a los bordes */
+  padding: 1rem;
+}
+
+.reservaModal {
+  width: 100%;
+  max-width: 820px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+  /* límite de alto para que no cubra toda la pantalla */
+  max-height: calc(100vh - 2rem);
+}
+
+.reservaModalHeader {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f9fafb;
+  flex-shrink: 0;
+}
+
+.reservaModalTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.reservaModalClose {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.reservaModalClose:hover {
+  color: #111827;
+}
+
+.reservaModalBody {
+  padding: 1rem 1.5rem 0.75rem;
+  overflow-y: auto; /* scroll interno */
+}
+
+.reservaModalInfo {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin: 0 0 0.75rem;
+}
+
+.reservaModalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.reservaFieldGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.reservaLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.2rem;
+}
+
+.reservaInput {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.reservaInput:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+  background-color: #ffffff;
+}
+
+.reservaErrorText {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+.reservaResultadoText {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: #166534;
+}
+
+.reservaModalFooter {
+  padding: 0.75rem 1.5rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.reservaPrimaryButton,
+.reservaSecondaryButton {
+  border-radius: 999px;
+  padding: 0.45rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reservaPrimaryButton {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.reservaPrimaryButton:hover:enabled {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.reservaPrimaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.reservaSecondaryButton {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.reservaSecondaryButton:hover {
+  background-color: #f9fafb;
+}
+
+/* Ajuste responsive modal: altura y padding en pantallas chicas */
+@media (max-width: 768px) {
+  .reservaModalOverlay {
+    padding: 0.5rem;
+  }
+
+  .reservaModal {
+    max-height: calc(100vh - 1rem);
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .reservaModal {
+    max-width: 92%;
+  }
+
+  .reservaModalGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Línea separadora dentro del modal de reserva */
+.reservaDivider {
+  margin: 0.9rem 0 0.7rem;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Título de sección dentro del modal (Datos para completar...) */
+.reservaSectionTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.6rem;
+}
+
+/* Textarea del motivo */
+.reservaTextarea {
+  font-size: 0.9rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  min-height: 80px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.reservaTextarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+  background-color: #ffffff;
+}
+
+/* ==== Bloque autofill por DNI (login ligero) ==== */
+
+.reservaAutofillHelp {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0 0 0.35rem;
+}
+
+.reservaAutofillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.reservaAutofillInput {
+  flex: 1 1 150px;
+}
+
+.reservaAutofillInput input {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  outline: none;
+}
+
+.reservaAutofillInput input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+  background-color: #ffffff;
+}
+
+.reservaAutofillButton {
+  border-radius: 999px;
+  border: none;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background-color: #e5e7eb;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reservaAutofillButton:hover {
+  background-color: #d1d5db;
+}
+
+.reservaAutofillStatus {
+  font-size: 0.78rem;
+  margin: 0.1rem 0 0.25rem;
+}
+
+.reservaAutofillStatusOk {
+  color: #166534;
+}
+
+.reservaAutofillStatusError {
+  color: #b91c1c;
+}
+
+.reservaAceptacionBox {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.6rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.reservaAceptacionLegend {
+  margin: 0 0 0.45rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.reservaCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+}
+
+.reservaCheckboxLabel {
+  font-size: 0.8rem;
+  color: #111827;
+  display: inline-flex;
+  gap: 0.4rem;
+  line-height: 1.5;
+}
+
+.reservaCheckboxLabel input {
+  margin-top: 0.2rem;
+}
+
+/* ===== Sección "Consultar mi reserva" ===== */
+
+.consultaReservaSection {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed #d1d5db; /* separador suave debajo de las tarjetas */
+  text-align: center;
+}
+
+.consultaReservaText {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-bottom: 0.9rem;
+}
+
+/* Reutiliza el estilo azul del botón de reservar */
+.consultaReservaButton {
+  margin: 0 auto;
+  display: inline-flex;
+}
+
+/* ===== Resultados de consulta por DNI ===== */
+
+.consultaResultadosList {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* separación entre tarjetas */
+}
+
+.consultaResultadoCard {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e5e7eb; /* línea suave alrededor */
+  font-size: 0.9rem;
+}
+
+.consultaResultadoTitle {
+  margin: 0 0 0.25rem 0;
+  font-weight: 600;
+  color: #212529;
+}
+
+.consultaResultadoText {
+  margin: 0.1rem 0;
+  color: #4b5563;
+}
+
+.consultaResultadoEstado {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background-color: #e9f5ff;
+  color: #0d6efd;
+  font-weight: 500;
+}

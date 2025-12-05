@@ -7,13 +7,21 @@ import { toSiNo } from "./utils/shared.js";
 /**
  * Props:
  * - visible: boolean
- * - data: objeto fila normalizado (puede incluir: apellido, nombre, dni, fecha, hora, nroAfiliacion, tituloGrado, descuento, departamento, establecimientos, celular, email, observaciones, adherente)
+ * - data: objeto fila normalizado (puede incluir: apellido, nombre, dni, fecha, hora,
+ *   nroAfiliacion, tituloGrado, descuento, departamento, establecimientos,
+ *   celular, email, observaciones, adherente, mesaNro, lugarVotacion, origen)
  * - onClose: () => void
  */
 function ViewDialog({ visible, data, onClose }) {
   const Row = ({ label, value }) =>
     value ? (
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 8 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "220px 1fr",
+          gap: 8,
+        }}
+      >
         <b>{label}:</b>
         <span>{value}</span>
       </div>
@@ -36,7 +44,10 @@ function ViewDialog({ visible, data, onClose }) {
     >
       {data ? (
         <div style={{ display: "grid", gap: 10, padding: 6 }}>
-          <Row label="Apellido y Nombre" value={`${data.apellido ?? ""}, ${data.nombre ?? ""}`} />
+          <Row
+            label="Apellido y Nombre"
+            value={`${data.apellido ?? ""}, ${data.nombre ?? ""}`}
+          />
           <Row label="DNI" value={data.dni} />
           <Row label="Fecha" value={data.fecha} />
           <Row label="Hora" value={data.hora} />
@@ -52,6 +63,11 @@ function ViewDialog({ visible, data, onClose }) {
           <Row label="Descuento" value={toSiNo(data.descuento) || "—"} />
           <Row label="Departamento" value={data.departamento} />
           <Row label="Establecimientos" value={data.establecimientos} />
+
+          {/* 🆕 Campos de votación */}
+          <Row label="Mesa N°" value={data.mesaNro} />
+          <Row label="Lugar de Votación" value={data.lugarVotacion} />
+
           <Row label="Celular" value={data.celular} />
           <Row label="Email" value={data.email} />
           <Row label="Observaciones" value={data.observaciones} />

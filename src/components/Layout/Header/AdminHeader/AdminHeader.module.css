@@ -1,3 +1,4 @@
+/* src/pages/Admin/components/AdminHeader/AdminHeader.module.css */
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
 
 .header {
@@ -20,14 +21,14 @@ main {
   display: flex;
   width: 100%;
   align-items: center;
-  /* flex-flow: row wrap; */
   flex-grow: 1;
-  background-color: rgb(255, 255, 255);
+  background-color: #ffffff;
 }
 
 .visibleContent {
   background-color: #fff;
 }
+
 a {
   text-decoration: none;
 }
@@ -37,12 +38,142 @@ a {
   margin-left: 10px;
 }
 
-/* CEll */
+/* ===== Navegación agrupada (desktop) ===== */
+
+.headerNav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Cada grupo (Gestión, Afiliados, Asistencia, Casa Docente) */
+.navGroup {
+  position: relative;
+}
+
+/* Botón del grupo */
+.navGroupButton {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+  padding: 6px 22px 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  transition: background 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+/* Flechita del desplegable */
+.navGroupButton::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid rgba(255, 255, 255, 0.8);
+  transition: transform 0.15s ease, border-top-color 0.15s ease;
+}
+
+.navGroupButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Rotamos la flecha cuando el menú está activo */
+.navGroup:hover .navGroupButton::after,
+.navGroup:focus-within .navGroupButton::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Dropdown del grupo */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 240px;
+  max-height: 380px;
+  overflow-y: auto;
+
+  background-color: #262626;
+  border-radius: 8px;
+  padding: 6px 0;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 1000;
+}
+
+/* Mostrar dropdown con animación */
+.navGroup:hover .dropdown,
+.navGroup:focus-within .dropdown {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Ítems del dropdown */
+.dropdownItem {
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  color: #f5f5f5;
+  white-space: nowrap;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  transition: background 0.15s ease, border-left-color 0.15s ease,
+    padding-left 0.15s ease, color 0.15s ease;
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownItem:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-left-color: #ffb300; /* color de acento */
+  padding-left: 18px;
+  color: #ffffff;
+}
+
+/* ===== CEll (mobile) ===== */
 @media only screen and (max-width: 767px) {
   /* header */
   .headerNav {
     display: none;
   }
+
   .headerText {
     color: rgb(131, 131, 131);
     border: 1px solid rgb(131, 131, 131);
@@ -53,51 +184,42 @@ a {
     font-size: 15px;
   }
 
-
   /* APP and others*/
   .btnExit {
     display: none;
   }
+
   .hamburger {
     display: block;
     margin-left: 15px;
   }
+
   .visibleContent {
     margin: 0;
   }
+
   .menuIcon {
     display: none;
   }
 }
 
-/* DESK */
+/* ===== DESK (≥768px) ===== */
 @media only screen and (min-width: 768px) {
   .headerNav {
-    display: flex;
-    flex-flow: row wrap;
+    /* ya tiene display:flex arriba; acá solo ajustamos layout */
     align-items: center;
     justify-content: flex-end;
     flex-grow: 1;
   }
-  .headerNav li {
-    color: #fff;
-    cursor: pointer;
-    font-size: 15px;
-    margin-right: 8px;
-  }
-  .headerNav li:hover  {
-    color: #ccc;
-    cursor: pointer;
-    font-size: 16px;
-    margin-right: 8px;
-  }
-  
+
   .btnExit {
     margin-right: 30px;
   }
+
   .menuIcon {
     margin-left: 30px;
   }
+
   .hamburger {
     display: none;
   }

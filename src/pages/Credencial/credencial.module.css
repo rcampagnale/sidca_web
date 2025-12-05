@@ -39,24 +39,26 @@
 /* ===========================
    CARD + IMAGEN (auto-fit)
    =========================== */
-/* ===== Contenedor imagen ===== */
+
 .card {
   display: inline-block;
   padding: 0;
   background: #fff;
   border-radius: 16px;
   border: 1px solid #eee;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   max-width: 100%;
   margin: 0 auto;
 }
+
 .credencialPreview {
   position: relative;
   display: inline-block;
   border: none;
   border-radius: 0;
 }
+
 .credencialImg {
   display: block;
   width: auto;
@@ -64,41 +66,55 @@
   max-width: 100%;
 }
 
-/* ===== Overlay base (posicionado absoluto, no empuja) ===== */
+/* ===== Overlay base ===== */
 .infoOverlay {
   position: absolute;
   display: flex;
   gap: 24px;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
-/* Alineaciones horizontales rápidas si necesitás */
-.overlayLeft   { left: 10px; right: auto; transform: none; }
-.overlayCenter { left: 50%; right: auto; transform: translateX(-50%); }
-.overlayRight  { right: 10px; left: auto; transform: none; }
+/* Alineaciones rápidas */
+.overlayLeft {
+  left: 10px;
+  right: auto;
+  transform: none;
+}
+.overlayCenter {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.overlayRight {
+  right: 10px;
+  left: auto;
+  transform: none;
+}
 
-/* ===== Overlay del TÍTULO (posición y color independientes) ===== */
+/* ===== Título vertical ===== */
 .infoTitleOverlay {
-  top: 05%;                /* ← mueve este valor para ubicarlo verticalmente */
+  top: 5%;
   left: 62%;
   transform: translateX(-50%);
 }
+
 .infoTitle {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
   font-weight: 900;
   font-size: clamp(1rem, 2.6vw, 1.6rem);
-  color: #ffffff;           /* ← color propio del título */
-  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   letter-spacing: 0.02em;
 }
 
-/* ===== Overlay de DATOS (Afiliado, DNI, Departamento) ===== */
+/* ===== Datos Afiliado / DNI / Depto ===== */
 .infoDataOverlay {
   top: 40%;
-  left: 10%;                /* ← baja o sube el bloque de datos desde acá */
+  left: 10%;
 }
+
 .infoUnit {
   writing-mode: vertical-rl;
   text-orientation: mixed;
@@ -107,19 +123,21 @@
   border: 0;
   padding: 0;
 }
+
 .infoLabel {
   font-weight: 700;
-  color: #111827;           /* ← color distinto al título */
+  color: #111827;
   font-size: 1rem;
   margin: 0 0 6px 0;
 }
+
 .infoValue {
   font-weight: 700;
   color: #111827;
   font-size: 1rem;
 }
 
-/* Helper del pie */
+/* Texto del pie */
 .helper {
   font-size: 0.9rem;
   color: #666;
@@ -128,8 +146,62 @@
 
 /* Responsive */
 @media (max-width: 720px) {
-  .credencialPreview { max-width: 100%; }
+  .credencialPreview {
+    max-width: 100%;
+  }
 }
+
 @media (min-width: 1024px) {
-  .credencialImg { max-width: 420px; }
+  .credencialImg {
+    max-width: 420px;
+  }
 }
+
+/* ===== Modal "¿Dónde voto?" ===== */
+.whereVoteContent {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.whereVoteHint {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* ===== Overlay independiente del botón ===== */
+.whereVoteOverlay {
+  /* 👉 ACÁ manejás la posición DEL BOTÓN */
+  top: 80%;  /* más grande = más abajo, más chico = más arriba */
+  left: 8%;  /* más grande = más a la derecha, más chico = más a la izquierda */
+}
+
+.whereVoteButton {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+
+  /* 🔽 Giro del botón completo (texto + ícono) */
+  transform: rotate(90deg);   /* cambiá el ángulo si querés otro giro */
+  transform-origin: center;
+
+  /* 🎨 Colores del botón y texto */
+  background-color: #f7b645 !important;
+border-color: #000000 !important;
+
+  color: #000000 !important;            /* color del texto + icono */
+}
+.whatsappButton {
+  background-color: #25d366 !important; /* verde WhatsApp */
+  border-color: #000000 !important;
+  color: #000000 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* por si PrimeReact pone el icono en gris */
+.whatsappButton :global(.p-button-icon) {
+  color: #000000 !important;
+}
+
+

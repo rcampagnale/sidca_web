@@ -15,6 +15,7 @@ export default function EditAfiliadoDialog({
   onCancel,
   onSave,
   saving = false,
+  showActivo = true, // 👈 opcional: mostrar/ocultar toggle Activo
 }) {
   const [form, setForm] = useState({
     nombre: "",
@@ -24,12 +25,14 @@ export default function EditAfiliadoDialog({
     celular: "",
     departamento: "",
     establecimientos: "",
+    mesaNro: "",        // 🆕
+    lugarVotacion: "",  // 🆕
     descuento: "",
     nroAfiliacion: "",
     observaciones: "",
     adherente: false,
     tituloGrado: "",
-    activo: true,         // 👈 NUEVO toggle Activo
+    activo: true,       // toggle Activo
   });
 
   useEffect(() => {
@@ -53,15 +56,21 @@ export default function EditAfiliadoDialog({
       celular: initialForm.celular ?? "",
       departamento: (initialForm.departamento ?? "").toString().trim(),
       establecimientos: initialForm.establecimientos ?? "",
+      mesaNro: initialForm.mesaNro ?? "",                 // 🆕
+      lugarVotacion: initialForm.lugarVotacion ?? "",     // 🆕
       descuento: descuentoNorm,
       nroAfiliacion:
-        initialForm.nroAfiliacion != null && initialForm.nroAfiliacion !== ""
+        initialForm.nroAfiliacion != null &&
+        initialForm.nroAfiliacion !== ""
           ? String(initialForm.nroAfiliacion)
           : "",
       observaciones: initialForm.observaciones ?? "",
       adherente: !!initialForm.adherente,
       tituloGrado: initialForm.tituloGrado ?? "",
-      activo: typeof initialForm.activo === "boolean" ? initialForm.activo : true, // 👈 por defecto true
+      activo:
+        typeof initialForm.activo === "boolean"
+          ? initialForm.activo
+          : true, // por defecto true
     });
   }, [initialForm]);
 
@@ -76,7 +85,12 @@ export default function EditAfiliadoDialog({
 
   const footer = (
     <div className="p-d-flex p-ai-center p-jc-end" style={{ gap: 8 }}>
-      <Button label="Cancelar" className="p-button-text" onClick={onCancel} disabled={saving} />
+      <Button
+        label="Cancelar"
+        className="p-button-text"
+        onClick={onCancel}
+        disabled={saving}
+      />
       <Button
         label={saving ? "Guardando..." : "Guardar"}
         icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
@@ -90,15 +104,18 @@ export default function EditAfiliadoDialog({
             celular: form.celular.trim(),
             departamento: form.departamento,
             establecimientos: form.establecimientos.trim(),
+            mesaNro: form.mesaNro.trim(),                 // 🆕
+            lugarVotacion: form.lugarVotacion.trim(),     // 🆕
             nroAfiliacion:
-              form.nroAfiliacion !== "" && form.nroAfiliacion != null
+              form.nroAfiliacion !== "" &&
+              form.nroAfiliacion != null
                 ? Number(form.nroAfiliacion)
                 : "",
             observaciones: form.observaciones,
             tituloGrado: form.tituloGrado,
-            adherente: !!form.adherente,   // ✅ boolean real
-            activo: !!form.activo,         // ✅ boolean real
-            descuento: descuentoStr,       // "si" | "no" | ""
+            adherente: !!form.adherente, // boolean real
+            activo: !!form.activo, // boolean real
+            descuento: descuentoStr, // "si" | "no" | ""
           };
           if (descuentoStr === "si") payload.cotizante = true;
           else if (descuentoStr === "no") payload.cotizante = false;
@@ -122,23 +139,40 @@ export default function EditAfiliadoDialog({
       <div className="p-fluid p-formgrid p-grid" style={{ rowGap: 10 }}>
         <div className="p-field p-col-12 p-md-6">
           <label>Nombre</label>
-          <InputText value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} />
+          <InputText
+            value={form.nombre}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, nombre: e.target.value }))
+            }
+          />
         </div>
         <div className="p-field p-col-12 p-md-6">
           <label>Apellido</label>
-          <InputText value={form.apellido} onChange={(e) => setForm((f) => ({ ...f, apellido: e.target.value }))} />
+          <InputText
+            value={form.apellido}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, apellido: e.target.value }))
+            }
+          />
         </div>
 
         <div className="p-field p-col-12 p-md-4">
           <label>DNI</label>
-          <InputText value={form.dni} onChange={(e) => setForm((f) => ({ ...f, dni: e.target.value }))} />
+          <InputText
+            value={form.dni}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, dni: e.target.value }))
+            }
+          />
         </div>
         <div className="p-field p-col-12 p-md-4">
           <label>Afiliación</label>
           <InputText
             key="nroAfiliacion"
             value={form.nroAfiliacion}
-            onChange={(e) => setForm((f) => ({ ...f, nroAfiliacion: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, nroAfiliacion: e.target.value }))
+            }
           />
         </div>
         <div className="p-field p-col-12 p-md-4">
@@ -146,18 +180,30 @@ export default function EditAfiliadoDialog({
           <Dropdown
             value={form.descuento}
             options={descuentoOptions}
-            onChange={(e) => setForm((f) => ({ ...f, descuento: e.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, descuento: e.value }))
+            }
             placeholder="—"
           />
         </div>
 
         <div className="p-field p-col-12 p-md-6">
           <label>Email</label>
-          <InputText value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+          <InputText
+            value={form.email}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, email: e.target.value }))
+            }
+          />
         </div>
         <div className="p-field p-col-12 p-md-6">
           <label>Celular</label>
-          <InputText value={form.celular} onChange={(e) => setForm((f) => ({ ...f, celular: e.target.value }))} />
+          <InputText
+            value={form.celular}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, celular: e.target.value }))
+            }
+          />
         </div>
 
         <div className="p-field p-col-12 p-md-6">
@@ -165,7 +211,9 @@ export default function EditAfiliadoDialog({
           <Dropdown
             value={form.departamento}
             options={departamentosOptions}
-            onChange={(e) => setForm((f) => ({ ...f, departamento: e.value || "" }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, departamento: e.value || "" }))
+            }
             placeholder="Seleccione…"
             showClear
           />
@@ -174,13 +222,40 @@ export default function EditAfiliadoDialog({
           <label>Establecimientos</label>
           <InputText
             value={form.establecimientos}
-            onChange={(e) => setForm((f) => ({ ...f, establecimientos: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, establecimientos: e.target.value }))
+            }
+          />
+        </div>
+
+        {/* 🆕 Campos de votación */}
+        <div className="p-field p-col-12 p-md-4">
+          <label>Mesa N°</label>
+          <InputText
+            value={form.mesaNro}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, mesaNro: e.target.value }))
+            }
+          />
+        </div>
+        <div className="p-field p-col-12 p-md-8">
+          <label>Lugar de Votación</label>
+          <InputText
+            value={form.lugarVotacion}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, lugarVotacion: e.target.value }))
+            }
           />
         </div>
 
         <div className="p-field p-col-12">
           <label>Título de grado</label>
-          <InputText value={form.tituloGrado} onChange={(e) => setForm((f) => ({ ...f, tituloGrado: e.target.value }))} />
+          <InputText
+            value={form.tituloGrado}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, tituloGrado: e.target.value }))
+            }
+          />
         </div>
 
         <div className="p-field p-col-12">
@@ -189,18 +264,34 @@ export default function EditAfiliadoDialog({
             autoResize
             rows={3}
             value={form.observaciones}
-            onChange={(e) => setForm((f) => ({ ...f, observaciones: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, observaciones: e.target.value }))
+            }
           />
         </div>
 
         <div className="p-field p-col-12">
           <label style={{ marginRight: 8 }}>Adherente</label>
-          <InputSwitch checked={!!form.adherente} onChange={(e) => setForm((f) => ({ ...f, adherente: !!e.value }))} />
+          <InputSwitch
+            checked={!!form.adherente}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, adherente: !!e.value }))
+            }
+          />
         </div>
 
-       
+        {showActivo && (
+          <div className="p-field p-col-12">
+            <label style={{ marginRight: 8 }}>Activo</label>
+            <InputSwitch
+              checked={!!form.activo}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, activo: !!e.value }))
+              }
+            />
+          </div>
+        )}
       </div>
     </Dialog>
   );
 }
-
