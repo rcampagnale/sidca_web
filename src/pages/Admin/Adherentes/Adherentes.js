@@ -228,6 +228,9 @@ const patchUsuarioByDni = async (dniInput, patch, { mirrorCreate = true } = {}) 
 export default function Adherente() {
   const toast = useRef(null);
   const fileInputRef = useRef(null);
+  const importingRef = useRef(false);
+  const snapshotVersionRef = useRef(0);
+  const mountedRef = useRef(true);
 
   // Base
   const [rows, setRows] = useState([]);
@@ -279,6 +282,13 @@ export default function Adherente() {
   const [cotzObs, setCotzObs] = useState("");
   const [cotzSaving, setCotzSaving] = useState(false);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // ===== Suscripción a Adherentes + join con nuevoAfiliado.activo =====
   useEffect(() => {
     setLoading(true);
@@ -288,18 +298,34 @@ export default function Adherente() {
     const unsub = onSnapshot(
       qRef,
       async (snap) => {
+        const currentVersion = ++snapshotVersionRef.current;
+
         try {
           const baseRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+          if (importingRef.current) {
+            if (!mountedRef.current || currentVersion !== snapshotVersionRef.current) return;
+            setRows(baseRows);
+            setLoading(false);
+            return;
+          }
+
           const enriched = await Promise.all(
             baseRows.map(async (r) => {
               const activo = await getActivoFromNuevo(r.dni, r.nroAfiliacion ?? null);
               return { ...r, estadoFromNuevo: (typeof activo === "boolean" ? activo : undefined) };
             })
           );
+
+          if (!mountedRef.current || currentVersion !== snapshotVersionRef.current) return;
+
           setRows(enriched);
           setLoading(false);
         } catch (e) {
           console.error("join nuevoAfiliado.activo:", e);
+
+          if (!mountedRef.current || currentVersion !== snapshotVersionRef.current) return;
+
           setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
           setLoading(false);
         }
@@ -355,15 +381,21 @@ export default function Adherente() {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setImportPercent(0);
     setImportStage("Leyendo archivo…");
+    setSummaryRows([]);
+    setSummaryCounts({ inserted: 0, updated: 0, skipped: 0 });
     setImporting(true);
+    importingRef.current = true;
+
     try {
       await importExcel(file);
     } catch (err) {
       console.error("importExcel:", err);
       toast.current?.show({ severity: "error", summary: "Error", detail: "No se pudo importar el archivo." });
     } finally {
+      importingRef.current = false;
       setImporting(false);
       e.target.value = "";
     }
@@ -377,11 +409,24 @@ export default function Adherente() {
     if (!ws) throw new Error("Hoja vacía");
 
     // 2) Convertir a matriz
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    if (!rows.length) throw new Error("Sin datos");
+    const sheetRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    if (!sheetRows.length) throw new Error("Sin datos");
+
+    const total = Math.max(sheetRows.length - 1, 0);
+    if (total > 300) {
+      setImportStage("Archivo excede el límite permitido");
+      setImportPercent(0);
+      toast.current?.show({
+        severity: "warn",
+        summary: "Archivo muy grande",
+        detail: "Para esta pantalla se recomienda importar hasta 300 afiliados por archivo.",
+        life: 5000,
+      });
+      return;
+    }
 
     // 3) Preparar mapeo de encabezados
-    const headers = rows[0].map((h) => headerKey(String(h || "")));
+    const headers = sheetRows[0].map((h) => headerKey(String(h || "")));
     const idxMap = {};
     headers.forEach((k, i) => { if (k) idxMap[k] = i; });
 
@@ -393,32 +438,45 @@ export default function Adherente() {
     const resumen = [];
 
     // 4) Progreso
-    const total = Math.max(rows.length - 1, 0);
     let done = 0;
     setImportStage(total === 0 ? "Sin registros para importar" : "Procesando registros…");
     setImportPercent(total === 0 ? 100 : 0);
 
     // 5) Procesar filas
-    for (const arr of rows.slice(1)) {
-      const getVal = (k) => { const i = idxMap[k]; return i === undefined ? "" : arr[i] ?? ""; };
+    for (const arr of sheetRows.slice(1)) {
+      const getVal = (k) => {
+        const i = idxMap[k];
+        return i === undefined ? "" : arr[i] ?? "";
+      };
 
       const apellido = String(getVal("apellido") || "").trim();
       const nombre = String(getVal("nombre") || "").trim();
       const dni = String(getVal("dni") || "").trim();
 
       if (!apellido || !nombre || !dni) {
-        skipped++; resumen.push({ apellido, nombre, dni, accion: "Omitido (faltan campos)" });
+        skipped++;
+        resumen.push({ apellido, nombre, dni, accion: "Omitido (faltan campos)" });
         done++;
-        if (total > 0) setImportPercent(Math.min(100, Math.round((done / total) * 100)));
+
+        if (total > 0 && (done % 10 === 0 || done === total)) {
+          setImportPercent(Math.min(100, Math.round((done / total) * 100)));
+        }
         continue;
       }
 
-      const nroAf = (() => { const n = Number(getVal("nroAfiliacion")); return Number.isFinite(n) && n > 0 ? n : null; })();
+      const nroAf = (() => {
+        const n = Number(getVal("nroAfiliacion"));
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })();
+
       const flagAdherenteExcel = parseYes(getVal("adherenteExcel"));
       const estadoExcel = parseEstadoExcel(getVal("estadoExcel"));
 
       const payload = {
-        apellido, nombre, dni, nroAfiliacion: nroAf,
+        apellido,
+        nombre,
+        dni,
+        nroAfiliacion: nroAf,
         tituloGrado: String(getVal("tituloGrado") || "").trim(),
         descuento: String(getVal("descuento") || "").trim(),
         departamento: toCanonicalDepartamento(getVal("departamento")),
@@ -434,6 +492,7 @@ export default function Adherente() {
       // ➤ Adherentes: ACTUALIZAR si existe(n) por DNI; insertar si no hay ninguno
       const qRef = query(collection(db, ADHERENTES_COLLECTION), where("dni", "==", payload.dni));
       const snap = await getDocs(qRef);
+
       if (!snap.empty) {
         await Promise.all(snap.docs.map((d) => updateDoc(d.ref, payload)));
         updated += snap.size;
@@ -476,10 +535,13 @@ export default function Adherente() {
         }
       }
 
-      // ▶️ Avanza el progreso y cede control al render cada 50 items
       done++;
-      if (total > 0) setImportPercent(Math.min(100, Math.round((done / total) * 100)));
-      if (done % 50 === 0) await new Promise((r) => setTimeout(r, 0));
+      if (total > 0 && (done % 10 === 0 || done === total)) {
+        setImportPercent(Math.min(100, Math.round((done / total) * 100)));
+      }
+      if (done % 20 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
     }
 
     setImportStage("Finalizando…");
@@ -748,7 +810,7 @@ export default function Adherente() {
 
       <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
 
-      <DataTable value={dataFiltrada} loading={loading} paginator first={first} onPage={(e) => setFirst(e.first)} rows={10} rowsPerPageOptions={[10, 20, 50]} stripedRows showGridlines emptyMessage="Sin registros" className={styles.table} dataKey="id">
+      <DataTable value={importing ? [] : dataFiltrada} loading={loading || importing} paginator first={first} onPage={(e) => setFirst(e.first)} rows={10} rowsPerPageOptions={[10, 20, 50]} stripedRows showGridlines emptyMessage={importing ? "Importando registros..." : "Sin registros"} className={styles.table} dataKey="id">
         {columns}
       </DataTable>
 
