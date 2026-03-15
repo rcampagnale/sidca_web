@@ -15,7 +15,7 @@ const initialState = {
   size: 0,
   misCursos: [],
   subidos: [],
-  noSubidos: []
+  noSubidos: [],
 };
 
 export const cursosReducer = (state = initialState, action) => {
@@ -28,6 +28,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.NUEVO_CURSO_SUCCESS:
       return {
         ...state,
@@ -36,6 +37,7 @@ export const cursosReducer = (state = initialState, action) => {
         msg: action.payload,
         img: '',
       };
+
     case types.NUEVO_CURSO_ERROR:
       return {
         ...state,
@@ -67,7 +69,6 @@ export const cursosReducer = (state = initialState, action) => {
         status: 'SUCCESS',
         msg: action.payload.msg,
         img: newImg,
-        // 🔥 Si estoy editando un curso, actualizo también su imagen
         curso: hasCurso
           ? {
               ...state.curso,
@@ -99,6 +100,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.UPLOAD_CURSO_SUCCESS:
       return {
         ...state,
@@ -106,6 +108,7 @@ export const cursosReducer = (state = initialState, action) => {
         status: 'SUCCESS_UPLOAD',
         msg: action.payload,
       };
+
     case types.UPLOAD_CURSO_ERROR:
       return {
         ...state,
@@ -122,6 +125,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.GET_CURSOS_SUCCESS:
       return {
         ...state,
@@ -129,6 +133,7 @@ export const cursosReducer = (state = initialState, action) => {
         cursos: action.payload,
         status: 'SUCCESS',
       };
+
     case types.GET_CURSOS_ERROR:
       return {
         ...state,
@@ -145,6 +150,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.GET_CURSOS_DISPONIBLES_SUCCESS:
       return {
         ...state,
@@ -152,6 +158,7 @@ export const cursosReducer = (state = initialState, action) => {
         cursos: action.payload,
         status: 'SUCCESS',
       };
+
     case types.GET_CURSOS_DISPONIBLES_ERROR:
       return {
         ...state,
@@ -165,7 +172,8 @@ export const cursosReducer = (state = initialState, action) => {
     // =======================
     case types.GET_CURSO: {
       const selected =
-        state.cursos.find((curso) => curso.id == action.payload) || state.curso;
+        state.cursos.find((curso) => curso.id === action.payload) || state.curso;
+
       return {
         ...state,
         curso: selected,
@@ -177,11 +185,13 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         firstCurso: action.payload,
       };
+
     case types.SET_LAST_CURSO:
       return {
         ...state,
         lastCurso: action.payload,
       };
+
     case types.SET_PAGE_CURSO:
       return {
         ...state,
@@ -196,6 +206,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.GET_CURSOS_CATEGORY_SUCCESS:
       return {
         ...state,
@@ -203,6 +214,7 @@ export const cursosReducer = (state = initialState, action) => {
         cursos: action.payload,
         status: 'SUCCESS',
       };
+
     case types.GET_CURSOS_CATEGORY_ERROR:
       return {
         ...state,
@@ -219,6 +231,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.GET_MIS_CURSOS_SUCCESS:
       return {
         ...state,
@@ -226,6 +239,7 @@ export const cursosReducer = (state = initialState, action) => {
         misCursos: action.payload,
         status: 'SUCCESS',
       };
+
     case types.GET_MIS_CURSOS_ERROR:
       return {
         ...state,
@@ -242,14 +256,16 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.DELETE_CURSOS_SUCCESS:
       return {
         ...state,
-        cursos: state.cursos.filter((curso) => curso.id != action.payload),
+        cursos: state.cursos.filter((curso) => curso.id !== action.payload),
         processing: false,
         msg: 'Curso Eliminado con exito',
         status: 'SUCCESS_DELETE',
       };
+
     case types.DELETE_CURSOS_ERROR:
       return {
         ...state,
@@ -266,6 +282,7 @@ export const cursosReducer = (state = initialState, action) => {
         ...state,
         processing: true,
       };
+
     case types.UPLOAD_CURSOS_USER_INFO_SUCCESS:
       return {
         ...state,
@@ -275,6 +292,7 @@ export const cursosReducer = (state = initialState, action) => {
         noSubidos: action.payload.noSubidos,
         status: 'SUCCESS_USER_INFO',
       };
+
     case types.UPLOAD_CURSOS_USER_INFO_ERROR:
       return {
         ...state,
@@ -295,6 +313,7 @@ export const cursosReducer = (state = initialState, action) => {
         noSubidos: [],
         subidos: [],
       };
+
     case types.CLEAR_CURSOS:
       return {
         ...state,
