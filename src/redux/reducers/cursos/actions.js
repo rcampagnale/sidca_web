@@ -16,7 +16,6 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
-// import { ref } from '@firebase/storage'; // 👈 ya no se usa
 
 // ======================================================
 // NUEVO CURSO
@@ -25,7 +24,6 @@ export const nuevoCurso = (data) => {
   return async (dispatch, getState) => {
     dispatch(nuevoCursoProcess());
 
-    // URL que dejó el uploadImg en el reducer
     const { img } = getState().cursos;
 
     const linkFinal =
@@ -33,7 +31,6 @@ export const nuevoCurso = (data) => {
         ? String(data.link).trim()
         : false;
 
-    // priorizamos data.imagen; si viene vacío usamos state.cursos.img
     const imagenFinal =
       data.imagen && String(data.imagen).trim() !== ''
         ? String(data.imagen).trim()
@@ -68,7 +65,7 @@ export const nuevoCurso = (data) => {
 // SUBIR IMAGEN
 // ======================================================
 export const uploadImg = (file) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     uploadImgFunction(
       dispatch,
       file,
@@ -87,7 +84,6 @@ export const uploadCurso = (data, id) => {
   return async (dispatch, getState) => {
     dispatch(uploadCursoProcess());
 
-    // leo lo que guardó UPLOAD_IMG_SUCCESS
     const { img } = getState().cursos;
 
     const linkFinal =
@@ -132,43 +128,48 @@ export const uploadCurso = (data, id) => {
 export const getCursos = (pagination, start) => {
   return async (dispatch, getState) => {
     dispatch(getCursosProcess());
+
     try {
       let q;
 
       if (pagination === 'next') {
-        q = await query(
+        q = query(
           collection(db, 'cursos'),
           orderBy('titulo', 'asc'),
           limit(10),
           startAfter(start)
         );
       } else if (pagination === 'prev') {
-        q = await query(
+        q = query(
           collection(db, 'cursos'),
           orderBy('titulo', 'asc'),
           limitToLast(10),
           endBefore(start)
         );
       } else {
-        q = await query(
+        q = query(
           collection(db, 'cursos'),
           orderBy('titulo', 'asc'),
           limit(10)
         );
       }
+
       const querySnapshot = await getDocs(q);
+
       if (querySnapshot.size === 0) {
         dispatch(getCursosError('No hay cursos'));
       } else {
         const { page } = getState().cursos;
         const arrayDocs = [];
-        querySnapshot.docs.map((docSnap, i) => {
-          i === 0 && dispatch(setFirstCurso(docSnap));
-          i === 9 && dispatch(setLastCurso(docSnap));
+
+        querySnapshot.docs.forEach((docSnap, i) => {
+          if (i === 0) dispatch(setFirstCurso(docSnap));
+          if (i === 9) dispatch(setLastCurso(docSnap));
         });
+
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          let obj = {
+          const obj = {
             id: docSnap.id,
             titulo: data.titulo,
             descripcion: data.descripcion,
@@ -179,10 +180,11 @@ export const getCursos = (pagination, start) => {
           };
           arrayDocs.push(obj);
         });
+
         dispatch(getCursosSuccess(arrayDocs));
         dispatch(
           setPage(
-            pagination == 'next'
+            pagination === 'next'
               ? page + 1
               : pagination === 'prev'
               ? page - 1
@@ -200,22 +202,26 @@ export const getCursos = (pagination, start) => {
 export const getCurso = (payload) => ({ type: types.GET_CURSO, payload });
 
 export const getCursosCategory = (type) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     dispatch(getCursosCategoryProcess());
+
     try {
-      let q = await query(
+      const q = query(
         collection(db, 'cursos'),
         orderBy('titulo', 'asc'),
         where('categoria', '==', type)
       );
+
       const querySnapshot = await getDocs(q);
+
       if (querySnapshot.size === 0) {
         dispatch(getCursosCategoryError('No hay cursos'));
       } else {
         const arrayDocs = [];
+
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          let obj = {
+          const obj = {
             id: docSnap.id,
             titulo: data.titulo,
             descripcion: data.descripcion,
@@ -226,6 +232,7 @@ export const getCursosCategory = (type) => {
           };
           arrayDocs.push(obj);
         });
+
         dispatch(getCursosCategorySuccess(arrayDocs));
       }
     } catch (error) {
@@ -238,15 +245,18 @@ export const getCursosCategory = (type) => {
 export const getMisCursos = () => {
   return async (dispatch, getState) => {
     dispatch(getMisCursosProcess());
+
     try {
       const { id } = getState().user.profile;
-      const q = await collection(db, 'usuarios', id, 'cursos');
+      const q = collection(db, 'usuarios', id, 'cursos');
       const querySnapshot = await getDocs(q);
+
       if (querySnapshot.size > 0) {
-        let arrayCursos = [];
+        const arrayCursos = [];
+
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          let obj = {
+          const obj = {
             id: docSnap.id,
             titulo: data.titulo,
             estado: data.estado,
@@ -255,6 +265,7 @@ export const getMisCursos = () => {
           };
           arrayCursos.push(obj);
         });
+
         dispatch(getMisCursosSuccess(arrayCursos));
       } else {
         dispatch(getMisCursosError('No tienes Cursos'));
@@ -269,8 +280,9 @@ export const getMisCursos = () => {
 };
 
 export const deleteCursos = (id) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     dispatch(deleteCursosProcess());
+
     try {
       await deleteDoc(doc(db, 'cursos', id));
       dispatch(deleteCursosSuccess(id));
@@ -285,20 +297,20 @@ export const deleteCursos = (id) => {
 // CARGA MASIVA USUARIOS ↔ CURSOS
 // ======================================================
 export const uploadUserCursosInfo = (curso, rows) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     dispatch(uploadUserCursosInfoProcess());
+
     try {
-      let subidos = [];
-      let noSubidos = [];
+      const subidos = [];
+      const noSubidos = [];
 
       if (!rows || rows.length === 0) {
         dispatch(uploadUserCursosInfoError('El archivo Excel está vacío.'));
         return;
       }
 
-      // Buscamos la columna DNI de manera flexible
       const headerRow = rows[0].map((h) => String(h || '').trim().toLowerCase());
-      let indexOfDNI = headerRow.findIndex((h) => h === 'dni');
+      const indexOfDNI = headerRow.findIndex((h) => h === 'dni');
 
       if (indexOfDNI === -1) {
         dispatch(
@@ -309,20 +321,17 @@ export const uploadUserCursosInfo = (curso, rows) => {
         return;
       }
 
-      // Recorremos las filas de datos (saltamos encabezado en i = 0)
-      for (let i = 1; i < rows.length; i++) {
+      for (let i = 1; i < rows.length; i += 1) {
         const aprobado = rows[i];
         if (!aprobado || !aprobado.length) continue;
 
         const rawDni = aprobado[indexOfDNI];
 
-        // Si no hay DNI en esa fila, lo agregamos a los noSubidos y seguimos
         if (rawDni === undefined || rawDni === null || rawDni === '') {
           noSubidos.push(`SIN_DNI_FILA_${i + 1}`);
           continue;
         }
 
-        // Normalizamos DNI a solo números (por si viene con puntos, espacios, etc.)
         const dniAprobado = String(rawDni).replace(/[^\d]/g, '');
 
         if (!dniAprobado) {
@@ -330,7 +339,6 @@ export const uploadUserCursosInfo = (curso, rows) => {
           continue;
         }
 
-        // Consulta a Firestore
         const q = query(
           collection(db, 'usuarios'),
           where('dni', '==', dniAprobado)
@@ -346,6 +354,7 @@ export const uploadUserCursosInfo = (curso, rows) => {
               imagen: curso.imagen,
               curso: `cursos/${curso.id}`,
             };
+
             try {
               await addDoc(
                 collection(db, 'usuarios', documentSnapshot.id, 'cursos'),
@@ -358,7 +367,6 @@ export const uploadUserCursosInfo = (curso, rows) => {
             }
           }
         } else {
-          // No se encontró el usuario con ese DNI
           noSubidos.push(dniAprobado);
         }
       }
@@ -373,15 +381,15 @@ export const uploadUserCursosInfo = (curso, rows) => {
   };
 };
 
-
 // ======================================================
 // NUEVA ACCIÓN: Cursos Disponibles
 // ======================================================
 export const getCursosDisponibles = () => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     dispatch({ type: types.GET_CURSOS_DISPONIBLES });
+
     try {
-      const q = await query(
+      const q = query(
         collection(db, 'cursos'),
         orderBy('titulo', 'asc')
       );
@@ -394,8 +402,10 @@ export const getCursosDisponibles = () => {
         });
       } else {
         const arrayDocs = [];
+
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+
           if (data && data.estado !== 'terminado') {
             arrayDocs.push({
               id: docSnap.id,
@@ -408,6 +418,7 @@ export const getCursosDisponibles = () => {
             });
           }
         });
+
         dispatch({
           type: types.GET_CURSOS_DISPONIBLES_SUCCESS,
           payload: arrayDocs,
@@ -438,7 +449,6 @@ const nuevoCursoError = (payload) => ({
 
 const uploadImgProcess = (payload) => ({ type: types.UPLOAD_IMG, payload });
 
-// 🔴 AQUÍ el cambio importante: envolvemos la URL en { msg, img }
 const uploadImgSuccess = (imgUrl) => ({
   type: types.UPLOAD_IMG_SUCCESS,
   payload: {
@@ -448,7 +458,6 @@ const uploadImgSuccess = (imgUrl) => ({
 });
 
 const uploadImgError = (payload) => ({ type: types.UPLOAD_IMG_ERROR, payload });
-
 const uploadProgress = (payload) => ({ type: types.UPLOAD_PROGRESS, payload });
 
 const uploadCursoProcess = (payload) => ({ type: types.UPLOAD_CURSO, payload });
@@ -529,4 +538,3 @@ const uploadUserCursosInfoError = (payload) => ({
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload });
 export const clearCursos = (payload) => ({ type: types.CLEAR_CURSOS, payload });
-

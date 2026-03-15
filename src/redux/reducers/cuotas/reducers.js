@@ -25,6 +25,7 @@ export const cuotasReducer = (state = initialState, action) => {
                 loading: true,
                 processing: true
             };
+
         case types.NUEVA_CUOTA_SUCCESS:
             return {
                 ...state,
@@ -33,6 +34,7 @@ export const cuotasReducer = (state = initialState, action) => {
                 loading: false,
                 processing: false
             };
+
         case types.NUEVA_CUOTA_ERROR:
             return {
                 ...state,
@@ -41,11 +43,13 @@ export const cuotasReducer = (state = initialState, action) => {
                 loading: false,
                 processing: false
             };
+
         case types.UPLOAD_CUOTA:
             return {
                 ...state,
                 processing: true
             };
+
         case types.UPLOAD_CUOTA_SUCCESS:
             return {
                 ...state,
@@ -53,6 +57,7 @@ export const cuotasReducer = (state = initialState, action) => {
                 status: 'SUCCESS_UPLOAD',
                 msg: action.payload,
             };
+
         case types.UPLOAD_CUOTA_ERROR:
             return {
                 ...state,
@@ -60,12 +65,14 @@ export const cuotasReducer = (state = initialState, action) => {
                 status: 'FAILURE_UPLOAD',
                 msg: action.payload,
             };
+
         case types.GET_CUOTAS:
             return {
                 ...state,
                 loading: true,
                 processing: true
             };
+
         case types.GET_CUOTAS_SUCCESS:
             return {
                 ...state,
@@ -73,6 +80,7 @@ export const cuotasReducer = (state = initialState, action) => {
                 loading: false,
                 processing: false
             };
+
         case types.GET_CUOTAS_ERROR:
             return {
                 ...state,
@@ -80,19 +88,22 @@ export const cuotasReducer = (state = initialState, action) => {
                 loading: false,
                 processing: false
             };
+
         case types.DELETE_CUOTAS:
             return {
                 ...state,
                 processing: true
             };
+
         case types.DELETE_CUOTAS_SUCCESS:
             return {
                 ...state,
-                cuotas: state.cuotas.filter(cuota => cuota.id != action.payload),
+                cuotas: state.cuotas.filter((cuota) => cuota.id !== action.payload),
                 processing: false,
                 msg: 'Cuota Eliminada con exito',
                 status: 'SUCCESS_DELETE'
             };
+
         case types.DELETE_CUOTAS_ERROR:
             return {
                 ...state,
@@ -114,31 +125,37 @@ export const cuotasReducer = (state = initialState, action) => {
                 ...state,
                 setTransaccion: 'SUCCESS_SET',
             };
+
         case types.SET_USER_CUOTAS_ERROR:
             return {
                 ...state,
                 setTransaccion: 'FAILURE_SET',
             };
+
         case types.GET_CUOTA:
             return {
                 ...state,
-                cuota: state.cuotas.find(cuota => cuota.id == action.payload)
+                cuota: state.cuotas.find((cuota) => cuota.id === action.payload)
             };
+
         case types.SET_FIRST_CUOTA:
             return {
                 ...state,
                 firstCuota: action.payload
             };
+
         case types.SET_LAST_CUOTA:
             return {
                 ...state,
                 lastCuota: action.payload
             };
+
         case types.SET_PAGE_CUOTA:
             return {
                 ...state,
                 page: action.payload
             };
+
         case types.CLEAR_CUOTAS_STATUS:
             return {
                 ...state,
@@ -149,21 +166,22 @@ export const cuotasReducer = (state = initialState, action) => {
                 tarjeta: undefined,
                 setTransaccion: undefined
             };
+
         case types.APROVE:
             return {
                 ...state,
                 tarjeta: 'SUCCESS'
             };
 
-
         case types.CLEAR_CUOTAS:
             return {
                 ...state,
                 ...initialState
             };
+
         default:
             return state;
     }
-}
+};
 
 export default cuotasReducer;
