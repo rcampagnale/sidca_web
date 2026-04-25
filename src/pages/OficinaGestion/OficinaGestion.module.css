@@ -53,6 +53,10 @@
   line-height: 1.6;
 }
 
+/* =========================================================
+   GRID DE FORMULARIOS
+   ========================================================= */
+
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -83,16 +87,45 @@
   gap: 12px;
 }
 
-.iconBox {
-  width: 48px;
-  height: 48px;
+/* =========================================================
+   LOGO DEL SINDICATO
+   ========================================================= */
+
+.logoBox {
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.logoSindicato {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transform: scale(1.08);
+}
+
+.logoFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
   background: #dcfce7;
   color: #15803d;
   font-size: 1.35rem;
 }
+
+/* =========================================================
+   CONTENIDO DE TARJETA
+   ========================================================= */
 
 .card h2 {
   margin: 0;
@@ -100,14 +133,62 @@
   font-size: 1.2rem;
   font-weight: 900;
   line-height: 1.25;
+  text-transform: uppercase;
 }
 
-.card p {
+.cardDescription {
   flex: 1;
-  margin: 0;
-  color: #64748b;
-  font-size: 0.95rem;
-  line-height: 1.55;
+  color: #475569;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  text-align: justify;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.cardDescription p {
+  margin: 0 0 12px;
+  text-align: justify;
+}
+
+.cardDescription strong,
+.cardDescription b {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.cardDescription ul,
+.cardDescription ol {
+  margin: 10px 0 14px 0;
+  padding-left: 24px;
+}
+
+.cardDescription li {
+  margin-bottom: 8px;
+  padding-left: 4px;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.cardDescription li::marker {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.cardDescription .listaAlfabetica {
+  list-style-type: lower-alpha;
+}
+
+.cardDescription .ql-align-center {
+  text-align: center;
+}
+
+.cardDescription .ql-align-right {
+  text-align: right;
+}
+
+.cardDescription .ql-align-justify {
+  text-align: justify;
 }
 
 .meta {
@@ -187,5 +268,25 @@
 
   .card {
     padding: 18px;
+  }
+
+  .card h2 {
+    font-size: 1.05rem;
+  }
+
+  .cardDescription {
+    font-size: 0.94rem;
+    line-height: 1.62;
+    text-align: justify;
+  }
+
+  .cardDescription p,
+  .cardDescription li {
+    text-align: justify;
+  }
+
+  .logoBox {
+    width: 52px;
+    height: 52px;
   }
 }
