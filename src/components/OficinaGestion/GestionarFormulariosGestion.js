@@ -12,7 +12,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { InputSwitch } from "primereact/inputswitch";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
-import { Editor } from "primereact/editor";
 
 import {
   collection,
@@ -27,13 +26,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
-import {
-  getDownloadURL,
-  ref as storageRef,
-  uploadBytes,
-} from "firebase/storage";
-
-import { db, storage } from "../../firebase/firebase-config";
+import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/OficinaGestion/OficinaGestionAdmin.module.css";
 
 import {
@@ -45,9 +38,6 @@ const RUTA_PUBLICA_FORMULARIO = "/oficina-gestion/formulario";
 
 const ARCHIVOS_DEFAULT =
   ".pdf,.doc,.docx,.png,.jpg,.jpeg,.rar,.zip,image/png,image/jpeg";
-
-const ARCHIVOS_DESCARGABLES_ACCEPT =
-  ".pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls,.zip,.rar,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 
 const TIPOS_CAMPO = [
   { label: "Validación por DNI", value: "validacion_dni" },
@@ -113,70 +103,8 @@ const campoInicial = {
   autocompletarDatosAfiliado: true,
 };
 
-const limpiarNombreArchivoDescarga = (nombre) => {
-  return String(nombre || "archivo")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\w.-]+/g, "_");
-};
-
-const formatBytes = (bytes = 0) => {
-  const size = Number(bytes || 0);
-
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-
-  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-};
-
-const htmlATextoPlano = (html = "") => {
-  if (typeof document === "undefined") {
-    return String(html || "").replace(/<[^>]+>/g, " ").trim();
-  }
-
-  const temp = document.createElement("div");
-  temp.innerHTML = String(html || "");
-
-  return (temp.textContent || temp.innerText || "").trim();
-};
-
-const escaparHtml = (texto = "") => {
-  return String(texto || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-};
-
-const textoPlanoAHtml = (texto = "") => {
-  const limpio = String(texto || "").trim();
-
-  if (!limpio) return "";
-
-  return limpio
-    .split(/\n{2,}/)
-    .map((bloque) => `<p>${escaparHtml(bloque).replace(/\n/g, "<br />")}</p>`)
-    .join("");
-};
-
-const normalizarDescripcionHtml = (html = "") => {
-  const limpio = String(html || "").trim();
-  const textoPlano = htmlATextoPlano(limpio);
-
-  return textoPlano ? limpio : "";
-};
-
-const sanearHtmlBasico = (html = "") => {
-  return String(html || "")
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
-    .replace(/\son\w+="[^"]*"/gi, "")
-    .replace(/\son\w+='[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
-};
-
 const GestionarFormulariosGestion = () => {
   const toast = useRef(null);
-  const editArchivoDescargaInputRef = useRef(null);
 
   const [formularios, setFormularios] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -185,25 +113,13 @@ const GestionarFormulariosGestion = () => {
 
   const [formularioEditando, setFormularioEditando] = useState(null);
   const [editTitulo, setEditTitulo] = useState("");
-  const [editDescripcionHtml, setEditDescripcionHtml] = useState("");
+  const [editDescripcion, setEditDescripcion] = useState("");
   const [editActivo, setEditActivo] = useState(true);
-
+  const [editSoloConsultaDni, setEditSoloConsultaDni] = useState(false);
   const [
     editPermitirMultiplesRespuestasPorDni,
     setEditPermitirMultiplesRespuestasPorDni,
   ] = useState(false);
-
-  const [editArchivoDescargaActual, setEditArchivoDescargaActual] =
-    useState(null);
-  const [editArchivoDescargaNuevo, setEditArchivoDescargaNuevo] =
-    useState(null);
-  const [editQuitarArchivoDescarga, setEditQuitarArchivoDescarga] =
-    useState(false);
-  const [
-    editDescripcionArchivoDescarga,
-    setEditDescripcionArchivoDescarga,
-  ] = useState("");
-
   const [editCampos, setEditCampos] = useState([{ ...campoInicial }]);
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
@@ -224,13 +140,80 @@ const GestionarFormulariosGestion = () => {
     );
   };
 
+  const formularioSoloConsultaDni = (formulario) => {
+    return Boolean(
+      formulario?.soloConsultaDni ||
+        formulario?.modoSoloConsultaDni ||
+        formulario?.bloquearCargaRespuestas
+    );
+  };
+
   const formularioPermiteMultiplesRespuestasPorDni = (formulario) => {
+    if (formularioSoloConsultaDni(formulario)) return false;
+
     return Boolean(formulario?.permitirMultiplesRespuestasPorDni);
   };
 
-  const formularioTieneArchivoDescargable = (formulario) => {
-    return Boolean(formulario?.archivoDescargaFormulario?.url);
+  const cargarFormularios = async () => {
+    setLoading(true);
+
+    try {
+      const q = query(
+        collection(db, "oficina_gestion_formularios"),
+        orderBy("createdAt", "desc")
+      );
+
+      const snap = await getDocs(q);
+
+      const data = snap.docs.map((docSnap) => {
+        const dataFormulario = docSnap.data();
+
+        const soloConsulta = Boolean(
+          dataFormulario.soloConsultaDni ||
+            dataFormulario.modoSoloConsultaDni ||
+            dataFormulario.bloquearCargaRespuestas
+        );
+
+        return {
+          id: docSnap.id,
+          ...dataFormulario,
+          codigoFormulario: dataFormulario.codigoFormulario || docSnap.id,
+          formularioCodigo: dataFormulario.formularioCodigo || docSnap.id,
+          formularioNumero: dataFormulario.formularioNumero || docSnap.id,
+          soloConsultaDni: soloConsulta,
+          modoSoloConsultaDni: soloConsulta,
+          bloquearCargaRespuestas: soloConsulta,
+          permitirMultiplesRespuestasPorDni: soloConsulta
+            ? false
+            : Boolean(dataFormulario.permitirMultiplesRespuestasPorDni),
+          requiereValidacionDni: Boolean(
+            soloConsulta ||
+              dataFormulario.requiereValidacionDni ||
+              dataFormulario.campos?.some(
+                (campo) => campo.tipo === "validacion_dni"
+              )
+          ),
+        };
+      });
+
+      setFormularios(data);
+    } catch (error) {
+      console.error("Error al cargar formularios:", error);
+
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los formularios.",
+        life: 3500,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    cargarFormularios();
+  }, []);
 
   const convertirFecha = (value) => {
     if (!value) return null;
@@ -258,53 +241,6 @@ const GestionarFormulariosGestion = () => {
   const obtenerLinkFormulario = (id) => {
     return `${window.location.origin}${RUTA_PUBLICA_FORMULARIO}/${id}`;
   };
-
-  const cargarFormularios = async () => {
-    setLoading(true);
-
-    try {
-      const q = query(
-        collection(db, "oficina_gestion_formularios"),
-        orderBy("createdAt", "desc")
-      );
-
-      const snap = await getDocs(q);
-
-      const data = snap.docs.map((docSnap) => {
-        const dataFormulario = docSnap.data();
-
-        return {
-          id: docSnap.id,
-          codigoFormulario: dataFormulario.codigoFormulario || docSnap.id,
-          formularioCodigo: dataFormulario.formularioCodigo || docSnap.id,
-          formularioNumero: dataFormulario.formularioNumero || docSnap.id,
-          permitirMultiplesRespuestasPorDni: Boolean(
-            dataFormulario.permitirMultiplesRespuestasPorDni
-          ),
-          archivoDescargaFormulario:
-            dataFormulario.archivoDescargaFormulario || null,
-          ...dataFormulario,
-        };
-      });
-
-      setFormularios(data);
-    } catch (error) {
-      console.error("Error al cargar formularios:", error);
-
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudieron cargar los formularios.",
-        life: 3500,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    cargarFormularios();
-  }, []);
 
   const copiarTexto = async (texto, mensaje = "Texto copiado") => {
     try {
@@ -345,10 +281,9 @@ const GestionarFormulariosGestion = () => {
       return;
     }
 
-    copiarTexto(
-      obtenerLinkFormulario(formulario.id),
-      "El link del formulario fue copiado al portapapeles."
-    );
+    const link = obtenerLinkFormulario(formulario.id);
+
+    copiarTexto(link, "El link del formulario fue copiado al portapapeles.");
   };
 
   const abrirLinkFormulario = (formulario) => {
@@ -375,13 +310,21 @@ const GestionarFormulariosGestion = () => {
 
     try {
       const codigoFormulario = obtenerCodigoFormulario(formulario);
-      const requiereValidacionDni = formularioTieneValidacionDni(formulario);
+      const soloConsulta = formularioSoloConsultaDni(formulario);
+      const requiereValidacionDni =
+        soloConsulta || formularioTieneValidacionDni(formulario);
 
       await updateDoc(doc(db, "oficina_gestion_formularios", formulario.id), {
         publicado: publicar,
         codigoFormulario,
         formularioCodigo: codigoFormulario,
         formularioNumero: codigoFormulario,
+        soloConsultaDni: soloConsulta,
+        modoSoloConsultaDni: soloConsulta,
+        bloquearCargaRespuestas: soloConsulta,
+        permitirMultiplesRespuestasPorDni: soloConsulta
+          ? false
+          : formularioPermiteMultiplesRespuestasPorDni(formulario),
         requiereValidacionDni,
         updatedAt: serverTimestamp(),
       });
@@ -434,13 +377,13 @@ const GestionarFormulariosGestion = () => {
 
     try {
       await eliminarRespuestasDelFormulario(formulario.id);
+
       await deleteDoc(doc(db, "oficina_gestion_formularios", formulario.id));
 
       toast.current?.show({
         severity: "success",
         summary: "Formulario eliminado",
-        detail:
-          "El formulario y sus respuestas fueron eliminados correctamente.",
+        detail: "El formulario y sus respuestas fueron eliminados correctamente.",
         life: 3500,
       });
 
@@ -477,6 +420,7 @@ const GestionarFormulariosGestion = () => {
 
   const obtenerArchivosPermitidos = (campo) => {
     if (campo?.archivoAccept) return campo.archivoAccept;
+
     if (campo?.tipo === "archivo_pdf") return ".pdf";
 
     return ARCHIVOS_DEFAULT;
@@ -566,27 +510,17 @@ const GestionarFormulariosGestion = () => {
           })
         : [{ ...campoInicial }];
 
-    const descripcionHtmlInicial =
-      formulario.descripcionHtml || textoPlanoAHtml(formulario.descripcion || "");
-
     setFormularioEditando(formulario);
     setEditTitulo(formulario.titulo || "");
-    setEditDescripcionHtml(descripcionHtmlInicial);
+    setEditDescripcion(formulario.descripcion || "");
     setEditActivo(Boolean(formulario.activo));
+    setEditSoloConsultaDni(formularioSoloConsultaDni(formulario));
     setEditPermitirMultiplesRespuestasPorDni(
-      Boolean(formulario.permitirMultiplesRespuestasPorDni)
-    );
-    setEditArchivoDescargaActual(formulario.archivoDescargaFormulario || null);
-    setEditArchivoDescargaNuevo(null);
-    setEditQuitarArchivoDescarga(false);
-    setEditDescripcionArchivoDescarga(
-      formulario.archivoDescargaFormulario?.descripcion || ""
+      formularioSoloConsultaDni(formulario)
+        ? false
+        : Boolean(formulario.permitirMultiplesRespuestasPorDni)
     );
     setEditCampos(camposNormalizados);
-
-    if (editArchivoDescargaInputRef.current) {
-      editArchivoDescargaInputRef.current.value = "";
-    }
   };
 
   const cerrarEditor = () => {
@@ -594,18 +528,11 @@ const GestionarFormulariosGestion = () => {
 
     setFormularioEditando(null);
     setEditTitulo("");
-    setEditDescripcionHtml("");
+    setEditDescripcion("");
     setEditActivo(true);
+    setEditSoloConsultaDni(false);
     setEditPermitirMultiplesRespuestasPorDni(false);
-    setEditArchivoDescargaActual(null);
-    setEditArchivoDescargaNuevo(null);
-    setEditQuitarArchivoDescarga(false);
-    setEditDescripcionArchivoDescarga("");
     setEditCampos([{ ...campoInicial }]);
-
-    if (editArchivoDescargaInputRef.current) {
-      editArchivoDescargaInputRef.current.value = "";
-    }
   };
 
   const agregarCampoEdicion = () => {
@@ -708,9 +635,7 @@ const GestionarFormulariosGestion = () => {
       return false;
     }
 
-    const editDescripcionTextoPlano = htmlATextoPlano(editDescripcionHtml);
-
-    if (!editDescripcionTextoPlano) {
+    if (!editDescripcion.trim()) {
       toast.current?.show({
         severity: "warn",
         summary: "Atención",
@@ -805,8 +730,9 @@ const GestionarFormulariosGestion = () => {
           placeholder: campo.placeholder?.trim() || "Ingrese su DNI",
           validacionColecciones: ["usuarios", "nuevoAfiliado"],
           autocompletarDatosAfiliado: true,
-          descripcionInterna:
-            "Campo especial: valida el DNI contra usuarios/nuevoAfiliado y verifica si ya existe una respuesta para este formulario.",
+          descripcionInterna: editSoloConsultaDni
+            ? "Campo especial: permite consultar una respuesta existente por DNI. No habilita nuevas cargas cuando el formulario está en modo solo consulta."
+            : "Campo especial: valida el DNI contra usuarios/nuevoAfiliado y verifica si ya existe una respuesta para este formulario.",
         };
       }
 
@@ -852,30 +778,6 @@ const GestionarFormulariosGestion = () => {
     });
   };
 
-  const subirArchivoDescargaFormularioEdicion = async (formularioId) => {
-    if (!editArchivoDescargaNuevo) return null;
-
-    const safeName = limpiarNombreArchivoDescarga(
-      editArchivoDescargaNuevo.name
-    );
-
-    const path = `oficina_gestion/formularios/${formularioId}/archivo_descarga/${Date.now()}_${safeName}`;
-
-    const refArchivo = storageRef(storage, path);
-
-    await uploadBytes(refArchivo, editArchivoDescargaNuevo);
-
-    const url = await getDownloadURL(refArchivo);
-
-    return {
-      nombre: editArchivoDescargaNuevo.name,
-      tipo: editArchivoDescargaNuevo.type || "",
-      size: editArchivoDescargaNuevo.size || 0,
-      path,
-      url,
-    };
-  };
-
   const guardarEdicionFormulario = async () => {
     if (!formularioEditando?.id) return;
 
@@ -887,50 +789,23 @@ const GestionarFormulariosGestion = () => {
     try {
       const camposNormalizados = normalizarCamposParaGuardar();
       const codigoFormulario = obtenerCodigoFormulario(formularioEditando);
-
-      const requiereValidacionDni = camposNormalizados.some(
-        (campo) => campo.tipo === "validacion_dni"
-      );
-
-      const descripcionTextoPlano = htmlATextoPlano(editDescripcionHtml);
-      const descripcionHtmlNormalizada =
-        normalizarDescripcionHtml(editDescripcionHtml);
-
-      const archivoDescargaNuevo = await subirArchivoDescargaFormularioEdicion(
-        formularioEditando.id
-      );
-
-      const archivoBase = editQuitarArchivoDescarga
-        ? null
-        : archivoDescargaNuevo || editArchivoDescargaActual || null;
-
-      const archivoDescargaFormulario = archivoBase
-        ? {
-            ...archivoBase,
-            descripcion: editDescripcionArchivoDescarga.trim(),
-          }
-        : null;
+      const requiereValidacionDni =
+        editSoloConsultaDni ||
+        camposNormalizados.some((campo) => campo.tipo === "validacion_dni");
 
       await updateDoc(
         doc(db, "oficina_gestion_formularios", formularioEditando.id),
         {
           titulo: editTitulo.trim(),
-
-          // Texto plano para listados, búsquedas y compatibilidad.
-          descripcion: descripcionTextoPlano,
-
-          // HTML enriquecido para mostrar con formato en la vista pública.
-          descripcionHtml: descripcionHtmlNormalizada,
-
+          descripcion: editDescripcion.trim(),
           activo: Boolean(editActivo),
           publicado: false,
-
-          permitirMultiplesRespuestasPorDni: Boolean(
-            editPermitirMultiplesRespuestasPorDni
-          ),
-
-          archivoDescargaFormulario,
-
+          soloConsultaDni: Boolean(editSoloConsultaDni),
+          modoSoloConsultaDni: Boolean(editSoloConsultaDni),
+          bloquearCargaRespuestas: Boolean(editSoloConsultaDni),
+          permitirMultiplesRespuestasPorDni: editSoloConsultaDni
+            ? false
+            : Boolean(editPermitirMultiplesRespuestasPorDni),
           codigoFormulario,
           formularioCodigo: codigoFormulario,
           formularioNumero: codigoFormulario,
@@ -949,6 +824,7 @@ const GestionarFormulariosGestion = () => {
       });
 
       cerrarEditor();
+
       await cargarFormularios();
     } catch (error) {
       console.error("Error al editar formulario:", error);
@@ -965,28 +841,6 @@ const GestionarFormulariosGestion = () => {
     }
   };
 
-  const renderPreviewDescripcion = (formulario) => {
-    const html =
-      formulario?.descripcionHtml || textoPlanoAHtml(formulario?.descripcion || "");
-
-    if (!htmlATextoPlano(html)) {
-      return <p>Sin descripción cargada.</p>;
-    }
-
-    return (
-      <div
-        style={{
-          color: "#334155",
-          lineHeight: 1.65,
-          textAlign: "justify",
-        }}
-        dangerouslySetInnerHTML={{
-          __html: sanearHtmlBasico(html),
-        }}
-      />
-    );
-  };
-
   const renderPreviewCampo = (campo) => {
     switch (campo.tipo) {
       case "validacion_dni":
@@ -999,17 +853,25 @@ const GestionarFormulariosGestion = () => {
             />
 
             <Button
-              label="Validar DNI"
+              label={
+                formularioSoloConsultaDni(formularioPreview)
+                  ? "Consultar información"
+                  : "Validar DNI"
+              }
               icon="pi pi-search"
-              severity="success"
+              severity={
+                formularioSoloConsultaDni(formularioPreview)
+                  ? "warning"
+                  : "success"
+              }
               outlined
               disabled
             />
 
             <small>
-              Primero buscará el DNI en usuarios y nuevoAfiliado. Si el
-              formulario no permite múltiples cargas, también verificará si ya
-              existe una respuesta con ese DNI.
+              {formularioSoloConsultaDni(formularioPreview)
+                ? "Modo solo consulta: buscará si existe una respuesta cargada para el DNI ingresado y no permitirá nuevas cargas."
+                : "Primero buscará el DNI en usuarios y nuevoAfiliado. Luego verificará si ya existe una respuesta para este formulario."}
             </small>
           </div>
         );
@@ -1179,6 +1041,7 @@ const GestionarFormulariosGestion = () => {
       {loading ? (
         <div className={styles.loadingBox}>
           <ProgressSpinner />
+
           <span>Cargando formularios...</span>
         </div>
       ) : formularios.length === 0 ? (
@@ -1197,14 +1060,12 @@ const GestionarFormulariosGestion = () => {
           {formularios.map((formulario) => {
             const linkFinal = obtenerLinkFormulario(formulario.id);
             const codigoFormulario = obtenerCodigoFormulario(formulario);
-            const requiereValidacionDni =
-              formularioTieneValidacionDni(formulario);
-
+            const requiereValidacionDni = formularioTieneValidacionDni(
+              formulario
+            );
+            const soloConsulta = formularioSoloConsultaDni(formulario);
             const permiteMultiples =
               formularioPermiteMultiplesRespuestasPorDni(formulario);
-
-            const tieneArchivoDescargable =
-              formularioTieneArchivoDescargable(formulario);
 
             const cantidadCampos =
               formulario.cantidadCampos || formulario.campos?.length || 0;
@@ -1238,15 +1099,12 @@ const GestionarFormulariosGestion = () => {
                       <Tag value="Valida DNI" severity="success" />
                     )}
 
-                    {permiteMultiples && (
-                      <Tag
-                        value="Múltiples cargas por DNI"
-                        severity="warning"
-                      />
+                    {soloConsulta && (
+                      <Tag value="Solo consulta por DNI" severity="help" />
                     )}
 
-                    {tieneArchivoDescargable && (
-                      <Tag value="Tiene archivo descargable" severity="info" />
+                    {permiteMultiples && (
+                      <Tag value="Múltiples cargas" severity="warning" />
                     )}
                   </div>
                 </div>
@@ -1254,77 +1112,52 @@ const GestionarFormulariosGestion = () => {
                 <div className={styles.metaGrid}>
                   <div className={styles.metaItem}>
                     <span>Código del formulario</span>
+
                     <strong>{codigoFormulario}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
                     <span>ID Firebase</span>
+
                     <strong>{formulario.id}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
                     <span>Cantidad de campos</span>
+
                     <strong>{cantidadCampos}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
                     <span>Validación por DNI</span>
+
                     <strong>{requiereValidacionDni ? "Sí" : "No"}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
+                    <span>Solo consulta por DNI</span>
+
+                    <strong>{soloConsulta ? "Sí" : "No"}</strong>
+                  </div>
+
+                  <div className={styles.metaItem}>
                     <span>Múltiples cargas por DNI</span>
+
                     <strong>{permiteMultiples ? "Sí" : "No"}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
-                    <span>Archivo descargable</span>
-                    <strong>{tieneArchivoDescargable ? "Sí" : "No"}</strong>
-                  </div>
-
-                  <div className={styles.metaItem}>
                     <span>Creado</span>
+
                     <strong>{formatearFecha(formulario.createdAt)}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
                     <span>Actualizado</span>
+
                     <strong>{formatearFecha(formulario.updatedAt)}</strong>
                   </div>
                 </div>
-
-                {tieneArchivoDescargable && (
-                  <div className={styles.selectedInfo}>
-                    <div>
-                      <strong>Archivo descargable</strong>
-
-                      <p>
-                        <a
-                          href={formulario.archivoDescargaFormulario.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {formulario.archivoDescargaFormulario.nombre ||
-                            "Ver archivo"}
-                        </a>
-
-                        {formulario.archivoDescargaFormulario.size
-                          ? ` — ${formatBytes(
-                              formulario.archivoDescargaFormulario.size
-                            )}`
-                          : ""}
-                      </p>
-
-                      {formulario.archivoDescargaFormulario.descripcion && (
-                        <small>
-                          {formulario.archivoDescargaFormulario.descripcion}
-                        </small>
-                      )}
-                    </div>
-
-                    <Tag value="Disponible" severity="info" />
-                  </div>
-                )}
 
                 <div className={styles.linkBox}>
                   <label>Link final del formulario</label>
@@ -1438,7 +1271,9 @@ const GestionarFormulariosGestion = () => {
               <div>
                 <h2>{formularioPreview.titulo}</h2>
 
-                {renderPreviewDescripcion(formularioPreview)}
+                <p>
+                  {formularioPreview.descripcion || "Sin descripción cargada."}
+                </p>
 
                 <small>
                   Código / ID del formulario:{" "}
@@ -1461,59 +1296,21 @@ const GestionarFormulariosGestion = () => {
                   <Tag value="Valida DNI" severity="success" />
                 )}
 
-                {formularioPermiteMultiplesRespuestasPorDni(
-                  formularioPreview
-                ) && (
-                  <Tag value="Múltiples cargas por DNI" severity="warning" />
+                {formularioSoloConsultaDni(formularioPreview) && (
+                  <Tag value="Solo consulta por DNI" severity="help" />
                 )}
 
-                {formularioTieneArchivoDescargable(formularioPreview) && (
-                  <Tag value="Tiene archivo descargable" severity="info" />
-                )}
+                {formularioPermiteMultiplesRespuestasPorDni(
+                  formularioPreview
+                ) && <Tag value="Múltiples cargas" severity="warning" />}
               </div>
             </div>
 
             {formularioPreview.publicado && (
               <div className={styles.previewLinkAlert}>
                 <strong>Link final:</strong>
+
                 <span>{obtenerLinkFormulario(formularioPreview.id)}</span>
-              </div>
-            )}
-
-            {formularioPreview.archivoDescargaFormulario?.url && (
-              <div className={styles.selectedInfo}>
-                <div>
-                  <strong>Archivo descargable para el afiliado</strong>
-
-                  <p>
-                    <a
-                      href={formularioPreview.archivoDescargaFormulario.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {formularioPreview.archivoDescargaFormulario.nombre ||
-                        "Descargar archivo"}
-                    </a>
-
-                    {formularioPreview.archivoDescargaFormulario.size
-                      ? ` — ${formatBytes(
-                          formularioPreview.archivoDescargaFormulario.size
-                        )}`
-                      : ""}
-                  </p>
-
-                  {formularioPreview.archivoDescargaFormulario.descripcion ? (
-                    <small>
-                      {formularioPreview.archivoDescargaFormulario.descripcion}
-                    </small>
-                  ) : (
-                    <small>
-                      Este archivo estará disponible en el formulario público.
-                    </small>
-                  )}
-                </div>
-
-                <Tag value="Descargable" severity="info" />
               </div>
             )}
 
@@ -1591,23 +1388,16 @@ const GestionarFormulariosGestion = () => {
               </div>
 
               <div className={styles.formRow}>
-                <label>Descripción del formulario</label>
+                <label>Descripción</label>
 
-                <Editor
-                  value={editDescripcionHtml}
-                  onTextChange={(e) =>
-                    setEditDescripcionHtml(e.htmlValue || "")
-                  }
-                  style={{ height: "280px" }}
-                  readOnly={guardandoEdicion}
+                <InputTextarea
+                  value={editDescripcion}
+                  onChange={(e) => setEditDescripcion(e.target.value)}
+                  rows={4}
+                  autoResize
                   placeholder="Descripción del formulario"
+                  disabled={guardandoEdicion}
                 />
-
-                <small className={styles.helpText}>
-                  Podés usar negrita, cursiva, subrayado, listas, viñetas,
-                  alineación y saltos de párrafo. Esta descripción se mostrará
-                  con formato en el formulario público.
-                </small>
               </div>
 
               <div className={styles.switchRow}>
@@ -1629,6 +1419,30 @@ const GestionarFormulariosGestion = () => {
 
               <div className={styles.switchRow}>
                 <div>
+                  <strong>Solo consulta por DNI</strong>
+
+                  <p>
+                    El formulario quedará activo para consultar información ya
+                    cargada, pero no permitirá crear nuevas respuestas. El
+                    afiliado ingresa su DNI y visualiza sus datos si existen.
+                  </p>
+                </div>
+
+                <InputSwitch
+                  checked={editSoloConsultaDni}
+                  onChange={(e) => {
+                    setEditSoloConsultaDni(e.value);
+
+                    if (e.value) {
+                      setEditPermitirMultiplesRespuestasPorDni(false);
+                    }
+                  }}
+                  disabled={guardandoEdicion}
+                />
+              </div>
+
+              <div className={styles.switchRow}>
+                <div>
                   <strong>Permitir varias cargas con el mismo DNI</strong>
 
                   <p>
@@ -1643,123 +1457,8 @@ const GestionarFormulariosGestion = () => {
                   onChange={(e) =>
                     setEditPermitirMultiplesRespuestasPorDni(e.value)
                   }
-                  disabled={guardandoEdicion}
+                  disabled={guardandoEdicion || editSoloConsultaDni}
                 />
-              </div>
-
-              <div className={styles.formRow}>
-                <label>Archivo descargable para el afiliado</label>
-
-                {editArchivoDescargaActual && !editQuitarArchivoDescarga && (
-                  <div className={styles.selectedInfo}>
-                    <div>
-                      <strong>Archivo actual</strong>
-
-                      <p>
-                        <a
-                          href={editArchivoDescargaActual.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {editArchivoDescargaActual.nombre || "Ver archivo"}
-                        </a>
-
-                        {editArchivoDescargaActual.size
-                          ? ` — ${formatBytes(editArchivoDescargaActual.size)}`
-                          : ""}
-                      </p>
-
-                      {editArchivoDescargaActual.descripcion && (
-                        <small>{editArchivoDescargaActual.descripcion}</small>
-                      )}
-                    </div>
-
-                    <Button
-                      label="Quitar archivo"
-                      icon="pi pi-trash"
-                      severity="danger"
-                      outlined
-                      type="button"
-                      onClick={() => setEditQuitarArchivoDescarga(true)}
-                      disabled={guardandoEdicion}
-                    />
-                  </div>
-                )}
-
-                {editQuitarArchivoDescarga && (
-                  <small className={styles.helpText}>
-                    El archivo actual será quitado al guardar los cambios.
-                  </small>
-                )}
-
-                <input
-                  ref={editArchivoDescargaInputRef}
-                  type="file"
-                  accept={ARCHIVOS_DESCARGABLES_ACCEPT}
-                  disabled={guardandoEdicion}
-                  onChange={(e) => {
-                    setEditArchivoDescargaNuevo(e.target.files?.[0] || null);
-                    setEditQuitarArchivoDescarga(false);
-                  }}
-                />
-
-                {editArchivoDescargaNuevo ? (
-                  <div className={styles.selectedInfo}>
-                    <div>
-                      <strong>Nuevo archivo seleccionado</strong>
-
-                      <p>
-                        {editArchivoDescargaNuevo.name} —{" "}
-                        {formatBytes(editArchivoDescargaNuevo.size)}
-                      </p>
-
-                      <small>
-                        Al guardar, este archivo reemplazará al archivo actual.
-                      </small>
-                    </div>
-
-                    <Button
-                      label="Quitar selección"
-                      icon="pi pi-times"
-                      severity="secondary"
-                      outlined
-                      type="button"
-                      onClick={() => {
-                        setEditArchivoDescargaNuevo(null);
-
-                        if (editArchivoDescargaInputRef.current) {
-                          editArchivoDescargaInputRef.current.value = "";
-                        }
-                      }}
-                      disabled={guardandoEdicion}
-                    />
-                  </div>
-                ) : (
-                  <small className={styles.helpText}>
-                    Opcional. Si seleccionás un archivo nuevo, reemplazará al
-                    archivo actual.
-                  </small>
-                )}
-
-                <div className={styles.formRow}>
-                  <label>Descripción del archivo descargable</label>
-
-                  <InputTextarea
-                    value={editDescripcionArchivoDescarga}
-                    onChange={(e) =>
-                      setEditDescripcionArchivoDescarga(e.target.value)
-                    }
-                    rows={3}
-                    autoResize
-                    placeholder="Ej: Descargá este archivo, completalo, firmalo y luego adjuntalo en formato PDF."
-                    disabled={guardandoEdicion}
-                  />
-
-                  <small className={styles.helpText}>
-                    Esta descripción se verá junto al botón de descarga en el
-                    formulario público.
-                  </small>
-                </div>
               </div>
             </div>
 
@@ -1884,11 +1583,13 @@ const GestionarFormulariosGestion = () => {
                       </div>
 
                       <div className={styles.formRow}>
-                        <label>Control de duplicados</label>
+                        <label>Control de duplicados / consulta</label>
 
                         <InputText
                           value={
-                            editPermitirMultiplesRespuestasPorDni
+                            editSoloConsultaDni
+                              ? "Solo consulta: no permitirá cargar respuestas nuevas"
+                              : editPermitirMultiplesRespuestasPorDni
                               ? "Permitirá varias respuestas con el mismo DNI"
                               : "Verificará formularioId + DNI antes de permitir cargar"
                           }
@@ -1901,7 +1602,10 @@ const GestionarFormulariosGestion = () => {
                         El afiliado deberá ingresar su DNI y presionar “Validar
                         DNI”. Si la opción de múltiples cargas está desactivada,
                         el sistema bloqueará una nueva carga si ya existe una
-                        respuesta con ese DNI.
+                        respuesta con ese DNI para este formulario. Si el modo
+                        “Solo consulta por DNI” está activado, no se permitirá
+                        cargar nuevas respuestas y solo se mostrarán datos ya
+                        registrados.
                       </small>
                     </div>
                   )}
@@ -2022,7 +1726,6 @@ const GestionarFormulariosGestion = () => {
                 severity="success"
                 onClick={guardarEdicionFormulario}
                 loading={guardandoEdicion}
-                disabled={guardandoEdicion}
               />
 
               <Button

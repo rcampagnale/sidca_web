@@ -496,6 +496,14 @@ const FormularioGestionPublico = () => {
     return Boolean(formulario?.permitirMultiplesRespuestasPorDni);
   }, [formulario]);
 
+  const soloConsultaDni = useMemo(() => {
+    return Boolean(
+      formulario?.soloConsultaDni ||
+        formulario?.modoSoloConsultaDni ||
+        formulario?.bloquearCargaRespuestas
+    );
+  }, [formulario]);
+
   const camposVisibles = useMemo(() => {
     return camposOrdenados.filter((campo) => campo.tipo !== "validacion_dni");
   }, [camposOrdenados]);
@@ -617,17 +625,24 @@ const FormularioGestionPublico = () => {
           return;
         }
 
+        const snapData = snap.data();
+
         const data = {
           id: snap.id,
-          codigoFormulario: snap.data()?.codigoFormulario || snap.id,
-          formularioCodigo: snap.data()?.formularioCodigo || snap.id,
-          formularioNumero: snap.data()?.formularioNumero || snap.id,
+          codigoFormulario: snapData?.codigoFormulario || snap.id,
+          formularioCodigo: snapData?.formularioCodigo || snap.id,
+          formularioNumero: snapData?.formularioNumero || snap.id,
           permitirMultiplesRespuestasPorDni: Boolean(
-            snap.data()?.permitirMultiplesRespuestasPorDni
+            snapData?.permitirMultiplesRespuestasPorDni
+          ),
+          soloConsultaDni: Boolean(
+            snapData?.soloConsultaDni ||
+              snapData?.modoSoloConsultaDni ||
+              snapData?.bloquearCargaRespuestas
           ),
           archivoDescargaFormulario:
-            snap.data()?.archivoDescargaFormulario || null,
-          ...snap.data(),
+            snapData?.archivoDescargaFormulario || null,
+          ...snapData,
         };
 
         if (!data.publicado) {
@@ -647,12 +662,19 @@ const FormularioGestionPublico = () => {
             data?.campos?.some((campo) => campo.tipo === "validacion_dni")
         );
 
+        const estaEnSoloConsulta = Boolean(
+          data?.soloConsultaDni ||
+            data?.modoSoloConsultaDni ||
+            data?.bloquearCargaRespuestas
+        );
+
         const yaEnviadoLocal =
           localStorageKey && localStorage.getItem(localStorageKey) === "true";
 
         if (
           yaEnviadoLocal &&
           !requiereDni &&
+          !estaEnSoloConsulta &&
           !Boolean(data?.permitirMultiplesRespuestasPorDni)
         ) {
           setEstadoEnvio("local_existente");
@@ -823,6 +845,18 @@ const FormularioGestionPublico = () => {
   };
 
   const validarFormulario = () => {
+    if (soloConsultaDni) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Carga no habilitada",
+        detail:
+          "Este formulario está habilitado solo para consultar información cargada.",
+        life: 4500,
+      });
+
+      return false;
+    }
+
     if (requiereValidacionDni && !afiliadoValidado) {
       toast.current?.show({
         severity: "warn",
@@ -1062,6 +1096,40 @@ const FormularioGestionPublico = () => {
     setValidandoDni(true);
 
     try {
+      if (soloConsultaDni) {
+        const respuestaExistente = await verificarRespuestaExistentePorDni(
+          dniNormalizado
+        );
+
+        if (respuestaExistente) {
+          setRespuestaRegistrada(respuestaExistente);
+          setEstadoEnvio("solo_consulta");
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Información encontrada",
+            detail: "Se encontraron datos cargados para el DNI ingresado.",
+            life: 4500,
+          });
+
+          return;
+        }
+
+        setMensajeValidacionDni(
+          "No se encontraron datos cargados para el DNI ingresado."
+        );
+
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin datos cargados",
+          detail:
+            "El formulario está disponible solo para consulta, pero no se encontró información cargada para ese DNI.",
+          life: 5000,
+        });
+
+        return;
+      }
+
       if (!permiteMultiplesRespuestasPorDni) {
         const respuestaExistente = await verificarRespuestaExistentePorDni(
           dniNormalizado
@@ -1130,7 +1198,7 @@ const FormularioGestionPublico = () => {
   };
 
   const cargarRespuestaParaEdicionAfiliado = () => {
-    if (!respuestaRegistrada) return;
+    if (!respuestaRegistrada || soloConsultaDni) return;
 
     const datos = respuestaRegistrada.respuestas || {};
     const nuevasRespuestas = {};
@@ -1222,6 +1290,8 @@ const FormularioGestionPublico = () => {
   };
 
   const reiniciarFormularioParaNuevaCarga = () => {
+    if (soloConsultaDni) return;
+
     setEstadoEnvio(null);
     setRespuestaRegistrada(null);
     setVerDetalleRespuesta(false);
@@ -1249,7 +1319,8 @@ const FormularioGestionPublico = () => {
     if (
       requiereValidacionDni ||
       modoEdicionAfiliado ||
-      permiteMultiplesRespuestasPorDni
+      permiteMultiplesRespuestasPorDni ||
+      soloConsultaDni
     ) {
       return;
     }
@@ -1286,6 +1357,18 @@ const FormularioGestionPublico = () => {
 
   const enviarFormulario = async () => {
     if (!formulario || enviando || (enviado && !modoEdicionAfiliado)) return;
+
+    if (soloConsultaDni) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Carga no habilitada",
+        detail:
+          "Este formulario está disponible solo para consultar información cargada.",
+        life: 4500,
+      });
+
+      return;
+    }
 
     const yaEnviadoLocal =
       localStorageKey && localStorage.getItem(localStorageKey) === "true";
@@ -2459,9 +2542,11 @@ const FormularioGestionPublico = () => {
           </header>
 
           <Message
-            severity="info"
+            severity={soloConsultaDni ? "warn" : "info"}
             text={
-              permiteMultiplesRespuestasPorDni
+              soloConsultaDni
+                ? "Este formulario está habilitado solo para consultar información cargada. Ingrese su DNI para verificar si existen datos registrados."
+                : permiteMultiplesRespuestasPorDni
                 ? "Para iniciar la carga, primero debe validar su DNI. Este formulario permite realizar más de una carga con el mismo DNI."
                 : "Para iniciar la carga, primero debe validar su DNI. El sistema verificará si figura en usuarios o nuevoAfiliado y también controlará si ya existe una respuesta para este formulario."
             }
@@ -2492,9 +2577,11 @@ const FormularioGestionPublico = () => {
 
           <div className={styles.actions}>
             <Button
-              label="Validar DNI"
-              icon="pi pi-search"
-              severity="success"
+              label={
+                soloConsultaDni ? "Consultar información" : "Validar DNI"
+              }
+              icon={soloConsultaDni ? "pi pi-search" : "pi pi-check"}
+              severity={soloConsultaDni ? "warning" : "success"}
               onClick={validarDniAntesDeCargar}
               loading={validandoDni}
               disabled={validandoDni}
@@ -2539,10 +2626,13 @@ const FormularioGestionPublico = () => {
   }
 
   if (enviado) {
+    const esSoloConsulta = estadoEnvio === "solo_consulta";
     const esDuplicadoDni = estadoEnvio === "dni_existente";
     const esDuplicadoLocal = estadoEnvio === "local_existente";
     const puedeEditar =
-      esDuplicadoDni && respuestaRegistrada?.edicionAfiliadoHabilitada;
+      !soloConsultaDni &&
+      esDuplicadoDni &&
+      respuestaRegistrada?.edicionAfiliadoHabilitada;
 
     return (
       <main className={styles.page}>
@@ -2564,7 +2654,9 @@ const FormularioGestionPublico = () => {
           />
 
           <h1>
-            {esDuplicadoDni
+            {esSoloConsulta
+              ? "Información cargada encontrada"
+              : esDuplicadoDni
               ? "Ya existe un registro con ese DNI"
               : esDuplicadoLocal
               ? "Formulario ya cargado"
@@ -2574,7 +2666,9 @@ const FormularioGestionPublico = () => {
           </h1>
 
           <p>
-            {esDuplicadoDni
+            {esSoloConsulta
+              ? "El formulario está habilitado solo para consulta. Puede revisar la información cargada para el DNI ingresado."
+              : esDuplicadoDni
               ? puedeEditar
                 ? "El administrador habilitó la edición de este formulario. Puede revisar la información cargada o modificarla."
                 : "No se puede volver a cargar este formulario porque ya existe una respuesta registrada con el DNI ingresado para este formulario."
@@ -2604,6 +2698,7 @@ const FormularioGestionPublico = () => {
             )}
 
             {permiteMultiplesRespuestasPorDni &&
+              !soloConsultaDni &&
               !esDuplicadoDni &&
               !esDuplicadoLocal && (
                 <Button
@@ -2614,6 +2709,22 @@ const FormularioGestionPublico = () => {
                   onClick={reiniciarFormularioParaNuevaCarga}
                 />
               )}
+
+            {esSoloConsulta && (
+              <Button
+                label="Consultar otro DNI"
+                icon="pi pi-search"
+                severity="warning"
+                outlined
+                onClick={() => {
+                  setEstadoEnvio(null);
+                  setRespuestaRegistrada(null);
+                  setVerDetalleRespuesta(false);
+                  setDniValidacion("");
+                  setMensajeValidacionDni("");
+                }}
+              />
+            )}
 
             <Button
               label="Volver a Oficina de Gestión"
@@ -2639,7 +2750,7 @@ const FormularioGestionPublico = () => {
     );
   }
 
-  if (requiereValidacionDni && !afiliadoValidado) {
+  if ((requiereValidacionDni || soloConsultaDni) && !afiliadoValidado) {
     return renderPantallaValidacionDni();
   }
 
@@ -2774,4 +2885,4 @@ const FormularioGestionPublico = () => {
   );
 };
 
-export default FormularioGestionPublico;
+export default FormularioGestionPublico;  

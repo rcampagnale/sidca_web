@@ -139,6 +139,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
   const [titulo, setTitulo] = useState("");
   const [descripcionHtml, setDescripcionHtml] = useState("");
   const [activo, setActivo] = useState(true);
+  const [soloConsultaDni, setSoloConsultaDni] = useState(false);
 
   const [
     permitirMultiplesRespuestasPorDni,
@@ -248,6 +249,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
     setTitulo("");
     setDescripcionHtml("");
     setActivo(true);
+    setSoloConsultaDni(false);
     setPermitirMultiplesRespuestasPorDni(false);
     setArchivoDescargaFormulario(null);
     setDescripcionArchivoDescargaFormulario("");
@@ -380,8 +382,9 @@ const CrearFormularioGestion = ({ onCreated }) => {
           placeholder: campo.placeholder?.trim() || "Ingrese su DNI",
           validacionColecciones: ["usuarios", "nuevoAfiliado"],
           autocompletarDatosAfiliado: true,
-          descripcionInterna:
-            "Campo especial: valida el DNI contra usuarios/nuevoAfiliado y verifica si ya existe una respuesta para este formulario.",
+          descripcionInterna: soloConsultaDni
+            ? "Campo especial: permite consultar una respuesta existente por DNI. No habilita nuevas cargas cuando el formulario está en modo solo consulta."
+            : "Campo especial: valida el DNI contra usuarios/nuevoAfiliado y verifica si ya existe una respuesta para este formulario.",
         };
       }
 
@@ -468,6 +471,10 @@ const CrearFormularioGestion = ({ onCreated }) => {
       const descripcionHtmlNormalizada =
         normalizarDescripcionHtml(descripcionHtml);
 
+      const requiereValidacionDni = camposNormalizados.some(
+        (campo) => campo.tipo === "validacion_dni"
+      );
+
       const payload = {
         titulo: titulo.trim(),
 
@@ -480,9 +487,18 @@ const CrearFormularioGestion = ({ onCreated }) => {
         activo: Boolean(activo),
         publicado: false,
 
-        permitirMultiplesRespuestasPorDni: Boolean(
-          permitirMultiplesRespuestasPorDni
-        ),
+        // Modo consulta:
+        // El formulario puede estar activo y publicado,
+        // pero no permite cargar respuestas nuevas.
+        // Solo permite consultar datos ya cargados por DNI.
+        soloConsultaDni: Boolean(soloConsultaDni),
+        modoSoloConsultaDni: Boolean(soloConsultaDni),
+        bloquearCargaRespuestas: Boolean(soloConsultaDni),
+
+        // Si está en modo solo consulta, no corresponde permitir múltiples cargas.
+        permitirMultiplesRespuestasPorDni: soloConsultaDni
+          ? false
+          : Boolean(permitirMultiplesRespuestasPorDni),
 
         archivoDescargaFormulario: archivoDescarga,
 
@@ -491,9 +507,10 @@ const CrearFormularioGestion = ({ onCreated }) => {
         formularioCodigo: docRef.id,
         formularioNumero: docRef.id,
 
-        requiereValidacionDni: camposNormalizados.some(
-          (campo) => campo.tipo === "validacion_dni"
-        ),
+        // Si está en solo consulta también se considera que requiere control por DNI.
+        requiereValidacionDni: soloConsultaDni
+          ? true
+          : Boolean(requiereValidacionDni),
 
         campos: camposNormalizados,
         cantidadCampos: camposNormalizados.length,
@@ -599,6 +616,31 @@ const CrearFormularioGestion = ({ onCreated }) => {
 
         <div className={styles.switchRow}>
           <div>
+            <strong>Solo consulta por DNI</strong>
+
+            <p>
+              Activá esta opción si querés que el formulario esté visible, pero
+              no permita cargar nuevas respuestas. Al validar el DNI, el
+              afiliado solo podrá ver la información ya cargada para ese
+              formulario.
+            </p>
+          </div>
+
+          <InputSwitch
+            checked={soloConsultaDni}
+            onChange={(e) => {
+              setSoloConsultaDni(e.value);
+
+              if (e.value) {
+                setPermitirMultiplesRespuestasPorDni(false);
+              }
+            }}
+            disabled={guardando}
+          />
+        </div>
+
+        <div className={styles.switchRow}>
+          <div>
             <strong>Permitir varias cargas con el mismo DNI</strong>
 
             <p>
@@ -611,7 +653,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
           <InputSwitch
             checked={permitirMultiplesRespuestasPorDni}
             onChange={(e) => setPermitirMultiplesRespuestasPorDni(e.value)}
-            disabled={guardando}
+            disabled={guardando || soloConsultaDni}
           />
         </div>
 
@@ -789,11 +831,13 @@ const CrearFormularioGestion = ({ onCreated }) => {
                 </div>
 
                 <div className={styles.formRow}>
-                  <label>Control de duplicados</label>
+                  <label>Control de duplicados / consulta</label>
 
                   <InputText
                     value={
-                      permitirMultiplesRespuestasPorDni
+                      soloConsultaDni
+                        ? "Solo consulta: no permitirá cargar respuestas nuevas"
+                        : permitirMultiplesRespuestasPorDni
                         ? "Permitirá varias respuestas con el mismo DNI"
                         : "Verificará formularioId + DNI antes de permitir cargar"
                     }
@@ -806,7 +850,9 @@ const CrearFormularioGestion = ({ onCreated }) => {
                   afiliado deberá ingresar su DNI y presionar “Validar DNI”. Si
                   la opción de múltiples cargas está desactivada, el sistema
                   bloqueará una nueva carga si ya existe una respuesta con ese
-                  DNI para este formulario.
+                  DNI para este formulario. Si el modo “Solo consulta por DNI”
+                  está activado, no se permitirá cargar nuevas respuestas y solo
+                  se mostrarán datos ya registrados.
                 </small>
               </div>
             )}
