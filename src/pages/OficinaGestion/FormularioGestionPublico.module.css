@@ -1,9 +1,20 @@
 /* src/pages/OficinaGestion/FormularioGestionPublico.module.css */
 
+/* =========================================================
+   BASE / CONTENEDOR GENERAL
+   ========================================================= */
+
+.page,
+.page * {
+  box-sizing: border-box;
+}
+
 .page {
   width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   padding: 24px;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 34%),
     linear-gradient(135deg, #f8fafc, #ecfdf5);
@@ -13,11 +24,13 @@
 .successCard,
 .errorCard,
 .warningCard {
-  width: min(920px, 100%);
+  width: 100%;
+  max-width: 920px;
   margin: 0 auto;
   background: #ffffff;
   border-radius: 20px;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  overflow-x: hidden;
 }
 
 .formCard {
@@ -27,15 +40,18 @@
   border: 1px solid #e2e8f0;
 }
 
-/* ===========================
+/* =========================================================
    HEADER FORMULARIO
-   =========================== */
+   ========================================================= */
 
 .header {
   display: grid;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
   padding-bottom: 18px;
   border-bottom: 1px solid #e2e8f0;
+  overflow-x: hidden;
 }
 
 .headerTop {
@@ -43,10 +59,13 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .badge {
   width: fit-content;
+  max-width: 100%;
   padding: 6px 14px;
   border-radius: 999px;
   background: #dcfce7;
@@ -55,41 +74,211 @@
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  overflow-wrap: anywhere;
 }
 
 .header h1 {
+  max-width: 100%;
   margin: 0;
   color: #0f172a;
   font-size: clamp(1.6rem, 4vw, 2.25rem);
   font-weight: 900;
   line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .header p {
+  max-width: 100%;
   margin: 0;
   color: #475569;
   font-size: 1rem;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
-/* ===========================
+/* =========================================================
+   DESCRIPCIÓN HTML DEL FORMULARIO
+   ========================================================= */
+
+.descripcionFormularioPublica {
+  width: 100%;
+  max-width: 100%;
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.75;
+  text-align: justify;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.descripcionFormularioPublica p {
+  max-width: 100%;
+  margin: 0 0 14px;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.descripcionFormularioPublica div,
+.descripcionFormularioPublica span,
+.descripcionFormularioPublica strong,
+.descripcionFormularioPublica em,
+.descripcionFormularioPublica u,
+.descripcionFormularioPublica li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.descripcionFormularioPublica ul,
+.descripcionFormularioPublica ol {
+  max-width: 100%;
+  margin: 10px 0 14px 24px;
+  padding: 0;
+}
+
+.descripcionFormularioPublica li {
+  margin-bottom: 6px;
+  text-align: justify;
+}
+
+.descripcionFormularioPublica strong {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.descripcionFormularioPublica em {
+  font-style: italic;
+}
+
+.descripcionFormularioPublica u {
+  text-decoration: underline;
+}
+
+.descripcionFormularioPublica .ql-align-center {
+  text-align: center;
+}
+
+.descripcionFormularioPublica .ql-align-right {
+  text-align: right;
+}
+
+.descripcionFormularioPublica .ql-align-justify {
+  text-align: justify;
+}
+
+/* =========================================================
+   ARCHIVO DESCARGABLE PARA EL AFILIADO
+   ========================================================= */
+
+.archivoDescargableBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  padding: 14px 16px;
+  margin-top: 12px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  overflow-x: hidden;
+}
+
+.archivoDescargableBox > div {
+  min-width: 0;
+}
+
+.archivoDescargableBox strong {
+  display: block;
+  color: #1e3a8a;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.archivoDescargableBox p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.archivoDescargableDescripcion {
+  white-space: pre-line;
+  text-align: left;
+}
+
+.archivoDescargableLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff !important;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: center;
+}
+
+.archivoDescargableLink:hover {
+  background: #1d4ed8;
+  text-decoration: none !important;
+}
+
+/* =========================================================
    CAMPOS DEL FORMULARIO
-   =========================== */
+   ========================================================= */
 
 .fields {
   display: grid;
   gap: 18px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .field {
   display: grid;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .field label {
   color: #0f172a;
   font-size: 0.98rem;
   font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.field input,
+.field textarea,
+.field :global(.p-inputtext),
+.field :global(.p-dropdown),
+.field :global(.p-multiselect),
+.field :global(.p-inputtextarea),
+.field :global(.p-inputnumber),
+.field :global(.p-calendar) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.field :global(.p-dropdown-label),
+.field :global(.p-multiselect-label),
+.field :global(.p-inputtext) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .required {
@@ -99,23 +288,30 @@
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
   padding-top: 10px;
   border-top: 1px solid #e2e8f0;
 }
 
-/* ===========================
+/* =========================================================
    ARCHIVOS EN FORMULARIO
-   =========================== */
+   ========================================================= */
 
 .fileField {
   display: grid;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .fileActions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .fileButton,
@@ -159,15 +355,19 @@
   color: #64748b;
   font-size: 0.86rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .fileList {
   display: grid;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
   padding: 10px;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
+  overflow-x: hidden;
 }
 
 .fileItem {
@@ -175,15 +375,27 @@
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
   color: #334155;
   font-size: 0.92rem;
+  overflow-x: hidden;
 }
 
 .fileItem span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.fileItem a {
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .fileItem button {
+  flex: 0 0 auto;
   border: none;
   background: #fee2e2;
   color: #b91c1c;
@@ -198,9 +410,9 @@
   cursor: not-allowed;
 }
 
-/* ===========================
+/* =========================================================
    LOADING
-   =========================== */
+   ========================================================= */
 
 .loadingBox {
   min-height: 320px;
@@ -210,9 +422,9 @@
   color: #475569;
 }
 
-/* ===========================
+/* =========================================================
    ESTADOS FINALES
-   =========================== */
+   ========================================================= */
 
 .successCard,
 .errorCard,
@@ -228,10 +440,7 @@
   border: 1px solid #bbf7d0;
 }
 
-.errorCard {
-  border: 1px solid #fed7aa;
-}
-
+.errorCard,
 .warningCard {
   border: 1px solid #fed7aa;
 }
@@ -250,10 +459,12 @@
 .successCard h1,
 .errorCard h1,
 .warningCard h1 {
+  max-width: 100%;
   margin: 0;
   color: #0f172a;
   font-size: 1.75rem;
   font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .successCard p,
@@ -263,6 +474,7 @@
   margin: 0;
   color: #475569;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .successActions {
@@ -272,18 +484,20 @@
   justify-content: center;
 }
 
-/* =====================================================
+/* =========================================================
    MODAL: INFORMACIÓN CARGADA / DETALLE DE RESPUESTA
-   ===================================================== */
+   ========================================================= */
 
 .detalleRespuesta {
   display: grid;
-  gap: 20px;
-  padding: 2px;
+  gap: 18px;
+  width: 100%;
+  max-width: 100%;
+  padding: 4px;
   color: #0f172a;
+  overflow-x: hidden;
 }
 
-/* Ajuste interno del Dialog de PrimeReact */
 .detalleRespuesta :global(a) {
   color: #1d4ed8;
   text-decoration: none;
@@ -293,27 +507,54 @@
   text-decoration: underline;
 }
 
-/* Tarjetas superiores: Formulario, Código, Fechas */
+.detalleSection {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  overflow-x: hidden;
+}
+
+.detalleSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0;
+  color: #12345a;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.detalleSectionTitle i {
+  color: #2563eb;
+}
+
 .detalleMetaGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  padding: 14px;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 38%),
-    linear-gradient(135deg, #f8fafc, #ffffff);
-  border: 1px solid #e2e8f0;
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
 }
 
 .detalleMetaCard {
   display: grid;
   gap: 6px;
+  align-self: start;
+  min-width: 0;
   padding: 14px;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
 }
 
 .detalleMetaLabel {
@@ -322,6 +563,7 @@
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.055em;
+  overflow-wrap: anywhere;
 }
 
 .detalleMetaValue {
@@ -329,21 +571,24 @@
   font-size: 0.98rem;
   font-weight: 800;
   line-height: 1.35;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-/* Grilla de campos cargados */
 .detalleCamposGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
 }
 
 .detalleCampoCard {
   display: grid;
   gap: 8px;
   align-self: start;
+  min-width: 0;
   height: auto;
   min-height: unset;
   padding: 15px;
@@ -351,6 +596,7 @@
   background: #ffffff;
   border: 1px solid #dbe4ef;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  overflow-x: hidden;
   transition:
     transform 0.16s ease,
     border-color 0.16s ease,
@@ -372,6 +618,7 @@
   font-size: 0.92rem;
   font-weight: 900;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .detalleCampoValue {
@@ -379,6 +626,7 @@
   font-size: 0.96rem;
   font-weight: 600;
   line-height: 1.5;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -387,16 +635,19 @@
   font-weight: 700;
 }
 
-/* Archivos dentro del detalle */
 .detalleArchivosBox {
   display: grid;
   gap: 9px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .detalleArchivoRow {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
   background: #eff6ff;
@@ -404,6 +655,7 @@
   color: #1e40af;
   font-weight: 800;
   line-height: 1.35;
+  overflow-x: hidden;
 }
 
 .detalleArchivoRow i {
@@ -414,13 +666,23 @@
 }
 
 .detalleArchivoRow a {
+  min-width: 0;
+  color: #1d4ed8;
+  overflow-wrap: anywhere;
   word-break: break-word;
   font-weight: 900;
+  text-decoration: none;
+}
+
+.detalleArchivoRow a:hover {
+  text-decoration: underline;
 }
 
 .detalleListaSimple {
   display: grid;
   gap: 7px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .detalleListaRow {
@@ -430,15 +692,16 @@
   border: 1px solid #e2e8f0;
   color: #334155;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
-/* Variante visual para campos de Sí / No, si luego se usa desde JSX */
 .detalleEstadoSi,
 .detalleEstadoNo {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   width: fit-content;
+  max-width: 100%;
   padding: 7px 11px;
   border-radius: 999px;
   font-size: 0.9rem;
@@ -457,11 +720,9 @@
   border: 1px solid #fecaca;
 }
 
-/* ===========================
-   MODAL MÁS PROLIJO OPCIONAL
-   Clases listas para usar si luego
-   actualizamos el JSX a secciones.
-   =========================== */
+/* =========================================================
+   MODAL PROLIJO OPCIONAL: CLASES COMPATIBLES
+   ========================================================= */
 
 .infoCargadaBox {
   width: 100%;
@@ -469,6 +730,7 @@
   margin: 0 auto;
   padding: 4px 0 10px;
   color: #1f2937;
+  overflow-x: hidden;
 }
 
 .infoCargadaHeader {
@@ -485,6 +747,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .infoCargadaTitle {
@@ -492,6 +755,7 @@
   font-size: 1.45rem;
   font-weight: 900;
   color: #243b53;
+  overflow-wrap: anywhere;
 }
 
 .infoCargadaSubtitle {
@@ -499,6 +763,7 @@
   font-size: 0.95rem;
   color: #64748b;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .infoCargadaBadge {
@@ -541,6 +806,7 @@
 }
 
 .infoCargadaItem {
+  min-width: 0;
   padding: 12px 14px;
   border-radius: 12px;
   background: #f8fafc;
@@ -555,6 +821,7 @@
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 
 .infoCargadaValue {
@@ -563,6 +830,7 @@
   font-weight: 700;
   color: #0f172a;
   line-height: 1.35;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -577,6 +845,7 @@
   align-items: center;
   gap: 6px;
   width: fit-content;
+  max-width: 100%;
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 0.9rem;
@@ -605,10 +874,12 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
   padding: 12px 14px;
   border-radius: 14px;
   background: #f8fafc;
   border: 1px solid #dbeafe;
+  overflow-x: hidden;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -644,6 +915,7 @@
   font-weight: 900;
   text-decoration: none;
   line-height: 1.35;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -657,6 +929,7 @@
   color: #64748b;
   font-size: 0.82rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .infoCargadaEmpty {
@@ -669,9 +942,9 @@
   text-align: center;
 }
 
-/* ===========================
-   RESPONSIVE
-   =========================== */
+/* =========================================================
+   RESPONSIVE GENERAL
+   ========================================================= */
 
 @media (max-width: 900px) {
   .detalleMetaGrid,
@@ -679,30 +952,142 @@
   .infoCargadaGrid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 768px) {
-  .page {
+  .detalleSection {
     padding: 14px;
   }
 
-  .formCard {
-    padding: 20px;
-    border-radius: 16px;
+  .detalleCampoCard,
+  .detalleMetaCard {
+    padding: 12px;
+  }
+}
+
+/* =========================================================
+   CELULAR
+   Corrige desborde horizontal en vista móvil
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .page {
+    width: 100%;
+    max-width: 100vw;
+    padding: 10px;
+    overflow-x: hidden;
+  }
+
+  .formCard,
+  .successCard,
+  .errorCard,
+  .warningCard {
+    width: 100%;
+    max-width: calc(100vw - 20px);
+    margin: 0 auto;
+    padding: 18px 16px;
+    border-radius: 18px;
+    overflow-x: hidden;
+  }
+
+  .header {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .headerTop {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+  }
+
+  .headerTop button,
+  .headerTop :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .badge {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .header h1 {
+    font-size: 1.45rem;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+  }
+
+  .descripcionFormularioPublica {
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    text-align: left;
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .descripcionFormularioPublica p {
+    margin-bottom: 14px;
+  }
+
+  .descripcionFormularioPublica li {
+    text-align: left;
+  }
+
+  .archivoDescargableBox {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .archivoDescargableLink {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 12px;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .field {
+    width: 100%;
+    max-width: 100%;
   }
 
   .actions {
-    justify-content: stretch;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 
+  .actions button,
   .actions :global(.p-button),
-  .headerTop :global(.p-button),
-  .successActions :global(.p-button),
+  .successActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .successActions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .fileActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .fileButton,
   .fileButtonAlt {
     width: 100%;
@@ -714,11 +1099,14 @@
     align-items: stretch;
   }
 
+  .fileItem button {
+    width: 100%;
+  }
+
   .successCard,
   .errorCard,
   .warningCard {
     padding: 36px 20px;
-    border-radius: 16px;
   }
 
   .successCard h1,
@@ -729,11 +1117,13 @@
 
   .detalleRespuesta {
     gap: 14px;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
-  .detalleMetaGrid {
-    padding: 10px;
-    border-radius: 14px;
+  .detalleMetaGrid,
+  .detalleCamposGrid {
+    grid-template-columns: 1fr;
   }
 
   .detalleMetaCard,
@@ -767,311 +1157,39 @@
   }
 }
 
-/* =====================================================
-   MODAL ORDENADO: INFORMACIÓN CARGADA
-   ===================================================== */
+/* =========================================================
+   CELULARES PEQUEÑOS
+   ========================================================= */
 
-.detalleRespuesta {
-  display: grid;
-  gap: 18px;
-  padding: 4px;
-  color: #0f172a;
-}
+@media (max-width: 420px) {
+  .page {
+    padding: 8px;
+  }
 
-.detalleSection {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid #dbe4ef;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-}
+  .formCard,
+  .successCard,
+  .errorCard,
+  .warningCard {
+    max-width: calc(100vw - 16px);
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
 
-.detalleSectionTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: #12345a;
-  font-size: 1.05rem;
-  font-weight: 900;
-  line-height: 1.3;
-}
+  .header h1 {
+    font-size: 1.32rem;
+  }
 
-.detalleSectionTitle i {
-  color: #2563eb;
-}
-
-.detalleMetaGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-items: start;
-}
-
-.detalleMetaCard {
-  display: grid;
-  gap: 6px;
-  align-self: start;
-  padding: 14px;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #dbe4ef;
-}
-
-.detalleMetaLabel {
-  color: #64748b;
-  font-size: 0.76rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.055em;
-}
-
-.detalleMetaValue {
-  color: #0f172a;
-  font-size: 0.98rem;
-  font-weight: 800;
-  line-height: 1.35;
-  word-break: break-word;
-}
-
-.detalleCamposGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  align-items: start;
-}
-
-.detalleCampoCard {
-  display: grid;
-  gap: 8px;
-  align-self: start;
-  height: auto;
-  min-height: unset;
-  padding: 15px;
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #dbe4ef;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-}
-
-.detalleCampoCardFull {
-  grid-column: 1 / -1;
-}
-
-.detalleCampoLabel {
-  color: #1e3a5f;
-  font-size: 0.92rem;
-  font-weight: 900;
-  line-height: 1.3;
-}
-
-.detalleCampoValue {
-  color: #334155;
-  font-size: 0.96rem;
-  font-weight: 600;
-  line-height: 1.5;
-  word-break: break-word;
-}
-
-.detalleEmpty {
-  color: #94a3b8;
-  font-weight: 700;
-}
-
-.detalleArchivosBox {
-  display: grid;
-  gap: 9px;
-}
-
-.detalleArchivoRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1e40af;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.detalleArchivoRow i {
-  flex: 0 0 auto;
-  margin-top: 2px;
-  color: #2563eb;
-  font-size: 1rem;
-}
-
-.detalleArchivoRow a {
-  color: #1d4ed8;
-  word-break: break-word;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.detalleArchivoRow a:hover {
-  text-decoration: underline;
-}
-
-.detalleListaSimple {
-  display: grid;
-  gap: 7px;
-}
-
-.detalleListaRow {
-  padding: 9px 11px;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  font-weight: 700;
-}
-
-.detalleEstadoSi,
-.detalleEstadoNo {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  width: fit-content;
-  padding: 7px 11px;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 900;
-}
-
-.detalleEstadoSi {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
-}
-
-.detalleEstadoNo {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-@media (max-width: 900px) {
-  .detalleMetaGrid,
-  .detalleCamposGrid {
-    grid-template-columns: 1fr;
+  .descripcionFormularioPublica {
+    font-size: 0.95rem;
+    line-height: 1.55;
   }
 
   .detalleSection {
-    padding: 14px;
-  }
-
-  .detalleCampoCard,
-  .detalleMetaCard {
     padding: 12px;
-  }
-}
-.archivoDescargableBox {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  margin-top: 12px;
-  border-radius: 14px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-}
-
-.archivoDescargableBox strong {
-  display: block;
-  color: #1e3a8a;
-  font-weight: 900;
-}
-
-.archivoDescargableBox p {
-  margin: 4px 0 0;
-  color: #475569;
-  font-size: 0.92rem;
-  line-height: 1.4;
-}
-
-.archivoDescargableLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #ffffff !important;
-  font-weight: 900;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.archivoDescargableLink:hover {
-  background: #1d4ed8;
-  text-decoration: none !important;
-}
-
-@media (max-width: 768px) {
-  .archivoDescargableBox {
-    flex-direction: column;
-    align-items: stretch;
+    border-radius: 15px;
   }
 
-  .archivoDescargableLink {
-    width: 100%;
+  .detalleSectionTitle {
+    font-size: 0.98rem;
   }
-}
-.descripcionFormularioPublica {
-  color: #334155;
-  font-size: 1rem;
-  line-height: 1.75;
-  text-align: justify;
-}
-
-.descripcionFormularioPublica p {
-  margin: 0 0 14px;
-}
-
-.descripcionFormularioPublica ul,
-.descripcionFormularioPublica ol {
-  margin: 10px 0 14px 24px;
-  padding: 0;
-}
-
-.descripcionFormularioPublica li {
-  margin-bottom: 6px;
-  text-align: justify;
-}
-
-.descripcionFormularioPublica strong {
-  font-weight: 900;
-  color: #0f172a;
-}
-
-.descripcionFormularioPublica em {
-  font-style: italic;
-}
-
-.descripcionFormularioPublica u {
-  text-decoration: underline;
-}
-
-.descripcionFormularioPublica .ql-align-center {
-  text-align: center;
-}
-
-.descripcionFormularioPublica .ql-align-right {
-  text-align: right;
-}
-
-.descripcionFormularioPublica .ql-align-justify {
-  text-align: justify;
-}
-
-.archivoDescargableDescripcion {
-  white-space: pre-line;
-  text-align: left;
 }
