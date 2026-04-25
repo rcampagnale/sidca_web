@@ -13,7 +13,8 @@ const NAV_GROUPS = [
     items: [
       { label: "Enlaces", path: "/admin/enlaces" },
       { label: "Usuarios", path: "/admin/usuarios" },
-      { label: "Habilitar Botones", path: "/admin/botones" }, // ⬅️ antes estaba en Asistencia
+      { label: "Habilitar Botones", path: "/admin/botones" },
+      { label: "Oficina de Gestión", path: "/admin/oficina-gestion" }, // ✅ NUEVA PÁGINA
       { label: "Asesoramiento", path: "/admin/asesoramiento" },
       { label: "Novedades", path: "/admin/novedades" },
     ],
@@ -28,7 +29,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Cursos", // ⬅️ antes: "Asistencia"
+    label: "Cursos",
     items: [
       { label: "Asistencia", path: "/admin/ListaAsistencia" },
       { label: "Cursos", path: "/admin/cursos" },
@@ -100,7 +101,7 @@ const AdminHeader = () => {
         ))}
       </ul>
 
-      {/* Botón salir (con confirmDialog) */}
+      {/* Botón salir con confirmDialog */}
       <div className={styles.btnExit}>
         <Button
           icon="pi pi-sign-out"
@@ -109,7 +110,7 @@ const AdminHeader = () => {
         />
       </div>
 
-      {/* Menú hamburguesa (celular) */}
+      {/* Menú hamburguesa celular */}
       <div className={styles.hamburger}>
         <Button
           icon="pi pi-bars"

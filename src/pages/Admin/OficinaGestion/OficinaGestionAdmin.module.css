@@ -1,0 +1,973 @@
+/* src/pages/Admin/OficinaGestion/OficinaGestionAdmin.module.css */
+
+.page {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  padding: 20px;
+  background: #f8fafc;
+
+  /* CLAVE: fuerza estructura vertical */
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+/* ===========================
+   ENCABEZADO COMPACTO
+   =========================== */
+
+.headerCompact {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 22px 26px;
+  background: linear-gradient(135deg, #ffffff, #f0fdf4);
+  border-left: 6px solid #22c55e;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 14px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.subtitle {
+  max-width: 980px;
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.backButton {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ===========================
+   PANEL / PESTAÑAS
+   =========================== */
+
+.panel {
+  width: 100%;
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.tabView {
+  width: 100%;
+}
+
+.tabView :global(.p-tabview-nav) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 0 14px;
+  border: none;
+  background: transparent;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tabView :global(.p-tabview-nav li) {
+  margin: 0;
+}
+
+.tabView :global(.p-tabview-nav li .p-tabview-nav-link) {
+  border: none;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 800;
+  padding: 0.85rem 1.15rem;
+  transition: all 0.18s ease;
+}
+
+.tabView :global(.p-tabview-nav li .p-tabview-nav-link:hover) {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tabView :global(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.tabView :global(.p-tabview-panels) {
+  padding: 22px 0 0;
+  background: transparent;
+}
+
+/* ===========================
+   FORMULARIOS
+   =========================== */
+
+.formWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sectionTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.sectionTitle h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.sectionTitle p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.formGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formRow label {
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.switchRow p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.switchRowSmall {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.switchRowSmall span {
+  color: #334155;
+  font-weight: 800;
+}
+
+.camposHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 8px;
+}
+
+.camposHeader h3 {
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.camposHeader p {
+  margin: 0;
+  color: #64748b;
+}
+
+.camposList {
+  display: grid;
+  gap: 16px;
+}
+
+.campoCard {
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.campoCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.campoCardHeader strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.campoGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 0.6fr;
+  gap: 14px;
+  align-items: end;
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* ===========================
+   GESTIONAR FORMULARIOS
+   =========================== */
+
+.manageList {
+  display: grid;
+  gap: 18px;
+}
+
+.manageCard {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.manageCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.manageCardHeader h3 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.manageCardHeader p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.metaItem span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.metaItem strong {
+  color: #0f172a;
+  font-size: 0.96rem;
+  word-break: break-word;
+}
+
+.linkBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.linkBox label {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.linkBox small {
+  color: #64748b;
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.manageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ===========================
+   PREVIEW
+   =========================== */
+
+.previewWrapper {
+  display: grid;
+  gap: 18px;
+}
+
+.previewTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.previewTop h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.previewTop p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.previewLinkAlert {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+}
+
+.previewLinkAlert strong {
+  color: #166534;
+}
+
+.previewLinkAlert span {
+  color: #14532d;
+  word-break: break-all;
+}
+
+.previewFields {
+  display: grid;
+  gap: 16px;
+}
+
+.previewField {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.previewField label {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.requiredMark {
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.previewBooleanRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.previewFileBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewFileBox small {
+  color: #64748b;
+}
+
+/* ===========================
+   RESPUESTAS
+   =========================== */
+
+.selectedInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.selectedInfo strong {
+  color: #0f172a;
+}
+
+.selectedInfo p {
+  margin: 6px 0 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.loadingBox,
+.emptyBox {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  color: #64748b;
+}
+
+.emptyBox i {
+  color: #94a3b8;
+  font-size: 2rem;
+}
+
+.emptyBox h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.emptyBox p {
+  margin: 0;
+}
+
+.respuestasList {
+  display: grid;
+  gap: 14px;
+}
+
+.respuestaCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.respuestaHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.respuestaHeader strong {
+  color: #0f172a;
+}
+
+.respuestaHeader span {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.respuestaCard p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.detalleRespuesta {
+  display: grid;
+  gap: 18px;
+}
+
+.detalleMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.detalleCampos {
+  display: grid;
+  gap: 12px;
+}
+
+.detalleCampo {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.detalleCampo strong {
+  color: #0f172a;
+}
+
+.detalleCampo span {
+  color: #475569;
+  white-space: pre-wrap;
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+
+@media (max-width: 1200px) {
+  .campoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 14px;
+  }
+
+  .headerCompact {
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .title {
+    font-size: 1.55rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .backButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+
+  .sectionTitle,
+  .camposHeader,
+  .selectedInfo,
+  .respuestaCard,
+  .manageCardHeader,
+  .previewTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .campoGrid,
+  .metaGrid,
+  .linkRow {
+    grid-template-columns: 1fr;
+  }
+
+  .tabView :global(.p-tabview-nav li) {
+    width: 100%;
+  }
+
+  .tabView :global(.p-tabview-nav li .p-tabview-nav-link),
+  .footerActions :global(.p-button),
+  .camposHeader :global(.p-button),
+  .sectionTitle :global(.p-button),
+  .respuestaCard :global(.p-button),
+  .manageActions :global(.p-button),
+  .linkRow :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.archivoConfigBox {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+}
+
+.helpText {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .archivoConfigBox {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================
+   CONFIGURACIÓN DE ARCHIVOS
+   =========================== */
+
+.archivoConfigBox {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+}
+
+.helpText {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* ===========================
+   LINK FINAL DEL FORMULARIO
+   =========================== */
+
+.linkRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.linkRow :global(.p-inputtext) {
+  width: 100%;
+}
+
+.linkRow :global(.p-button) {
+  white-space: nowrap;
+}
+
+/* ===========================
+   RESPONSIVE ARCHIVOS / LINKS
+   =========================== */
+
+@media (max-width: 900px) {
+  .archivoConfigBox,
+  .linkRow {
+    grid-template-columns: 1fr;
+  }
+
+  .linkRow :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.importBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+}
+
+.importBox h3 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.importBox p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.importActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.errorBox {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  color: #9a3412;
+}
+
+.errorBox h3 {
+  margin: 0;
+  color: #9a3412;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.errorBox p {
+  margin: 0;
+}
+
+.previewExcelBox {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.previewExcelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.previewExcelHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.previewExcelTable {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.previewExcelTable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.previewExcelTable th,
+.previewExcelTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.previewExcelTable th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 900;
+}
+
+.previewExcelTable td {
+  color: #475569;
+}
+
+@media (max-width: 768px) {
+  .importBox,
+  .previewExcelHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .importActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.departamentoConfigBox {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 14px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+}
+
+.archivoConfigBox {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+}
+
+.helpText {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .departamentoConfigBox,
+  .archivoConfigBox {
+    grid-template-columns: 1fr;
+  }
+}
+.detalleArchivosBox {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.detalleArchivoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+}
+
+.detalleArchivoRow span {
+  color: #475569;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.detalleArchivoRow a {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.detalleArchivoRow a:hover {
+  text-decoration: underline;
+}
+
+.detalleListaSimple {
+  display: grid;
+  gap: 8px;
+}
+
+.detalleListaRow {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.formRow :global(.p-editor-container) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.formRow :global(.p-editor-toolbar) {
+  background: #f8fafc;
+  border-color: #dbe4ef;
+}
+
+.formRow :global(.p-editor-content) {
+  border-color: #dbe4ef;
+}
+
+.formRow :global(.ql-editor) {
+  min-height: 220px;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #0f172a;
+}
+
+.formRow :global(.ql-editor p) {
+  margin-bottom: 12px;
+}
+
+.formRow :global(.ql-editor ul),
+.formRow :global(.ql-editor ol) {
+  padding-left: 22px;
+}

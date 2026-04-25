@@ -1,58 +1,84 @@
-import React, { useState } from 'react';
-import { useHistory } from 'react-router';
-import { useSelector } from 'react-redux';
-import { Button } from 'primereact/button';
-import { confirmDialog } from 'primereact/confirmdialog';
-import NavUser from './nav/NavUser';
+import React, { useState } from "react";
+import { useHistory } from "react-router";
+import { useSelector } from "react-redux";
+import { Button } from "primereact/button";
+import { confirmDialog } from "primereact/confirmdialog";
+import NavUser from "./nav/NavUser";
 import styles from "./privateHeader.module.scss";
-import logo from '../../../../assets/img/logo-01.png';
+import logo from "../../../../assets/img/logo-01.png";
 
 const PrivateHeader = () => {
+  const history = useHistory();
 
-    const history = useHistory();
+  const [active, setActive] = useState(false);
 
-    const [active, setActive] = useState(false);
+  const user = useSelector((state) => state.user);
 
-    const user = useSelector(state => state.user)
+  const confirm = () => {
+    confirmDialog({
+      message: "¿Está seguro de que quiere cerrar sesión?",
+      header: "Cerrar Sesión",
+      icon: "pi pi-exclamation-triangle",
+      accept: () => history.push("/logout"),
+      acceptLabel: "Si",
+      rejectLabel: "No",
+    });
+  };
 
-    const confirm = () => {
-        confirmDialog({
-            message: '¿Está seguro de que quiere cerrar sesión?',
-            header: 'Cerrar Sesión',
-            icon: 'pi pi-exclamation-triangle',
-            accept: () => history.push("/logout"),
-            acceptLabel: 'Si',
-            rejectLabel: 'No'
-        });
-    };
+  return (
+    <>
+      <a
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          history.push("/home");
+        }}
+      >
+        <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
+      </a>
 
-    return (
-        <>
-            <a href='#' onClick={()=>history.push("/home")}>
-                <img className={styles.headerLogo} src={logo} alt="SiDCa logo"/>
-            </a>
-            <ul className={styles.headerNav}>
-                <li onClick={() => history.push('/home')}>Inicio</li>
-                <li onClick={() => history.push('/credencial')}>Credencial</li>
-                <li onClick={() => history.push('/capacitaciones')}>Capacitaciones</li>
-                {/* {user.profue.cotizante && } */}
-                <li onClick={() => history.push('/nosotros')}>Nosotros</li>
-                <li onClick={() => history.push('/convenios')}>Convenios</li>
-                <li onClick={() => history.push('/contacto')}>Contacto</li>
-            </ul>
-            <div className={styles.btnExit}>
-                <Button icon="pi pi-sign-out" className="p-button-rounded p-button-danger mr-2 mb-2" onClick={confirm} />
-            </div>
-            <div className={styles.hamburger} >
-                <Button icon="pi pi-bars" className="p-button-rounded p-button-warning p-button-text" onClick={() => setActive(!active)} />
-            </div>
-            {
-                active &&
-                <NavUser active={active} setActive={setActive} user={user} />
-            }
-        </>
-    )
-}
+      <ul className={styles.headerNav}>
+        <li onClick={() => history.push("/home")}>Inicio</li>
+
+        <li onClick={() => history.push("/credencial")}>Credencial</li>
+
+        <li onClick={() => history.push("/capacitaciones")}>
+          Capacitaciones
+        </li>
+
+        {/* NUEVA OPCIÓN */}
+        <li onClick={() => history.push("/oficina-gestion")}>
+          Oficina de Gestión
+        </li>
+
+        {/* {user.profue.cotizante && } */}
+
+        <li onClick={() => history.push("/nosotros")}>Nosotros</li>
+
+        <li onClick={() => history.push("/convenios")}>Convenios</li>
+
+        <li onClick={() => history.push("/contacto")}>Contacto</li>
+      </ul>
+
+      <div className={styles.btnExit}>
+        <Button
+          icon="pi pi-sign-out"
+          className="p-button-rounded p-button-danger mr-2 mb-2"
+          onClick={confirm}
+        />
+      </div>
+
+      <div className={styles.hamburger}>
+        <Button
+          icon="pi pi-bars"
+          className="p-button-rounded p-button-warning p-button-text"
+          onClick={() => setActive(!active)}
+        />
+      </div>
+
+      {active && <NavUser active={active} setActive={setActive} user={user} />}
+    </>
+  );
+};
 
 export default PrivateHeader;
-

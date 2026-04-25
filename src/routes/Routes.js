@@ -3,9 +3,10 @@ import {
   BrowserRouter,
   Route,
   Switch,
-  Redirect, // 👈 importamos Redirect para la compatibilidad de /afiliacion
+  Redirect,
 } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+
 import PublicRoute from "./PublicRoute";
 import PrivateRoute from "./PrivateRoute";
 import AdminRoute from "./AdminRoute";
@@ -42,7 +43,7 @@ import TransaccionesUsuario from "../pages/Admin/TransaccionesUsuario/Transaccio
 import LogoutAdmin from "../pages/Admin/LogoutAdmin/LogoutAdmin";
 import CursosUser from "../pages/Capacitaciones/Cursos/Cursos";
 import Afiliacion from "../pages/Afiliacion/Afiliacion";
-import habilitarbotones from "../pages/Admin/botones/habilitarbotones";
+import HabilitarBotones from "../pages/Admin/botones/habilitarbotones";
 import ListaAsistencia from "../pages/Admin/ListaAsistencia/ListaAsistencia";
 import Adherentes from "../pages/Admin/Adherentes/Adherentes";
 import MiRegistro from "../pages/Capacitaciones/RegistroAsistencia/MiRegistro";
@@ -50,11 +51,19 @@ import Credencial from "../pages/Credencial/Credencial";
 import AfiliadosDashboard from "../pages/Admin/AfiliadosDashboard/AfiliadosDashboard";
 import ReservaCasaDocente from "../pages/ReservaCasaDocente/ReservaCasaDocente";
 import ReservaCasaDocenteAdmin from "../pages/Admin/ReservaCasaDocente/ReservaCasaDocenteAdmin";
-
-
-import { getCategories } from "../redux/reducers/categorias/actions";
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
 import Convenio from "../pages/Convenios/Convenios";
+
+// Oficina de Gestión - Administrador
+import OficinaGestionAdmin from "../pages/Admin/OficinaGestion/OficinaGestionAdmin";
+
+// Oficina de Gestión - Usuario
+import OficinaGestion from "../pages/OficinaGestion/OficinaGestion";
+
+// Oficina de Gestión - Formulario público
+import FormularioGestionPublico from "../pages/OficinaGestion/FormularioGestionPublico";
+
+import { getCategories } from "../redux/reducers/categorias/actions";
 
 const AppRouter = () => {
   const categorias = useSelector((state) => state.categorias);
@@ -67,13 +76,14 @@ const AppRouter = () => {
   }, [categorias.categorias, dispatch]);
 
   return (
-    // AppRouter.jsx
     <BrowserRouter basename={"/"}>
       <Switch>
-        {/* WEB */}
-        {/* 👇 Ahora la raíz muestra LoginUser como página principal */}
+        {/* ===========================
+            WEB PÚBLICA
+        =========================== */}
+
         <PublicRoute exact path="/" component={LoginUser} />
-        {/* ✅ Logout SIEMPRE público */}
+
         <PublicRoute
           exact
           path="/reserva-casa-docente"
@@ -82,35 +92,60 @@ const AppRouter = () => {
         />
 
         <PublicRoute exact path="/logout" component={Logout} />
+
         <Route exact path="/afiliacion" component={Afiliacion} />
 
-        {/* Rutas privadas de usuario */}
+        {/* OFICINA DE GESTIÓN - FORMULARIO PÚBLICO */}
+        <Route
+          exact
+          path="/oficina-gestion/formulario/:id"
+          component={FormularioGestionPublico}
+        />
+
+        {/* ===========================
+            USUARIO PRIVADO
+        =========================== */}
+
         <PrivateRoute exact path="/home" component={Home} />
+
         <PrivateRoute exact path="/Credencial" component={Credencial} />
+
         <PrivateRoute exact path="/nosotros" component={Nosotros} />
+
         <PrivateRoute exact path="/contacto" component={Contacto} />
+
         <PrivateRoute exact path="/novedades" component={NovedadesUser} />
+
         <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
+
+        {/* NUEVA RUTA USUARIO: OFICINA DE GESTIÓN */}
+        <PrivateRoute
+          exact
+          path="/oficina-gestion"
+          component={OficinaGestion}
+        />
+
         <PrivateRoute exact path="/Convenios" component={Convenio} />
 
-        {/* ✅ Mi Registro (minúsculas + guiones) */}
         <PrivateRoute
           exact
           path="/capacitaciones/registro-asistencia"
           component={MiRegistro}
         />
 
-        {/* Alias opcionales (usa Redirect si mantienes el import) */}
+        {/* Alias opcionales */}
         <Route
           exact
           path="/Credencial/"
           render={() => <Redirect to="/Credencial/credencial.js" />}
         />
+
         <Route
           exact
           path="/Capacitaciones/RegistroAsistencia"
           render={() => <Redirect to="/capacitaciones/registro-asistencia" />}
         />
+
         <Route
           exact
           path="/mi-asistencia"
@@ -128,14 +163,23 @@ const AppRouter = () => {
           path="/casa-del-docente"
           component={CasaDelDocente}
         />
+
         <PrivateRoute exact path="/turismo" component={Turismo} />
+
         <PrivateRoute exact path="/predio" component={Predio} />
+
         <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
-        {/* ADMIN */}
+        {/* ===========================
+            ADMIN
+        =========================== */}
+
         <PublicRoute exact path="/admin/login" component={LoginAdmin} />
+
         <AdminRoute exact path="/admin" component={Admin} />
+
         <AdminRoute exact path="/admin/Adherentes" component={Adherentes} />
+
         <AdminRoute
           exact
           path="/admin/reserva-casa-docente"
@@ -147,42 +191,69 @@ const AppRouter = () => {
           path="/admin/ListaAsistencia"
           component={ListaAsistencia}
         />
-        <AdminRoute exact path="/admin/botones" component={habilitarbotones} />
+
+        <AdminRoute
+          exact
+          path="/admin/botones"
+          component={HabilitarBotones}
+        />
+
+        <AdminRoute
+          exact
+          path="/admin/oficina-gestion"
+          component={OficinaGestionAdmin}
+        />
+
         <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
-        <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
+
+        <AdminRoute
+          exact
+          path="/admin/nuevo-enlace/"
+          component={NuevoEnlace}
+        />
+
         <AdminRoute
           exact
           path="/admin/nuevo-enlace/:id"
           component={NuevoEnlace}
         />
+
         <AdminRoute exact path="/admin/cuotas" component={CuotasAdmin} />
+
         <AdminRoute exact path="/admin/nueva-cuota/" component={NuevaCuota} />
+
         <AdminRoute
           exact
           path="/admin/nueva-cuota/:id"
           component={NuevaCuota}
         />
+
         <AdminRoute exact path="/admin/usuarios" component={Usuarios} />
+
         <AdminRoute
           exact
           path="/admin/nuevo-usuario"
           component={NuevoAfiliado}
         />
+
         <AdminRoute
           exact
           path="/admin/nuevo-usuario/:id"
           component={NuevoAfiliado}
         />
+
         <AdminRoute
           exact
           path="/admin/nuevos-afiliados"
           component={AfiliadosNuevos}
         />
+
         <AdminRoute
           exact
           path="/admin/AfiliadoActualizado"
           component={AfiliadoActualizado}
         />
+
         <AdminRoute
           exact
           path="/admin/AfiliadosDashboard"
@@ -190,56 +261,71 @@ const AppRouter = () => {
         />
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
+
         <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />
+
         <AdminRoute
           exact
           path="/admin/nuevo-curso/:id"
           component={NuevoCurso}
         />
+
         <AdminRoute
           exact
           path="/admin/asesoramiento"
           component={Asesoramiento}
         />
+
         <AdminRoute
           exact
           path="/admin/nuevo-asesoramiento"
           component={NuevoAsesoramiento}
         />
+
         <AdminRoute
           exact
           path="/admin/nuevo-asesoramiento/:id"
           component={NuevoAsesoramiento}
         />
+
         <AdminRoute exact path="/admin/novedades" component={Novedades} />
+
         <AdminRoute
           exact
           path="/admin/nueva-novedad"
           component={NuevaNovedad}
         />
+
         <AdminRoute
           exact
           path="/admin/nueva-novedad/:id"
           component={NuevaNovedad}
         />
+
         <AdminRoute
           exact
           path="/admin/transacciones"
           component={Transacciones}
         />
+
         <AdminRoute
           exact
           path="/admin/nueva-transaccion"
           component={NuevaNovedad}
         />
+
         <AdminRoute
           exact
           path="/admin/transacciones/usuario/:id"
           component={TransaccionesUsuario}
         />
+
         <AdminRoute exact path="/admin/logout" component={LogoutAdmin} />
 
-        {/* Fallback */}
+        {/* ===========================
+            FALLBACK
+        =========================== */}
+
         <Route component={NotFound} path="*" />
       </Switch>
     </BrowserRouter>

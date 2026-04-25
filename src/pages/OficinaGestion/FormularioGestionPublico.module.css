@@ -1,0 +1,1077 @@
+/* src/pages/OficinaGestion/FormularioGestionPublico.module.css */
+
+.page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 34%),
+    linear-gradient(135deg, #f8fafc, #ecfdf5);
+}
+
+.formCard,
+.successCard,
+.errorCard,
+.warningCard {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+}
+
+.formCard {
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ===========================
+   HEADER FORMULARIO
+   =========================== */
+
+.header {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  width: fit-content;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.6rem, 4vw, 2.25rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.header p {
+  margin: 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* ===========================
+   CAMPOS DEL FORMULARIO
+   =========================== */
+
+.fields {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.required {
+  color: #dc2626;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* ===========================
+   ARCHIVOS EN FORMULARIO
+   =========================== */
+
+.fileField {
+  display: grid;
+  gap: 10px;
+}
+
+.fileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fileButton,
+.fileButtonAlt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: all 0.18s ease;
+}
+
+.fileButton {
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.fileButtonAlt {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.fileButton:hover,
+.fileButtonAlt:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.fileButton input,
+.fileButtonAlt input {
+  display: none;
+}
+
+.help {
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.fileList {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.fileItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+  font-size: 0.92rem;
+}
+
+.fileItem span {
+  word-break: break-word;
+}
+
+.fileItem button {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fileItem button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   LOADING
+   =========================== */
+
+.loadingBox {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  color: #475569;
+}
+
+/* ===========================
+   ESTADOS FINALES
+   =========================== */
+
+.successCard,
+.errorCard,
+.warningCard {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.successCard {
+  border: 1px solid #bbf7d0;
+}
+
+.errorCard {
+  border: 1px solid #fed7aa;
+}
+
+.warningCard {
+  border: 1px solid #fed7aa;
+}
+
+.successCard i {
+  color: #16a34a;
+  font-size: 3rem;
+}
+
+.errorCard i,
+.warningCard i {
+  color: #f59e0b;
+  font-size: 3rem;
+}
+
+.successCard h1,
+.errorCard h1,
+.warningCard h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.75rem;
+  font-weight: 900;
+}
+
+.successCard p,
+.errorCard p,
+.warningCard p {
+  max-width: 620px;
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.successActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* =====================================================
+   MODAL: INFORMACIÓN CARGADA / DETALLE DE RESPUESTA
+   ===================================================== */
+
+.detalleRespuesta {
+  display: grid;
+  gap: 20px;
+  padding: 2px;
+  color: #0f172a;
+}
+
+/* Ajuste interno del Dialog de PrimeReact */
+.detalleRespuesta :global(a) {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.detalleRespuesta :global(a:hover) {
+  text-decoration: underline;
+}
+
+/* Tarjetas superiores: Formulario, Código, Fechas */
+.detalleMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 38%),
+    linear-gradient(135deg, #f8fafc, #ffffff);
+  border: 1px solid #e2e8f0;
+}
+
+.detalleMetaCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.detalleMetaLabel {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.detalleMetaValue {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* Grilla de campos cargados */
+.detalleCamposGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.detalleCampoCard {
+  display: grid;
+  gap: 8px;
+  align-self: start;
+  height: auto;
+  min-height: unset;
+  padding: 15px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.detalleCampoCardFull {
+  grid-column: 1 / -1;
+}
+
+.detalleCampoCard:hover {
+  transform: translateY(-1px);
+  border-color: #bfdbfe;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.detalleCampoLabel {
+  color: #1e3a5f;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.detalleCampoValue {
+  color: #334155;
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.detalleEmpty {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+/* Archivos dentro del detalle */
+.detalleArchivosBox {
+  display: grid;
+  gap: 9px;
+}
+
+.detalleArchivoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.detalleArchivoRow i {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #2563eb;
+  font-size: 1rem;
+}
+
+.detalleArchivoRow a {
+  word-break: break-word;
+  font-weight: 900;
+}
+
+.detalleListaSimple {
+  display: grid;
+  gap: 7px;
+}
+
+.detalleListaRow {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+}
+
+/* Variante visual para campos de Sí / No, si luego se usa desde JSX */
+.detalleEstadoSi,
+.detalleEstadoNo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.detalleEstadoSi {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.detalleEstadoNo {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ===========================
+   MODAL MÁS PROLIJO OPCIONAL
+   Clases listas para usar si luego
+   actualizamos el JSX a secciones.
+   =========================== */
+
+.infoCargadaBox {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 4px 0 10px;
+  color: #1f2937;
+}
+
+.infoCargadaHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.infoCargadaTitleBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoCargadaTitle {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #243b53;
+}
+
+.infoCargadaSubtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.infoCargadaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.infoCargadaSection {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.infoCargadaSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #1e3a5f;
+}
+
+.infoCargadaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.infoCargadaItem {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.infoCargadaLabel {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.infoCargadaValue {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.infoCargadaValueMuted {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.infoCargadaStatusSi,
+.infoCargadaStatusNo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.infoCargadaStatusSi {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.infoCargadaStatusNo {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.infoCargadaArchivosList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoCargadaArchivo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #dbeafe;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.infoCargadaArchivo:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
+.infoCargadaArchivoIcon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 1.1rem;
+}
+
+.infoCargadaArchivoInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.infoCargadaArchivoNombre {
+  display: block;
+  color: #1d4ed8;
+  font-weight: 900;
+  text-decoration: none;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.infoCargadaArchivoNombre:hover {
+  text-decoration: underline;
+}
+
+.infoCargadaArchivoMeta {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.infoCargadaEmpty {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+
+@media (max-width: 900px) {
+  .detalleMetaGrid,
+  .detalleCamposGrid,
+  .infoCargadaGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 14px;
+  }
+
+  .formCard {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .headerTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions :global(.p-button),
+  .headerTop :global(.p-button),
+  .successActions :global(.p-button),
+  .fileButton,
+  .fileButtonAlt {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fileItem {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .successCard,
+  .errorCard,
+  .warningCard {
+    padding: 36px 20px;
+    border-radius: 16px;
+  }
+
+  .successCard h1,
+  .errorCard h1,
+  .warningCard h1 {
+    font-size: 1.45rem;
+  }
+
+  .detalleRespuesta {
+    gap: 14px;
+  }
+
+  .detalleMetaGrid {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .detalleMetaCard,
+  .detalleCampoCard {
+    padding: 12px;
+    border-radius: 13px;
+  }
+
+  .detalleArchivoRow {
+    padding: 10px;
+  }
+
+  .infoCargadaHeader {
+    flex-direction: column;
+  }
+
+  .infoCargadaBadge {
+    white-space: normal;
+  }
+
+  .infoCargadaSection {
+    padding: 14px;
+  }
+
+  .infoCargadaTitle {
+    font-size: 1.25rem;
+  }
+
+  .infoCargadaArchivo {
+    padding: 11px;
+  }
+}
+
+/* =====================================================
+   MODAL ORDENADO: INFORMACIÓN CARGADA
+   ===================================================== */
+
+.detalleRespuesta {
+  display: grid;
+  gap: 18px;
+  padding: 4px;
+  color: #0f172a;
+}
+
+.detalleSection {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.detalleSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #12345a;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.detalleSectionTitle i {
+  color: #2563eb;
+}
+
+.detalleMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.detalleMetaCard {
+  display: grid;
+  gap: 6px;
+  align-self: start;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
+}
+
+.detalleMetaLabel {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.detalleMetaValue {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.detalleCamposGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.detalleCampoCard {
+  display: grid;
+  gap: 8px;
+  align-self: start;
+  height: auto;
+  min-height: unset;
+  padding: 15px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.detalleCampoCardFull {
+  grid-column: 1 / -1;
+}
+
+.detalleCampoLabel {
+  color: #1e3a5f;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.detalleCampoValue {
+  color: #334155;
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.detalleEmpty {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.detalleArchivosBox {
+  display: grid;
+  gap: 9px;
+}
+
+.detalleArchivoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.detalleArchivoRow i {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #2563eb;
+  font-size: 1rem;
+}
+
+.detalleArchivoRow a {
+  color: #1d4ed8;
+  word-break: break-word;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.detalleArchivoRow a:hover {
+  text-decoration: underline;
+}
+
+.detalleListaSimple {
+  display: grid;
+  gap: 7px;
+}
+
+.detalleListaRow {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+}
+
+.detalleEstadoSi,
+.detalleEstadoNo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.detalleEstadoSi {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.detalleEstadoNo {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+@media (max-width: 900px) {
+  .detalleMetaGrid,
+  .detalleCamposGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detalleSection {
+    padding: 14px;
+  }
+
+  .detalleCampoCard,
+  .detalleMetaCard {
+    padding: 12px;
+  }
+}
+.archivoDescargableBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.archivoDescargableBox strong {
+  display: block;
+  color: #1e3a8a;
+  font-weight: 900;
+}
+
+.archivoDescargableBox p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.archivoDescargableLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff !important;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.archivoDescargableLink:hover {
+  background: #1d4ed8;
+  text-decoration: none !important;
+}
+
+@media (max-width: 768px) {
+  .archivoDescargableBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .archivoDescargableLink {
+    width: 100%;
+  }
+}
+.descripcionFormularioPublica {
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.75;
+  text-align: justify;
+}
+
+.descripcionFormularioPublica p {
+  margin: 0 0 14px;
+}
+
+.descripcionFormularioPublica ul,
+.descripcionFormularioPublica ol {
+  margin: 10px 0 14px 24px;
+  padding: 0;
+}
+
+.descripcionFormularioPublica li {
+  margin-bottom: 6px;
+  text-align: justify;
+}
+
+.descripcionFormularioPublica strong {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.descripcionFormularioPublica em {
+  font-style: italic;
+}
+
+.descripcionFormularioPublica u {
+  text-decoration: underline;
+}
+
+.descripcionFormularioPublica .ql-align-center {
+  text-align: center;
+}
+
+.descripcionFormularioPublica .ql-align-right {
+  text-align: right;
+}
+
+.descripcionFormularioPublica .ql-align-justify {
+  text-align: justify;
+}
+
+.archivoDescargableDescripcion {
+  white-space: pre-line;
+  text-align: left;
+}
