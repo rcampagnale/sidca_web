@@ -1,67 +1,121 @@
 /* src/pages/Admin/OficinaGestion/OficinaGestionAdmin.module.css */
 
-.page {
-  width: 100%;
-  min-height: calc(100vh - 80px);
-  padding: 20px;
-  background: #f8fafc;
+/* =========================================================
+   OFICINA DE GESTIÓN - ADMIN
+   Diseño actualizado:
+   - Encabezado institucional más limpio.
+   - Corrección de desbordes en producción.
+   - Corrección PrimeReact Editor / Quill.
+   - Mejor responsive para botones, formularios y tablas.
+   ========================================================= */
 
-  /* CLAVE: fuerza estructura vertical */
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
 /* ===========================
-   ENCABEZADO COMPACTO
+   BASE GENERAL
+   =========================== */
+
+.page,
+.container,
+.adminPage,
+.oficinaGestionPage {
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  padding: 24px;
+  background: #f4f7fb;
+  color: #020617;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.page *,
+.container *,
+.adminPage *,
+.oficinaGestionPage *,
+.formWrapper *,
+.sectionTitle *,
+.formGrid *,
+.manageCard *,
+.respuestaCard *,
+.campoCard * {
+  box-sizing: border-box;
+}
+
+/* ===========================
+   ENCABEZADO PRINCIPAL
    =========================== */
 
 .headerCompact {
   width: 100%;
+  max-width: 100%;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 18px;
-  padding: 22px 26px;
-  background: linear-gradient(135deg, #ffffff, #f0fdf4);
-  border-left: 6px solid #22c55e;
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  padding: 22px 28px;
+  margin-bottom: 22px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  border-left: 7px solid #22c55e;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
 }
 
 .headerText {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 6px 14px;
-  margin-bottom: 10px;
+  max-width: 100%;
+  padding: 5px 13px;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #166534;
-  font-size: 0.78rem;
-  font-weight: 800;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.045em;
+  line-height: 1.2;
 }
 
 .title {
+  position: relative;
   margin: 0;
-  color: #0f172a;
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1.1;
+  color: #020617;
+  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.title::after {
+  content: "";
+  display: block;
+  width: 74px;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #86efac);
 }
 
 .subtitle {
-  max-width: 980px;
-  margin: 10px 0 0;
-  color: #475569;
-  font-size: 1rem;
-  line-height: 1.55;
+  max-width: 1120px;
+  margin: 4px 0 0;
+  color: #334155;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.65;
+  text-align: justify;
+  overflow-wrap: anywhere;
 }
 
 .backButton {
@@ -69,200 +123,592 @@
   white-space: nowrap;
 }
 
+/* Compatibilidad si tu componente usa otros nombres */
+.headerCard,
+.heroCard,
+.pageHeader {
+  width: 100%;
+  max-width: 100%;
+  padding: 22px 28px;
+  margin-bottom: 22px;
+  border-radius: 18px;
+  border: 1px solid #dbe4ef;
+  border-left: 7px solid #22c55e;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.headerCard h1,
+.heroCard h1,
+.pageHeader h1 {
+  position: relative;
+  margin: 0 0 12px;
+  color: #020617;
+  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.headerCard h1::after,
+.heroCard h1::after,
+.pageHeader h1::after {
+  content: "";
+  display: block;
+  width: 74px;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #86efac);
+}
+
+.headerCard p,
+.heroCard p,
+.pageHeader p {
+  margin: 0;
+  max-width: 1120px;
+  color: #334155;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.65;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
 /* ===========================
-   PANEL / PESTAÑAS
+   PESTAÑAS / BOTONERA SUPERIOR
    =========================== */
 
-.panel {
+.tabs,
+.tabsRow,
+.tabContainer,
+.actionsTabs {
   width: 100%;
-  padding: 22px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-}
-
-.tabView {
-  width: 100%;
-}
-
-.tabView :global(.p-tabview-nav) {
+  max-width: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 0 0 14px;
-  border: none;
-  background: transparent;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
   border-bottom: 1px solid #e2e8f0;
+  overflow-x: hidden;
 }
 
-.tabView :global(.p-tabview-nav li) {
-  margin: 0;
+.tabButton,
+.tabs :global(.p-button),
+.tabsRow :global(.p-button),
+.actionsTabs :global(.p-button) {
+  max-width: 100%;
+  min-height: 52px;
+  border-radius: 14px;
+  font-weight: 850;
+  white-space: normal;
+  text-align: center;
+  box-shadow: none;
 }
 
-.tabView :global(.p-tabview-nav li .p-tabview-nav-link) {
-  border: none;
-  border-radius: 12px;
-  background: #f1f5f9;
-  color: #0f172a;
-  font-weight: 800;
-  padding: 0.85rem 1.15rem;
-  transition: all 0.18s ease;
-}
-
-.tabView :global(.p-tabview-nav li .p-tabview-nav-link:hover) {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.tabView :global(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
+.tabButtonActive,
+.activeTab {
   background: #22c55e;
+  border-color: #22c55e;
   color: #ffffff;
 }
 
-.tabView :global(.p-tabview-panels) {
-  padding: 22px 0 0;
-  background: transparent;
+/* ===========================
+   WRAPPER PRINCIPAL
+   =========================== */
+
+.formWrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 28px;
+  border-radius: 22px;
+  border: 1px solid #dbe4ef;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+  overflow-x: hidden;
+}
+
+/* ===========================
+   TÍTULOS INTERNOS
+   =========================== */
+
+.sectionTitle {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 20px 18px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.sectionTitle > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.sectionTitle h2 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 10px;
+  color: #020617;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  font-weight: 950;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.sectionTitle h2::before {
+  content: "";
+  width: 8px;
+  height: 34px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  box-shadow: 0 8px 16px rgba(34, 197, 94, 0.22);
+}
+
+.sectionTitle h3 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.sectionTitle p {
+  max-width: 1160px;
+  margin: 0;
+  padding-left: 20px;
+  color: #475569;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.65;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.sectionTitle :global(.p-button) {
+  flex-shrink: 0;
+  border-radius: 12px;
+  font-weight: 750;
 }
 
 /* ===========================
    FORMULARIOS
    =========================== */
 
-.formWrapper {
-  display: flex;
-  flex-direction: column;
+.formGrid {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
-.sectionTitle {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.sectionTitle h2 {
-  margin: 0 0 6px;
-  color: #0f172a;
-  font-size: 1.45rem;
-  font-weight: 900;
-}
-
-.sectionTitle p {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.6;
-}
-
-.formGrid {
-  display: grid;
-  gap: 16px;
-}
-
 .formRow {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .formRow label {
-  color: #334155;
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 850;
+  color: #1e293b;
+  line-height: 1.35;
 }
 
-.switchRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+.formRow input,
+.formRow textarea,
+.formRow select,
+.formRow :global(.p-inputtext),
+.formRow :global(.p-inputtextarea),
+.formRow :global(.p-dropdown),
+.formRow :global(.p-multiselect) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.formRow :global(.p-inputtext),
+.formRow :global(.p-inputtextarea) {
   border-radius: 14px;
 }
 
-.switchRow p {
-  margin: 4px 0 0;
+.formRow :global(.p-dropdown),
+.formRow :global(.p-multiselect) {
+  border-radius: 14px;
+}
+
+.formRow input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  padding: 14px;
+  border: 1px dashed #94a3b8;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.helpText {
+  display: block;
+  margin-top: 6px;
   color: #64748b;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+/* ===========================
+   PRIME REACT EDITOR / QUILL
+   =========================== */
+
+.formRow :global(.p-editor-container) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+}
+
+.formRow :global(.p-editor-toolbar),
+.formRow :global(.ql-toolbar.ql-snow) {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px;
+  background: #f8fafc;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.formRow :global(.ql-toolbar.ql-snow .ql-formats) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+.formRow :global(.ql-toolbar.ql-snow button),
+.formRow :global(.ql-toolbar.ql-snow .ql-picker) {
+  flex: 0 0 auto;
+}
+
+.formRow :global(.p-editor-content),
+.formRow :global(.ql-container.ql-snow) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.formRow :global(.ql-editor) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 220px;
+  padding: 18px;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #0f172a;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  text-align: justify;
+}
+
+.formRow :global(.ql-editor p),
+.formRow :global(.ql-editor li) {
+  text-align: justify;
+}
+
+.formRow :global(.ql-editor ul),
+.formRow :global(.ql-editor ol) {
+  padding-left: 1.6rem;
+  margin: 0.7rem 0;
+}
+
+.formRow :global(.ql-editor li) {
+  padding-left: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.formRow :global(.ql-editor.ql-blank::before) {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ===========================
+   SWITCHES / CONFIGURACIÓN
+   =========================== */
+
+.switchRow {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.switchRow > div {
+  min-width: 0;
+}
+
+.switchRow strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.switchRow p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.switchRow :global(.p-inputswitch) {
+  flex: 0 0 auto;
 }
 
 .switchRowSmall {
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 12px;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
 }
 
 .switchRowSmall span {
   color: #334155;
-  font-weight: 800;
+  font-weight: 750;
+  line-height: 1.35;
 }
 
+.switchRowSmall :global(.p-inputswitch) {
+  flex: 0 0 auto;
+}
+
+/* ===========================
+   CAMPOS DEL FORMULARIO
+   =========================== */
+
 .camposHeader {
+  width: 100%;
+  max-width: 100%;
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 8px;
+  gap: 18px;
+  margin-top: 30px;
+  margin-bottom: 18px;
+}
+
+.camposHeader > div {
+  min-width: 0;
 }
 
 .camposHeader h3 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  font-weight: 850;
   color: #0f172a;
-  font-size: 1.15rem;
-  font-weight: 900;
 }
 
 .camposHeader p {
   margin: 0;
   color: #64748b;
+  line-height: 1.55;
+  text-align: justify;
+}
+
+.camposHeader :global(.p-button) {
+  flex-shrink: 0;
+  border-radius: 12px;
+  font-weight: 750;
 }
 
 .camposList {
+  width: 100%;
+  max-width: 100%;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .campoCard {
-  padding: 18px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dbe4ef;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
 }
 
 .campoCardHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .campoCardHeader strong {
+  font-size: 1.05rem;
   color: #0f172a;
-  font-size: 1rem;
 }
 
 .campoGrid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 1fr 0.6fr;
-  gap: 14px;
-  align-items: end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
+.archivoConfigBox,
+.departamentoConfigBox {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.archivoConfigBox .helpText,
+.departamentoConfigBox .helpText {
+  margin: 0;
+}
+
+/* ===========================
+   BOTONES FINALES
+   =========================== */
+
 .footerActions {
+  width: 100%;
+  max-width: 100%;
   display: flex;
-  justify-content: flex-end;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 28px;
+}
+
+.footerActions :global(.p-button) {
+  border-radius: 12px;
+  font-weight: 850;
+  white-space: normal;
+}
+
+/* ===========================
+   ESTADOS
+   =========================== */
+
+.loadingBox,
+.emptyBox,
+.errorBox {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 34px 22px;
+  border-radius: 20px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.loadingBox {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.emptyBox {
+  background: #f8fafc;
+  border: 1px dashed #94a3b8;
+  color: #475569;
+}
+
+.emptyBox i {
+  font-size: 2rem;
+  color: #64748b;
+}
+
+.emptyBox h3,
+.errorBox h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.25rem;
+}
+
+.emptyBox p,
+.errorBox p {
+  margin: 0;
+  max-width: 720px;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.errorBox {
+  align-items: start;
+  justify-items: start;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  text-align: left;
+}
+
+.errorBox p {
+  color: #9a3412;
 }
 
 /* ===========================
@@ -270,278 +716,338 @@
    =========================== */
 
 .manageList {
+  width: 100%;
+  max-width: 100%;
   display: grid;
   gap: 18px;
 }
 
 .manageCard {
-  display: grid;
-  gap: 16px;
-  padding: 18px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #dbe4ef;
+  border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
 }
 
 .manageCardHeader {
+  width: 100%;
+  max-width: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.manageCardHeader > div:first-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .manageCardHeader h3 {
   margin: 0 0 6px;
   color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 900;
+  font-size: 1.25rem;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .manageCardHeader p {
-  margin: 0;
+  margin: 0 0 8px;
+  color: #475569;
+  line-height: 1.6;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.manageCardHeader small {
   color: #64748b;
-  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .tagGroup {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  max-width: 100%;
+}
+
+.tagGroup :global(.p-tag) {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .metaGrid {
+  width: 100%;
+  max-width: 100%;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+  margin-bottom: 18px;
 }
 
 .metaItem {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  min-width: 0;
   padding: 14px;
+  border-radius: 16px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  overflow: hidden;
 }
 
 .metaItem span {
+  display: block;
+  margin-bottom: 6px;
   color: #64748b;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .metaItem strong {
+  display: block;
   color: #0f172a;
-  font-size: 0.96rem;
-  word-break: break-word;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .linkBox {
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
   gap: 8px;
   padding: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 18px;
+  background: #f1f5f9;
+  border: 1px solid #dbe4ef;
+  overflow: hidden;
 }
 
 .linkBox label {
-  color: #0f172a;
-  font-weight: 800;
+  font-weight: 850;
+  color: #1e293b;
 }
 
 .linkBox small {
   color: #64748b;
+  line-height: 1.45;
 }
 
 .linkRow {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
 }
 
-.manageActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-/* ===========================
-   PREVIEW
-   =========================== */
-
-.previewWrapper {
-  display: grid;
-  gap: 18px;
-}
-
-.previewTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.previewTop h2 {
-  margin: 0 0 6px;
-  color: #0f172a;
-  font-size: 1.4rem;
-  font-weight: 900;
-}
-
-.previewTop p {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.6;
-}
-
-.previewLinkAlert {
-  display: grid;
-  gap: 4px;
-  padding: 14px;
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
+.linkRow :global(.p-inputtext) {
+  width: 100%;
+  min-width: 0;
   border-radius: 12px;
 }
 
-.previewLinkAlert strong {
+.linkRow :global(.p-button) {
+  border-radius: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.manageActions {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.manageActions :global(.p-button) {
+  border-radius: 12px;
+  font-weight: 750;
+  white-space: normal;
+  text-align: center;
+}
+
+/* ===========================
+   VISTA PREVIA / DIÁLOGOS
+   =========================== */
+
+.previewWrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+  overflow-x: hidden;
+}
+
+.previewTop {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.previewTop > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.previewTop h2 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.previewTop p {
+  margin: 0 0 8px;
+  color: #475569;
+  line-height: 1.6;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.previewTop small {
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.previewLinkAlert {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
   color: #166534;
+  overflow: hidden;
 }
 
 .previewLinkAlert span {
-  color: #14532d;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .previewFields {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .previewField {
   display: grid;
   gap: 8px;
   padding: 16px;
+  border-radius: 18px;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .previewField label {
+  font-weight: 850;
   color: #0f172a;
-  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.previewField small {
+  color: #64748b;
 }
 
 .requiredMark {
-  color: #dc2626;
+  color: #ef4444;
   font-weight: 900;
+}
+
+.previewFileBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.previewFileBox :global(.p-button),
+.previewFileBox :global(.p-inputtext),
+.previewFileBox :global(.p-dropdown),
+.previewFileBox :global(.p-multiselect) {
+  max-width: 100%;
 }
 
 .previewBooleanRow {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 14px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-}
-
-.previewFileBox {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.previewFileBox small {
-  color: #64748b;
 }
 
 /* ===========================
    RESPUESTAS
    =========================== */
 
-.selectedInfo {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-}
-
-.selectedInfo strong {
-  color: #0f172a;
-}
-
-.selectedInfo p {
-  margin: 6px 0 0;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.loadingBox,
-.emptyBox {
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  min-height: 220px;
-  padding: 24px;
-  text-align: center;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 16px;
-  color: #64748b;
-}
-
-.emptyBox i {
-  color: #94a3b8;
-  font-size: 2rem;
-}
-
-.emptyBox h3 {
-  margin: 0;
-  color: #0f172a;
-}
-
-.emptyBox p {
-  margin: 0;
-}
-
 .respuestasList {
+  width: 100%;
+  max-width: 100%;
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .respuestaCard {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #dbe4ef;
+  border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
 }
 
 .respuestaHeader {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
-  margin-bottom: 6px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .respuestaHeader strong {
   color: #0f172a;
+  font-size: 1.05rem;
 }
 
 .respuestaHeader span {
@@ -550,381 +1056,91 @@
 }
 
 .respuestaCard p {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.5;
+  margin: 0 0 10px;
+  color: #475569;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
+/* ===========================
+   DETALLE RESPUESTA
+   =========================== */
+
 .detalleRespuesta {
+  width: 100%;
+  max-width: 100%;
   display: grid;
-  gap: 18px;
+  gap: 12px;
+  overflow-x: hidden;
 }
 
 .detalleMeta {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 14px;
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: #f8fafc;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.detalleMeta strong {
+  color: #0f172a;
+}
+
+.detalleMeta span {
+  color: #475569;
+  overflow-wrap: anywhere;
 }
 
 .detalleCampos {
   display: grid;
   gap: 12px;
+  margin-top: 8px;
 }
 
 .detalleCampo {
+  width: 100%;
+  max-width: 100%;
   display: grid;
-  gap: 6px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px;
   padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  overflow: hidden;
 }
 
 .detalleCampo strong {
   color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .detalleCampo span {
   color: #475569;
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-/* ===========================
-   RESPONSIVE
-   =========================== */
-
-@media (max-width: 1200px) {
-  .campoGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metaGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .page {
-    padding: 14px;
-  }
-
-  .headerCompact {
-    flex-direction: column;
-    padding: 18px;
-  }
-
-  .title {
-    font-size: 1.55rem;
-  }
-
-  .subtitle {
-    font-size: 0.95rem;
-  }
-
-  .backButton {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .panel {
-    padding: 16px;
-  }
-
-  .sectionTitle,
-  .camposHeader,
-  .selectedInfo,
-  .respuestaCard,
-  .manageCardHeader,
-  .previewTop {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .campoGrid,
-  .metaGrid,
-  .linkRow {
-    grid-template-columns: 1fr;
-  }
-
-  .tabView :global(.p-tabview-nav li) {
-    width: 100%;
-  }
-
-  .tabView :global(.p-tabview-nav li .p-tabview-nav-link),
-  .footerActions :global(.p-button),
-  .camposHeader :global(.p-button),
-  .sectionTitle :global(.p-button),
-  .respuestaCard :global(.p-button),
-  .manageActions :global(.p-button),
-  .linkRow :global(.p-button) {
-    width: 100%;
-    justify-content: center;
-  }
-}
-.archivoConfigBox {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 14px;
-  align-items: end;
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-}
-
-.helpText {
-  grid-column: 1 / -1;
-  color: #64748b;
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-@media (max-width: 900px) {
-  .archivoConfigBox {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ===========================
-   CONFIGURACIÓN DE ARCHIVOS
-   =========================== */
-
-.archivoConfigBox {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 14px;
-  align-items: end;
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-}
-
-.helpText {
-  grid-column: 1 / -1;
-  color: #64748b;
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-/* ===========================
-   LINK FINAL DEL FORMULARIO
-   =========================== */
-
-.linkRow {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.linkRow :global(.p-inputtext) {
-  width: 100%;
-}
-
-.linkRow :global(.p-button) {
-  white-space: nowrap;
-}
-
-/* ===========================
-   RESPONSIVE ARCHIVOS / LINKS
-   =========================== */
-
-@media (max-width: 900px) {
-  .archivoConfigBox,
-  .linkRow {
-    grid-template-columns: 1fr;
-  }
-
-  .linkRow :global(.p-button) {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-.importBox {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 18px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 16px;
-}
-
-.importBox h3 {
-  margin: 0 0 6px;
-  color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 900;
-}
-
-.importBox p {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.importActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.errorBox {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 14px;
-  color: #9a3412;
-}
-
-.errorBox h3 {
-  margin: 0;
-  color: #9a3412;
-  font-size: 1rem;
-  font-weight: 900;
-}
-
-.errorBox p {
-  margin: 0;
-}
-
-.previewExcelBox {
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-}
-
-.previewExcelHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.previewExcelHeader h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 900;
-}
-
-.previewExcelTable {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.previewExcelTable table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-}
-
-.previewExcelTable th,
-.previewExcelTable td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-}
-
-.previewExcelTable th {
-  background: #f8fafc;
-  color: #334155;
-  font-weight: 900;
-}
-
-.previewExcelTable td {
-  color: #475569;
-}
-
-@media (max-width: 768px) {
-  .importBox,
-  .previewExcelHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .importActions :global(.p-button) {
-    width: 100%;
-    justify-content: center;
-  }
-}
-.departamentoConfigBox {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 14px;
-  align-items: end;
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-}
-
-.archivoConfigBox {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 14px;
-  align-items: end;
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-}
-
-.helpText {
-  grid-column: 1 / -1;
-  color: #64748b;
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-@media (max-width: 900px) {
-  .departamentoConfigBox,
-  .archivoConfigBox {
-    grid-template-columns: 1fr;
-  }
-}
 .detalleArchivosBox {
   display: grid;
   gap: 8px;
-  margin-top: 4px;
 }
 
 .detalleArchivoRow {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid #dbe4ee;
-  border-radius: 10px;
-}
-
-.detalleArchivoRow span {
-  color: #475569;
-  font-weight: 800;
-  flex: 0 0 auto;
+  gap: 8px;
+  overflow-wrap: anywhere;
 }
 
 .detalleArchivoRow a {
   color: #2563eb;
-  font-weight: 700;
+  font-weight: 750;
   text-decoration: none;
-  line-height: 1.35;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .detalleArchivoRow a:hover {
@@ -933,41 +1149,491 @@
 
 .detalleListaSimple {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .detalleListaRow {
-  padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  color: #475569;
+  overflow-wrap: anywhere;
 }
-.formRow :global(.p-editor-container) {
-  border-radius: 12px;
+
+/* ===========================
+   IMPORTAR EXCEL
+   =========================== */
+
+.importBox {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
   overflow: hidden;
 }
 
-.formRow :global(.p-editor-toolbar) {
-  background: #f8fafc;
-  border-color: #dbe4ef;
+.importBox > div:first-of-type {
+  min-width: 0;
 }
 
-.formRow :global(.p-editor-content) {
-  border-color: #dbe4ef;
-}
-
-.formRow :global(.ql-editor) {
-  min-height: 220px;
-  font-size: 1rem;
-  line-height: 1.65;
+.importBox h3 {
+  margin: 0 0 6px;
   color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 850;
 }
 
-.formRow :global(.ql-editor p) {
-  margin-bottom: 12px;
+.importBox p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
-.formRow :global(.ql-editor ul),
-.formRow :global(.ql-editor ol) {
-  padding-left: 22px;
+.importActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.importActions :global(.p-button) {
+  border-radius: 12px;
+  font-weight: 850;
+}
+
+.previewExcelBox {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  overflow: hidden;
+}
+
+.previewExcelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.previewExcelHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 850;
+}
+
+.previewExcelTable {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.previewExcelTable table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.previewExcelTable th,
+.previewExcelTable td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.92rem;
+}
+
+.previewExcelTable th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.previewExcelTable td {
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+/* ===========================
+   INFORMACIÓN SELECCIONADA
+   =========================== */
+
+.selectedInfo {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  margin: 18px 0;
+  border-radius: 18px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  overflow: hidden;
+}
+
+.selectedInfo > div {
+  min-width: 0;
+}
+
+.selectedInfo strong {
+  color: #14532d;
+  font-weight: 850;
+}
+
+.selectedInfo p {
+  margin: 6px 0;
+  color: #166534;
+  line-height: 1.55;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.selectedInfo small {
+  color: #15803d;
+  overflow-wrap: anywhere;
+}
+
+/* ===========================
+   PRIME REACT - CORRECCIONES INTERNAS
+   =========================== */
+
+.formWrapper :global(.p-component) {
+  max-width: 100%;
+}
+
+.formWrapper :global(.p-button) {
+  max-width: 100%;
+}
+
+.formWrapper :global(.p-button-label) {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.formWrapper :global(.p-dialog-content) {
+  overflow-x: hidden;
+}
+
+.formWrapper :global(.p-dropdown-label),
+.formWrapper :global(.p-multiselect-label),
+.formWrapper :global(.p-inputtext),
+.formWrapper :global(.p-inputtextarea) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.formWrapper :global(.p-multiselect-token) {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.formWrapper :global(.p-multiselect-token-label) {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.formWrapper :global(.p-tag-value) {
+  white-space: normal;
+}
+
+/* ===========================
+   CLASE COMPATIBLE EXISTENTE
+   =========================== */
+
+.card_like {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+
+@media (max-width: 1100px) {
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .respuestaCard {
+    grid-template-columns: 1fr;
+  }
+
+  .respuestaCard .manageActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .sectionTitle,
+  .camposHeader,
+  .manageCardHeader,
+  .previewTop,
+  .selectedInfo,
+  .importBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sectionTitle :global(.p-button),
+  .camposHeader :global(.p-button),
+  .selectedInfo :global(.p-button),
+  .importActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .campoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .linkRow {
+    grid-template-columns: 1fr;
+  }
+
+  .linkRow :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .manageActions {
+    justify-content: flex-start;
+  }
+
+  .manageActions :global(.p-button) {
+    flex: 1 1 220px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .page,
+  .container,
+  .adminPage,
+  .oficinaGestionPage {
+    padding: 14px;
+  }
+
+  .headerCompact {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .badge {
+    font-size: 0.72rem;
+    padding: 5px 11px;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .title::after {
+    width: 58px;
+    height: 3px;
+    margin-top: 8px;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    text-align: left;
+  }
+
+  .backButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .headerCard,
+  .heroCard,
+  .pageHeader {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .headerCard h1,
+  .heroCard h1,
+  .pageHeader h1 {
+    font-size: 1.75rem;
+  }
+
+  .headerCard p,
+  .heroCard p,
+  .pageHeader p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    text-align: left;
+  }
+
+  .formWrapper {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .tabs,
+  .tabsRow,
+  .tabContainer,
+  .actionsTabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs :global(.p-button),
+  .tabsRow :global(.p-button),
+  .actionsTabs :global(.p-button),
+  .tabButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sectionTitle {
+    gap: 14px;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .sectionTitle h2 {
+    font-size: 1.55rem;
+  }
+
+  .sectionTitle h2::before {
+    width: 7px;
+    height: 30px;
+    flex-basis: 7px;
+  }
+
+  .sectionTitle p {
+    padding-left: 0;
+    font-size: 0.96rem;
+    text-align: left;
+  }
+
+  .switchRow,
+  .switchRowSmall {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .switchRow :global(.p-inputswitch),
+  .switchRowSmall :global(.p-inputswitch) {
+    align-self: flex-start;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .manageCard,
+  .campoCard,
+  .respuestaCard {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .footerActions {
+    justify-content: stretch;
+  }
+
+  .footerActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .detalleMeta,
+  .detalleCampo {
+    grid-template-columns: 1fr;
+  }
+
+  .previewExcelTable table {
+    min-width: 680px;
+  }
+
+  .formRow :global(.ql-toolbar.ql-snow) {
+    padding: 8px;
+  }
+
+  .formRow :global(.ql-editor) {
+    min-height: 200px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page,
+  .container,
+  .adminPage,
+  .oficinaGestionPage {
+    padding: 8px;
+  }
+
+  .formWrapper {
+    padding: 14px;
+  }
+
+  .headerCompact,
+  .headerCard,
+  .heroCard,
+  .pageHeader {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+
+  .title,
+  .headerCard h1,
+  .heroCard h1,
+  .pageHeader h1 {
+    font-size: 1.55rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 5px 10px;
+  }
+
+  .sectionTitle h2 {
+    font-size: 1.35rem;
+  }
+
+  .camposHeader h3 {
+    font-size: 1.18rem;
+  }
+
+  .manageActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manageActions :global(.p-button) {
+    width: 100%;
+  }
+
+  .tagGroup {
+    align-items: stretch;
+  }
+
+  .tagGroup :global(.p-tag) {
+    justify-content: center;
+  }
 }
