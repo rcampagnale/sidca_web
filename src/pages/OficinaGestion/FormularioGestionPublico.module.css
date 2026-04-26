@@ -170,6 +170,94 @@
 }
 
 /* =========================================================
+   IMÁGENES DENTRO DE LA DESCRIPCIÓN
+   Corrección:
+   - La imagen se centra.
+   - No se fuerza a ocupar todo el ancho.
+   - No aparece fondo gris extendido.
+   - Se adapta al ancho real de la tarjeta.
+   ========================================================= */
+
+.descripcionFormularioPublica :global(img) {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: min(70vh, 720px) !important;
+  margin: 20px auto !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border-radius: 16px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Si la imagen está dentro de un párrafo, evitamos que el párrafo genere una caja gris */
+.descripcionFormularioPublica p:has(img),
+.descripcionFormularioPublica div:has(img) {
+  width: 100%;
+  max-width: 100%;
+  margin: 20px 0;
+  padding: 0;
+  text-align: center;
+  background: transparent !important;
+  overflow: visible;
+}
+
+/* Compatibilidad para imágenes pegadas dentro de figure o picture */
+.descripcionFormularioPublica :global(figure),
+.descripcionFormularioPublica :global(picture) {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 20px auto;
+  padding: 0;
+  text-align: center;
+  background: transparent !important;
+  overflow: visible;
+}
+
+.descripcionFormularioPublica :global(figure img),
+.descripcionFormularioPublica :global(picture img) {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+}
+
+/* Evita que contenido pegado desde el editor rompa el formulario */
+.descripcionFormularioPublica :global(iframe),
+.descripcionFormularioPublica :global(video),
+.descripcionFormularioPublica :global(canvas),
+.descripcionFormularioPublica :global(svg) {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto;
+  margin: 18px auto;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.descripcionFormularioPublica :global(table) {
+  width: 100% !important;
+  max-width: 100%;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+.descripcionFormularioPublica :global(td),
+.descripcionFormularioPublica :global(th) {
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
    ARCHIVO DESCARGABLE PARA EL AFILIADO
    ========================================================= */
 
@@ -965,7 +1053,6 @@
 
 /* =========================================================
    CELULAR
-   Corrige desborde horizontal en vista móvil
    ========================================================= */
 
 @media (max-width: 768px) {
@@ -1034,6 +1121,15 @@
 
   .descripcionFormularioPublica li {
     text-align: left;
+  }
+
+  .descripcionFormularioPublica :global(img) {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 16px auto !important;
+    border-radius: 12px;
   }
 
   .archivoDescargableBox {
@@ -1182,6 +1278,10 @@
   .descripcionFormularioPublica {
     font-size: 0.95rem;
     line-height: 1.55;
+  }
+
+  .descripcionFormularioPublica :global(img) {
+    border-radius: 10px;
   }
 
   .detalleSection {

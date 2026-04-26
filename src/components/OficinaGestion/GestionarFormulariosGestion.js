@@ -8,10 +8,10 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { InputText } from "primereact/inputtext";
-import { InputTextarea } from "primereact/inputtextarea";
 import { InputSwitch } from "primereact/inputswitch";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
+import { Editor } from "primereact/editor";
 
 import {
   collection,
@@ -33,6 +33,13 @@ import {
   departamentosOptions,
   departamentosValues,
 } from "./departamentos";
+
+import {
+  htmlATextoPlano,
+  normalizarDescripcionHtml,
+  textoPlanoAHtml,
+  sanearHtmlBasico,
+} from "./richTextUtils";
 
 const RUTA_PUBLICA_FORMULARIO = "/oficina-gestion/formulario";
 
@@ -114,6 +121,7 @@ const GestionarFormulariosGestion = () => {
   const [formularioEditando, setFormularioEditando] = useState(null);
   const [editTitulo, setEditTitulo] = useState("");
   const [editDescripcion, setEditDescripcion] = useState("");
+  const [editDescripcionHtml, setEditDescripcionHtml] = useState("");
   const [editActivo, setEditActivo] = useState(true);
   const [editSoloConsultaDni, setEditSoloConsultaDni] = useState(false);
   const [
@@ -510,9 +518,14 @@ const GestionarFormulariosGestion = () => {
           })
         : [{ ...campoInicial }];
 
+    const descripcionHtmlInicial = formulario.descripcionHtml
+      ? sanearHtmlBasico(formulario.descripcionHtml)
+      : textoPlanoAHtml(formulario.descripcion || "");
+
     setFormularioEditando(formulario);
     setEditTitulo(formulario.titulo || "");
     setEditDescripcion(formulario.descripcion || "");
+    setEditDescripcionHtml(descripcionHtmlInicial);
     setEditActivo(Boolean(formulario.activo));
     setEditSoloConsultaDni(formularioSoloConsultaDni(formulario));
     setEditPermitirMultiplesRespuestasPorDni(
@@ -529,6 +542,7 @@ const GestionarFormulariosGestion = () => {
     setFormularioEditando(null);
     setEditTitulo("");
     setEditDescripcion("");
+    setEditDescripcionHtml("");
     setEditActivo(true);
     setEditSoloConsultaDni(false);
     setEditPermitirMultiplesRespuestasPorDni(false);
@@ -635,7 +649,9 @@ const GestionarFormulariosGestion = () => {
       return false;
     }
 
-    if (!editDescripcion.trim()) {
+    const descripcionTextoPlano = htmlATextoPlano(editDescripcionHtml);
+
+    if (!descripcionTextoPlano) {
       toast.current?.show({
         severity: "warn",
         summary: "Atención",
@@ -789,6 +805,14 @@ const GestionarFormulariosGestion = () => {
     try {
       const camposNormalizados = normalizarCamposParaGuardar();
       const codigoFormulario = obtenerCodigoFormulario(formularioEditando);
+
+      const descripcionHtmlNormalizada =
+        normalizarDescripcionHtml(editDescripcionHtml);
+
+      const descripcionTextoPlano = htmlATextoPlano(
+        descripcionHtmlNormalizada
+      );
+
       const requiereValidacionDni =
         editSoloConsultaDni ||
         camposNormalizados.some((campo) => campo.tipo === "validacion_dni");
@@ -797,7 +821,8 @@ const GestionarFormulariosGestion = () => {
         doc(db, "oficina_gestion_formularios", formularioEditando.id),
         {
           titulo: editTitulo.trim(),
-          descripcion: editDescripcion.trim(),
+          descripcion: descripcionTextoPlano,
+          descripcionHtml: descripcionHtmlNormalizada,
           activo: Boolean(editActivo),
           publicado: false,
           soloConsultaDni: Boolean(editSoloConsultaDni),
@@ -878,9 +903,8 @@ const GestionarFormulariosGestion = () => {
 
       case "textarea":
         return (
-          <InputTextarea
+          <InputText
             disabled
-            rows={4}
             value=""
             placeholder={campo.placeholder || "Respuesta del usuario"}
           />
@@ -1390,14 +1414,23 @@ const GestionarFormulariosGestion = () => {
               <div className={styles.formRow}>
                 <label>Descripción</label>
 
-                <InputTextarea
-                  value={editDescripcion}
-                  onChange={(e) => setEditDescripcion(e.target.value)}
-                  rows={4}
-                  autoResize
+                <Editor
+                  value={editDescripcionHtml}
+                  onTextChange={(e) => {
+                    const html = e.htmlValue || "";
+                    setEditDescripcionHtml(html);
+                    setEditDescripcion(htmlATextoPlano(html));
+                  }}
+                  style={{ height: "280px" }}
+                  readOnly={guardandoEdicion}
                   placeholder="Descripción del formulario"
-                  disabled={guardandoEdicion}
                 />
+
+                <small className={styles.helpText}>
+                  Podés usar negrita, cursiva, subrayado, listas, viñetas,
+                  alineación y saltos de párrafo. Esta descripción se verá con
+                  formato en el formulario público.
+                </small>
               </div>
 
               <div className={styles.switchRow}>

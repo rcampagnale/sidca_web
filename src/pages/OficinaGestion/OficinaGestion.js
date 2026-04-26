@@ -107,14 +107,61 @@ const textoPlanoAHtmlConListas = (texto = "") => {
   return `${htmlIntro}${htmlLista}${htmlCierre}`;
 };
 
+/**
+ * Ajusta imágenes incrustadas en el editor enriquecido para que no
+ * se salgan de la tarjeta pública.
+ *
+ * Importante:
+ * - La imagen se adapta al ancho disponible.
+ * - Se limita la altura para que no rompa la tarjeta.
+ * - Se mantiene el contenido dentro del card.
+ */
+const adaptarImagenesHtmlParaTarjeta = (html = "") => {
+  const htmlSeguro = sanearHtmlBasico(html);
+
+  if (typeof document === "undefined") {
+    return htmlSeguro;
+  }
+
+  const contenedor = document.createElement("div");
+  contenedor.innerHTML = htmlSeguro;
+
+  const imagenes = contenedor.querySelectorAll("img");
+
+  imagenes.forEach((img) => {
+    img.removeAttribute("width");
+    img.removeAttribute("height");
+
+    img.setAttribute("loading", "lazy");
+    img.setAttribute("decoding", "async");
+
+    img.style.display = "block";
+    img.style.width = "100%";
+    img.style.maxWidth = "100%";
+    img.style.height = "230px";
+    img.style.maxHeight = "230px";
+    img.style.objectFit = "contain";
+    img.style.objectPosition = "center";
+    img.style.margin = "14px auto";
+    img.style.borderRadius = "16px";
+    img.style.background = "#f1f5f9";
+    img.style.border = "1px solid #e2e8f0";
+    img.style.overflow = "hidden";
+  });
+
+  return contenedor.innerHTML;
+};
+
 const obtenerDescripcionHtml = (formulario) => {
   const descripcionHtml = formulario?.descripcionHtml || "";
 
   if (htmlATextoPlano(descripcionHtml)) {
-    return sanearHtmlBasico(descripcionHtml);
+    return adaptarImagenesHtmlParaTarjeta(descripcionHtml);
   }
 
-  return sanearHtmlBasico(textoPlanoAHtmlConListas(formulario?.descripcion || ""));
+  return adaptarImagenesHtmlParaTarjeta(
+    textoPlanoAHtmlConListas(formulario?.descripcion || "")
+  );
 };
 
 const OficinaGestion = () => {
