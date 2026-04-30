@@ -233,8 +233,133 @@ const obtenerNombreArchivo = (archivo, fallback = "Archivo adjunto") => {
     archivo.filename ||
     archivo.fileName ||
     archivo.originalName ||
+    archivo?.file?.name ||
     fallback
   );
+};
+
+const esArchivoLocal = (archivo) => {
+  return Boolean(archivo?.__archivoLocal);
+};
+
+const crearArchivoLocal = (file) => {
+  return {
+    __archivoLocal: true,
+    file,
+    name: file.name,
+    nombre: file.name,
+    type: file.type,
+    tipo: file.type,
+    size: file.size,
+    lastModified: file.lastModified,
+  };
+};
+
+const obtenerFileReal = (archivo) => {
+  if (!archivo) return null;
+  return archivo.file || archivo;
+};
+
+const obtenerClaveArchivo = (archivo) => {
+  if (!archivo) return "";
+
+  if (esArchivoLocal(archivo)) {
+    return `local_${archivo.name || archivo?.file?.name}_${
+      archivo.size || archivo?.file?.size
+    }_${archivo.lastModified || archivo?.file?.lastModified}`;
+  }
+
+  return (
+    archivo.url ||
+    archivo.downloadURL ||
+    archivo.path ||
+    archivo.fullPath ||
+    archivo.nombre ||
+    archivo.name ||
+    JSON.stringify(archivo)
+  );
+};
+
+const normalizarArchivoGuardado = (archivo, campo = {}) => {
+  if (!archivo || esArchivoLocal(archivo)) return null;
+
+  const url = obtenerUrlArchivo(archivo);
+  const nombre = obtenerNombreArchivo(archivo, "");
+  const path = archivo.path || archivo.fullPath || "";
+
+  if (!url && !path && !nombre) return null;
+
+  return {
+    ...archivo,
+    nombre: nombre || "Archivo adjunto",
+    name: archivo.name || nombre || "Archivo adjunto",
+    url,
+    downloadURL: archivo.downloadURL || url,
+    path,
+    fullPath: archivo.fullPath || path,
+    campoId: archivo.campoId || campo.id || "",
+    campoLabel: archivo.campoLabel || campo.label || "",
+    yaGuardado: true,
+  };
+};
+
+const unificarArchivos = (lista = []) => {
+  const map = new Map();
+
+  lista.forEach((archivo) => {
+    if (!archivo) return;
+
+    const clave = obtenerClaveArchivo(archivo);
+
+    if (!clave) return;
+
+    if (!map.has(clave)) {
+      map.set(clave, archivo);
+    }
+  });
+
+  return Array.from(map.values());
+};
+
+const obtenerArchivosGuardadosCampo = (respuesta, campo) => {
+  if (!respuesta || !campo?.id) return [];
+
+  const desdeArchivos = respuesta?.archivos?.[campo.id] || [];
+  const desdeRespuestasPorCampo =
+    respuesta?.respuestasPorCampo?.[campo.id]?.valor || [];
+  const desdeRespuestas = respuesta?.respuestas?.[campo.label] || [];
+
+  const normalizarLista = (valor) => {
+    if (!valor) return [];
+
+    if (Array.isArray(valor)) {
+      return valor;
+    }
+
+    if (esArchivoAdjunto(valor)) {
+      return [valor];
+    }
+
+    return [];
+  };
+
+  const combinados = [
+    ...normalizarLista(desdeArchivos),
+    ...normalizarLista(desdeRespuestasPorCampo),
+    ...normalizarLista(desdeRespuestas),
+  ]
+    .map((archivo) => normalizarArchivoGuardado(archivo, campo))
+    .filter(Boolean);
+
+  return unificarArchivos(combinados);
+};
+
+const obtenerNombreArchivoVista = (archivo, index = 0) => {
+  if (esArchivoLocal(archivo)) {
+    return archivo.name || archivo?.file?.name || `Archivo nuevo ${index + 1}`;
+  }
+
+  return obtenerNombreArchivo(archivo, `Archivo guardado ${index + 1}`);
 };
 
 const obtenerValorPorClaves = (respuestas, claves = []) => {
@@ -437,6 +562,7 @@ const obtenerValorPlano = (valor) => {
   if (Array.isArray(valor)) return valor.map(obtenerValorPlano).join(", ");
   if (typeof valor === "object") {
     if (esArchivoAdjunto(valor)) return obtenerNombreArchivo(valor);
+    if (esArchivoLocal(valor)) return obtenerNombreArchivoVista(valor);
     return JSON.stringify(valor);
   }
   return String(valor).trim();
@@ -573,11 +699,6 @@ const FormularioGestionPublico = () => {
 
       const permiteMultiples = Boolean(data.permitirMultiplesRespuestasPorDni);
 
-      /*
-        No bloqueamos por localStorage cuando el formulario valida por DNI.
-        Así el afiliado puede ingresar su DNI y, si el administrador habilitó
-        la edición, podrá ver y editar su respuesta existente.
-      */
       if (yaEnviadoLocal && !permiteMultiples && !requiereDniEnFormulario) {
         setEstadoEnvio("local_existente");
       }
@@ -623,7 +744,11 @@ const FormularioGestionPublico = () => {
 
     setArchivos((prev) => {
       const actuales = prev[campo.id] || [];
-      const nuevos = campo.multiple ? [...actuales, ...files] : files.slice(0, 1);
+      const nuevosLocales = files.map((file) => crearArchivoLocal(file));
+
+      const nuevos = campo.multiple
+        ? unificarArchivos([...actuales, ...nuevosLocales])
+        : nuevosLocales.slice(0, 1);
 
       return {
         ...prev,
@@ -924,8 +1049,18 @@ const FormularioGestionPublico = () => {
     const respuestasPorCampo = respuestaRegistrada.respuestasPorCampo || {};
 
     const respuestasIniciales = {};
+    const archivosIniciales = {};
 
     camposFormulario.forEach((campo) => {
+      if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
+        archivosIniciales[campo.id] = obtenerArchivosGuardadosCampo(
+          respuestaRegistrada,
+          campo
+        );
+
+        return;
+      }
+
       const dato = respuestasPorCampo[campo.id];
 
       if (dato) {
@@ -943,7 +1078,7 @@ const FormularioGestionPublico = () => {
     });
 
     setRespuestas(respuestasIniciales);
-    setArchivos({});
+    setArchivos(archivosIniciales);
     setModoEdicionAfiliado(true);
     setRespuestaEditandoId(respuestaRegistrada.id);
     setEstadoEnvio(null);
@@ -964,11 +1099,7 @@ const FormularioGestionPublico = () => {
       if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
         const archivosCampo = archivos[campo.id] || [];
 
-        if (
-          archivosCampo.length === 0 &&
-          !modoEdicionAfiliado &&
-          !respuestaRegistrada?.archivos?.[campo.id]
-        ) {
+        if (archivosCampo.length === 0) {
           toast.current?.show({
             severity: "warn",
             summary: "Campo obligatorio",
@@ -1005,15 +1136,23 @@ const FormularioGestionPublico = () => {
     for (const campo of camposFormulario) {
       if (campo.tipo !== "archivo" && campo.tipo !== "archivo_pdf") continue;
 
-      const files = archivos[campo.id] || [];
+      const archivosCampo = archivos[campo.id] || [];
+      const filesLocales = archivosCampo.filter((archivo) =>
+        esArchivoLocal(archivo)
+      );
 
-      if (files.length === 0) continue;
+      if (filesLocales.length === 0) continue;
 
       archivosSubidos[campo.id] = [];
 
-      for (const file of files) {
+      for (const archivoLocal of filesLocales) {
+        const file = obtenerFileReal(archivoLocal);
+
+        if (!file) continue;
+
         const timestamp = Date.now();
-        const nombreLimpio = limpiarNombreArchivo(file.name);
+        const nombreOriginal = file.name || archivoLocal.name || "archivo";
+        const nombreLimpio = limpiarNombreArchivo(nombreOriginal);
         const path = `oficina_gestion/formularios/${id}/respuestas/${respuestaId}/${campo.id}/${timestamp}_${nombreLimpio}`;
         const archivoRef = ref(storage, path);
 
@@ -1022,17 +1161,18 @@ const FormularioGestionPublico = () => {
         const url = await getDownloadURL(archivoRef);
 
         archivosSubidos[campo.id].push({
-          nombre: file.name,
-          name: file.name,
-          tipo: file.type,
-          type: file.type,
-          size: file.size,
+          nombre: nombreOriginal,
+          name: nombreOriginal,
+          tipo: file.type || archivoLocal.type || "",
+          type: file.type || archivoLocal.type || "",
+          size: file.size || archivoLocal.size || 0,
           path,
           fullPath: path,
           url,
           downloadURL: url,
           campoId: campo.id,
           campoLabel: campo.label,
+          yaGuardado: true,
         });
       }
     }
@@ -1051,7 +1191,10 @@ const FormularioGestionPublico = () => {
       afiliadoValidado?.nombre ||
       "";
 
-    const persona = separarApellidoNombrePersona(apellidoOriginal, nombreOriginal);
+    const persona = separarApellidoNombrePersona(
+      apellidoOriginal,
+      nombreOriginal
+    );
 
     const dni =
       normalizarDni(
@@ -1112,14 +1255,25 @@ const FormularioGestionPublico = () => {
 
     const respuestasPlanos = {};
     const respuestasPorCampo = {};
+    const archivosFinales = {};
 
     camposFormulario.forEach((campo) => {
       if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
-        const archivosCampo =
-          archivosSubidos[campo.id] ||
-          respuestaRegistrada?.archivos?.[campo.id] ||
-          [];
+        const archivosActualesCampo = archivos[campo.id] || [];
 
+        const archivosGuardadosRetenidos = archivosActualesCampo
+          .filter((archivo) => !esArchivoLocal(archivo))
+          .map((archivo) => normalizarArchivoGuardado(archivo, campo))
+          .filter(Boolean);
+
+        const nuevosSubidos = archivosSubidos[campo.id] || [];
+
+        const archivosCampo = unificarArchivos([
+          ...archivosGuardadosRetenidos,
+          ...nuevosSubidos,
+        ]);
+
+        archivosFinales[campo.id] = archivosCampo;
         respuestasPlanos[campo.label] = archivosCampo;
 
         respuestasPorCampo[campo.id] = {
@@ -1131,7 +1285,11 @@ const FormularioGestionPublico = () => {
           valor: archivosCampo,
           valorLegible:
             archivosCampo.length > 0
-              ? archivosCampo.map((archivo) => archivo.nombre).join(", ")
+              ? archivosCampo
+                  .map((archivo, index) =>
+                    obtenerNombreArchivoVista(archivo, index)
+                  )
+                  .join(", ")
               : "",
         };
 
@@ -1174,10 +1332,7 @@ const FormularioGestionPublico = () => {
 
       respuestas: respuestasPlanos,
       respuestasPorCampo,
-      archivos: {
-        ...(respuestaRegistrada?.archivos || {}),
-        ...archivosSubidos,
-      },
+      archivos: archivosFinales,
 
       cantidadCampos: camposFormulario.length,
       updatedAt: serverTimestamp(),
@@ -1237,6 +1392,7 @@ const FormularioGestionPublico = () => {
         : doc(collection(db, "oficina_gestion_respuestas"));
 
       const payload = await construirPayloadRespuesta(refRespuesta.id);
+      const ahoraVista = new Date();
 
       if (modoEdicionAfiliado) {
         await updateDoc(refRespuesta, {
@@ -1247,6 +1403,21 @@ const FormularioGestionPublico = () => {
           edicionAfiliadoDeshabilitadaAt: serverTimestamp(),
         });
 
+        setRespuestaRegistrada({
+          ...(respuestaRegistrada || {}),
+          id: refRespuesta.id,
+          ...payload,
+          createdAt: respuestaRegistrada?.createdAt || ahoraVista,
+          updatedAt: ahoraVista,
+          editadoPorAfiliado: true,
+          editadoPorAfiliadoAt: ahoraVista,
+          edicionAfiliadoHabilitada: false,
+          edicionAfiliadoDeshabilitadaAt: ahoraVista,
+        });
+
+        setModoEdicionAfiliado(false);
+        setRespuestaEditandoId(null);
+        setVerDetalleRespuesta(false);
         setEstadoEnvio("actualizado");
       } else {
         await setDoc(refRespuesta, {
@@ -1259,6 +1430,14 @@ const FormularioGestionPublico = () => {
           localStorage.setItem(storageKeyFormularioEnviado, "true");
         }
 
+        setRespuestaRegistrada({
+          id: refRespuesta.id,
+          ...payload,
+          createdAt: ahoraVista,
+          updatedAt: ahoraVista,
+        });
+
+        setVerDetalleRespuesta(false);
         setEstadoEnvio("ok");
       }
 
@@ -1471,7 +1650,10 @@ const FormularioGestionPublico = () => {
       respuestaRegistrada.nombre ||
       obtenerValorPorClaves(respuestasGuardadas, ["Nombre", "Nombres"]);
 
-    const persona = separarApellidoNombrePersona(apellidoOriginal, nombreOriginal);
+    const persona = separarApellidoNombrePersona(
+      apellidoOriginal,
+      nombreOriginal
+    );
 
     actualizarOCrearCampoDetalle(detalle, "Apellido", persona.apellido || "—");
     actualizarOCrearCampoDetalle(detalle, "Nombre", persona.nombre || "—");
@@ -1828,7 +2010,8 @@ const FormularioGestionPublico = () => {
 
   const renderDescripcionFormulario = () => {
     const html =
-      formulario?.descripcionHtml || textoPlanoAHtml(formulario?.descripcion || "");
+      formulario?.descripcionHtml ||
+      textoPlanoAHtml(formulario?.descripcion || "");
 
     if (!htmlATextoPlano(html)) return null;
 
@@ -1981,7 +2164,7 @@ const FormularioGestionPublico = () => {
       case "archivo":
       case "archivo_pdf": {
         const accept = campo.archivoAccept || ARCHIVOS_DEFAULT;
-        const files = archivos[campo.id] || [];
+        const archivosCampo = archivos[campo.id] || [];
 
         return (
           <div className={styles.fileField}>
@@ -2015,24 +2198,41 @@ const FormularioGestionPublico = () => {
 
             <small className={styles.help}>Formatos permitidos: {accept}</small>
 
-            {files.length > 0 && (
+            {archivosCampo.length > 0 && (
               <div className={styles.fileList}>
-                {files.map((file, index) => (
-                  <div
-                    key={`${file.name}-${index}`}
-                    className={styles.fileItem}
-                  >
-                    <span>{file.name}</span>
+                {archivosCampo.map((archivo, index) => {
+                  const esNuevo = esArchivoLocal(archivo);
+                  const url = esNuevo ? "" : obtenerUrlArchivo(archivo);
+                  const nombre = obtenerNombreArchivoVista(archivo, index);
 
-                    <button
-                      type="button"
-                      onClick={() => eliminarArchivoSeleccionado(campo.id, index)}
-                      disabled={enviando}
+                  return (
+                    <div
+                      key={`${obtenerClaveArchivo(archivo)}-${index}`}
+                      className={styles.fileItem}
                     >
-                      Quitar
-                    </button>
-                  </div>
-                ))}
+                      <span>
+                        <strong>{esNuevo ? "Nuevo:" : "Cargado:"}</strong>{" "}
+                        {nombre}
+                      </span>
+
+                      {!esNuevo && url && (
+                        <a href={url} target="_blank" rel="noreferrer">
+                          Ver archivo
+                        </a>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          eliminarArchivoSeleccionado(campo.id, index)
+                        }
+                        disabled={enviando}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2246,7 +2446,9 @@ const FormularioGestionPublico = () => {
             <Button
               label="Volver a Oficina de Gestión"
               icon="pi pi-arrow-left"
-              severity={esDuplicadoDni || esDuplicadoLocal ? "warning" : "success"}
+              severity={
+                esDuplicadoDni || esDuplicadoLocal ? "warning" : "success"
+              }
               onClick={volverOficinaGestion}
             />
 
