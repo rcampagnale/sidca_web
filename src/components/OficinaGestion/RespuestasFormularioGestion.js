@@ -66,17 +66,8 @@ const RespuestasFormularioGestion = () => {
       .trim();
   };
 
-  const normalizarBusquedaRespuesta = (valor) => {
-    return String(valor || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-  };
-
   const aTextoBusqueda = (valor) => {
     if (valor === null || valor === undefined) return "";
-
     if (typeof valor === "boolean") return valor ? "si" : "no";
 
     if (Array.isArray(valor)) {
@@ -84,7 +75,9 @@ const RespuestasFormularioGestion = () => {
     }
 
     if (typeof valor === "object") {
-      return Object.values(valor).map((item) => aTextoBusqueda(item)).join(" ");
+      return Object.entries(valor)
+        .map(([key, item]) => `${key} ${aTextoBusqueda(item)}`)
+        .join(" ");
     }
 
     return String(valor);
@@ -1411,14 +1404,13 @@ const RespuestasFormularioGestion = () => {
   };
 
   const respuestasFiltradas = useMemo(() => {
-    const termino = normalizarBusquedaRespuesta(busquedaRespuestas);
+    const termino = normalizarTexto(busquedaRespuestas);
 
     if (!termino) return respuestas;
 
     return respuestas.filter((respuesta) => {
       const principales = obtenerDatosPrincipales(respuesta);
       const origen = obtenerOrigenRespuesta(respuesta);
-      const camposDetalle = obtenerCamposOrdenadosDetalle(respuesta);
 
       const textoBuscable = [
         respuesta.id,
@@ -1432,15 +1424,13 @@ const RespuestasFormularioGestion = () => {
         principales.dni,
         principales.departamento,
         principales.presentoDocumentacion,
+        obtenerResumenRespuesta(respuesta),
         aTextoBusqueda(respuesta.respuestas),
         aTextoBusqueda(respuesta.respuestasPorCampo),
         aTextoBusqueda(respuesta.archivos),
-        ...camposDetalle.map(
-          (campo) => `${campo.label || ""} ${aTextoBusqueda(campo.value)}`
-        ),
       ].join(" ");
 
-      return normalizarBusquedaRespuesta(textoBuscable).includes(termino);
+      return normalizarTexto(textoBuscable).includes(termino);
     });
   }, [respuestas, busquedaRespuestas]);
 
@@ -1526,7 +1516,10 @@ const RespuestasFormularioGestion = () => {
             id="selectorFormulario"
             value={formularioSeleccionado}
             options={opcionesFormularios}
-            onChange={(e) => setFormularioSeleccionado(e.value)}
+            onChange={(e) => {
+              setFormularioSeleccionado(e.value);
+              setBusquedaRespuestas("");
+            }}
             placeholder={
               loadingFormularios
                 ? "Cargando formularios..."
@@ -1538,6 +1531,31 @@ const RespuestasFormularioGestion = () => {
             disabled={loadingFormularios}
           />
         </div>
+
+        {formularioSeleccionado && respuestas.length > 0 && (
+          <div className={styles.formRow}>
+            <label htmlFor="buscadorRespuestas">Buscador</label>
+
+            <span className="p-input-icon-left" style={{ width: "100%" }}>
+              <i className="pi pi-search" />
+              <InputText
+                id="buscadorRespuestas"
+                value={busquedaRespuestas}
+                onChange={(e) => setBusquedaRespuestas(e.target.value)}
+                placeholder="Buscar por DNI, apellido, nombre, departamento, expediente, código o cualquier dato cargado..."
+                style={{ width: "100%" }}
+                disabled={loadingRespuestas}
+              />
+            </span>
+
+            {busquedaRespuestas.trim() && (
+              <small style={{ display: "block", marginTop: "0.5rem" }}>
+                Mostrando {respuestasFiltradas.length} resultado(s) de{" "}
+                {respuestas.length} respuesta(s).
+              </small>
+            )}
+          </div>
+        )}
       </div>
 
       {formularioActual && (
@@ -1560,32 +1578,19 @@ const RespuestasFormularioGestion = () => {
             />
 
             <Tag
-              value={`${respuestas.length} respuesta${
-                respuestas.length === 1 ? "" : "s"
+              value={`${
+                busquedaRespuestas.trim()
+                  ? respuestasFiltradas.length
+                  : respuestas.length
+              } respuesta${
+                (busquedaRespuestas.trim()
+                  ? respuestasFiltradas.length
+                  : respuestas.length) === 1
+                  ? ""
+                  : "s"
               }`}
               severity="info"
             />
-          </div>
-        </div>
-      )}
-
-      {formularioSeleccionado && respuestas.length > 0 && (
-        <div className={styles.formGrid}>
-          <div className={styles.formRow}>
-            <label htmlFor="busquedaRespuestas">Buscar respuesta</label>
-
-            <InputText
-              id="busquedaRespuestas"
-              value={busquedaRespuestas}
-              onChange={(e) => setBusquedaRespuestas(e.target.value)}
-              placeholder="Buscar por DNI, apellido, nombre, departamento, expediente, estado o cualquier dato cargado..."
-              disabled={loadingRespuestas}
-            />
-
-            <small className={styles.helpText}>
-              Mostrando {respuestasFiltradas.length} de {respuestas.length}{" "}
-              respuesta(s).
-            </small>
           </div>
         </div>
       )}
@@ -1627,12 +1632,13 @@ const RespuestasFormularioGestion = () => {
         )}
 
       {!loadingRespuestas &&
+        formularioSeleccionado &&
         respuestas.length > 0 &&
         respuestasFiltradas.length === 0 && (
           <div className={styles.emptyBox}>
             <i className="pi pi-search" />
 
-            <h3>Sin resultados</h3>
+            <h3>Sin coincidencias</h3>
 
             <p>
               No se encontraron respuestas que coincidan con la búsqueda
@@ -1647,9 +1653,7 @@ const RespuestasFormularioGestion = () => {
             const indexReal = respuestas.findIndex(
               (item) => item.id === respuesta.id
             );
-
             const numeroRespuesta = indexReal >= 0 ? indexReal + 1 : 1;
-
             const origen = obtenerOrigenRespuesta(respuesta);
             const edicionHabilitada = Boolean(
               respuesta.edicionAfiliadoHabilitada
