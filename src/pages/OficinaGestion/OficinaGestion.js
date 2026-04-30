@@ -40,13 +40,6 @@ const sanearHtmlBasico = (html = "") => {
     .replace(/javascript:/gi, "");
 };
 
-/**
- * Convierte texto plano con puntos a), b), c), d), e)
- * en una lista prolija.
- *
- * Esto corrige formularios viejos que quedaron guardados
- * como texto corrido en Firestore.
- */
 const textoPlanoAHtmlConListas = (texto = "") => {
   const limpio = String(texto || "").trim();
 
@@ -107,59 +100,22 @@ const textoPlanoAHtmlConListas = (texto = "") => {
   return `${htmlIntro}${htmlLista}${htmlCierre}`;
 };
 
-/**
- * Ajusta imágenes incrustadas en el editor enriquecido para que no
- * se salgan de la tarjeta pública.
- *
- * Importante:
- * - La imagen se adapta al ancho disponible.
- * - Se limita la altura para que no rompa la tarjeta.
- * - Se mantiene el contenido dentro del card.
- */
-const adaptarImagenesHtmlParaTarjeta = (html = "") => {
-  const htmlSeguro = sanearHtmlBasico(html);
-
-  if (typeof document === "undefined") {
-    return htmlSeguro;
-  }
-
-  const contenedor = document.createElement("div");
-  contenedor.innerHTML = htmlSeguro;
-
-  const imagenes = contenedor.querySelectorAll("img");
-
-  imagenes.forEach((img) => {
-    img.removeAttribute("width");
-    img.removeAttribute("height");
-
-    img.setAttribute("loading", "lazy");
-    img.setAttribute("decoding", "async");
-
-    img.style.display = "block";
-    img.style.width = "100%";
-    img.style.maxWidth = "100%";
-    img.style.height = "230px";
-    img.style.maxHeight = "230px";
-    img.style.objectFit = "contain";
-    img.style.objectPosition = "center";
-    img.style.margin = "14px auto";
-    img.style.borderRadius = "16px";
-    img.style.background = "#f1f5f9";
-    img.style.border = "1px solid #e2e8f0";
-    img.style.overflow = "hidden";
-  });
-
-  return contenedor.innerHTML;
+const formularioSoloConsultaDni = (formulario) => {
+  return Boolean(
+    formulario?.soloConsultaDni ||
+      formulario?.modoSoloConsultaDni ||
+      formulario?.bloquearCargaRespuestas
+  );
 };
 
 const obtenerDescripcionHtml = (formulario) => {
   const descripcionHtml = formulario?.descripcionHtml || "";
 
   if (htmlATextoPlano(descripcionHtml)) {
-    return adaptarImagenesHtmlParaTarjeta(descripcionHtml);
+    return sanearHtmlBasico(descripcionHtml);
   }
 
-  return adaptarImagenesHtmlParaTarjeta(
+  return sanearHtmlBasico(
     textoPlanoAHtmlConListas(formulario?.descripcion || "")
   );
 };
@@ -268,6 +224,7 @@ const OficinaGestion = () => {
             const descripcionHtml = obtenerDescripcionHtml(formulario);
             const cantidadCampos =
               formulario.cantidadCampos || formulario.campos?.length || 0;
+            const soloConsulta = formularioSoloConsultaDni(formulario);
 
             return (
               <article key={formulario.id} className={styles.card}>
@@ -298,9 +255,11 @@ const OficinaGestion = () => {
                 </div>
 
                 <Button
-                  label="Completar formulario"
-                  icon="pi pi-send"
-                  severity="success"
+                  label={
+                    soloConsulta ? "Consultar información" : "Completar formulario"
+                  }
+                  icon={soloConsulta ? "pi pi-search" : "pi pi-send"}
+                  severity={soloConsulta ? "warning" : "success"}
                   onClick={() => abrirFormulario(formulario.id)}
                 />
               </article>

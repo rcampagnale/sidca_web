@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Tag } from "primereact/tag";
@@ -36,6 +37,7 @@ const RespuestasFormularioGestion = () => {
   const [formularioSeleccionado, setFormularioSeleccionado] = useState(null);
   const [respuestas, setRespuestas] = useState([]);
   const [respuestaDetalle, setRespuestaDetalle] = useState(null);
+  const [busquedaRespuestas, setBusquedaRespuestas] = useState("");
 
   const [loadingFormularios, setLoadingFormularios] = useState(false);
   const [loadingRespuestas, setLoadingRespuestas] = useState(false);
@@ -62,6 +64,30 @@ const RespuestasFormularioGestion = () => {
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .trim();
+  };
+
+  const normalizarBusquedaRespuesta = (valor) => {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  };
+
+  const aTextoBusqueda = (valor) => {
+    if (valor === null || valor === undefined) return "";
+
+    if (typeof valor === "boolean") return valor ? "si" : "no";
+
+    if (Array.isArray(valor)) {
+      return valor.map((item) => aTextoBusqueda(item)).join(" ");
+    }
+
+    if (typeof valor === "object") {
+      return Object.values(valor).map((item) => aTextoBusqueda(item)).join(" ");
+    }
+
+    return String(valor);
   };
 
   const sanitizarNombreArchivo = (valor, fallback = "archivo") => {
@@ -149,9 +175,11 @@ const RespuestasFormularioGestion = () => {
     const mapa = {
       "application/pdf": "pdf",
       "application/msword": "doc",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        "docx",
       "application/vnd.ms-excel": "xls",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        "xlsx",
       "image/jpeg": "jpg",
       "image/jpg": "jpg",
       "image/png": "png",
@@ -431,6 +459,7 @@ const RespuestasFormularioGestion = () => {
   }, []);
 
   useEffect(() => {
+    setBusquedaRespuestas("");
     cargarRespuestas(formularioSeleccionado);
   }, [formularioSeleccionado]);
 
@@ -1381,6 +1410,40 @@ const RespuestasFormularioGestion = () => {
     });
   };
 
+  const respuestasFiltradas = useMemo(() => {
+    const termino = normalizarBusquedaRespuesta(busquedaRespuestas);
+
+    if (!termino) return respuestas;
+
+    return respuestas.filter((respuesta) => {
+      const principales = obtenerDatosPrincipales(respuesta);
+      const origen = obtenerOrigenRespuesta(respuesta);
+      const camposDetalle = obtenerCamposOrdenadosDetalle(respuesta);
+
+      const textoBuscable = [
+        respuesta.id,
+        respuesta.formularioTitulo,
+        respuesta.formularioId,
+        respuesta.formularioCodigo,
+        respuesta.formularioNumero,
+        origen.label,
+        principales.apellido,
+        principales.nombre,
+        principales.dni,
+        principales.departamento,
+        principales.presentoDocumentacion,
+        aTextoBusqueda(respuesta.respuestas),
+        aTextoBusqueda(respuesta.respuestasPorCampo),
+        aTextoBusqueda(respuesta.archivos),
+        ...camposDetalle.map(
+          (campo) => `${campo.label || ""} ${aTextoBusqueda(campo.value)}`
+        ),
+      ].join(" ");
+
+      return normalizarBusquedaRespuesta(textoBuscable).includes(termino);
+    });
+  }, [respuestas, busquedaRespuestas]);
+
   return (
     <div className={styles.formWrapper}>
       <Toast ref={toast} />
@@ -1506,6 +1569,27 @@ const RespuestasFormularioGestion = () => {
         </div>
       )}
 
+      {formularioSeleccionado && respuestas.length > 0 && (
+        <div className={styles.formGrid}>
+          <div className={styles.formRow}>
+            <label htmlFor="busquedaRespuestas">Buscar respuesta</label>
+
+            <InputText
+              id="busquedaRespuestas"
+              value={busquedaRespuestas}
+              onChange={(e) => setBusquedaRespuestas(e.target.value)}
+              placeholder="Buscar por DNI, apellido, nombre, departamento, expediente, estado o cualquier dato cargado..."
+              disabled={loadingRespuestas}
+            />
+
+            <small className={styles.helpText}>
+              Mostrando {respuestasFiltradas.length} de {respuestas.length}{" "}
+              respuesta(s).
+            </small>
+          </div>
+        </div>
+      )}
+
       {!loadingFormularios && formularios.length === 0 && (
         <div className={styles.emptyBox}>
           <i className="pi pi-file" />
@@ -1542,9 +1626,30 @@ const RespuestasFormularioGestion = () => {
           </div>
         )}
 
-      {!loadingRespuestas && respuestas.length > 0 && (
+      {!loadingRespuestas &&
+        respuestas.length > 0 &&
+        respuestasFiltradas.length === 0 && (
+          <div className={styles.emptyBox}>
+            <i className="pi pi-search" />
+
+            <h3>Sin resultados</h3>
+
+            <p>
+              No se encontraron respuestas que coincidan con la búsqueda
+              ingresada.
+            </p>
+          </div>
+        )}
+
+      {!loadingRespuestas && respuestasFiltradas.length > 0 && (
         <div className={styles.respuestasList}>
-          {respuestas.map((respuesta, index) => {
+          {respuestasFiltradas.map((respuesta) => {
+            const indexReal = respuestas.findIndex(
+              (item) => item.id === respuesta.id
+            );
+
+            const numeroRespuesta = indexReal >= 0 ? indexReal + 1 : 1;
+
             const origen = obtenerOrigenRespuesta(respuesta);
             const edicionHabilitada = Boolean(
               respuesta.edicionAfiliadoHabilitada
@@ -1554,7 +1659,7 @@ const RespuestasFormularioGestion = () => {
               <article key={respuesta.id} className={styles.respuestaCard}>
                 <div>
                   <div className={styles.respuestaHeader}>
-                    <strong>Respuesta #{index + 1}</strong>
+                    <strong>Respuesta #{numeroRespuesta}</strong>
                     <span>{formatearFecha(respuesta.createdAt)}</span>
                   </div>
 
@@ -1601,7 +1706,12 @@ const RespuestasFormularioGestion = () => {
                     severity="secondary"
                     outlined
                     loading={procesandoId === respuesta.id}
-                    onClick={() => descargarRespuestaIndividual(respuesta, index)}
+                    onClick={() =>
+                      descargarRespuestaIndividual(
+                        respuesta,
+                        indexReal >= 0 ? indexReal : 0
+                      )
+                    }
                   />
 
                   <Button

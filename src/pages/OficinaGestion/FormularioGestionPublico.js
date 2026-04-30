@@ -54,6 +54,10 @@ const normalizarTexto = (valor) => {
     .trim();
 };
 
+const normalizarDni = (valor) => {
+  return String(valor || "").replace(/\D/g, "").trim();
+};
+
 const valorVacio = (valor) => {
   if (valor === null || valor === undefined) return true;
 
@@ -66,43 +70,6 @@ const valorVacio = (valor) => {
     texto.toLowerCase() === "undefined" ||
     texto.toLowerCase() === "null"
   );
-};
-
-const normalizarSiNo = (valor) => {
-  if (valor === true) return "Sí";
-  if (valor === false) return "No";
-
-  const texto = normalizarTexto(valor);
-
-  if (texto === "si" || texto === "s" || texto === "true") {
-    return "Sí";
-  }
-
-  if (texto === "no" || texto === "n" || texto === "false") {
-    return "No";
-  }
-
-  return "";
-};
-
-const esValorSiNo = (valor) => {
-  return Boolean(normalizarSiNo(valor));
-};
-
-const esCampoTipoSiNo = (campo = {}) => {
-  const tipo = normalizarTexto(campo.tipo || "");
-
-  return (
-    tipo === "booleano" ||
-    tipo === "si_no" ||
-    tipo === "sí / no" ||
-    tipo === "si / no" ||
-    tipo.includes("boolean")
-  );
-};
-
-const normalizarDni = (valor) => {
-  return String(valor || "").replace(/\D/g, "").trim();
 };
 
 const limpiarNombreArchivo = (nombre) => {
@@ -182,6 +149,94 @@ const sanearHtmlBasico = (html = "") => {
     .replace(/javascript:/gi, "");
 };
 
+const normalizarSiNo = (valor) => {
+  if (valor === true) return "Sí";
+  if (valor === false) return "No";
+
+  const texto = normalizarTexto(valor);
+
+  if (["si", "sí", "s", "true", "1"].includes(texto)) return "Sí";
+  if (["no", "n", "false", "0"].includes(texto)) return "No";
+
+  return "";
+};
+
+const convertirFecha = (valor) => {
+  if (!valor) return null;
+
+  if (valor?.toDate && typeof valor.toDate === "function") {
+    return valor.toDate();
+  }
+
+  if (valor instanceof Date) return valor;
+
+  if (typeof valor === "string" || typeof valor === "number") {
+    const fecha = new Date(valor);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  if (typeof valor === "object" && typeof valor.seconds === "number") {
+    return new Date(valor.seconds * 1000);
+  }
+
+  return null;
+};
+
+const formatearFechaHora = (valor) => {
+  const fecha = convertirFecha(valor);
+
+  if (!fecha) return "—";
+
+  return fecha.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const esArchivoAdjunto = (valor) => {
+  return Boolean(
+    valor &&
+      typeof valor === "object" &&
+      (valor.url || valor.downloadURL || valor.path || valor.fullPath)
+  );
+};
+
+const esListaDeArchivos = (valor) => {
+  return (
+    Array.isArray(valor) &&
+    valor.length > 0 &&
+    valor.some((item) => esArchivoAdjunto(item))
+  );
+};
+
+const obtenerUrlArchivo = (archivo) => {
+  if (!archivo || typeof archivo !== "object") return "";
+
+  return (
+    archivo.url ||
+    archivo.downloadURL ||
+    archivo.archivoUrl ||
+    archivo.fileUrl ||
+    ""
+  );
+};
+
+const obtenerNombreArchivo = (archivo, fallback = "Archivo adjunto") => {
+  if (!archivo || typeof archivo !== "object") return fallback;
+
+  return (
+    archivo.nombre ||
+    archivo.name ||
+    archivo.filename ||
+    archivo.fileName ||
+    archivo.originalName ||
+    fallback
+  );
+};
+
 const obtenerValorPorClaves = (respuestas, claves = []) => {
   const entries = Object.entries(respuestas || {});
 
@@ -243,9 +298,27 @@ const esCampoApellidoPorLabel = (label = "") => {
   return normalizado === "apellido" || normalizado === "apellidos";
 };
 
-const esCampoApellidoNombrePorLabel = (label = "") => {
+const esCampoDepartamentoPorLabel = (label = "") => {
   const normalizado = normalizarTexto(label);
-  return normalizado.includes("apellido") && normalizado.includes("nombre");
+
+  return (
+    normalizado === "departamento" ||
+    normalizado === "depto" ||
+    normalizado === "dpto" ||
+    normalizado.includes("departamento")
+  );
+};
+
+const esCampoDocumentacionPorLabel = (label = "") => {
+  const normalizado = normalizarTexto(label).replace(/\s+/g, "");
+
+  return (
+    normalizado.includes("presentodocumentacion") ||
+    normalizado.includes("documentacionpresentada") ||
+    normalizado.includes("documentaciónpresentada") ||
+    normalizado === "documentacion" ||
+    normalizado === "documentación"
+  );
 };
 
 const limpiarValorPersona = (valor = "") => {
@@ -284,10 +357,7 @@ const separarApellidoNombrePersona = (apellidoValor = "", nombreValor = "") => {
     }
   }
 
-  return {
-    apellido,
-    nombre,
-  };
+  return { apellido, nombre };
 };
 
 const obtenerDniDesdeRespuestaRegistrada = (data = {}) => {
@@ -321,91 +391,13 @@ const obtenerDniDesdeRespuestaRegistrada = (data = {}) => {
   return normalizarDni(encontrado);
 };
 
-const convertirFecha = (valor) => {
-  if (!valor) return null;
-
-  if (valor?.toDate && typeof valor.toDate === "function") {
-    return valor.toDate();
-  }
-
-  if (valor instanceof Date) {
-    return valor;
-  }
-
-  if (typeof valor === "string" || typeof valor === "number") {
-    const fecha = new Date(valor);
-    return Number.isNaN(fecha.getTime()) ? null : fecha;
-  }
-
-  if (typeof valor === "object" && typeof valor.seconds === "number") {
-    return new Date(valor.seconds * 1000);
-  }
-
-  return null;
-};
-
-const formatearFechaHora = (valor) => {
-  const fecha = convertirFecha(valor);
-
-  if (!fecha) return "—";
-
-  return fecha.toLocaleString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const esArchivoAdjunto = (valor) => {
-  return Boolean(valor && typeof valor === "object" && valor.url);
-};
-
-const esListaDeArchivos = (valor) => {
-  return (
-    Array.isArray(valor) &&
-    valor.length > 0 &&
-    valor.every((item) => esArchivoAdjunto(item))
-  );
-};
-
-const obtenerDatoPorClaves = (data = {}, claves = []) => {
-  for (const clave of claves) {
-    if (data?.[clave] !== undefined && data?.[clave] !== null) {
-      return data[clave];
-    }
-  }
-
-  const keys = Object.keys(data || {});
-
-  for (const clave of claves) {
-    const claveNormalizada = normalizarTexto(clave);
-
-    const keyEncontrada = keys.find(
-      (key) => normalizarTexto(key) === claveNormalizada
-    );
-
-    if (keyEncontrada) {
-      return data[keyEncontrada];
-    }
-  }
-
-  return "";
-};
-
 const normalizarAfiliado = (data = {}, idDoc = "", origen = "") => {
-  const nombreOriginal = String(
-    obtenerDatoPorClaves(data, ["nombre", "Nombre", "nombres", "Nombres"])
+  const apellidoOriginal = String(
+    data.apellido || data.Apellido || data.apellidos || data.Apellidos || ""
   ).trim();
 
-  const apellidoOriginal = String(
-    obtenerDatoPorClaves(data, [
-      "apellido",
-      "Apellido",
-      "apellidos",
-      "Apellidos",
-    ])
+  const nombreOriginal = String(
+    data.nombre || data.Nombre || data.nombres || data.Nombres || ""
   ).trim();
 
   const personaNormalizada = separarApellidoNombrePersona(
@@ -413,30 +405,41 @@ const normalizarAfiliado = (data = {}, idDoc = "", origen = "") => {
     nombreOriginal
   );
 
-  const dni = normalizarDni(
-    obtenerDatoPorClaves(data, [
-      "dni",
-      "DNI",
-      "documento",
-      "Documento",
-      "nroDni",
-      "Nro DNI",
-      "N° DNI",
-      "Nº DNI",
-      "numeroDni",
-      "Número de DNI",
-      "Numero de DNI",
-    ])
-  );
-
   return {
     id: idDoc,
     origen,
-    nombre: personaNormalizada.nombre,
     apellido: personaNormalizada.apellido,
-    dni,
+    nombre: personaNormalizada.nombre,
+    dni: normalizarDni(
+      data.dni ||
+        data.DNI ||
+        data.documento ||
+        data.Documento ||
+        data.nroDni ||
+        data.numeroDni ||
+        ""
+    ),
+    departamento:
+      data.departamento ||
+      data.Departamento ||
+      data.depto ||
+      data.dpto ||
+      data.Delegacion ||
+      data.delegacion ||
+      "",
     raw: data,
   };
+};
+
+const obtenerValorPlano = (valor) => {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "boolean") return valor ? "Sí" : "No";
+  if (Array.isArray(valor)) return valor.map(obtenerValorPlano).join(", ");
+  if (typeof valor === "object") {
+    if (esArchivoAdjunto(valor)) return obtenerNombreArchivo(valor);
+    return JSON.stringify(valor);
+  }
+  return String(valor).trim();
 };
 
 const FormularioGestionPublico = () => {
@@ -445,56 +448,44 @@ const FormularioGestionPublico = () => {
   const toast = useRef(null);
 
   const [formulario, setFormulario] = useState(null);
-  const [respuestas, setRespuestas] = useState({});
-  const [archivos, setArchivos] = useState({});
-  const [archivosExistentesPorCampo, setArchivosExistentesPorCampo] =
-    useState({});
-
   const [loading, setLoading] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [validandoDni, setValidandoDni] = useState(false);
-  const [verificandoDni, setVerificandoDni] = useState(false);
-
-  const [estadoEnvio, setEstadoEnvio] = useState(null);
   const [errorCarga, setErrorCarga] = useState("");
 
+  const [respuestas, setRespuestas] = useState({});
+  const [archivos, setArchivos] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [verificandoDni, setVerificandoDni] = useState(false);
+
+  const [validandoDni, setValidandoDni] = useState(false);
   const [dniValidacion, setDniValidacion] = useState("");
   const [afiliadoValidado, setAfiliadoValidado] = useState(null);
   const [mensajeValidacionDni, setMensajeValidacionDni] = useState("");
 
+  const [estadoEnvio, setEstadoEnvio] = useState(null);
   const [respuestaRegistrada, setRespuestaRegistrada] = useState(null);
   const [verDetalleRespuesta, setVerDetalleRespuesta] = useState(false);
 
   const [modoEdicionAfiliado, setModoEdicionAfiliado] = useState(false);
-  const [fueActualizacionAfiliado, setFueActualizacionAfiliado] =
-    useState(false);
+  const [respuestaEditandoId, setRespuestaEditandoId] = useState(null);
 
   const enviado = Boolean(estadoEnvio);
 
-  const localStorageKey = useMemo(() => {
-    return id ? `oficina_gestion_formulario_enviado_${id}` : "";
-  }, [id]);
+  const camposVisibles = useMemo(() => {
+    const campos = formulario?.campos || [];
 
-  const localStorageRespuestaKey = useMemo(() => {
-    return id ? `oficina_gestion_formulario_respuesta_${id}` : "";
-  }, [id]);
-
-  const camposOrdenados = useMemo(() => {
-    return [...(formulario?.campos || [])].sort(
-      (a, b) => Number(a.orden || 0) - Number(b.orden || 0)
-    );
+    return [...campos]
+      .map((campo, index) => ({
+        ...campo,
+        id: campo.id || `campo_${index + 1}`,
+        orden: campo.orden || index + 1,
+        label: campo.label || `Campo ${index + 1}`,
+      }))
+      .sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
   }, [formulario]);
 
-  const requiereValidacionDni = useMemo(() => {
-    return Boolean(
-      formulario?.requiereValidacionDni ||
-        camposOrdenados.some((campo) => campo.tipo === "validacion_dni")
-    );
-  }, [formulario, camposOrdenados]);
-
-  const permiteMultiplesRespuestasPorDni = useMemo(() => {
-    return Boolean(formulario?.permitirMultiplesRespuestasPorDni);
-  }, [formulario]);
+  const camposFormulario = useMemo(() => {
+    return camposVisibles.filter((campo) => campo.tipo !== "validacion_dni");
+  }, [camposVisibles]);
 
   const soloConsultaDni = useMemo(() => {
     return Boolean(
@@ -504,226 +495,152 @@ const FormularioGestionPublico = () => {
     );
   }, [formulario]);
 
-  const camposVisibles = useMemo(() => {
-    return camposOrdenados.filter((campo) => campo.tipo !== "validacion_dni");
-  }, [camposOrdenados]);
-
-  const clavesDocumentacionPresentada = [
-    "PRESENTO DOCUMENTACIÓN",
-    "PRESENTO DOCUMENTACION",
-    "Presentó documentación",
-    "Presento documentacion",
-    "Presento documentación",
-    "Presentó documentación (SI)",
-    "Presento documentacion (SI)",
-    "Presento documentación (SI)",
-    "DOCUMENTACIÓN PRESENTADA",
-    "DOCUMENTACION PRESENTADA",
-    "Documentación presentada",
-    "Documentacion presentada",
-    "Documentación",
-    "Documentacion",
-    "Declaro bajo conformidad que he cargado la totalidad de la documentación requerida, asumiendo la responsabilidad por la veracidad y completitud de la información presentada.",
-    "Declaro bajo conformidad que he cargado la totalidad de la documentacion requerida, asumiendo la responsabilidad por la veracidad y completitud de la informacion presentada.",
-    "Declaro bajo conformidad que ha cargado la totalidad de la documentación requerida, asumiendo la responsabilidad por la veracidad y completitud de la información presentada.",
-    "Declaro bajo conformidad que ha cargado la totalidad de la documentacion requerida, asumiendo la responsabilidad por la veracidad y completitud de la informacion presentada.",
-    "Declaro bajo conformidad",
-    "He cargado la totalidad de la documentación requerida",
-    "He cargado la totalidad de la documentacion requerida",
-    "Ha cargado la totalidad de la documentación requerida",
-    "Ha cargado la totalidad de la documentacion requerida",
-    "Documentación requerida",
-    "Documentacion requerida",
-    "Veracidad y completitud",
-  ];
-
-  const clavesDepartamento = [
-    "DEPARTAMENTO",
-    "Departamento",
-    "Depto",
-    "Dpto",
-    "Delegación",
-    "Delegacion",
-  ];
-
-  const esCampoApellidoDetalle = (label = "") => {
-    const normalizado = normalizarTexto(label);
-    return normalizado === "apellido" || normalizado === "apellidos";
-  };
-
-  const esCampoNombreDetalle = (label = "") => {
-    const normalizado = normalizarTexto(label);
-    return normalizado === "nombre" || normalizado === "nombres";
-  };
-
-  const esCampoDniDetalle = (label = "") => {
-    const normalizado = normalizarTexto(label);
-
-    return (
-      normalizado === "dni" ||
-      normalizado === "documento" ||
-      normalizado === "nro dni" ||
-      normalizado === "n° dni" ||
-      normalizado === "nº dni" ||
-      normalizado === "numero de dni" ||
-      normalizado === "número de dni"
+  const requiereValidacionDni = useMemo(() => {
+    return Boolean(
+      soloConsultaDni ||
+        formulario?.requiereValidacionDni ||
+        camposVisibles.some((campo) => campo.tipo === "validacion_dni")
     );
-  };
+  }, [formulario, camposVisibles, soloConsultaDni]);
 
-  const esCampoDepartamentoDetalle = (label = "") => {
-    const normalizado = normalizarTexto(label);
+  const permiteMultiplesRespuestasPorDni = useMemo(() => {
+    if (soloConsultaDni) return false;
+    return Boolean(formulario?.permitirMultiplesRespuestasPorDni);
+  }, [formulario, soloConsultaDni]);
 
-    return (
-      normalizado === "departamento" ||
-      normalizado === "depto" ||
-      normalizado === "dpto" ||
-      normalizado === "delegacion" ||
-      normalizado === "delegación"
-    );
-  };
-
-  const esCampoDocumentacionPresentadaDetalle = (label = "") => {
-    const normalizado = normalizarTexto(label);
-
-    return (
-      normalizado === "documentacion presentada" ||
-      normalizado === "documentación presentada" ||
-      normalizado === "presento documentacion" ||
-      normalizado === "presentó documentación" ||
-      normalizado === "presento documentación" ||
-      normalizado === "presentó documentación (si)" ||
-      normalizado === "presento documentacion (si)" ||
-      normalizado === "documentacion" ||
-      normalizado === "documentación" ||
-      normalizado.includes("declaro bajo conformidad") ||
-      normalizado.includes("he cargado la totalidad de la documentacion") ||
-      normalizado.includes("he cargado la totalidad de la documentación") ||
-      normalizado.includes("ha cargado la totalidad de la documentacion") ||
-      normalizado.includes("ha cargado la totalidad de la documentación") ||
-      normalizado.includes("documentacion requerida") ||
-      normalizado.includes("documentación requerida") ||
-      normalizado.includes("veracidad y completitud")
-    );
-  };
-
-  useEffect(() => {
-    const cargarFormulario = async () => {
-      setLoading(true);
-      setErrorCarga("");
-
-      try {
-        if (!id) {
-          setErrorCarga("No se encontró el identificador del formulario.");
-          return;
-        }
-
-        const refFormulario = doc(db, "oficina_gestion_formularios", id);
-        const snap = await getDoc(refFormulario);
-
-        if (!snap.exists()) {
-          setErrorCarga("El formulario solicitado no existe.");
-          return;
-        }
-
-        const snapData = snap.data();
-
-        const data = {
-          id: snap.id,
-          codigoFormulario: snapData?.codigoFormulario || snap.id,
-          formularioCodigo: snapData?.formularioCodigo || snap.id,
-          formularioNumero: snapData?.formularioNumero || snap.id,
-          permitirMultiplesRespuestasPorDni: Boolean(
-            snapData?.permitirMultiplesRespuestasPorDni
-          ),
-          soloConsultaDni: Boolean(
-            snapData?.soloConsultaDni ||
-              snapData?.modoSoloConsultaDni ||
-              snapData?.bloquearCargaRespuestas
-          ),
-          archivoDescargaFormulario:
-            snapData?.archivoDescargaFormulario || null,
-          ...snapData,
-        };
-
-        if (!data.publicado) {
-          setErrorCarga("Este formulario todavía no se encuentra publicado.");
-          return;
-        }
-
-        if (!data.activo) {
-          setErrorCarga("Este formulario no se encuentra activo.");
-          return;
-        }
-
-        setFormulario(data);
-
-        const requiereDni = Boolean(
-          data?.requiereValidacionDni ||
-            data?.campos?.some((campo) => campo.tipo === "validacion_dni")
-        );
-
-        const estaEnSoloConsulta = Boolean(
-          data?.soloConsultaDni ||
-            data?.modoSoloConsultaDni ||
-            data?.bloquearCargaRespuestas
-        );
-
-        const yaEnviadoLocal =
-          localStorageKey && localStorage.getItem(localStorageKey) === "true";
-
-        if (
-          yaEnviadoLocal &&
-          !requiereDni &&
-          !estaEnSoloConsulta &&
-          !Boolean(data?.permitirMultiplesRespuestasPorDni)
-        ) {
-          setEstadoEnvio("local_existente");
-
-          const respuestaIdGuardada =
-            localStorageRespuestaKey &&
-            localStorage.getItem(localStorageRespuestaKey);
-
-          if (respuestaIdGuardada) {
-            const refRespuesta = doc(
-              db,
-              "oficina_gestion_respuestas",
-              respuestaIdGuardada
-            );
-
-            const snapRespuesta = await getDoc(refRespuesta);
-
-            if (snapRespuesta.exists()) {
-              const dataRespuesta = snapRespuesta.data();
-
-              if (dataRespuesta?.formularioId === id) {
-                setRespuestaRegistrada({
-                  id: snapRespuesta.id,
-                  ...dataRespuesta,
-                });
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error al cargar formulario:", error);
-        setErrorCarga("No se pudo cargar el formulario.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    cargarFormulario();
-  }, [id, localStorageKey, localStorageRespuestaKey]);
+  const storageKeyFormularioEnviado = useMemo(() => {
+    return id ? `oficina_gestion_formulario_enviado_${id}` : "";
+  }, [id]);
 
   const volverOficinaGestion = () => {
     history.push("/oficina-gestion");
   };
 
-  const actualizarRespuesta = (campo, valor) => {
+  const cargarFormulario = async () => {
+    setLoading(true);
+    setErrorCarga("");
+
+    try {
+      if (!id) {
+        setErrorCarga("No se recibió el ID del formulario.");
+        setFormulario(null);
+        return;
+      }
+
+      const refFormulario = doc(db, "oficina_gestion_formularios", id);
+      const snap = await getDoc(refFormulario);
+
+      if (!snap.exists()) {
+        setErrorCarga("El formulario solicitado no existe.");
+        setFormulario(null);
+        return;
+      }
+
+      const data = {
+        id: snap.id,
+        ...snap.data(),
+      };
+
+      if (!data.publicado) {
+        setErrorCarga("El formulario no está publicado.");
+        setFormulario(null);
+        return;
+      }
+
+      if (!data.activo) {
+        setErrorCarga("El formulario no se encuentra activo.");
+        setFormulario(null);
+        return;
+      }
+
+      setFormulario(data);
+
+      const yaEnviadoLocal =
+        storageKeyFormularioEnviado &&
+        localStorage.getItem(storageKeyFormularioEnviado) === "true";
+
+      const soloConsulta = Boolean(
+        data.soloConsultaDni ||
+          data.modoSoloConsultaDni ||
+          data.bloquearCargaRespuestas
+      );
+
+      const requiereDniEnFormulario = Boolean(
+        soloConsulta ||
+          data.requiereValidacionDni ||
+          data.campos?.some((campo) => campo.tipo === "validacion_dni")
+      );
+
+      const permiteMultiples = Boolean(data.permitirMultiplesRespuestasPorDni);
+
+      /*
+        No bloqueamos por localStorage cuando el formulario valida por DNI.
+        Así el afiliado puede ingresar su DNI y, si el administrador habilitó
+        la edición, podrá ver y editar su respuesta existente.
+      */
+      if (yaEnviadoLocal && !permiteMultiples && !requiereDniEnFormulario) {
+        setEstadoEnvio("local_existente");
+      }
+    } catch (error) {
+      console.error("Error al cargar formulario:", error);
+      setErrorCarga("No se pudo cargar el formulario.");
+      setFormulario(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarFormulario();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const actualizarRespuesta = (campoId, valor) => {
     setRespuestas((prev) => ({
       ...prev,
-      [campo.id]: valor,
+      [campoId]: valor,
     }));
+  };
+
+  const actualizarArchivos = (campo, filesSeleccionados) => {
+    const files = Array.from(filesSeleccionados || []);
+
+    if (files.length === 0) return;
+
+    const accept = campo.archivoAccept || ARCHIVOS_DEFAULT;
+    const invalidos = files.filter((file) => !acceptPermiteArchivo(accept, file));
+
+    if (invalidos.length > 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Archivo no permitido",
+        detail: `Hay archivos con formato no permitido. Revise las extensiones aceptadas: ${accept}`,
+        life: 4500,
+      });
+
+      return;
+    }
+
+    setArchivos((prev) => {
+      const actuales = prev[campo.id] || [];
+      const nuevos = campo.multiple ? [...actuales, ...files] : files.slice(0, 1);
+
+      return {
+        ...prev,
+        [campo.id]: nuevos,
+      };
+    });
+  };
+
+  const eliminarArchivoSeleccionado = (campoId, index) => {
+    setArchivos((prev) => {
+      const actuales = prev[campoId] || [];
+
+      return {
+        ...prev,
+        [campoId]: actuales.filter((_, i) => i !== index),
+      };
+    });
   };
 
   const obtenerRespuesta = (campo) => {
@@ -734,280 +651,30 @@ const FormularioGestionPublico = () => {
     if (!afiliado) return;
 
     setRespuestas((prev) => {
-      const nuevas = { ...prev };
+      const next = { ...prev };
 
-      camposVisibles.forEach((campo) => {
-        if (esCampoDniPorLabel(campo.label)) {
-          nuevas[campo.id] = afiliado.dni;
+      camposFormulario.forEach((campo) => {
+        const label = campo.label || "";
+
+        if (esCampoApellidoPorLabel(label)) {
+          next[campo.id] = afiliado.apellido || "";
         }
 
-        if (esCampoNombrePorLabel(campo.label)) {
-          nuevas[campo.id] = afiliado.nombre;
+        if (esCampoNombrePorLabel(label)) {
+          next[campo.id] = afiliado.nombre || "";
         }
 
-        if (esCampoApellidoPorLabel(campo.label)) {
-          nuevas[campo.id] = afiliado.apellido;
+        if (esCampoDniPorLabel(label)) {
+          next[campo.id] = afiliado.dni || "";
         }
 
-        if (esCampoApellidoNombrePorLabel(campo.label)) {
-          nuevas[campo.id] = `${afiliado.apellido} ${afiliado.nombre}`.trim();
+        if (esCampoDepartamentoPorLabel(label)) {
+          next[campo.id] = afiliado.departamento || "";
         }
       });
 
-      return nuevas;
+      return next;
     });
-  };
-
-  const actualizarArchivos = (campo, fileList) => {
-    const files = Array.from(fileList || []);
-
-    if (!files.length) return;
-
-    const accept = campo.archivoAccept || ARCHIVOS_DEFAULT;
-
-    const invalidos = files.filter(
-      (file) => !acceptPermiteArchivo(accept, file)
-    );
-
-    if (invalidos.length > 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Archivo no permitido",
-        detail: `Verifique el tipo de archivo permitido para "${campo.label}".`,
-        life: 4000,
-      });
-
-      return;
-    }
-
-    setArchivos((prev) => {
-      const actuales = prev[campo.id] || [];
-
-      return {
-        ...prev,
-        [campo.id]: campo.multiple
-          ? [...actuales, ...files]
-          : files.slice(0, 1),
-      };
-    });
-  };
-
-  const eliminarArchivo = (campoId, index) => {
-    setArchivos((prev) => {
-      const actuales = prev[campoId] || [];
-
-      return {
-        ...prev,
-        [campoId]: actuales.filter((_, i) => i !== index),
-      };
-    });
-  };
-
-  const eliminarArchivoExistente = (campoId, index) => {
-    setArchivosExistentesPorCampo((prev) => {
-      const actuales = prev[campoId] || [];
-
-      return {
-        ...prev,
-        [campoId]: actuales.filter((_, i) => i !== index),
-      };
-    });
-  };
-
-  const obtenerValorLegible = (campo, valor) => {
-    if (valor === null || valor === undefined || valor === "") {
-      return "";
-    }
-
-    if (campo.tipo === "departamento") {
-      const valores = Array.isArray(valor) ? valor : [valor];
-
-      const labels = valores.map((value) => {
-        const encontrado = departamentosOptions.find(
-          (item) => item.value === value
-        );
-
-        return encontrado?.label || value;
-      });
-
-      return campo.departamentoMultiple ? labels : labels[0] || "";
-    }
-
-    if (Array.isArray(valor)) {
-      return valor.join(", ");
-    }
-
-    if (typeof valor === "boolean") {
-      return valor ? "Sí" : "No";
-    }
-
-    return String(valor);
-  };
-
-  const validarFormulario = () => {
-    if (soloConsultaDni) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Carga no habilitada",
-        detail:
-          "Este formulario está habilitado solo para consultar información cargada.",
-        life: 4500,
-      });
-
-      return false;
-    }
-
-    if (requiereValidacionDni && !afiliadoValidado) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Validación requerida",
-        detail: "Primero debe validar el DNI para completar este formulario.",
-        life: 3500,
-      });
-
-      return false;
-    }
-
-    for (const campo of camposVisibles) {
-      if (!campo.obligatorio) continue;
-
-      if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
-        const files = archivos[campo.id] || [];
-
-        const archivosExistentes =
-          modoEdicionAfiliado && archivosExistentesPorCampo?.[campo.id]
-            ? archivosExistentesPorCampo[campo.id]
-            : [];
-
-        if (!files.length && !archivosExistentes.length) {
-          toast.current?.show({
-            severity: "warn",
-            summary: "Campo obligatorio",
-            detail: `Debe adjuntar archivo en: ${campo.label}`,
-            life: 3500,
-          });
-
-          return false;
-        }
-
-        continue;
-      }
-
-      const valor = respuestas[campo.id];
-
-      if (
-        valor === undefined ||
-        valor === null ||
-        valor === "" ||
-        (Array.isArray(valor) && valor.length === 0)
-      ) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Campo obligatorio",
-          detail: `Debe completar: ${campo.label}`,
-          life: 3500,
-        });
-
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const subirArchivos = async (respuestaId) => {
-    const archivosSubidosPorCampo = {};
-
-    for (const campo of camposVisibles) {
-      if (campo.tipo !== "archivo" && campo.tipo !== "archivo_pdf") continue;
-
-      const files = archivos[campo.id] || [];
-
-      if (!files.length) continue;
-
-      const subidos = [];
-
-      for (const file of files) {
-        const safeName = limpiarNombreArchivo(file.name);
-
-        const path = `oficina_gestion/formularios/${formulario.id}/respuestas/${respuestaId}/${campo.id}/${Date.now()}_${safeName}`;
-
-        const storageRef = ref(storage, path);
-
-        await uploadBytes(storageRef, file);
-
-        const url = await getDownloadURL(storageRef);
-
-        subidos.push({
-          nombre: file.name,
-          tipo: file.type || "",
-          size: file.size,
-          path,
-          url,
-        });
-      }
-
-      archivosSubidosPorCampo[campo.id] = subidos;
-    }
-
-    return archivosSubidosPorCampo;
-  };
-
-  const obtenerRespuestasDelFormularioActual = async () => {
-    if (!formulario?.id) return [];
-
-    const consultas = [
-      ["formularioId", formulario.id],
-      ["formularioCodigo", formulario.id],
-      ["formularioNumero", formulario.id],
-    ];
-
-    const docsMap = new Map();
-
-    for (const [campo, valor] of consultas) {
-      const q = query(
-        collection(db, "oficina_gestion_respuestas"),
-        where(campo, "==", valor)
-      );
-
-      const snap = await getDocs(q);
-
-      snap.docs.forEach((docSnap) => {
-        docsMap.set(docSnap.id, {
-          id: docSnap.id,
-          ...docSnap.data(),
-        });
-      });
-    }
-
-    return Array.from(docsMap.values());
-  };
-
-  const verificarRespuestaExistentePorDni = async (
-    dni,
-    excluirRespuestaId = null
-  ) => {
-    const dniNormalizado = normalizarDni(dni);
-
-    if (!dniNormalizado || !formulario?.id) return null;
-
-    try {
-      const respuestasFormulario = await obtenerRespuestasDelFormularioActual();
-
-      const respuestaEncontrada = respuestasFormulario.find((respuesta) => {
-        if (excluirRespuestaId && respuesta.id === excluirRespuestaId) {
-          return false;
-        }
-
-        const dniRegistrado = obtenerDniDesdeRespuestaRegistrada(respuesta);
-        return dniRegistrado === dniNormalizado;
-      });
-
-      return respuestaEncontrada || null;
-    } catch (error) {
-      console.error("Error al verificar DNI existente:", error);
-      return null;
-    }
   };
 
   const buscarAfiliadoPorDniEnColeccion = async (nombreColeccion, dni) => {
@@ -1069,12 +736,54 @@ const FormularioGestionPublico = () => {
         dni
       );
 
-      if (afiliado?.dni) {
-        return afiliado;
-      }
+      if (afiliado?.dni) return afiliado;
     }
 
     return null;
+  };
+
+  const verificarRespuestaExistentePorDni = async (dni) => {
+    const dniNormalizado = normalizarDni(dni);
+
+    if (!dniNormalizado || !id) return null;
+
+    try {
+      const consultas = [
+        ["formularioId", id],
+        ["formularioCodigo", id],
+        ["formularioNumero", id],
+      ];
+
+      const respuestasMap = new Map();
+
+      for (const [campo, valor] of consultas) {
+        const q = query(
+          collection(db, "oficina_gestion_respuestas"),
+          where(campo, "==", valor)
+        );
+
+        const snap = await getDocs(q);
+
+        snap.docs.forEach((docSnap) => {
+          respuestasMap.set(docSnap.id, {
+            id: docSnap.id,
+            ...docSnap.data(),
+          });
+        });
+      }
+
+      const respuestaEncontrada = Array.from(respuestasMap.values()).find(
+        (respuesta) => {
+          const dniRegistrado = obtenerDniDesdeRespuestaRegistrada(respuesta);
+          return dniRegistrado === dniNormalizado;
+        }
+      );
+
+      return respuestaEncontrada || null;
+    } catch (error) {
+      console.error("Error al verificar DNI existente:", error);
+      return null;
+    }
   };
 
   const validarDniAntesDeCargar = async () => {
@@ -1103,7 +812,8 @@ const FormularioGestionPublico = () => {
 
         if (respuestaExistente) {
           setRespuestaRegistrada(respuestaExistente);
-          setEstadoEnvio("solo_consulta");
+          setVerDetalleRespuesta(true);
+          setEstadoEnvio(null);
 
           toast.current?.show({
             severity: "success",
@@ -1180,8 +890,10 @@ const FormularioGestionPublico = () => {
       toast.current?.show({
         severity: "success",
         summary: "DNI validado",
-        detail: `Datos encontrados: ${afiliadoNormalizado.apellido} ${afiliadoNormalizado.nombre}`,
-        life: 4000,
+        detail: `${afiliadoNormalizado.apellido || ""} ${
+          afiliadoNormalizado.nombre || ""
+        } - DNI ${afiliadoNormalizado.dni}`,
+        life: 4500,
       });
     } catch (error) {
       console.error("Error al validar DNI:", error);
@@ -1189,93 +901,12 @@ const FormularioGestionPublico = () => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo validar el DNI. Intente nuevamente.",
+        detail: "No se pudo validar el DNI.",
         life: 4500,
       });
     } finally {
       setValidandoDni(false);
     }
-  };
-
-  const cargarRespuestaParaEdicionAfiliado = () => {
-    if (!respuestaRegistrada || soloConsultaDni) return;
-
-    const datos = respuestaRegistrada.respuestas || {};
-    const nuevasRespuestas = {};
-
-    camposVisibles.forEach((campo) => {
-      if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") return;
-
-      const valorPorLabel = obtenerValorPorClaves(datos, [campo.label]);
-
-      if (valorPorLabel !== "") {
-        nuevasRespuestas[campo.id] = valorPorLabel;
-        return;
-      }
-
-      const campoPorId = respuestaRegistrada.respuestasPorCampo?.[campo.id];
-
-      if (campoPorId?.valor !== undefined) {
-        nuevasRespuestas[campo.id] = campoPorId.valor;
-        return;
-      }
-
-      if (campoPorId?.valorLegible !== undefined) {
-        nuevasRespuestas[campo.id] = campoPorId.valorLegible;
-      }
-    });
-
-    const nombreOriginal =
-      respuestaRegistrada.nombre ||
-      obtenerValorPorClaves(datos, ["Nombre", "Nombres"]);
-
-    const apellidoOriginal =
-      respuestaRegistrada.apellido ||
-      obtenerValorPorClaves(datos, ["Apellido", "Apellidos"]);
-
-    const personaNormalizada = separarApellidoNombrePersona(
-      apellidoOriginal,
-      nombreOriginal
-    );
-
-    const dni = normalizarDni(
-      respuestaRegistrada.dni ||
-        obtenerValorPorClaves(datos, [
-          "DNI",
-          "Documento",
-          "Nro DNI",
-          "N° DNI",
-          "Nº DNI",
-          "Número de DNI",
-          "Numero de DNI",
-        ])
-    );
-
-    const afiliado = {
-      id: respuestaRegistrada.afiliadoId || "",
-      origen: respuestaRegistrada.afiliadoOrigen || "",
-      nombre: personaNormalizada.nombre,
-      apellido: personaNormalizada.apellido,
-      dni,
-      raw: {},
-    };
-
-    setRespuestas(nuevasRespuestas);
-    setAfiliadoValidado(afiliado);
-    setDniValidacion(dni);
-    setModoEdicionAfiliado(true);
-    setFueActualizacionAfiliado(false);
-    setEstadoEnvio(null);
-    setMensajeValidacionDni("");
-    setArchivos({});
-    setArchivosExistentesPorCampo(respuestaRegistrada.archivos || {});
-
-    toast.current?.show({
-      severity: "success",
-      summary: "Edición habilitada",
-      detail: "Ya podés modificar la información del formulario.",
-      life: 3500,
-    });
   };
 
   const reiniciarValidacionDni = () => {
@@ -1284,75 +915,273 @@ const FormularioGestionPublico = () => {
     setMensajeValidacionDni("");
     setRespuestas({});
     setArchivos({});
-    setArchivosExistentesPorCampo({});
-    setModoEdicionAfiliado(false);
-    setFueActualizacionAfiliado(false);
   };
 
-  const reiniciarFormularioParaNuevaCarga = () => {
-    if (soloConsultaDni) return;
+  const cargarRespuestaParaEdicionAfiliado = () => {
+    if (!respuestaRegistrada?.id) return;
 
-    setEstadoEnvio(null);
-    setRespuestaRegistrada(null);
-    setVerDetalleRespuesta(false);
-    setRespuestas({});
+    const respuestasGuardadas = respuestaRegistrada.respuestas || {};
+    const respuestasPorCampo = respuestaRegistrada.respuestasPorCampo || {};
+
+    const respuestasIniciales = {};
+
+    camposFormulario.forEach((campo) => {
+      const dato = respuestasPorCampo[campo.id];
+
+      if (dato) {
+        respuestasIniciales[campo.id] = dato.valor ?? dato.valorLegible ?? "";
+        return;
+      }
+
+      const valorPorLabel = obtenerValorPorClaves(respuestasGuardadas, [
+        campo.label,
+      ]);
+
+      if (!valorVacio(valorPorLabel)) {
+        respuestasIniciales[campo.id] = valorPorLabel;
+      }
+    });
+
+    setRespuestas(respuestasIniciales);
     setArchivos({});
-    setArchivosExistentesPorCampo({});
-    setModoEdicionAfiliado(false);
-    setFueActualizacionAfiliado(false);
-    setMensajeValidacionDni("");
+    setModoEdicionAfiliado(true);
+    setRespuestaEditandoId(respuestaRegistrada.id);
+    setEstadoEnvio(null);
+    setVerDetalleRespuesta(false);
 
-    if (requiereValidacionDni) {
-      setDniValidacion("");
-      setAfiliadoValidado(null);
-    }
-
-    toast.current?.show({
-      severity: "info",
-      summary: "Nueva carga",
-      detail: "Ya podés completar nuevamente el formulario.",
-      life: 3000,
+    setAfiliadoValidado({
+      apellido: respuestaRegistrada.apellido || "",
+      nombre: respuestaRegistrada.nombre || "",
+      dni: respuestaRegistrada.dni || dniValidacion,
+      departamento: respuestaRegistrada.departamento || "",
     });
   };
 
-  const verificarDniIngresado = async (dni) => {
-    if (
-      requiereValidacionDni ||
-      modoEdicionAfiliado ||
-      permiteMultiplesRespuestasPorDni ||
-      soloConsultaDni
-    ) {
-      return;
-    }
+  const validarCampos = () => {
+    for (const campo of camposFormulario) {
+      if (!campo.obligatorio) continue;
 
-    const dniNormalizado = normalizarDni(dni);
+      if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
+        const archivosCampo = archivos[campo.id] || [];
 
-    if (!dniNormalizado || dniNormalizado.length < 6 || !formulario?.id) {
-      return;
-    }
+        if (
+          archivosCampo.length === 0 &&
+          !modoEdicionAfiliado &&
+          !respuestaRegistrada?.archivos?.[campo.id]
+        ) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Campo obligatorio",
+            detail: `Debe adjuntar archivo en: ${campo.label}`,
+            life: 3500,
+          });
 
-    setVerificandoDni(true);
+          return false;
+        }
 
-    try {
-      const respuestaExistente = await verificarRespuestaExistentePorDni(
-        dniNormalizado
-      );
+        continue;
+      }
 
-      if (respuestaExistente) {
-        setRespuestaRegistrada(respuestaExistente);
-        setEstadoEnvio("dni_existente");
+      const valor = respuestas[campo.id];
 
+      if (valorVacio(valor)) {
         toast.current?.show({
           severity: "warn",
-          summary: "Registro existente",
-          detail:
-            "Ya existe un registro cargado con ese DNI para este formulario.",
-          life: 5000,
+          summary: "Campo obligatorio",
+          detail: `Complete el campo: ${campo.label}`,
+          life: 3500,
+        });
+
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const subirArchivosRespuesta = async (respuestaId) => {
+    const archivosSubidos = {};
+
+    for (const campo of camposFormulario) {
+      if (campo.tipo !== "archivo" && campo.tipo !== "archivo_pdf") continue;
+
+      const files = archivos[campo.id] || [];
+
+      if (files.length === 0) continue;
+
+      archivosSubidos[campo.id] = [];
+
+      for (const file of files) {
+        const timestamp = Date.now();
+        const nombreLimpio = limpiarNombreArchivo(file.name);
+        const path = `oficina_gestion/formularios/${id}/respuestas/${respuestaId}/${campo.id}/${timestamp}_${nombreLimpio}`;
+        const archivoRef = ref(storage, path);
+
+        await uploadBytes(archivoRef, file);
+
+        const url = await getDownloadURL(archivoRef);
+
+        archivosSubidos[campo.id].push({
+          nombre: file.name,
+          name: file.name,
+          tipo: file.type,
+          type: file.type,
+          size: file.size,
+          path,
+          fullPath: path,
+          url,
+          downloadURL: url,
+          campoId: campo.id,
+          campoLabel: campo.label,
         });
       }
-    } finally {
-      setVerificandoDni(false);
     }
+
+    return archivosSubidos;
+  };
+
+  const obtenerDatosPrincipalesDesdeRespuesta = (respuestasPlanos) => {
+    const apellidoOriginal =
+      obtenerValorPorClaves(respuestasPlanos, ["Apellido", "Apellidos"]) ||
+      afiliadoValidado?.apellido ||
+      "";
+
+    const nombreOriginal =
+      obtenerValorPorClaves(respuestasPlanos, ["Nombre", "Nombres"]) ||
+      afiliadoValidado?.nombre ||
+      "";
+
+    const persona = separarApellidoNombrePersona(apellidoOriginal, nombreOriginal);
+
+    const dni =
+      normalizarDni(
+        obtenerValorPorClaves(respuestasPlanos, [
+          "DNI",
+          "Documento",
+          "Nro DNI",
+          "N° DNI",
+          "Nº DNI",
+          "Número de DNI",
+          "Numero de DNI",
+        ])
+      ) ||
+      normalizarDni(afiliadoValidado?.dni) ||
+      normalizarDni(dniValidacion);
+
+    const departamento =
+      obtenerValorPorClaves(respuestasPlanos, [
+        "Departamento",
+        "Depto",
+        "Dpto",
+      ]) ||
+      afiliadoValidado?.departamento ||
+      "";
+
+    const presentoDocumentacion =
+      normalizarSiNo(
+        obtenerValorPorClaves(respuestasPlanos, [
+          "Presentó documentación",
+          "Presento documentacion",
+          "Documentación",
+          "Documentacion",
+          "Documentación presentada",
+          "Documentacion presentada",
+        ])
+      ) ||
+      obtenerValorPorClaves(respuestasPlanos, [
+        "Presentó documentación",
+        "Presento documentacion",
+        "Documentación",
+        "Documentacion",
+        "Documentación presentada",
+        "Documentacion presentada",
+      ]) ||
+      "";
+
+    return {
+      apellido: persona.apellido,
+      nombre: persona.nombre,
+      dni,
+      departamento,
+      presentoDocumentacion,
+    };
+  };
+
+  const construirPayloadRespuesta = async (respuestaId) => {
+    const archivosSubidos = await subirArchivosRespuesta(respuestaId);
+
+    const respuestasPlanos = {};
+    const respuestasPorCampo = {};
+
+    camposFormulario.forEach((campo) => {
+      if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
+        const archivosCampo =
+          archivosSubidos[campo.id] ||
+          respuestaRegistrada?.archivos?.[campo.id] ||
+          [];
+
+        respuestasPlanos[campo.label] = archivosCampo;
+
+        respuestasPorCampo[campo.id] = {
+          id: campo.id,
+          label: campo.label,
+          tipo: campo.tipo,
+          obligatorio: Boolean(campo.obligatorio),
+          orden: campo.orden || 0,
+          valor: archivosCampo,
+          valorLegible:
+            archivosCampo.length > 0
+              ? archivosCampo.map((archivo) => archivo.nombre).join(", ")
+              : "",
+        };
+
+        return;
+      }
+
+      let valor = respuestas[campo.id];
+
+      if (campo.tipo === "booleano") {
+        valor = normalizarSiNo(valor);
+      }
+
+      respuestasPlanos[campo.label] = valor || "";
+
+      respuestasPorCampo[campo.id] = {
+        id: campo.id,
+        label: campo.label,
+        tipo: campo.tipo || "texto",
+        obligatorio: Boolean(campo.obligatorio),
+        orden: campo.orden || 0,
+        valor: valor || "",
+        valorLegible: obtenerValorPlano(valor),
+      };
+    });
+
+    const principales = obtenerDatosPrincipalesDesdeRespuesta(respuestasPlanos);
+
+    return {
+      formularioId: id,
+      formularioCodigo: id,
+      formularioNumero: id,
+      formularioTitulo: formulario?.titulo || "",
+      origen: "formulario_publico",
+
+      apellido: principales.apellido,
+      nombre: principales.nombre,
+      dni: principales.dni,
+      departamento: principales.departamento,
+      presentoDocumentacion: principales.presentoDocumentacion,
+
+      respuestas: respuestasPlanos,
+      respuestasPorCampo,
+      archivos: {
+        ...(respuestaRegistrada?.archivos || {}),
+        ...archivosSubidos,
+      },
+
+      cantidadCampos: camposFormulario.length,
+      updatedAt: serverTimestamp(),
+    };
   };
 
   const enviarFormulario = async () => {
@@ -1361,295 +1190,87 @@ const FormularioGestionPublico = () => {
     if (soloConsultaDni) {
       toast.current?.show({
         severity: "warn",
-        summary: "Carga no habilitada",
-        detail:
-          "Este formulario está disponible solo para consultar información cargada.",
-        life: 4500,
+        summary: "Solo consulta",
+        detail: "Este formulario está habilitado solo para consulta por DNI.",
+        life: 3500,
       });
 
       return;
     }
 
-    const yaEnviadoLocal =
-      localStorageKey && localStorage.getItem(localStorageKey) === "true";
-
-    if (
-      yaEnviadoLocal &&
-      !requiereValidacionDni &&
-      !modoEdicionAfiliado &&
-      !permiteMultiplesRespuestasPorDni
-    ) {
-      setEstadoEnvio("local_existente");
-
+    if (requiereValidacionDni && !afiliadoValidado && !modoEdicionAfiliado) {
       toast.current?.show({
         severity: "warn",
-        summary: "Formulario ya cargado",
-        detail: "Este formulario ya fue enviado desde este dispositivo.",
-        life: 4000,
+        summary: "Validación requerida",
+        detail: "Debe validar el DNI antes de completar el formulario.",
+        life: 3500,
       });
 
       return;
     }
 
-    if (!validarFormulario()) return;
+    if (!validarCampos()) return;
 
     setEnviando(true);
+    setVerificandoDni(true);
 
     try {
-      const respuestasLegiblesPrevias = {};
+      const dniFinal =
+        normalizarDni(afiliadoValidado?.dni) || normalizarDni(dniValidacion);
 
-      camposVisibles.forEach((campo) => {
-        if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") return;
+      if (
+        !modoEdicionAfiliado &&
+        requiereValidacionDni &&
+        !permiteMultiplesRespuestasPorDni
+      ) {
+        const existente = await verificarRespuestaExistentePorDni(dniFinal);
 
-        const valor = respuestas[campo.id];
-
-        respuestasLegiblesPrevias[campo.label] = obtenerValorLegible(
-          campo,
-          valor
-        );
-      });
-
-      const dniPrevio =
-        afiliadoValidado?.dni ||
-        obtenerValorPorClaves(respuestasLegiblesPrevias, [
-          "DNI",
-          "Documento",
-          "Nro DNI",
-          "N° DNI",
-          "Nº DNI",
-          "Número de DNI",
-          "Numero de DNI",
-          "Número documento",
-          "Numero documento",
-          "Número de documento",
-          "Numero de documento",
-        ]);
-
-      const dniNormalizado = normalizarDni(dniPrevio);
-
-      if (dniNormalizado && !permiteMultiplesRespuestasPorDni) {
-        const respuestaExistente = await verificarRespuestaExistentePorDni(
-          dniNormalizado,
-          modoEdicionAfiliado ? respuestaRegistrada?.id : null
-        );
-
-        if (respuestaExistente) {
-          setRespuestaRegistrada(respuestaExistente);
+        if (existente) {
+          setRespuestaRegistrada(existente);
           setEstadoEnvio("dni_existente");
-          setModoEdicionAfiliado(false);
-          setFueActualizacionAfiliado(false);
-
-          toast.current?.show({
-            severity: "warn",
-            summary: "Registro existente",
-            detail:
-              "Ya existe un registro cargado con ese DNI para este formulario.",
-            life: 5000,
-          });
-
           return;
         }
       }
 
-      const respuestaId =
-        modoEdicionAfiliado && respuestaRegistrada?.id
-          ? respuestaRegistrada.id
-          : doc(collection(db, "oficina_gestion_respuestas")).id;
+      const refRespuesta = modoEdicionAfiliado
+        ? doc(db, "oficina_gestion_respuestas", respuestaEditandoId)
+        : doc(collection(db, "oficina_gestion_respuestas"));
 
-      const respuestaRef = doc(db, "oficina_gestion_respuestas", respuestaId);
+      const payload = await construirPayloadRespuesta(refRespuesta.id);
 
-      const archivosSubidosPorCampo = await subirArchivos(respuestaId);
-
-      const archivosExistentes =
-        modoEdicionAfiliado && archivosExistentesPorCampo
-          ? archivosExistentesPorCampo
-          : {};
-
-      const archivosFinales = { ...archivosExistentes };
-
-      camposVisibles.forEach((campo) => {
-        if (campo.tipo !== "archivo" && campo.tipo !== "archivo_pdf") return;
-
-        const archivosPrevios = archivosExistentes[campo.id] || [];
-        const archivosNuevos = archivosSubidosPorCampo[campo.id] || [];
-
-        if (campo.multiple) {
-          archivosFinales[campo.id] = [...archivosPrevios, ...archivosNuevos];
-        } else {
-          archivosFinales[campo.id] = archivosNuevos.length
-            ? archivosNuevos
-            : archivosPrevios;
-        }
-      });
-
-      const respuestasPorCampo = {};
-      const respuestasLegibles = {};
-
-      camposVisibles.forEach((campo) => {
-        if (campo.tipo === "archivo" || campo.tipo === "archivo_pdf") {
-          const archivosCampo = archivosFinales[campo.id] || [];
-
-          respuestasPorCampo[campo.id] = {
-            label: campo.label,
-            tipo: campo.tipo,
-            valor: archivosCampo,
-          };
-
-          respuestasLegibles[campo.label] = campo.multiple
-            ? archivosCampo
-            : archivosCampo[0] || null;
-
-          return;
-        }
-
-        const valor = respuestas[campo.id];
-
-        respuestasPorCampo[campo.id] = {
-          label: campo.label,
-          tipo: campo.tipo,
-          valor,
-          valorLegible: obtenerValorLegible(campo, valor),
-        };
-
-        respuestasLegibles[campo.label] = obtenerValorLegible(campo, valor);
-      });
-
-      const apellidoOriginal =
-        afiliadoValidado?.apellido ||
-        obtenerValorPorClaves(respuestasLegibles, ["Apellido", "Apellidos"]);
-
-      const nombreOriginal =
-        afiliadoValidado?.nombre ||
-        obtenerValorPorClaves(respuestasLegibles, ["Nombre", "Nombres"]);
-
-      const personaNormalizadaRespuesta = separarApellidoNombrePersona(
-        apellidoOriginal,
-        nombreOriginal
-      );
-
-      const apellido = personaNormalizadaRespuesta.apellido;
-      const nombre = personaNormalizadaRespuesta.nombre;
-
-      const dni = normalizarDni(
-        afiliadoValidado?.dni ||
-          obtenerValorPorClaves(respuestasLegibles, [
-            "DNI",
-            "Documento",
-            "Nro DNI",
-            "N° DNI",
-            "Nº DNI",
-            "Número de DNI",
-            "Numero de DNI",
-          ])
-      );
-
-      if (afiliadoValidado) {
-        respuestasLegibles.Apellido = apellido;
-        respuestasLegibles.Nombre = nombre;
-        respuestasLegibles.DNI = dni;
-      }
-
-      const departamento = obtenerValorPorClaves(
-        respuestasLegibles,
-        clavesDepartamento
-      );
-
-      const presentoDocumentacion = normalizarSiNo(
-        obtenerValorPorClaves(respuestasLegibles, clavesDocumentacionPresentada)
-      );
-
-      const payloadRespuesta = {
-        formularioId: formulario.id,
-        formularioCodigo: formulario.codigoFormulario || formulario.id,
-        formularioNumero: formulario.formularioNumero || formulario.id,
-        formularioTitulo: formulario.titulo || "",
-
-        origen: respuestaRegistrada?.origen || "formulario_publico",
-
-        validadoPorDni: Boolean(afiliadoValidado),
-        afiliadoOrigen: afiliadoValidado?.origen || "",
-
-        permiteMultiplesRespuestasPorDni: Boolean(
-          permiteMultiplesRespuestasPorDni
-        ),
-
-        apellido,
-        nombre,
-        dni,
-        departamento,
-        presentoDocumentacion,
-
-        respuestas: respuestasLegibles,
-        respuestasPorCampo,
-        archivos: archivosFinales,
-
-        updatedAt: serverTimestamp(),
-      };
-
-      if (modoEdicionAfiliado && respuestaRegistrada?.id) {
-        await updateDoc(respuestaRef, {
-          ...payloadRespuesta,
-          edicionAfiliadoHabilitada: false,
-          edicionAfiliadoHabilitadaAt: null,
-          edicionAfiliadoDeshabilitadaAt: serverTimestamp(),
+      if (modoEdicionAfiliado) {
+        await updateDoc(refRespuesta, {
+          ...payload,
           editadoPorAfiliado: true,
           editadoPorAfiliadoAt: serverTimestamp(),
-        });
-
-        setRespuestaRegistrada({
-          ...respuestaRegistrada,
-          ...payloadRespuesta,
-          id: respuestaId,
           edicionAfiliadoHabilitada: false,
-          editadoPorAfiliado: true,
-          updatedAt: new Date(),
-          editadoPorAfiliadoAt: new Date(),
+          edicionAfiliadoDeshabilitadaAt: serverTimestamp(),
         });
 
-        setModoEdicionAfiliado(false);
-        setFueActualizacionAfiliado(true);
+        setEstadoEnvio("actualizado");
+      } else {
+        await setDoc(refRespuesta, {
+          id: refRespuesta.id,
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+
+        if (storageKeyFormularioEnviado) {
+          localStorage.setItem(storageKeyFormularioEnviado, "true");
+        }
+
         setEstadoEnvio("ok");
-
-        toast.current?.show({
-          severity: "success",
-          summary: "Formulario actualizado",
-          detail: "La información fue actualizada correctamente.",
-          life: 4000,
-        });
-
-        return;
       }
-
-      await setDoc(respuestaRef, {
-        ...payloadRespuesta,
-        createdAt: serverTimestamp(),
-      });
-
-      setRespuestaRegistrada({
-        id: respuestaId,
-        ...payloadRespuesta,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      if (!permiteMultiplesRespuestasPorDni) {
-        if (localStorageKey) {
-          localStorage.setItem(localStorageKey, "true");
-        }
-
-        if (localStorageRespuestaKey) {
-          localStorage.setItem(localStorageRespuestaKey, respuestaId);
-        }
-      }
-
-      setFueActualizacionAfiliado(false);
-      setEstadoEnvio("ok");
 
       toast.current?.show({
         severity: "success",
-        summary: "Formulario enviado",
-        detail: "La respuesta fue registrada correctamente.",
-        life: 4000,
+        summary: modoEdicionAfiliado
+          ? "Formulario actualizado"
+          : "Formulario enviado",
+        detail: modoEdicionAfiliado
+          ? "La información fue actualizada correctamente."
+          : "La información fue registrada correctamente.",
+        life: 4500,
       });
     } catch (error) {
       console.error("Error al enviar formulario:", error);
@@ -1657,12 +1278,28 @@ const FormularioGestionPublico = () => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          "No se pudo guardar el formulario. Verifique su conexión e intente nuevamente.",
-        life: 5000,
+        detail: "No se pudo guardar la información.",
+        life: 4500,
       });
     } finally {
       setEnviando(false);
+      setVerificandoDni(false);
+    }
+  };
+
+  const reiniciarFormularioParaNuevaCarga = () => {
+    setRespuestas({});
+    setArchivos({});
+    setEstadoEnvio(null);
+    setRespuestaRegistrada(null);
+    setVerDetalleRespuesta(false);
+    setModoEdicionAfiliado(false);
+    setRespuestaEditandoId(null);
+
+    if (requiereValidacionDni) {
+      setDniValidacion("");
+      setAfiliadoValidado(null);
+      setMensajeValidacionDni("");
     }
   };
 
@@ -1671,15 +1308,25 @@ const FormularioGestionPublico = () => {
       return <span className={styles.detalleEmpty}>—</span>;
     }
 
+    if (typeof value === "boolean") {
+      return <span>{value ? "Sí" : "No"}</span>;
+    }
+
     if (esArchivoAdjunto(value)) {
+      const url = obtenerUrlArchivo(value);
+
       return (
         <div className={styles.detalleArchivosBox}>
           <div className={styles.detalleArchivoRow}>
             <i className="pi pi-paperclip" />
 
-            <a href={value.url} target="_blank" rel="noreferrer">
-              {value.nombre || "Ver archivo adjunto"}
-            </a>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer">
+                {obtenerNombreArchivo(value)}
+              </a>
+            ) : (
+              <span>{obtenerNombreArchivo(value)}</span>
+            )}
           </div>
         </div>
       );
@@ -1688,18 +1335,30 @@ const FormularioGestionPublico = () => {
     if (esListaDeArchivos(value)) {
       return (
         <div className={styles.detalleArchivosBox}>
-          {value.map((archivo, index) => (
-            <div
-              key={`${archivo.nombre || "archivo"}-${index}`}
-              className={styles.detalleArchivoRow}
-            >
-              <i className="pi pi-paperclip" />
+          {value
+            .filter((archivo) => esArchivoAdjunto(archivo))
+            .map((archivo, index) => {
+              const url = obtenerUrlArchivo(archivo);
 
-              <a href={archivo.url} target="_blank" rel="noreferrer">
-                {archivo.nombre || `Archivo ${index + 1}`}
-              </a>
-            </div>
-          ))}
+              return (
+                <div
+                  key={`${obtenerNombreArchivo(archivo)}-${index}`}
+                  className={styles.detalleArchivoRow}
+                >
+                  <i className="pi pi-paperclip" />
+
+                  {url ? (
+                    <a href={url} target="_blank" rel="noreferrer">
+                      {obtenerNombreArchivo(archivo, `Archivo ${index + 1}`)}
+                    </a>
+                  ) : (
+                    <span>
+                      {obtenerNombreArchivo(archivo, `Archivo ${index + 1}`)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
         </div>
       );
     }
@@ -1757,48 +1416,11 @@ const FormularioGestionPublico = () => {
     const respuestasGuardadas = respuestaRegistrada.respuestas || {};
     const archivosGuardados = respuestaRegistrada.archivos || {};
 
-    const obtenerValorDocumentacionPresentada = () => {
-      const valorDirecto = normalizarSiNo(
-        respuestaRegistrada.presentoDocumentacion
-      );
-
-      if (valorDirecto) return valorDirecto;
-
-      const valorDesdeRespuestas = normalizarSiNo(
-        obtenerValorPorClaves(respuestasGuardadas, clavesDocumentacionPresentada)
-      );
-
-      if (valorDesdeRespuestas) return valorDesdeRespuestas;
-
-      const campoPorLabel = Object.values(respuestasPorCampo).find((campo) =>
-        esCampoDocumentacionPresentadaDetalle(campo?.label)
-      );
-
-      if (campoPorLabel) {
-        const valor = normalizarSiNo(
-          campoPorLabel.valorLegible ??
-            campoPorLabel.valor ??
-            campoPorLabel.value ??
-            ""
-        );
-
-        if (valor) return valor;
-      }
-
-      return "";
-    };
-
-    const obtenerValorDepartamento = () => {
-      return (
-        respuestaRegistrada.departamento ||
-        obtenerValorPorClaves(respuestasGuardadas, clavesDepartamento)
-      );
-    };
-
     let detalle = [];
 
     if (camposVisibles.length > 0) {
       detalle = camposVisibles
+        .filter((campo) => campo.tipo !== "validacion_dni")
         .map((campo) => {
           const dato = respuestasPorCampo[campo.id];
 
@@ -1818,98 +1440,41 @@ const FormularioGestionPublico = () => {
           }
 
           if (dato) {
-            const valor = dato.valorLegible ?? dato.valor ?? "";
-
-            if (esCampoTipoSiNo(campo) && !esValorSiNo(valor)) {
-              return null;
-            }
-
             return {
               id: campo.id,
               label: dato.label || campo.label,
-              value: esCampoTipoSiNo(campo) ? normalizarSiNo(valor) : valor,
+              value: dato.valorLegible ?? dato.valor ?? "",
               tipo: campo.tipo,
             };
-          }
-
-          let clavesBusqueda = [campo.label];
-
-          if (esCampoDocumentacionPresentadaDetalle(campo.label)) {
-            clavesBusqueda = [campo.label, ...clavesDocumentacionPresentada];
-          }
-
-          if (esCampoDepartamentoDetalle(campo.label)) {
-            clavesBusqueda = [campo.label, ...clavesDepartamento];
-          }
-
-          const valorPorLabel = obtenerValorPorClaves(
-            respuestasGuardadas,
-            clavesBusqueda
-          );
-
-          if (esCampoTipoSiNo(campo) && !esValorSiNo(valorPorLabel)) {
-            return null;
           }
 
           return {
             id: campo.id,
             label: campo.label,
-            value: esCampoTipoSiNo(campo)
-              ? normalizarSiNo(valorPorLabel)
-              : valorPorLabel || "—",
+            value: obtenerValorPorClaves(respuestasGuardadas, [campo.label]),
             tipo: campo.tipo,
           };
-        })
-        .filter(Boolean);
+        });
     } else {
-      detalle = Object.entries(respuestasGuardadas)
-        .map(([key, value]) => {
-          if (esCampoDocumentacionPresentadaDetalle(key)) {
-            const valorNormalizado = normalizarSiNo(value);
-
-            if (!valorNormalizado) return null;
-
-            return {
-              id: key,
-              label: key,
-              value: valorNormalizado,
-              tipo: "booleano",
-            };
-          }
-
-          return {
-            id: key,
-            label: key,
-            value,
-          };
-        })
-        .filter(Boolean);
+      detalle = Object.entries(respuestasGuardadas).map(([key, value]) => ({
+        id: key,
+        label: key,
+        value,
+      }));
     }
 
-    const apellidoDetalleOriginal =
+    const apellidoOriginal =
       respuestaRegistrada.apellido ||
       obtenerValorPorClaves(respuestasGuardadas, ["Apellido", "Apellidos"]);
 
-    const nombreDetalleOriginal =
+    const nombreOriginal =
       respuestaRegistrada.nombre ||
       obtenerValorPorClaves(respuestasGuardadas, ["Nombre", "Nombres"]);
 
-    const personaDetalleNormalizada = separarApellidoNombrePersona(
-      apellidoDetalleOriginal,
-      nombreDetalleOriginal
-    );
+    const persona = separarApellidoNombrePersona(apellidoOriginal, nombreOriginal);
 
-    actualizarOCrearCampoDetalle(
-      detalle,
-      "Apellido",
-      personaDetalleNormalizada.apellido || "—"
-    );
-
-    actualizarOCrearCampoDetalle(
-      detalle,
-      "Nombre",
-      personaDetalleNormalizada.nombre || "—"
-    );
+    actualizarOCrearCampoDetalle(detalle, "Apellido", persona.apellido || "—");
+    actualizarOCrearCampoDetalle(detalle, "Nombre", persona.nombre || "—");
 
     actualizarOCrearCampoDetalle(
       detalle,
@@ -1929,19 +1494,29 @@ const FormularioGestionPublico = () => {
     actualizarOCrearCampoDetalle(
       detalle,
       "Departamento",
-      obtenerValorDepartamento() || "—"
+      respuestaRegistrada.departamento ||
+        obtenerValorPorClaves(respuestasGuardadas, [
+          "Departamento",
+          "Depto",
+          "Dpto",
+        ]) ||
+        "—"
     );
 
-    const existeCampoDocumentacionVisible = detalle.some((item) => {
-      return (
-        esCampoDocumentacionPresentadaDetalle(item.label) &&
-        esValorSiNo(item.value)
+    const valorDocumentacion =
+      normalizarSiNo(respuestaRegistrada.presentoDocumentacion) ||
+      normalizarSiNo(
+        obtenerValorPorClaves(respuestasGuardadas, [
+          "Presentó documentación",
+          "Presento documentacion",
+          "Documentación",
+          "Documentacion",
+          "Documentación presentada",
+          "Documentacion presentada",
+        ])
       );
-    });
 
-    const valorDocumentacion = obtenerValorDocumentacionPresentada();
-
-    if (!existeCampoDocumentacionVisible && valorDocumentacion) {
+    if (valorDocumentacion) {
       actualizarOCrearCampoDetalle(
         detalle,
         "DOCUMENTACIÓN PRESENTADA",
@@ -1949,28 +1524,17 @@ const FormularioGestionPublico = () => {
       );
     }
 
-    return detalle;
-  };
-
-  const valorTieneArchivosDetalle = (value) => {
-    if (esArchivoAdjunto(value) || esListaDeArchivos(value)) return true;
-
-    if (Array.isArray(value)) {
-      return value.some((item) => esArchivoAdjunto(item));
-    }
-
-    return false;
+    return detalle.filter((item) => item && !valorVacio(item.value));
   };
 
   const esCampoAdjuntoDetalle = (item) => {
     const labelNormalizado = normalizarTexto(item?.label);
 
-    if (esCampoDocumentacionPresentadaDetalle(item?.label)) return false;
-
     return (
       labelNormalizado.includes("adjuntar") ||
-      labelNormalizado.includes("archivo adjunto") ||
-      valorTieneArchivosDetalle(item?.value)
+      labelNormalizado.includes("archivo") ||
+      esArchivoAdjunto(item?.value) ||
+      esListaDeArchivos(item?.value)
     );
   };
 
@@ -1988,11 +1552,11 @@ const FormularioGestionPublico = () => {
       return encontrado || null;
     };
 
-    const apellido = tomarCampo((item) => esCampoApellidoDetalle(item.label));
-    const nombre = tomarCampo((item) => esCampoNombreDetalle(item.label));
-    const dni = tomarCampo((item) => esCampoDniDetalle(item.label));
+    const apellido = tomarCampo((item) => esCampoApellidoPorLabel(item.label));
+    const nombre = tomarCampo((item) => esCampoNombrePorLabel(item.label));
+    const dni = tomarCampo((item) => esCampoDniPorLabel(item.label));
     const departamento = tomarCampo((item) =>
-      esCampoDepartamentoDetalle(item.label)
+      esCampoDepartamentoPorLabel(item.label)
     );
 
     const adjuntos = detalleCampos.filter((item) => {
@@ -2010,10 +1574,10 @@ const FormularioGestionPublico = () => {
       if (!item?.id || usados.has(item.id)) return false;
 
       if (
-        esCampoApellidoDetalle(item.label) ||
-        esCampoNombreDetalle(item.label) ||
-        esCampoDniDetalle(item.label) ||
-        esCampoDepartamentoDetalle(item.label) ||
+        esCampoApellidoPorLabel(item.label) ||
+        esCampoNombrePorLabel(item.label) ||
+        esCampoDniPorLabel(item.label) ||
+        esCampoDepartamentoPorLabel(item.label) ||
         esCampoAdjuntoDetalle(item)
       ) {
         return false;
@@ -2036,12 +1600,8 @@ const FormularioGestionPublico = () => {
 
     if (!item) return null;
 
-    const esDocPresentada = esCampoDocumentacionPresentadaDetalle(item.label);
+    const esDocPresentada = esCampoDocumentacionPorLabel(item.label);
     const valorSiNo = normalizarSiNo(item.value);
-
-    if (esDocPresentada && !valorSiNo) {
-      return null;
-    }
 
     return (
       <div
@@ -2073,7 +1633,6 @@ const FormularioGestionPublico = () => {
 
   const renderSeccionDetalle = (titulo, icono, campos, opciones = {}) => {
     const { full = false } = opciones;
-
     const camposValidos = (campos || []).filter(Boolean);
 
     if (camposValidos.length === 0) return null;
@@ -2087,16 +1646,14 @@ const FormularioGestionPublico = () => {
 
         <div className={styles.detalleCamposGrid}>
           {camposValidos.map((item) =>
-            renderCampoDetalleOrdenado(item, {
-              full,
-            })
+            renderCampoDetalleOrdenado(item, { full })
           )}
         </div>
       </section>
     );
   };
 
-  const renderDialogDetalleRespuesta = () => {
+  const renderContenidoDetalleRespuesta = () => {
     if (!respuestaRegistrada) return null;
 
     const detalleCampos = obtenerCamposDetalleRespuesta();
@@ -2117,6 +1674,97 @@ const FormularioGestionPublico = () => {
     );
 
     return (
+      <div className={styles.detalleRespuesta}>
+        <section className={styles.detalleSection}>
+          <h3 className={styles.detalleSectionTitle}>
+            <i className="pi pi-file-edit" />
+            1. Datos del formulario
+          </h3>
+
+          <div className={styles.detalleMetaGrid}>
+            <div className={styles.detalleMetaCard}>
+              <span className={styles.detalleMetaLabel}>Formulario</span>
+              <span className={styles.detalleMetaValue}>
+                {respuestaRegistrada.formularioTitulo ||
+                  formulario?.titulo ||
+                  "—"}
+              </span>
+            </div>
+
+            <div className={styles.detalleMetaCard}>
+              <span className={styles.detalleMetaLabel}>
+                N° / Código de formulario
+              </span>
+              <span className={styles.detalleMetaValue}>
+                {respuestaRegistrada.formularioNumero ||
+                  respuestaRegistrada.formularioCodigo ||
+                  respuestaRegistrada.formularioId ||
+                  "—"}
+              </span>
+            </div>
+
+            <div className={styles.detalleMetaCard}>
+              <span className={styles.detalleMetaLabel}>
+                Fecha y hora de carga
+              </span>
+              <span className={styles.detalleMetaValue}>{fechaCarga}</span>
+            </div>
+
+            <div className={styles.detalleMetaCard}>
+              <span className={styles.detalleMetaLabel}>
+                Fecha y hora de actualización
+              </span>
+              <span className={styles.detalleMetaValue}>
+                {hayActualizacion ? fechaActualizacion : "Sin actualizaciones"}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {renderSeccionDetalle(
+          "2. Datos personales",
+          "pi pi-user",
+          datosPersonales
+        )}
+
+        {renderSeccionDetalle(
+          "3. Departamento",
+          "pi pi-map-marker",
+          departamento,
+          { full: true }
+        )}
+
+        {renderSeccionDetalle(
+          "4. Otros datos cargados",
+          "pi pi-list",
+          otrosCampos
+        )}
+
+        {renderSeccionDetalle(
+          "5. Documentación adjunta",
+          "pi pi-paperclip",
+          adjuntos,
+          { full: true }
+        )}
+
+        {detalleCampos.length === 0 && (
+          <section className={styles.detalleSection}>
+            <div className={styles.detalleCampoCard}>
+              <div className={styles.detalleCampoLabel}>Sin datos</div>
+              <div className={styles.detalleCampoValue}>
+                No se encontraron datos para mostrar.
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  };
+
+  const renderDialogDetalleRespuesta = () => {
+    if (!respuestaRegistrada) return null;
+
+    return (
       <Dialog
         header="Información cargada"
         visible={verDetalleRespuesta}
@@ -2124,100 +1772,63 @@ const FormularioGestionPublico = () => {
         modal
         onHide={() => setVerDetalleRespuesta(false)}
       >
-        <div className={styles.detalleRespuesta}>
-          <section className={styles.detalleSection}>
-            <h3 className={styles.detalleSectionTitle}>
-              <i className="pi pi-file-edit" />
-              1. Datos del formulario
-            </h3>
-
-            <div className={styles.detalleMetaGrid}>
-              <div className={styles.detalleMetaCard}>
-                <span className={styles.detalleMetaLabel}>Formulario</span>
-                <span className={styles.detalleMetaValue}>
-                  {respuestaRegistrada.formularioTitulo ||
-                    formulario?.titulo ||
-                    "—"}
-                </span>
-              </div>
-
-              <div className={styles.detalleMetaCard}>
-                <span className={styles.detalleMetaLabel}>
-                  N° / Código de formulario
-                </span>
-                <span className={styles.detalleMetaValue}>
-                  {respuestaRegistrada.formularioNumero ||
-                    respuestaRegistrada.formularioCodigo ||
-                    respuestaRegistrada.formularioId ||
-                    "—"}
-                </span>
-              </div>
-
-              <div className={styles.detalleMetaCard}>
-                <span className={styles.detalleMetaLabel}>
-                  Fecha y hora de carga
-                </span>
-                <span className={styles.detalleMetaValue}>{fechaCarga}</span>
-              </div>
-
-              <div className={styles.detalleMetaCard}>
-                <span className={styles.detalleMetaLabel}>
-                  Fecha y hora de actualización
-                </span>
-                <span className={styles.detalleMetaValue}>
-                  {hayActualizacion
-                    ? fechaActualizacion
-                    : "Sin actualizaciones"}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {renderSeccionDetalle(
-            "2. Datos personales",
-            "pi pi-user",
-            datosPersonales
-          )}
-
-          {renderSeccionDetalle(
-            "3. Departamento",
-            "pi pi-map-marker",
-            departamento,
-            { full: true }
-          )}
-
-          {renderSeccionDetalle(
-            "4. Otros datos cargados",
-            "pi pi-list",
-            otrosCampos
-          )}
-
-          {renderSeccionDetalle(
-            "5. Documentación adjunta",
-            "pi pi-paperclip",
-            adjuntos,
-            { full: true }
-          )}
-
-          {detalleCampos.length === 0 && (
-            <section className={styles.detalleSection}>
-              <div className={styles.detalleCampoCard}>
-                <div className={styles.detalleCampoLabel}>Sin datos</div>
-                <div className={styles.detalleCampoValue}>
-                  No se encontraron datos para mostrar.
-                </div>
-              </div>
-            </section>
-          )}
-        </div>
+        {renderContenidoDetalleRespuesta()}
       </Dialog>
+    );
+  };
+
+  const renderVistaConsultaDirecta = () => {
+    if (!respuestaRegistrada) return null;
+
+    return (
+      <main className={styles.page}>
+        <Toast ref={toast} />
+
+        <section className={styles.formCard}>
+          <header className={styles.header}>
+            <div className={styles.headerTop}>
+              <span className={styles.badge}>Oficina de Gestión</span>
+
+              <Button
+                label="Cerrar y volver a Oficina de Gestión"
+                icon="pi pi-times"
+                severity="secondary"
+                outlined
+                onClick={volverOficinaGestion}
+              />
+            </div>
+
+            <h1>Información cargada</h1>
+
+            <p>
+              Se encontró información registrada para el DNI ingresado en este
+              formulario.
+            </p>
+          </header>
+
+          <Message
+            severity="success"
+            text="Información encontrada correctamente. Revise los datos cargados a continuación."
+          />
+
+          {renderContenidoDetalleRespuesta()}
+
+          <div className={styles.successActions}>
+            <Button
+              label="Cerrar y volver a Oficina de Gestión"
+              icon="pi pi-arrow-left"
+              severity="warning"
+              onClick={volverOficinaGestion}
+            />
+          </div>
+        </section>
+      </main>
     );
   };
 
   const renderDescripcionFormulario = () => {
     const html =
-      formulario?.descripcionHtml ||
-      textoPlanoAHtml(formulario?.descripcion || "");
+      formulario?.descripcionHtml || textoPlanoAHtml(formulario?.descripcion || "");
 
     if (!htmlATextoPlano(html)) return null;
 
@@ -2275,42 +1886,32 @@ const FormularioGestionPublico = () => {
         return (
           <InputTextarea
             value={valor}
-            onChange={(e) => actualizarRespuesta(campo, e.target.value)}
+            onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            placeholder={campo.placeholder || "Ingrese su respuesta"}
             rows={4}
             autoResize
-            placeholder={campo.placeholder || ""}
-            disabled={enviando || verificandoDni}
+            disabled={enviando}
           />
         );
 
-      case "numero": {
-        const esDni = esCampoDniPorLabel(campo.label);
-        const esAutocompletado = afiliadoValidado && esDni;
-
+      case "numero":
         return (
           <InputText
             type="number"
             value={valor}
-            onChange={(e) => actualizarRespuesta(campo, e.target.value)}
-            onBlur={(e) => {
-              if (esDni) {
-                verificarDniIngresado(e.target.value);
-              }
-            }}
-            placeholder={campo.placeholder || ""}
-            disabled={enviando || verificandoDni || esAutocompletado}
+            onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            placeholder={campo.placeholder || "Ingrese un número"}
+            disabled={enviando}
           />
         );
-      }
 
       case "fecha":
         return (
           <InputText
             type="date"
             value={valor}
-            onChange={(e) => actualizarRespuesta(campo, e.target.value)}
-            placeholder={campo.placeholder || ""}
-            disabled={enviando || verificandoDni}
+            onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            disabled={enviando}
           />
         );
 
@@ -2319,20 +1920,9 @@ const FormularioGestionPublico = () => {
           <InputText
             type="email"
             value={valor}
-            onChange={(e) => actualizarRespuesta(campo, e.target.value)}
-            placeholder={campo.placeholder || ""}
-            disabled={enviando || verificandoDni}
-          />
-        );
-
-      case "booleano":
-        return (
-          <Dropdown
-            value={valor}
-            options={OPCIONES_SI_NO}
-            onChange={(e) => actualizarRespuesta(campo, e.value)}
-            placeholder={campo.placeholder || "Seleccione una opción"}
-            disabled={enviando || verificandoDni}
+            onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            placeholder={campo.placeholder || "Ingrese correo electrónico"}
+            disabled={enviando}
           />
         );
 
@@ -2343,18 +1933,20 @@ const FormularioGestionPublico = () => {
           )
         );
 
-        if (campo.departamentoMultiple) {
+        if (campo.departamentoMultiple || campo.departamentoModo === "multiple") {
           return (
             <MultiSelect
               value={Array.isArray(valor) ? valor : []}
               options={opcionesPermitidas}
-              onChange={(e) => actualizarRespuesta(campo, e.value)}
               optionLabel="label"
               optionValue="value"
-              placeholder={campo.placeholder || "Seleccione departamentos"}
+              placeholder={
+                campo.placeholder || "Seleccione uno o varios departamentos"
+              }
               display="chip"
               filter
-              disabled={enviando || verificandoDni}
+              disabled={enviando}
+              onChange={(e) => actualizarRespuesta(campo.id, e.value)}
             />
           );
         }
@@ -2363,98 +1955,65 @@ const FormularioGestionPublico = () => {
           <Dropdown
             value={valor || null}
             options={opcionesPermitidas}
-            onChange={(e) => actualizarRespuesta(campo, e.value)}
             optionLabel="label"
             optionValue="value"
             placeholder={campo.placeholder || "Seleccione departamento"}
             filter
-            showClear
-            disabled={enviando || verificandoDni}
+            disabled={enviando}
+            onChange={(e) => actualizarRespuesta(campo.id, e.value)}
           />
         );
       }
 
+      case "booleano":
+        return (
+          <Dropdown
+            value={valor || null}
+            options={OPCIONES_SI_NO}
+            optionLabel="label"
+            optionValue="value"
+            placeholder={campo.placeholder || "Seleccione una opción"}
+            disabled={enviando}
+            onChange={(e) => actualizarRespuesta(campo.id, e.value)}
+          />
+        );
+
       case "archivo":
       case "archivo_pdf": {
-        const files = archivos[campo.id] || [];
         const accept = campo.archivoAccept || ARCHIVOS_DEFAULT;
-
-        const archivosExistentes =
-          modoEdicionAfiliado && archivosExistentesPorCampo?.[campo.id]
-            ? archivosExistentesPorCampo[campo.id]
-            : [];
+        const files = archivos[campo.id] || [];
 
         return (
           <div className={styles.fileField}>
-            {archivosExistentes.length > 0 && (
-              <div className={styles.fileList}>
-                <strong>Archivo/s cargado/s actualmente</strong>
-
-                {archivosExistentes.map((archivo, index) => (
-                  <div
-                    key={`${archivo.nombre || "archivo"}-${index}`}
-                    className={styles.fileItem}
-                  >
-                    <span>
-                      <a href={archivo.url} target="_blank" rel="noreferrer">
-                        {archivo.nombre || `Archivo ${index + 1}`}
-                      </a>
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => eliminarArchivoExistente(campo.id, index)}
-                      disabled={enviando || verificandoDni}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                ))}
-
-                <small className={styles.help}>
-                  Podés quitar archivos cargados o seleccionar nuevos archivos.
-                </small>
-              </div>
-            )}
-
             <div className={styles.fileActions}>
               <label className={styles.fileButton}>
                 <i className="pi pi-upload" />
-                <span>Seleccionar archivo</span>
-
+                Seleccionar archivo
                 <input
                   type="file"
                   accept={accept}
                   multiple={Boolean(campo.multiple)}
-                  disabled={enviando || verificandoDni}
-                  onChange={(e) => {
-                    actualizarArchivos(campo, e.target.files);
-                    e.target.value = "";
-                  }}
+                  disabled={enviando}
+                  onChange={(e) => actualizarArchivos(campo, e.target.files)}
                 />
               </label>
 
               {campo.permiteCamara && (
                 <label className={styles.fileButtonAlt}>
                   <i className="pi pi-camera" />
-                  <span>Tomar foto</span>
-
+                  Tomar foto
                   <input
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    multiple={Boolean(campo.multiple)}
-                    disabled={enviando || verificandoDni}
-                    onChange={(e) => {
-                      actualizarArchivos(campo, e.target.files);
-                      e.target.value = "";
-                    }}
+                    disabled={enviando}
+                    onChange={(e) => actualizarArchivos(campo, e.target.files)}
                   />
                 </label>
               )}
             </div>
 
-            <small className={styles.help}>Archivos permitidos: {accept}</small>
+            <small className={styles.help}>Formatos permitidos: {accept}</small>
 
             {files.length > 0 && (
               <div className={styles.fileList}>
@@ -2463,15 +2022,12 @@ const FormularioGestionPublico = () => {
                     key={`${file.name}-${index}`}
                     className={styles.fileItem}
                   >
-                    <span>
-                      {file.name}{" "}
-                      <small>({Math.round((file.size || 0) / 1024)} KB)</small>
-                    </span>
+                    <span>{file.name}</span>
 
                     <button
                       type="button"
-                      onClick={() => eliminarArchivo(campo.id, index)}
-                      disabled={enviando || verificandoDni}
+                      onClick={() => eliminarArchivoSeleccionado(campo.id, index)}
+                      disabled={enviando}
                     >
                       Quitar
                     </button>
@@ -2484,30 +2040,15 @@ const FormularioGestionPublico = () => {
       }
 
       case "texto":
-      default: {
-        const esDni = esCampoDniPorLabel(campo.label);
-        const esNombre = esCampoNombrePorLabel(campo.label);
-        const esApellido = esCampoApellidoPorLabel(campo.label);
-        const esApellidoNombre = esCampoApellidoNombrePorLabel(campo.label);
-
-        const esAutocompletado =
-          afiliadoValidado &&
-          (esDni || esNombre || esApellido || esApellidoNombre);
-
+      default:
         return (
           <InputText
             value={valor}
-            onChange={(e) => actualizarRespuesta(campo, e.target.value)}
-            onBlur={(e) => {
-              if (esDni) {
-                verificarDniIngresado(e.target.value);
-              }
-            }}
-            placeholder={campo.placeholder || ""}
-            disabled={enviando || verificandoDni || esAutocompletado}
+            onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            placeholder={campo.placeholder || "Ingrese su respuesta"}
+            disabled={enviando}
           />
         );
-      }
     }
   };
 
@@ -2535,20 +2076,14 @@ const FormularioGestionPublico = () => {
             {renderDescripcionFormulario()}
 
             {renderArchivoDescargableFormulario()}
-
-            <small>
-              Código del formulario: <strong>{formulario?.id}</strong>
-            </small>
           </header>
 
           <Message
             severity={soloConsultaDni ? "warn" : "info"}
             text={
               soloConsultaDni
-                ? "Este formulario está habilitado solo para consultar información cargada. Ingrese su DNI para verificar si existen datos registrados."
-                : permiteMultiplesRespuestasPorDni
-                ? "Para iniciar la carga, primero debe validar su DNI. Este formulario permite realizar más de una carga con el mismo DNI."
-                : "Para iniciar la carga, primero debe validar su DNI. El sistema verificará si figura en usuarios o nuevoAfiliado y también controlará si ya existe una respuesta para este formulario."
+                ? "Este formulario está habilitado solo para consultar información ya cargada. Ingrese su DNI para buscar los datos registrados."
+                : "Para completar este formulario, primero debe validar su DNI."
             }
           />
 
@@ -2577,9 +2112,7 @@ const FormularioGestionPublico = () => {
 
           <div className={styles.actions}>
             <Button
-              label={
-                soloConsultaDni ? "Consultar información" : "Validar DNI"
-              }
+              label={soloConsultaDni ? "Consultar información" : "Validar DNI"}
               icon={soloConsultaDni ? "pi pi-search" : "pi pi-check"}
               severity={soloConsultaDni ? "warning" : "success"}
               onClick={validarDniAntesDeCargar}
@@ -2625,10 +2158,15 @@ const FormularioGestionPublico = () => {
     );
   }
 
+  if (soloConsultaDni && respuestaRegistrada && verDetalleRespuesta) {
+    return renderVistaConsultaDirecta();
+  }
+
   if (enviado) {
-    const esSoloConsulta = estadoEnvio === "solo_consulta";
     const esDuplicadoDni = estadoEnvio === "dni_existente";
     const esDuplicadoLocal = estadoEnvio === "local_existente";
+    const fueActualizacionAfiliado = estadoEnvio === "actualizado";
+
     const puedeEditar =
       !soloConsultaDni &&
       esDuplicadoDni &&
@@ -2654,9 +2192,7 @@ const FormularioGestionPublico = () => {
           />
 
           <h1>
-            {esSoloConsulta
-              ? "Información cargada encontrada"
-              : esDuplicadoDni
+            {esDuplicadoDni
               ? "Ya existe un registro con ese DNI"
               : esDuplicadoLocal
               ? "Formulario ya cargado"
@@ -2666,9 +2202,7 @@ const FormularioGestionPublico = () => {
           </h1>
 
           <p>
-            {esSoloConsulta
-              ? "El formulario está habilitado solo para consulta. Puede revisar la información cargada para el DNI ingresado."
-              : esDuplicadoDni
+            {esDuplicadoDni
               ? puedeEditar
                 ? "El administrador habilitó la edición de este formulario. Puede revisar la información cargada o modificarla."
                 : "No se puede volver a cargar este formulario porque ya existe una respuesta registrada con el DNI ingresado para este formulario."
@@ -2698,7 +2232,6 @@ const FormularioGestionPublico = () => {
             )}
 
             {permiteMultiplesRespuestasPorDni &&
-              !soloConsultaDni &&
               !esDuplicadoDni &&
               !esDuplicadoLocal && (
                 <Button
@@ -2710,28 +2243,10 @@ const FormularioGestionPublico = () => {
                 />
               )}
 
-            {esSoloConsulta && (
-              <Button
-                label="Consultar otro DNI"
-                icon="pi pi-search"
-                severity="warning"
-                outlined
-                onClick={() => {
-                  setEstadoEnvio(null);
-                  setRespuestaRegistrada(null);
-                  setVerDetalleRespuesta(false);
-                  setDniValidacion("");
-                  setMensajeValidacionDni("");
-                }}
-              />
-            )}
-
             <Button
               label="Volver a Oficina de Gestión"
               icon="pi pi-arrow-left"
-              severity={
-                esDuplicadoDni || esDuplicadoLocal ? "warning" : "success"
-              }
+              severity={esDuplicadoDni || esDuplicadoLocal ? "warning" : "success"}
               onClick={volverOficinaGestion}
             />
 
@@ -2851,7 +2366,7 @@ const FormularioGestionPublico = () => {
         )}
 
         <div className={styles.fields}>
-          {camposVisibles.map((campo) => (
+          {camposFormulario.map((campo) => (
             <div key={campo.id} className={styles.field}>
               <label>
                 {campo.label}
@@ -2885,4 +2400,4 @@ const FormularioGestionPublico = () => {
   );
 };
 
-export default FormularioGestionPublico;  
+export default FormularioGestionPublico;
