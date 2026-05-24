@@ -1,0 +1,560 @@
+/* src/pages/Comercio/comercio.module.css */
+
+/* =========================
+   Contenedor general
+   ========================= */
+
+.componentContainer {
+  min-height: 100vh;
+  width: 100%;
+  padding-top: 76px;
+  padding-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #ffffff;
+  color: #111111;
+}
+
+/* =========================
+   Título superior
+   ========================= */
+
+.comercioHeaderTop {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  text-align: center;
+}
+
+.h1 {
+  font-size: 1.6em;
+  margin: 0 0 26px;
+  text-align: center;
+  font-weight: 500;
+  color: #111111;
+}
+
+/* =========================
+   Portada principal
+   ========================= */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(760px, 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.container__imgContainer {
+  width: 100%;
+  height: clamp(220px, 45vh, 380px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.container__imgContainer__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  margin: 0;
+  border-radius: 0;
+}
+
+/* =========================
+   Texto descriptivo
+   ========================= */
+
+.comercioWrapper {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 0 0 40px;
+}
+
+.comercioHeader {
+  text-align: center;
+}
+
+.comercioHeader p {
+  max-width: 760px;
+  margin: 28px auto 28px;
+  color: #555555;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* =========================
+   Consulta
+   ========================= */
+
+.consultaGrid {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.searchCard {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px;
+  box-sizing: border-box;
+  border: 1px solid #eeeeee;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  margin-bottom: 22px;
+}
+
+.cardBadge {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  border: 1px solid #fed7aa;
+}
+
+.cardHeader h2 {
+  margin: 0 0 10px;
+  color: #111111;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.cardHeader p {
+  margin: 0;
+  color: #666666;
+  line-height: 1.55;
+  font-size: 1rem;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.label {
+  color: #111111;
+  font-weight: 700;
+}
+
+.inputGroup {
+  display: flex;
+  gap: 12px;
+}
+
+.input {
+  flex: 1;
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 13px 14px;
+  font-size: 1rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input:focus {
+  border-color: #f2a900;
+  box-shadow: 0 0 0 3px rgba(242, 169, 0, 0.18);
+}
+
+.input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.searchButton {
+  border: none;
+  border-radius: 6px;
+  padding: 0 28px;
+  background: #f2a900;
+  color: #111111;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.searchButton:hover:not(:disabled) {
+  background: #d89200;
+  transform: translateY(-1px);
+}
+
+.searchButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.clearButton {
+  justify-self: start;
+  border: none;
+  padding: 4px 0;
+  background: transparent;
+  color: #c2410c;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.clearButton:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.message {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  font-weight: 700;
+}
+
+.securityNote {
+  margin-top: 22px;
+  padding: 15px 16px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e5e7eb;
+  line-height: 1.5;
+}
+
+/* =========================
+   Área credencial
+   ========================= */
+
+.credentialArea {
+  min-width: 0;
+}
+
+.emptyState {
+  min-height: 360px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: #ffffff;
+  border: 1px dashed #b6b6b6;
+  border-radius: 10px;
+  padding: 30px;
+  box-sizing: border-box;
+  color: #64748b;
+}
+
+.emptyIcon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #fff7ed;
+  font-size: 2rem;
+}
+
+.emptyState h2 {
+  margin: 0 0 12px;
+  color: #111111;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.emptyState p {
+  max-width: 420px;
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* =========================
+   Credencial real del afiliado
+   Imagen girada 90° a la izquierda
+   ========================= */
+
+.credentialRealCard {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+}
+
+.credentialRealImage {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+  background: #ffffff;
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+}
+
+/* Imagen completa de la credencial */
+.credentialBackgroundImg {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  width: auto;
+  height: 200%;
+  max-width: none;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+  z-index: 1;
+}
+
+/* Título sobre la credencial */
+.credentialRealTitle {
+  position: absolute;
+  top: 120px;
+  right: 290px;
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 900;
+  text-align: right;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+/* Datos sobre la imagen */
+.credentialRealData {
+  position: absolute;
+  left: 200px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 62%;
+  z-index: 2;
+}
+
+.credentialRealData p {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  line-height: 1.45;
+  font-weight: 800;
+}
+
+.credentialRealData strong {
+  font-weight: 900;
+}
+
+/* Leyenda verde */
+.validBox {
+  margin: 10px 38px 10;
+  padding: 12px 14px;
+  border-radius: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.validDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.16);
+}
+
+.credentialAffiliateFooter {
+  margin-top: 0px;
+  padding: 16px 22px;
+  background: #fff7ed;
+  color: #92400e;
+  border-top: 1px solid #fed7aa;
+  text-align: center;
+  font-weight: 900;
+}
+
+/* =========================
+   Responsive
+   ========================= */
+
+@media only screen and (max-width: 767px) {
+  .componentContainer {
+    width: 100%;
+    padding: 136px 10px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .container__imgContainer {
+    height: clamp(180px, 35vh, 300px);
+    margin-bottom: 16px;
+  }
+
+  .container__imgContainer__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .h1 {
+    font-size: 1.35em;
+    text-align: center;
+    margin: 0 0 16px;
+  }
+
+  .comercioWrapper {
+    width: 100%;
+  }
+
+  .comercioHeader p {
+    margin: 16px auto 24px;
+    padding: 0 8px;
+    font-size: 0.95rem;
+  }
+
+  .consultaGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .searchCard {
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  .cardHeader h2 {
+    font-size: 1.25rem;
+  }
+
+  .cardHeader p {
+    font-size: 0.95rem;
+  }
+
+  .inputGroup {
+    flex-direction: column;
+  }
+
+  .searchButton {
+    width: 100%;
+    padding: 14px 18px;
+  }
+
+  .emptyState {
+    min-height: 280px;
+    padding: 22px;
+  }
+
+  .emptyState h2 {
+    font-size: 1.2rem;
+  }
+
+  /* =========================
+     Credencial en celular
+     ========================= */
+
+  .credentialRealCard {
+    width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .credentialRealImage {
+    position: relative;
+    width: 100%;
+    min-height: 245px;
+    background: #ffffff;
+    overflow: hidden;
+    border-radius: 14px 14px 0 0;
+  }
+
+ .credentialBackgroundImg {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  width: auto;
+  height: 180%;
+  max-width: none;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+  z-index: 1;
+}
+
+  .credentialRealTitle {
+    position: absolute;
+    top: 80px;
+    left: 18px;
+    right: auto;
+    margin: 0;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 900;
+    text-align: left;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+    z-index: 2;
+    white-space: nowrap;
+  }
+
+  .credentialRealData {
+    position: absolute;
+    left: 100px;
+    bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 70%;
+    z-index: 2;
+  }
+
+  .credentialRealData p {
+    margin: 0;
+    color: #111827;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    font-weight: 800;
+  }
+
+  .credentialRealData strong {
+    font-weight: 900;
+  }
+
+  .validBox {
+    margin: 1px 0px 0px;
+    padding: 10px 12px;
+    border-radius: 1px;
+    font-size: 0.78rem;
+    gap: 8px;
+  }
+
+  .validDot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .credentialAffiliateFooter {
+    margin-top: 0;
+    padding: 13px 14px;
+    font-size: 0.82rem;
+  }
+}

@@ -42,3 +42,51 @@
   color: #ccc;
   font-size: 16px;
 }
+.separator {
+  color: #ffffff;
+  opacity: 0.55;
+  cursor: default !important;
+  font-weight: 400;
+  margin: 0 4px;
+}
+
+.separator:hover {
+  color: #ffffff !important;
+  font-size: 15px !important;
+}
+
+.exitItem {
+  list-style: none;
+  cursor: default !important;
+  display: flex;
+  align-items: center;
+}
+
+.exitItem:hover {
+  color: inherit !important;
+  font-size: inherit !important;
+}
+
+.exitButton {
+  width: 46px;
+  height: 46px;
+  border: none;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.exitButton:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.exitButton i {
+  color: #ffffff;
+  font-size: 1.15rem;
+}

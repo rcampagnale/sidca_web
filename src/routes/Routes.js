@@ -1,10 +1,5 @@
 import React, { useEffect } from "react";
-import {
-  BrowserRouter,
-  Route,
-  Switch,
-  Redirect,
-} from "react-router-dom";
+import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import PublicRoute from "./PublicRoute";
@@ -54,6 +49,10 @@ import ReservaCasaDocenteAdmin from "../pages/Admin/ReservaCasaDocente/ReservaCa
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
 import Convenio from "../pages/Convenios/Convenios";
 
+// Página pública Comercio
+import Comercio from "../pages/Comercio/comercio";
+import ComercioLogin from "../pages/Comercio/ComercioLogin";
+
 // Oficina de Gestión - Administrador
 import OficinaGestionAdmin from "../pages/Admin/OficinaGestion/OficinaGestionAdmin";
 
@@ -95,6 +94,30 @@ const AppRouter = () => {
 
         <Route exact path="/afiliacion" component={Afiliacion} />
 
+        {/* LOGIN EXCLUSIVO PARA COMERCIO */}
+        <PublicRoute
+          exact
+          path="/comercio-login"
+          component={ComercioLogin}
+          allowAuthenticated={true}
+        />
+
+        {/* PÁGINA PÚBLICA COMERCIO */}
+        <PublicRoute
+          exact
+          path="/comercio"
+          component={Comercio}
+          allowAuthenticated={true}
+        />
+
+        {/* RED DE CONVENIOS PÚBLICA */}
+        <PublicRoute
+          exact
+          path="/Convenios"
+          component={Convenio}
+          allowAuthenticated={true}
+        />
+
         {/* OFICINA DE GESTIÓN - FORMULARIO PÚBLICO */}
         <Route
           exact
@@ -118,14 +141,12 @@ const AppRouter = () => {
 
         <PrivateRoute exact path="/capacitaciones" component={Capacitaciones} />
 
-        {/* NUEVA RUTA USUARIO: OFICINA DE GESTIÓN */}
+        {/* OFICINA DE GESTIÓN - USUARIO */}
         <PrivateRoute
           exact
           path="/oficina-gestion"
           component={OficinaGestion}
         />
-
-        <PrivateRoute exact path="/Convenios" component={Convenio} />
 
         <PrivateRoute
           exact
@@ -192,11 +213,7 @@ const AppRouter = () => {
           component={ListaAsistencia}
         />
 
-        <AdminRoute
-          exact
-          path="/admin/botones"
-          component={HabilitarBotones}
-        />
+        <AdminRoute exact path="/admin/botones" component={HabilitarBotones} />
 
         <AdminRoute
           exact
@@ -206,11 +223,7 @@ const AppRouter = () => {
 
         <AdminRoute exact path="/admin/enlaces" component={Enlaces} />
 
-        <AdminRoute
-          exact
-          path="/admin/nuevo-enlace/"
-          component={NuevoEnlace}
-        />
+        <AdminRoute exact path="/admin/nuevo-enlace/" component={NuevoEnlace} />
 
         <AdminRoute
           exact

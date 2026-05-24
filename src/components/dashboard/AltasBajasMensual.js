@@ -28,27 +28,24 @@ const normalizeDni = (dniRaw) =>
 
 /**
  * Intenta parsear una fecha desde varios formatos:
- * - Firestore Timestamp (toDate)
+ * - Firestore Timestamp
  * - { seconds, nanoseconds }
- * - número (milisegundos)
+ * - número en milisegundos
  * - string "DD/MM/YYYY HH:mm" o "DD-MM-YYYY HH:mm"
- * - string genérica que entienda new Date()
+ * - string compatible con new Date()
  */
 const parseDateFlexible = (value) => {
   if (!value) return null;
 
-  // Date nativa
   if (value instanceof Date) {
     return isNaN(value.getTime()) ? null : value;
   }
 
-  // Firestore Timestamp
   if (value && typeof value.toDate === "function") {
     const d = value.toDate();
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // Objeto { seconds, nanoseconds }
   if (
     typeof value === "object" &&
     value !== null &&
@@ -58,34 +55,34 @@ const parseDateFlexible = (value) => {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // Número (milisegundos unix)
   if (typeof value === "number") {
     const d = new Date(value);
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // String
   if (typeof value === "string") {
     const s = value.trim();
     if (!s) return null;
 
-    // Ej: "14/11/2025 9:41" o "14-11-2025 09:41"
     const matchDMY = s.match(
       /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/
     );
+
     if (matchDMY) {
       let [, dd, mm, yy, hh, min] = matchDMY;
+
       let year = parseInt(yy, 10);
-      if (year < 100) year += 2000; // por si viniera "25" en lugar de "2025"
+      if (year < 100) year += 2000;
+
       const month = parseInt(mm, 10) - 1;
       const day = parseInt(dd, 10);
       const hour = hh ? parseInt(hh, 10) : 0;
       const minute = min ? parseInt(min, 10) : 0;
+
       const d = new Date(year, month, day, hour, minute);
       return isNaN(d.getTime()) ? null : d;
     }
 
-    // Último intento genérico
     const d = new Date(s);
     return isNaN(d.getTime()) ? null : d;
   }
@@ -93,31 +90,23 @@ const parseDateFlexible = (value) => {
   return null;
 };
 
-/** 🔎 Convierte un valor de fecha a { year, month (0-11), key "YYYY-MM" } */
+/** Convierte una fecha a { year, month, key } */
 const extractMonthInfo = (value) => {
   const date = parseDateFlexible(value);
   if (!date) return null;
 
   const year = date.getFullYear();
-  const month = date.getMonth(); // 0-11
+  const month = date.getMonth();
   const key = `${year}-${String(month + 1).padStart(2, "0")}`;
 
   return { year, month, key };
 };
 
-/**
- * De dónde sacamos la fecha de ALTA (nuevoAfiliado)
- * ➜ usamos primero fechaServer (Timestamp) y si no, fecha (string).
- */
+/** Fecha de alta desde nuevoAfiliado */
 const getAltaDateFromNuevoAfiliado = (d) =>
   d.fechaServer || d.fecha || d.fechaAlta || d.fechaRegistro;
 
-/**
- * De dónde sacamos la fecha de BAJA (usuarios)
- * Regla:
- *  - bajas solo se toman desde "usuarios"
- *  - si no tenés un campo específico, usamos fechaServer/fecha como fallback
- */
+/** Fecha de baja desde usuarios */
 const getBajaDateFromUsuario = (d) =>
   d.fechaBajaServer ||
   d.fechaBaja ||
@@ -126,17 +115,65 @@ const getBajaDateFromUsuario = (d) =>
   d.fechaServer ||
   d.fecha;
 
+/** Crea las claves de los 12 meses del año elegido */
+const buildMonthKeysForYear = (year) =>
+  Array.from({ length: 12 }, (_, index) => {
+    const month = String(index + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  });
+
 /**
  * 📊 Altas y bajas de afiliados por mes
+ *
  * - Altas: SOLO documentos en "nuevoAfiliado"
  * - Bajas: SOLO documentos en "usuarios" con activo === false
- * - Se evita contar dos veces el mismo DNI en el mismo mes.
+ * - Evita duplicar el mismo DNI en el mismo mes
+ * - Si no se pasa year, toma automáticamente el año actual
  */
 export default function AltasBajasMensual({ year }) {
+  const [currentYear, setCurrentYear] = useState(() =>
+    new Date().getFullYear()
+  );
+
   const [dataChart, setDataChart] = useState(null);
   const [kpis, setKpis] = useState({ totalAltas: 0, totalBajas: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  /**
+   * Revisa cada hora si cambió el año.
+   * Esto permite que la sección se actualice automáticamente
+   * incluso si la pantalla queda abierta durante el cambio de año.
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nuevoAnio = new Date().getFullYear();
+      setCurrentYear((prev) => (prev !== nuevoAnio ? nuevoAnio : prev));
+    }, 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  /**
+   * Año efectivo:
+   * - Si el padre manda year válido, se respeta.
+   * - Si no manda nada, se usa automáticamente el año actual.
+   */
+  const effectiveYear = useMemo(() => {
+    const parsedYear = Number(year);
+
+    if (
+      year !== undefined &&
+      year !== null &&
+      Number.isInteger(parsedYear) &&
+      parsedYear >= 2000 &&
+      parsedYear <= 2100
+    ) {
+      return parsedYear;
+    }
+
+    return currentYear;
+  }, [year, currentYear]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,69 +191,72 @@ export default function AltasBajasMensual({ year }) {
         const altasByMonth = new Map();
         const bajasByMonth = new Map();
 
-        // Para NO repetir el mismo DNI en el mismo mes
-        const seenAltas = new Set(); // "dni-YYYY-MM"
-        const seenBajas = new Set(); // "dni-YYYY-MM"
+        const seenAltas = new Set();
+        const seenBajas = new Set();
 
-        // ✅ ALTAS: cada registro en nuevoAfiliado cuenta como 1 "entrada" al sindicato
-        // (sin duplicar DNI+mes).
+        // ✅ ALTAS: documentos en nuevoAfiliado
         nuevoSnap.forEach((docSnap) => {
           const d = docSnap.data();
+
           const dni = normalizeDni(
             d.dni || d.DNI || d.documento || d.Documento
           );
+
           if (!dni) return;
 
           const rawDate = getAltaDateFromNuevoAfiliado(d);
           const info = extractMonthInfo(rawDate);
+
           if (!info) return;
 
-          if (year && String(info.year) !== String(year)) return;
+          // Año automático
+          if (info.year !== effectiveYear) return;
 
-          const key = info.key; // "YYYY-MM"
+          const key = info.key;
           const tag = `${dni}-${key}`;
-          if (seenAltas.has(tag)) return; // ya contamos este DNI en este mes
+
+          if (seenAltas.has(tag)) return;
 
           seenAltas.add(tag);
           altasByMonth.set(key, (altasByMonth.get(key) || 0) + 1);
         });
 
-        // ✅ BAJAS: SOLO usuarios con activo === false
-        // (no usamos nuevoAfiliado para bajas, respetando tu lógica).
+        // ✅ BAJAS: usuarios con activo === false
         usuariosSnap.forEach((docSnap) => {
           const d = docSnap.data();
-          if (d.activo !== false) return; // solo desafiliados
+
+          if (d.activo !== false) return;
 
           const dni = normalizeDni(
             d.dni || d.DNI || d.documento || d.Documento
           );
+
           if (!dni) return;
 
           const rawDate = getBajaDateFromUsuario(d);
           const info = extractMonthInfo(rawDate);
+
           if (!info) return;
 
-          if (year && String(info.year) !== String(year)) return;
+          // Año automático
+          if (info.year !== effectiveYear) return;
 
           const key = info.key;
           const tag = `${dni}-${key}`;
+
           if (seenBajas.has(tag)) return;
 
           seenBajas.add(tag);
           bajasByMonth.set(key, (bajasByMonth.get(key) || 0) + 1);
         });
 
-        // Unificamos meses usados por altas o bajas
-        const allKeysSet = new Set([
-          ...altasByMonth.keys(),
-          ...bajasByMonth.keys(),
-        ]);
-        const allKeys = Array.from(allKeysSet).sort(); // "YYYY-MM"
+        // Mostramos siempre los 12 meses del año efectivo
+        const allKeys = buildMonthKeysForYear(effectiveYear);
 
         const labels = allKeys.map((k) => {
-          const [y, m] = k.split("-");
+          const [, m] = k.split("-");
           const monthIndex = Number(m) - 1;
-          return `${MONTH_LABELS[monthIndex]} ${y}`;
+          return `${MONTH_LABELS[monthIndex]} ${effectiveYear}`;
         });
 
         const altasData = allKeys.map((k) => altasByMonth.get(k) || 0);
@@ -250,11 +290,13 @@ export default function AltasBajasMensual({ year }) {
           "[AltasBajasMensual] Error al cargar datos mensuales:",
           err
         );
+
         if (!cancelled) {
           setError(
             "No se pudo cargar la información de altas y bajas mensuales."
           );
           setDataChart(null);
+          setKpis({ totalAltas: 0, totalBajas: 0 });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -262,10 +304,11 @@ export default function AltasBajasMensual({ year }) {
     };
 
     fetchMonthlyData();
+
     return () => {
       cancelled = true;
     };
-  }, [year]);
+  }, [effectiveYear]);
 
   const chartOptions = useMemo(
     () => ({
@@ -277,11 +320,19 @@ export default function AltasBajasMensual({ year }) {
       },
       scales: {
         x: {
-          ticks: { color: "#495057", maxRotation: 60, minRotation: 45 },
+          ticks: {
+            color: "#495057",
+            maxRotation: 60,
+            minRotation: 45,
+          },
           grid: { color: "#ebedef" },
         },
         y: {
-          ticks: { color: "#495057" },
+          beginAtZero: true,
+          ticks: {
+            color: "#495057",
+            precision: 0,
+          },
           grid: { color: "#ebedef" },
         },
       },
@@ -291,13 +342,15 @@ export default function AltasBajasMensual({ year }) {
 
   const { totalAltas, totalBajas } = kpis;
   const saldo = totalAltas - totalBajas;
+  const sinMovimientos = totalAltas === 0 && totalBajas === 0;
 
   return (
     <div className={styles.altasBajasMonthlyRow}>
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          Altas y bajas de afiliados por mes
+          Altas y bajas de afiliados por mes - Año {effectiveYear}
         </div>
+
         <div className={styles.panelBody}>
           {loading ? (
             <div style={{ textAlign: "center", paddingTop: "1.5rem" }}>
@@ -308,30 +361,31 @@ export default function AltasBajasMensual({ year }) {
             </div>
           ) : error ? (
             <p className={styles.errorText}>{error}</p>
-          ) : !dataChart || !dataChart.labels.length ? (
+          ) : !dataChart ? (
             <p className={styles.mapEmpty}>
               No hay datos suficientes para mostrar el gráfico mensual.
             </p>
           ) : (
             <>
-              {/* KPIs arriba del gráfico */}
               <div className={styles.altasBajasMonthlyKpis}>
                 <div className={styles.altasBajasMonthlyKpi}>
                   <span className={styles.altasBajasMonthlyLabel}>
-                    Altas en el período
+                    Altas en {effectiveYear}
                   </span>
                   <span className={styles.altasBajasMonthlyValue}>
                     {totalAltas}
                   </span>
                 </div>
+
                 <div className={styles.altasBajasMonthlyKpi}>
                   <span className={styles.altasBajasMonthlyLabel}>
-                    Bajas en el período
+                    Bajas en {effectiveYear}
                   </span>
                   <span className={styles.altasBajasMonthlyValue}>
                     {totalBajas}
                   </span>
                 </div>
+
                 <div className={styles.altasBajasMonthlyKpi}>
                   <span className={styles.altasBajasMonthlyLabel}>
                     Saldo neto
@@ -349,7 +403,13 @@ export default function AltasBajasMensual({ year }) {
                 </div>
               </div>
 
-              {/* Gráfico de barras */}
+              {sinMovimientos && (
+                <p className={styles.mapEmpty} style={{ marginTop: "0.75rem" }}>
+                  No hay altas ni bajas registradas durante el año{" "}
+                  {effectiveYear}.
+                </p>
+              )}
+
               <div style={{ height: "260px", marginTop: "0.75rem" }}>
                 <Chart type="bar" data={dataChart} options={chartOptions} />
               </div>
@@ -360,4 +420,3 @@ export default function AltasBajasMensual({ year }) {
     </div>
   );
 }
-

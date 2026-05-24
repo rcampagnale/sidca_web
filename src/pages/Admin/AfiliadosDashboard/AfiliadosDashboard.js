@@ -1,5 +1,5 @@
 // src/pages/Admin/AfiliadosDashboard/AfiliadosDashboard.js
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import "chart.js/auto";
 
 import AfiliadosPorDepartamento from "../../../components/dashboard/AfiliadosPorDepartamento";
@@ -12,10 +12,25 @@ import DetalleInformacionAfiliado from "../../../components/dashboard/DetalleInf
 import styles from "./afiliadosDashboard.module.css";
 
 const AfiliadosDashboard = () => {
-  // Año fijo para los gráficos (podés cambiarlo acá si hace falta)
-  const year = 2025;
+  // Año actual automático
+  const currentYear = new Date().getFullYear();
 
-  // pestaña activa
+  // Año mínimo desde donde querés mostrar los gráficos
+  const startYear = 2021;
+
+  /**
+   * Genera los años de forma descendente.
+   * Ejemplo si estamos en 2026:
+   * [2026, 2025, 2024]
+   */
+  const years = useMemo(() => {
+    return Array.from(
+      { length: currentYear - startYear + 1 },
+      (_, index) => currentYear - index
+    );
+  }, [currentYear]);
+
+  // Pestaña activa
   // dept | altas | adherentes | info | cursos | asistencia
   const [activeTab, setActiveTab] = useState("dept");
 
@@ -91,15 +106,31 @@ const AfiliadosDashboard = () => {
       <div className={styles.tabContent}>
         {activeTab === "dept" && <AfiliadosPorDepartamento />}
 
-        {activeTab === "altas" && <AltasBajasMensual year={year} />}
+        {activeTab === "altas" && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1.25rem",
+            }}
+          >
+            {years.map((year) => (
+              <AltasBajasMensual key={year} year={year} />
+            ))}
+          </div>
+        )}
 
         {activeTab === "adherentes" && <AfiliadoAdherenteResumen />}
 
         {activeTab === "info" && <DetalleInformacionAfiliado />}
 
-        {activeTab === "cursos" && <CursosDashboardSection year={year} />}
+        {activeTab === "cursos" && (
+          <CursosDashboardSection year={currentYear} />
+        )}
 
-        {activeTab === "asistencia" && <RegistroAsistencia year={year} />}
+        {activeTab === "asistencia" && (
+          <RegistroAsistencia year={currentYear} />
+        )}
       </div>
     </div>
   );
