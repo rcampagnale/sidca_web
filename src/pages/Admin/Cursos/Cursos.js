@@ -21,7 +21,7 @@ import {
 } from "../../../redux/reducers/cursos/actions";
 import SubirCursosUsuarios from "./SubirCursosUsuarios";
 
-/** Config básica de columnas (sin JSX) */
+/** Config básica de columnas */
 const COLUMNS = [
   { field: "titulo", header: "Titulo" },
   { field: "descripcion", header: "Descripcion" },
@@ -31,12 +31,41 @@ const COLUMNS = [
   { field: "id", header: "Acciones" },
 ];
 
-/** Valida si un link es “usable” */
+/** Valida si un link es usable */
 const isValidLink = (val) => {
   if (!val) return false;
+
   const s = String(val).trim().toLowerCase();
+
   if (s === "undefined" || s === "false" || s === "-") return false;
+
   return /^https?:\/\//.test(s);
+};
+
+const normalizarTexto = (value) => {
+  return String(value || "").trim().toLowerCase();
+};
+
+const estadoLegible = (estado) => {
+  const value = normalizarTexto(estado);
+
+  if (value === "inscripcion_abierta") return "Inscripción abierta";
+  if (value === "terminado") return "Terminado";
+
+  return estado || "—";
+};
+
+const categoriaLegible = (categoria) => {
+  const value = normalizarTexto(categoria);
+
+  if (value === "nuevos") return "Nuevos";
+  if (value === "nuevo") return "Nuevo";
+
+  return categoria || "—";
+};
+
+const esInscripcionAbierta = (estado) => {
+  return normalizarTexto(estado) === "inscripcion_abierta";
 };
 
 const Cursos = () => {
@@ -50,12 +79,12 @@ const Cursos = () => {
   const [cursoSelect, setCursoSelect] = useState(undefined);
   const [subirCursosActive, setSubirCursosActive] = useState(false);
 
-  // 👉 Cargar primera página de cursos al montar
+  // Cargar primera página de cursos al montar
   useEffect(() => {
     dispatch(getCursos());
   }, [dispatch]);
 
-  // 🔹 Editar curso: trae el curso y navega
+  // Editar curso: se conserva la lógica original para no romper edición
   const handleEdit = useCallback(
     async (id) => {
       await dispatch(getCurso(id));
@@ -64,7 +93,7 @@ const Cursos = () => {
     [dispatch, history]
   );
 
-  // 🔹 Paginación: prev / next usando firstCurso / lastCurso
+  // Paginación: prev / next usando firstCurso / lastCurso
   const handlePagination = useCallback(
     (direction) => {
       if (direction === "prev") {
@@ -74,16 +103,13 @@ const Cursos = () => {
       }
 
       dispatch(
-        getCursos(
-          direction,
-          direction === "next" ? lastCurso : firstCurso
-        )
+        getCursos(direction, direction === "next" ? lastCurso : firstCurso)
       );
     },
     [dispatch, page, firstCurso, lastCurso]
   );
 
-  // 🔹 Eliminar curso (queda disponible, aunque hoy no tengas botón en la tabla)
+  // Eliminar curso
   const acceptDelete = useCallback(
     (id) => {
       dispatch(deleteCursos(id));
@@ -103,7 +129,7 @@ const Cursos = () => {
     [acceptDelete]
   );
 
-  // 🔹 Cargar usuarios para un curso
+  // Cargar usuarios para un curso
   const acceptUpload = useCallback((curso) => {
     setCursoSelect(curso);
     setSubirCursosActive(true);
@@ -121,29 +147,66 @@ const Cursos = () => {
     [acceptUpload]
   );
 
-  // 🔹 Renderizado de link como ícono
-  const linkBody = useCallback(
-    (row) => {
-      const val = row.link;
-      if (!isValidLink(val)) {
-        return <span className={styles.emptyField}>—</span>;
-      }
-      return (
-        <a
-          href={val}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Abrir enlace"
-          className={styles.linkIconWrapper}
-        >
-          <i className={`pi pi-external-link ${styles.linkIcon}`} />
-        </a>
-      );
-    },
-    []
-  );
+  // Título con límite visual
+  const tituloBody = useCallback((curso) => {
+    return (
+      <div className={styles.titleCell} title={curso.titulo || ""}>
+        {curso.titulo || "—"}
+      </div>
+    );
+  }, []);
 
-  // 🔹 Columnas de DataTable, memoizadas
+  // Descripción con límite visual
+  const descripcionBody = useCallback((curso) => {
+    return (
+      <div className={styles.descriptionCell} title={curso.descripcion || ""}>
+        {curso.descripcion || "—"}
+      </div>
+    );
+  }, []);
+
+  // Estado como etiqueta visual
+  const estadoBody = useCallback((curso) => {
+    const abierta = esInscripcionAbierta(curso.estado);
+
+    return (
+      <span className={abierta ? styles.statusOpen : styles.statusFinished}>
+        {estadoLegible(curso.estado)}
+      </span>
+    );
+  }, []);
+
+  // Categoría prolija
+  const categoriaBody = useCallback((curso) => {
+    return (
+      <span className={styles.categoryBadge}>
+        {categoriaLegible(curso.categoria)}
+      </span>
+    );
+  }, []);
+
+  // Link como ícono
+  const linkBody = useCallback((row) => {
+    const val = row.link;
+
+    if (!isValidLink(val)) {
+      return <span className={styles.emptyField}>—</span>;
+    }
+
+    return (
+      <a
+        href={val}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Abrir enlace"
+        className={styles.linkIconWrapper}
+      >
+        <i className={`pi pi-external-link ${styles.linkIcon}`} />
+      </a>
+    );
+  }, []);
+
+  // Columnas de DataTable
   const dynamicColumns = useMemo(
     () =>
       COLUMNS.map((col) => {
@@ -160,13 +223,15 @@ const Cursos = () => {
                     className="p-button-sm p-button-warning"
                     onClick={() => handleEdit(curso.id)}
                   />
+
                   <Button
                     label="Cargar usuarios"
                     icon="pi pi-file"
                     className="p-button-sm p-button-help"
                     onClick={() => confirmUpload(curso)}
                   />
-                  {/* Si quisieras activar eliminar, podés mostrar este botón:
+
+                  {/*
                   <Button
                     label="Eliminar"
                     icon="pi pi-trash"
@@ -176,8 +241,8 @@ const Cursos = () => {
                   */}
                 </div>
               )}
-              headerStyle={{ textAlign: "center", minWidth: "200px" }}
-              style={{ textAlign: "center", minWidth: "200px" }}
+              headerStyle={{ textAlign: "center", width: "220px" }}
+              style={{ textAlign: "center", width: "220px" }}
             />
           );
         }
@@ -188,8 +253,8 @@ const Cursos = () => {
               key={col.field}
               header={col.header}
               body={linkBody}
-              headerStyle={{ textAlign: "center", width: "72px" }}
-              style={{ textAlign: "center", width: "72px" }}
+              headerStyle={{ textAlign: "center", width: "80px" }}
+              style={{ textAlign: "center", width: "80px" }}
             />
           );
         }
@@ -198,10 +263,10 @@ const Cursos = () => {
           return (
             <Column
               key={col.field}
-              field={col.field}
               header={col.header}
-              headerStyle={{ textAlign: "center", width: "104px" }}
-              style={{ textAlign: "center", width: "104px" }}
+              body={estadoBody}
+              headerStyle={{ textAlign: "center", width: "190px" }}
+              style={{ textAlign: "center", width: "190px" }}
             />
           );
         }
@@ -210,10 +275,10 @@ const Cursos = () => {
           return (
             <Column
               key={col.field}
-              field={col.field}
               header={col.header}
-              headerStyle={{ textAlign: "center", width: "112px" }}
-              style={{ textAlign: "center", width: "112px" }}
+              body={categoriaBody}
+              headerStyle={{ textAlign: "center", width: "130px" }}
+              style={{ textAlign: "center", width: "130px" }}
             />
           );
         }
@@ -222,11 +287,10 @@ const Cursos = () => {
           return (
             <Column
               key={col.field}
-              field={col.field}
               header={col.header}
-              bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
-              headerStyle={{ minWidth: "150px", maxWidth: "180px" }}
-              style={{ minWidth: "150px", maxWidth: "180px" }}
+              body={tituloBody}
+              headerStyle={{ width: "27%" }}
+              style={{ width: "27%" }}
             />
           );
         }
@@ -235,26 +299,34 @@ const Cursos = () => {
           return (
             <Column
               key={col.field}
-              field={col.field}
               header={col.header}
-              bodyStyle={{ whiteSpace: "normal", overflowWrap: "break-word" }}
-              headerStyle={{ minWidth: "220px", maxWidth: "260px" }}
-              style={{ minWidth: "220px", maxWidth: "260px" }}
+              body={descripcionBody}
+              headerStyle={{ width: "33%" }}
+              style={{ width: "33%" }}
             />
           );
         }
 
-        // fallback
         return (
           <Column key={col.field} field={col.field} header={col.header} />
         );
       }),
-    [handleEdit, confirmUpload, confirmDelete, linkBody]
+    [
+      handleEdit,
+      confirmUpload,
+      confirmDelete,
+      linkBody,
+      tituloBody,
+      descripcionBody,
+      estadoBody,
+      categoriaBody,
+    ]
   );
 
-  // 🔹 Mensajes (Swal) según estado
+  // Mensajes según estado
   useEffect(() => {
     const { status, msg, noSubidos: ns } = cursosState;
+
     if (!status) return;
 
     if (status === "SUCCESS_ADD" || status === "SUCCESS_UPLOAD") {
@@ -287,13 +359,11 @@ const Cursos = () => {
             : "Se actualizaron los datos correctamente",
         text:
           ns && ns.length > 0
-            ? "Los siguientes DNI no fueron subidos:\n" +
-              ns.join(" - \n")
+            ? "Los siguientes DNI no fueron subidos:\n" + ns.join(" - \n")
             : "",
         icon: "success",
         confirmButtonText: "Continuar",
       }).then(() => {
-        // Cerramos el modo "Subir cursos" y limpiamos estado
         setSubirCursosActive(false);
         setCursoSelect(undefined);
         dispatch(clearStatus());
@@ -301,10 +371,11 @@ const Cursos = () => {
     }
   }, [cursosState, dispatch]);
 
-  // 🔹 Template del Paginator, memoizado
+  // Template del Paginator
   const template2 = useMemo(
     () => ({
       layout: "PrevPageLink CurrentPageReport NextPageLink",
+
       PrevPageLink: (options) => (
         <button
           type="button"
@@ -315,6 +386,7 @@ const Cursos = () => {
           <span className="p-3">Anterior</span>
         </button>
       ),
+
       NextPageLink: (options) => (
         <button
           type="button"
@@ -325,6 +397,7 @@ const Cursos = () => {
           <span className="p-3">Siguiente</span>
         </button>
       ),
+
       CurrentPageReport: (options) => (
         <button
           type="button"
@@ -343,6 +416,7 @@ const Cursos = () => {
     <div className={styles.container}>
       <div className={styles.title_and_button}>
         <h3 className={styles.title}>Cursos</h3>
+
         <div>
           <Button
             label="Nuevo curso"
@@ -350,6 +424,7 @@ const Cursos = () => {
             onClick={() => history.push("/admin/nuevo-curso")}
             style={{ marginRight: 3 }}
           />
+
           {subirCursosActive && (
             <Button
               label="Ver Cursos"
@@ -373,8 +448,13 @@ const Cursos = () => {
               responsiveLayout="scroll"
               loading={processing}
               dataKey="id"
-              tableStyle={{ tableLayout: "fixed" }}
+              tableStyle={{ tableLayout: "fixed", width: "100%" }}
               className={`p-datatable-sm ${styles.prettyTable}`}
+              rowClassName={(curso) =>
+                esInscripcionAbierta(curso.estado)
+                  ? styles.rowOpen
+                  : styles.rowFinished
+              }
             >
               {dynamicColumns}
             </DataTable>
@@ -395,4 +475,3 @@ const Cursos = () => {
 };
 
 export default Cursos;
-

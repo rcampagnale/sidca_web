@@ -132,24 +132,36 @@ export const getCursos = (pagination, start) => {
     try {
       let q;
 
+      /*
+        CAMBIO PRINCIPAL:
+        Antes se ordenaba por titulo.
+        Ahora se ordena por estado.
+
+        Como "inscripcion_abierta" viene alfabéticamente antes que "terminado",
+        la tabla mostrará primero los cursos con inscripción abierta
+        y después los cursos terminados.
+
+        No se modifica la lógica del botón Editar ni Cargar usuarios.
+      */
+
       if (pagination === 'next') {
         q = query(
           collection(db, 'cursos'),
-          orderBy('titulo', 'asc'),
+          orderBy('estado', 'asc'),
           limit(10),
           startAfter(start)
         );
       } else if (pagination === 'prev') {
         q = query(
           collection(db, 'cursos'),
-          orderBy('titulo', 'asc'),
+          orderBy('estado', 'asc'),
           limitToLast(10),
           endBefore(start)
         );
       } else {
         q = query(
           collection(db, 'cursos'),
-          orderBy('titulo', 'asc'),
+          orderBy('estado', 'asc'),
           limit(10)
         );
       }
@@ -164,11 +176,15 @@ export const getCursos = (pagination, start) => {
 
         querySnapshot.docs.forEach((docSnap, i) => {
           if (i === 0) dispatch(setFirstCurso(docSnap));
-          if (i === 9) dispatch(setLastCurso(docSnap));
+
+          if (i === querySnapshot.docs.length - 1) {
+            dispatch(setLastCurso(docSnap));
+          }
         });
 
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+
           const obj = {
             id: docSnap.id,
             titulo: data.titulo,
@@ -178,10 +194,12 @@ export const getCursos = (pagination, start) => {
             link: data.link,
             imagen: data.imagen,
           };
+
           arrayDocs.push(obj);
         });
 
         dispatch(getCursosSuccess(arrayDocs));
+
         dispatch(
           setPage(
             pagination === 'next'
@@ -221,6 +239,7 @@ export const getCursosCategory = (type) => {
 
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+
           const obj = {
             id: docSnap.id,
             titulo: data.titulo,
@@ -230,6 +249,7 @@ export const getCursosCategory = (type) => {
             link: data.link,
             imagen: data.imagen,
           };
+
           arrayDocs.push(obj);
         });
 
@@ -256,6 +276,7 @@ export const getMisCursos = () => {
 
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+
           const obj = {
             id: docSnap.id,
             titulo: data.titulo,
@@ -263,6 +284,7 @@ export const getMisCursos = () => {
             imagen: data.imagen,
             aprobo: data.aprobo,
           };
+
           arrayCursos.push(obj);
         });
 
@@ -309,7 +331,10 @@ export const uploadUserCursosInfo = (curso, rows) => {
         return;
       }
 
-      const headerRow = rows[0].map((h) => String(h || '').trim().toLowerCase());
+      const headerRow = rows[0].map((h) =>
+        String(h || '').trim().toLowerCase()
+      );
+
       const indexOfDNI = headerRow.findIndex((h) => h === 'dni');
 
       if (indexOfDNI === -1) {
@@ -323,6 +348,7 @@ export const uploadUserCursosInfo = (curso, rows) => {
 
       for (let i = 1; i < rows.length; i += 1) {
         const aprobado = rows[i];
+
         if (!aprobado || !aprobado.length) continue;
 
         const rawDni = aprobado[indexOfDNI];
@@ -343,6 +369,7 @@ export const uploadUserCursosInfo = (curso, rows) => {
           collection(db, 'usuarios'),
           where('dni', '==', dniAprobado)
         );
+
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.size > 0) {
@@ -360,6 +387,7 @@ export const uploadUserCursosInfo = (curso, rows) => {
                 collection(db, 'usuarios', documentSnapshot.id, 'cursos'),
                 cursoAprobado
               );
+
               subidos.push(dniAprobado);
             } catch (e) {
               console.log('Error agregando curso a usuario', e);
@@ -372,6 +400,7 @@ export const uploadUserCursosInfo = (curso, rows) => {
       }
 
       dispatch(uploadUserCursosInfoSuccess({ subidos, noSubidos }));
+
       console.log('subidos', subidos);
       console.log('no subidos', noSubidos);
     } catch (error) {
@@ -389,10 +418,8 @@ export const getCursosDisponibles = () => {
     dispatch({ type: types.GET_CURSOS_DISPONIBLES });
 
     try {
-      const q = query(
-        collection(db, 'cursos'),
-        orderBy('titulo', 'asc')
-      );
+      const q = query(collection(db, 'cursos'), orderBy('titulo', 'asc'));
+
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.size === 0) {
@@ -426,6 +453,7 @@ export const getCursosDisponibles = () => {
       }
     } catch (error) {
       console.log(error);
+
       dispatch({
         type: types.GET_CURSOS_DISPONIBLES_ERROR,
         payload: 'No se pudieron cargar los cursos disponibles',
@@ -438,10 +466,12 @@ export const getCursosDisponibles = () => {
 // ACTION CREATORS
 // ======================================================
 const nuevoCursoProcess = (payload) => ({ type: types.NUEVO_CURSO, payload });
+
 const nuevoCursoSuccess = (payload) => ({
   type: types.NUEVO_CURSO_SUCCESS,
   payload,
 });
+
 const nuevoCursoError = (payload) => ({
   type: types.NUEVO_CURSO_ERROR,
   payload,
@@ -458,40 +488,49 @@ const uploadImgSuccess = (imgUrl) => ({
 });
 
 const uploadImgError = (payload) => ({ type: types.UPLOAD_IMG_ERROR, payload });
+
 const uploadProgress = (payload) => ({ type: types.UPLOAD_PROGRESS, payload });
 
 const uploadCursoProcess = (payload) => ({ type: types.UPLOAD_CURSO, payload });
+
 const uploadCursoSuccess = (payload) => ({
   type: types.UPLOAD_CURSO_SUCCESS,
   payload,
 });
+
 const uploadCursoError = (payload) => ({
   type: types.UPLOAD_CURSO_ERROR,
   payload,
 });
 
 const getCursosProcess = (payload) => ({ type: types.GET_CURSOS, payload });
+
 const getCursosSuccess = (payload) => ({
   type: types.GET_CURSOS_SUCCESS,
   payload,
 });
+
 const getCursosError = (payload) => ({
   type: types.GET_CURSOS_ERROR,
   payload,
 });
 
 const setFirstCurso = (payload) => ({ type: types.SET_FIRST_CURSO, payload });
+
 const setLastCurso = (payload) => ({ type: types.SET_LAST_CURSO, payload });
+
 const setPage = (payload) => ({ type: types.SET_PAGE_CURSO, payload });
 
 const getCursosCategoryProcess = (payload) => ({
   type: types.GET_CURSOS_CATEGORY,
   payload,
 });
+
 const getCursosCategorySuccess = (payload) => ({
   type: types.GET_CURSOS_CATEGORY_SUCCESS,
   payload,
 });
+
 const getCursosCategoryError = (payload) => ({
   type: types.GET_CURSOS_CATEGORY_ERROR,
   payload,
@@ -501,10 +540,12 @@ const getMisCursosProcess = (payload) => ({
   type: types.GET_MIS_CURSOS,
   payload,
 });
+
 const getMisCursosSuccess = (payload) => ({
   type: types.GET_MIS_CURSOS_SUCCESS,
   payload,
 });
+
 const getMisCursosError = (payload) => ({
   type: types.GET_MIS_CURSOS_ERROR,
   payload,
@@ -514,10 +555,12 @@ const deleteCursosProcess = (payload) => ({
   type: types.DELETE_CURSOS,
   payload,
 });
+
 const deleteCursosSuccess = (payload) => ({
   type: types.DELETE_CURSOS_SUCCESS,
   payload,
 });
+
 const deleteCursosError = (payload) => ({
   type: types.DELETE_CURSOS_ERROR,
   payload,
@@ -527,14 +570,17 @@ const uploadUserCursosInfoProcess = (payload) => ({
   type: types.UPLOAD_CURSOS_USER_INFO,
   payload,
 });
+
 const uploadUserCursosInfoSuccess = (payload) => ({
   type: types.UPLOAD_CURSOS_USER_INFO_SUCCESS,
   payload,
 });
+
 const uploadUserCursosInfoError = (payload) => ({
   type: types.UPLOAD_CURSOS_USER_INFO_ERROR,
   payload,
 });
 
 export const clearStatus = (payload) => ({ type: types.CLEAR_STATUS, payload });
+
 export const clearCursos = (payload) => ({ type: types.CLEAR_CURSOS, payload });
