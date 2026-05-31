@@ -1,7 +1,7 @@
 .containerSlides {
   width: 700px;
   height: 336px;
-  margin: 100px 0;
+  margin: 80px 0 100px 0;
 }
 
 @media only screen and (max-width: 850px) {
@@ -10,100 +10,118 @@
   }
 }
 
+.componentContainer {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px;
+  box-sizing: border-box;
+}
+
+.title {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 32px 0;
+  color: #111827;
+}
+
+.text {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: #1f2937;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.btnSection {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin: 48px auto 40px auto;
+  flex-wrap: wrap;
+}
+
+.btnSection :global(.p-button) {
+  min-width: 190px;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* Celulares */
 @media only screen and (max-width: 767px) {
   .componentContainer {
-    height: 100%;
-    width: 100%;
-    display: flex;
-    flex-flow: column wrap;
-    /* align-items: center; */
-    /* justify-content: center; */
-    padding: 40px 20px;
+    padding: 36px 20px;
   }
-  .componentContainer div {
-    display: inherit;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-  }
+
   .title {
-    font-size: 2em;
-    text-align: center
+    font-size: clamp(1.9rem, 8vw, 2.25rem);
+    margin-bottom: 28px;
   }
+
   .text {
-    margin-top: 30px;
-    line-height: 28px;
+    max-width: 100%;
+    font-size: 1rem;
+    line-height: 1.75;
+    text-align: justify;
+    text-align-last: left;
   }
+
+  .btnSection {
+    flex-direction: column;
+    gap: 14px;
+    margin: 40px auto 24px auto;
+  }
+
+  .btnSection :global(.p-button) {
+    width: 100%;
+    max-width: 280px;
+  }
+
   .img {
     margin-top: 60px;
     width: 100%;
   }
 }
- 
-.btnSection {
-  display: flex;
-  justify-content: space-evenly;
-  min-width: 75%;
-  margin-bottom: 80px;
-  gap: 30px;
-}
 
+/* Tablets y computadoras */
 @media only screen and (min-width: 768px) {
   .componentContainer {
-    height: 100%;
-    width: 100%;
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    /* justify-content: center; */
-    padding: 40px 20px;
+    padding: 52px 24px;
   }
-  .componentContainer .text {
-    display: inherit;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-    width: 60%;
-  }
-  .title {
-    font-size: 2em;
-    text-align: center;
-  }
+
   .text {
-    margin-top: 40px;
-    line-height: 28px;
-    text-align: center;
+    max-width: 820px;
   }
-  .titleReserva {
-    font-size: 1.8em;
-    margin: 60px 0 20px 0;
-  }
-  .btn {
-    margin: 60px 0 0 0;
-  }
-  .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
+
   .img {
     margin-top: 60px;
     width: 40%;
   }
 }
-/* En pantallas grandes */
-@media only screen and (min-width: 768px) {
-  .btnSection {
-    max-width: 70%;
-    margin: 50px auto;       /* Centrado automático con más aire */
-  }
-}
 
-/* En mobile, apilamos */
-@media only screen and (max-width: 767px) {
+/* Pantallas grandes */
+@media only screen and (min-width: 1200px) {
+  .text {
+    max-width: 900px;
+    font-size: 1.08rem;
+  }
+
   .btnSection {
-    flex-direction: column;
-    gap: 15px;
-    width: 100%;
+    max-width: 900px;
   }
 }

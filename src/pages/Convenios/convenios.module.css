@@ -1,7 +1,6 @@
 .page {
   min-height: 100vh;
   width: 100%;
-  /* fondo claro */
   background: #f5f6fa;
   display: flex;
   justify-content: center;
@@ -11,7 +10,8 @@
   width: 100%;
   max-width: 980px;
   padding: 16px;
-  color: #222;           /* texto oscuro */
+  color: #222;
+  box-sizing: border-box;
 }
 
 .titleBox {
@@ -22,27 +22,29 @@
 }
 
 .title {
-  font-size: 28px;
+  font-size: clamp(1.75rem, 4vw, 2.2rem);
   font-weight: 800;
   color: #111;
+  margin: 0;
 }
 
 .intro {
   margin: 8px 0 18px;
-  background: #ffffff;                 /* tarjeta blanca */
+  background: #ffffff;
   border-radius: 12px;
-  padding: 16px;
+  padding: 18px 20px;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  line-height: 1.6;
+  line-height: 1.75;
   text-align: justify;
+  text-align-last: left;
   color: #333;
-  box-shadow: 0 4px 14px rgba(0,0,0,.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .carouselWrap {
   width: 100%;
   overflow-x: auto;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .carousel {
@@ -56,9 +58,9 @@
   height: 130px;
   object-fit: cover;
   border-radius: 12px;
-  background: #e9eef3;     /* sin fondo negro */
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 3px 10px rgba(0,0,0,.05);
+  background: #e9eef3;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
 }
 
 .buttons {
@@ -68,58 +70,350 @@
   margin-bottom: 18px;
 }
 
-/* Dialog / Listado */
-.dialogBody { padding-top: 6px; }
+/* =========================
+   Dialog general
+   ========================= */
+
+.dialog :global(.p-dialog-header) {
+  padding: 1.2rem 1.4rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dialog :global(.p-dialog-title) {
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 700;
+  color: #334155;
+}
+
+.dialog :global(.p-dialog-content) {
+  padding: 1.2rem;
+  background: #f8fafc;
+}
+
+.dialogBody {
+  width: 100%;
+}
+
+/* =========================
+   Filtro comercios
+   ========================= */
+
+.filterBox {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.filterLabel {
+  font-weight: 700;
+  color: #334155;
+}
+
+.departmentDropdown {
+  min-width: 260px;
+}
+
+/* =========================
+   Listado general
+   ========================= */
 
 .list {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.itemCard {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.itemCard :global(.p-card-body) {
+  padding: 0;
+}
+
+.itemCard :global(.p-card-content) {
+  padding: 0;
+}
+
+.itemCard :global(.p-card-footer) {
+  padding: 14px 18px 18px;
+  background: #ffffff;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-}
-
-.cardRow {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: 14px;
-}
-
-.imgThumb {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 10px;
-  background: #edf2f7;
-  border: 1px solid rgba(0,0,0,.06);
+  padding: 16px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .cardTitle {
   font-weight: 800;
-  font-size: 16px;
-  margin-bottom: 4px;
-  color: #111;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  margin: 0;
+  color: #111827;
+  overflow-wrap: break-word;
 }
 
-.info {
-  margin: 3px 0;
-  color: #333;
+.cardRow {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  padding: 22px;
+  background: #ffffff;
 }
 
-.linkBtn { margin-top: 10px; }
+.imageBox {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.imgThumb {
+  width: 200px;
+  height: 190px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.imgThumbEmpty {
+  width: 200px;
+  height: 190px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.cardContent {
+  min-width: 0;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* =========================
+   CUADRO ÚNICO DE INFORMACIÓN
+   ========================= */
+
+.unifiedInfoBox {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #cfe8d4;
+  background: #f8fffa;
+}
+
+.comercioUnifiedBox {
+  border-color: #b7e4c0;
+}
+
+.hotelUnifiedBox {
+  border-color: #b7e4c0;
+}
+
+.infoRow {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e7f2ea;
+  background: #ffffff;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoRowPrimary {
+  background: #fff7ed;
+  border-left: 5px solid #f59e0b;
+}
+
+.infoRowHighlight {
+  background: #edf9f0;
+  border-left: 5px solid #16a34a;
+}
+
+.infoText {
+  margin: 0;
+  color: #1f2937;
+  font-size: 0.97rem;
+  line-height: 1.68;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.infoText strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.metaBox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.metaItem i {
+  color: #0284c7;
+}
+
+/* =========================
+   Estados
+   ========================= */
 
 .emptyBox {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 12px 0;
+  padding: 16px;
   color: #444;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
 }
 
 .spinnerBox {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 0;
-  gap: 8px;
+  padding: 28px 0;
+  gap: 10px;
   color: #444;
 }
 
+/* =========================
+   Responsive
+   ========================= */
+
+@media only screen and (max-width: 767px) {
+  .container {
+    padding: 12px;
+  }
+
+  .intro {
+    padding: 16px;
+    line-height: 1.65;
+    text-align: left;
+    text-align-last: left;
+  }
+
+  .carousel {
+    gap: 10px;
+  }
+
+  .img {
+    width: 190px;
+    height: 110px;
+  }
+
+  .dialog :global(.p-dialog-header) {
+    padding: 1rem 1.1rem;
+  }
+
+  .dialog :global(.p-dialog-title) {
+    font-size: 1.1rem;
+    line-height: 1.25;
+  }
+
+  .dialog :global(.p-dialog-content) {
+    padding: 0.85rem;
+  }
+
+  .filterBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .departmentDropdown {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .cardRow {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .imgThumb,
+  .imgThumbEmpty {
+    width: 100%;
+    height: 170px;
+  }
+
+  .infoRow {
+    padding: 9px 10px;
+  }
+
+  .infoText {
+    font-size: 0.94rem;
+    line-height: 1.62;
+    text-align: left;
+    text-align-last: left;
+    hyphens: none;
+  }
+
+  .metaBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .metaItem {
+    width: 100%;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+
+  .cardFooter {
+    justify-content: center;
+  }
+
+  .cardFooter :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}

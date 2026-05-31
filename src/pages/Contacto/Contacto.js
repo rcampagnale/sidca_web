@@ -3,136 +3,185 @@ import styles from "./styles.module.css";
 import { Button } from "primereact/button";
 import { BsInstagram, BsMessenger } from "react-icons/bs";
 
+const redesSociales = [
+  {
+    label: "Messenger",
+    href: "https://www.messenger.com/t/100021125296788",
+    icon: <BsMessenger />,
+    className: "messengerButton",
+  },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/sidcagremio/?hl=es-la",
+    icon: <BsInstagram />,
+    className: "instagramButton",
+  },
+  {
+    label: "Página Web",
+    href: "https://www.sidcagremio.com.ar",
+    icon: "pi pi-globe",
+    className: "webButton",
+  },
+];
+
+const contactosWhatsapp = [
+  {
+    label: "Asesoramiento General",
+    href: "https://wa.me/5493834051983",
+  },
+  {
+    label: "Departamento Jurídico",
+    href: "https://wa.me/5493834397239",
+  },
+  {
+    label: "SiDCa Gestión Expediente",
+    href: "https://wa.me/5493834230813",
+  },
+  {
+    label: "SiDCa Turismo",
+    href: "https://wa.me/5493834283151",
+  },
+  {
+    label: "Casa del Docente",
+    href: "https://wa.me/5493834250139",
+  },
+  {
+    label: "SiDCa Radio",
+    href: "https://wa.me/5493834220295",
+  },
+  {
+    label: "Hotelería Interprovincial",
+    href: "https://wa.me/5493835406450",
+  },
+  {
+    label: "Secretaría de Capacitación",
+    href: "https://wa.me/5493834012228",
+  },
+  {
+    label: "Soporte Técnico",
+    href: "https://wa.me/5493832437803",
+  },
+  {
+    label: "Afiliado Adherente",
+    href: "https://wa.me/5493834539754",
+  },
+  {
+    label: "Entrega de Certificados",
+    href: "https://wa.me/5493834325816",
+  },
+];
+
 const Contacto = () => {
   return (
-    <div className={styles.mainSection}>
-      <div className={styles.title}>Contáctanos</div>
-      <div className={styles.contentFlex}>
+    <main className={styles.mainSection}>
+      <section className={styles.hero}>
+        <span className={styles.badge}>Canales oficiales de atención</span>
+
+        <h1 className={styles.title}>Contáctanos</h1>
+
+        <p className={styles.lead}>
+          Elegí el área correspondiente para comunicarte con SiDCa de manera
+          rápida y directa.
+        </p>
+      </section>
+
+      <section className={styles.contentFlex}>
         {/* Redes Sociales */}
-        <div className={styles.firstSection}>
-          <div className={styles.subTitle}>Redes Sociales</div>
-          <a
-            href="https://www.messenger.com/t/100021125296788"
-            className={styles.messenger}
-          >
-            <Button
-              label="Messenger"
-              icon={BsMessenger}
-              className="p-button-raised p-button-info"
-            />
-          </a>
-          <a
-            href="https://www.instagram.com/sidcagremio/?hl=es-la"
-            className={styles.instagram}
-          >
-            <Button
-              label="Instagram"
-              icon={BsInstagram}
-              className="p-button-raised p-button-help"
-            />
-          </a>
-          <a
-            href="https://www.sidcagremio.com.ar"
-            className={styles.web}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button
-              label="Página Web"
-              icon="pi pi-globe"
-              className="p-button-raised p-button-info"
-            />
-          </a>
+        <article className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <div className={styles.iconCircle}>
+              <i className="pi pi-share-alt" />
+            </div>
+
+            <div>
+              <h2 className={styles.subTitle}>Redes Sociales</h2>
+              <p className={styles.sectionDescription}>
+                Seguinos y accedé a las novedades institucionales.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.socialGrid}>
+            {redesSociales.map((red) => (
+              <a
+                key={red.label}
+                href={red.href}
+                className={styles.socialLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  label={red.label}
+                  icon={red.icon}
+                  className={`${styles.socialButton} ${styles[red.className]}`}
+                />
+              </a>
+            ))}
+          </div>
+        </article>
+
+        {/* WhatsApp */}
+        <article className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <div className={`${styles.iconCircle} ${styles.whatsappCircle}`}>
+              <i className="pi pi-phone" />
+            </div>
+
+            <div>
+              <h2 className={styles.subTitle}>WhatsApp</h2>
+              <p className={styles.sectionDescription}>
+                Contactos por área para una atención más ordenada.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.whatsappGrid}>
+            {contactosWhatsapp.map((contacto) => (
+              <a
+                key={contacto.label}
+                className={styles.whatsappBtn}
+                href={contacto.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  icon="pi pi-whatsapp"
+                  label={contacto.label}
+                  className={styles.whatsappButton}
+                />
+              </a>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className={styles.addressCard}>
+        <div className={styles.addressIcon}>
+          <i className="pi pi-map-marker" />
         </div>
 
-        {/* Números de WhatsApp */}
-        <div className={styles.secondSection}>
-          <div className={styles.subTitle}>Whatsapp</div>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834051983">
-            <Button
-              icon="pi pi-phone"
-              label="Asesoramiento General"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834397239">
-            <Button
-              icon="pi pi-phone"
-              label="Departamento Jurídico"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834230813">
-            <Button
-              icon="pi pi-phone"
-              label="SiDCa Gestión Expediente"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834283151">
-            <Button
-              icon="pi pi-phone"
-              label="SiDCa Turismo"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834250139">
-            <Button
-              icon="pi pi-phone"
-              label="Casa del Docente"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834220295">
-            <Button
-              icon="pi pi-phone"
-              label="SiDCa Radio"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493835406450">
-            <Button
-              icon="pi pi-phone"
-              label="Hotelería Interprovincial"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834012228">
-            <Button
-              icon="pi pi-phone"
-              label="Secretaría de Capacitación"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493832437803">
-            <Button
-              icon="pi pi-phone"
-              label="Soporte Técnico"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834539754">
-            <Button
-              icon="pi pi-phone"
-              label="Afiliado Adherente"
-              className="p-button-raised p-button-success"
-            />
-          </a>
-          <a className={styles.whatsappBtn} href="https://wa.me/5493834325816">
-            <Button
-              icon="pi pi-phone"
-              label="Entrega de Certificados"
-              className="p-button-raised p-button-success"
-            />
-          </a>
+        <div className={styles.addressContent}>
+          <h3>Sede Central</h3>
+          <p>
+            Ayacucho 227, 1° piso, San Fernando del Valle de Catamarca,
+            Catamarca CP 4700
+          </p>
         </div>
-      </div>
 
-      <p className={styles.text}>
-        Sede Central Ayacucho 227 1° piso, San Fernando del Valle de Catamarca,
-        Catamarca CP 4700
-      </p>
-    </div>
+        <a
+          className={styles.mapLink}
+          href="https://www.google.com/maps/search/?api=1&query=Ayacucho+227+San+Fernando+del+Valle+de+Catamarca"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            label="Ver ubicación"
+            icon="pi pi-map"
+            className={styles.mapButton}
+          />
+        </a>
+      </section>
+    </main>
   );
 };
 

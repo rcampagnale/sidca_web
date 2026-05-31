@@ -1,35 +1,95 @@
-@media only screen and (max-width: 767px) {
-  .title {
-    font-size: 1.8em;
-    margin: 60px;
-  }
-}
-
-@media only screen and (min-width: 768px) {
-  .title {
-    font-size: 1.8em;
-    margin: 60px 0;
-  }
-}
-
 .mainContainer {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.title {
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  font-size: clamp(1.55rem, 6vw, 2rem);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 50px auto 28px auto;
+  color: #111827;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .boxContainer {
+  width: 100%;
+  max-width: 700px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 30px 20px;
+  box-sizing: border-box;
 }
 
 .container {
-  width: 90%;
+  width: 100%;
+  max-width: 1180px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
-  grid-gap: 4em;
-  width: 80%;
+  gap: 3rem;
+  padding: 0 20px 50px 20px;
+  box-sizing: border-box;
+}
+
+/* Celulares */
+@media only screen and (max-width: 767px) {
+  .mainContainer {
+    padding: 32px 16px;
+  }
+
+  .title {
+    font-size: clamp(1.45rem, 7vw, 1.8rem);
+    line-height: 1.25;
+    margin: 42px auto 26px auto;
+    padding: 0 8px;
+  }
+
+  .container {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 0 4px 40px 4px;
+  }
+
+  .boxContainer {
+    padding: 24px 12px;
+  }
+}
+
+/* Tablets y computadoras */
+@media only screen and (min-width: 768px) {
+  .mainContainer {
+    padding: 40px 24px;
+  }
+
+  .title {
+    font-size: clamp(1.7rem, 3vw, 2rem);
+    margin: 50px auto 32px auto;
+  }
+
+  .container {
+    grid-template-columns: repeat(auto-fill, minmax(20em, 1fr));
+    gap: 3rem;
+  }
+}
+
+/* Pantallas grandes */
+@media only screen and (min-width: 1200px) {
+  .container {
+    max-width: 1240px;
+    gap: 3.5rem;
+  }
 }

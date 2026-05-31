@@ -4,25 +4,30 @@
 /* =========================
    Contenedor general
    ========================= */
+
 .componentContainer {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-around;
   margin-top: 20px;
+  padding-bottom: 40px;
+  box-sizing: border-box;
 }
 
 /* =========================
    Portada / Hero
    ========================= */
+
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: $boxShadowM1;
+  width: 100%;
+  max-width: 575px;
 
   @include mobile {
     width: 100%;
@@ -36,7 +41,6 @@
 
   &__imgContainer {
     width: 100%;
-    /* Contenedor de la imagen de portada más bajo */
     height: clamp(220px, 45vh, 380px);
     display: flex;
     align-items: center;
@@ -46,30 +50,36 @@
     &__img {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* llena el contenedor sin deformar */
-      margin: 0;         /* quitamos margen externo */
-      border-radius: 0;  /* imagen a sangre dentro del contenedor */
+      object-fit: cover;
+      margin: 0;
+      border-radius: 0;
     }
   }
 }
 
-/* Título */
+/* =========================
+   Títulos de secciones
+   ========================= */
+
 .h1 {
-  font-size: 1.5em;
-  margin: 36px 0 28px;
+  width: 100%;
+  margin: 0;
   text-align: center;
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+  font-weight: 500;
+  line-height: 1.25;
+  color: #111827;
+  text-transform: none;
 }
 
-/* ============================
-   Estilos para pantalla móvil
-   ============================ */
+/* =========================
+   Móvil
+   ========================= */
+
 @media only screen and (max-width: 767px) {
   .componentContainer {
     width: 100%;
-    padding: 16px 10px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    padding: 16px 10px 28px;
   }
 
   .container {
@@ -78,7 +88,6 @@
     text-align: center;
 
     &__imgContainer {
-      /* En celular aún más bajo para que no ocupe toda la pantalla */
       height: clamp(180px, 35vh, 300px);
       margin-bottom: 16px;
 
@@ -86,70 +95,20 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        border-radius: 8px; /* leve redondeo en cel para estética */
+        border-radius: 8px;
       }
     }
   }
 
   .h1 {
-    font-size: 1.35em;
-    text-align: center;
-    margin: 16px 0 12px;
-  }
-
-  /* =========================
-     Carrusel en móviles
-     ========================= */
-  .carousel-demo {
-    width: 100%;
-    max-width: 360px; /* carrusel compacto en cel */
-    margin: 0 auto;
-    padding: 0 8px;
-
-    .card {
-      box-shadow: none;
-      border: none;
-      background: transparent;
-    }
-
-    .product-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-
-      .product-item-content {
-        padding: 10px 8px;
-
-        h4 {
-          font-size: 1rem;
-          line-height: 1.2;
-          margin-bottom: 10px;
-        }
-
-        p {
-          font-size: 0.93rem;
-          line-height: 1.4;
-        }
-
-        /* Imagen más chica en cel */
-        .product-image {
-          width: 100%;
-          max-width: 240px; /* antes 280px */
-          height: auto;
-          border-radius: 8px;
-          object-fit: cover;
-        }
-      }
-    }
-  }
-
-  /* Ajuste del chip en móviles */
-  .chip {
-    font-size: 0.8em;
-    padding: 4px 8px;
+    font-size: clamp(1.45rem, 7vw, 1.75rem);
+    line-height: 1.25;
   }
 }
+
+/* =========================
+   Bloqueos / Cards auxiliares
+   ========================= */
 
 .homeWrapper {
   min-height: 100vh;

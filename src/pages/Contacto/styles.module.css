@@ -1,109 +1,309 @@
-@media only screen and (max-width: 767px) {
-  .mainSection {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
+.mainSection {
+  width: 100%;
+  min-height: 100%;
+  padding: 56px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.08), transparent 32%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.hero {
+  width: 100%;
+  max-width: 860px;
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #15803d;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.15;
+}
+
+.lead {
+  max-width: 620px;
+  margin: 16px auto 0;
+  color: #475569;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.contentFlex {
+  width: 100%;
+  max-width: 1180px;
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(320px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.panel {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  padding: 26px;
+  box-sizing: border-box;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.iconCircle {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 14px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.whatsappCircle {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.subTitle {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.sectionDescription {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.socialGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.socialLink,
+.whatsappBtn,
+.mapLink {
+  text-decoration: none;
+  width: 100%;
+}
+
+.socialButton,
+.whatsappButton,
+.mapButton {
+  width: 100%;
+  justify-content: center;
+  border: none;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+.messengerButton {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+.messengerButton:hover {
+  background: #0284c7;
+}
+
+.instagramButton {
+  background: linear-gradient(135deg, #8b5cf6, #d946ef, #f97316);
+  color: #ffffff;
+}
+
+.instagramButton:hover {
+  filter: brightness(0.95);
+}
+
+.webButton {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.webButton:hover {
+  background: #1d4ed8;
+}
+
+.whatsappGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.whatsappButton {
+  background: #16a34a;
+  color: #ffffff;
+  min-height: 48px;
+  font-size: 0.95rem;
+}
+
+.whatsappButton:hover {
+  background: #15803d;
+}
+
+.addressCard {
+  width: 100%;
+  max-width: 1180px;
+  margin-top: 28px;
+  padding: 22px 26px;
+  box-sizing: border-box;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 22px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+.addressIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.addressContent h3 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.addressContent p {
+  margin: 0;
+  line-height: 1.6;
+  color: #e5e7eb;
+}
+
+.mapButton {
+  background: #fbbf24;
+  color: #111827;
+}
+
+.mapButton:hover {
+  background: #f59e0b;
+}
+
+/* Tablets */
+@media only screen and (max-width: 1024px) {
+  .contentFlex {
+    grid-template-columns: 1fr;
+    max-width: 760px;
   }
-  .mainSection div {
-    display: inherit;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-  }
-  .title {
-    font-size: 2em;
-  }
-  .subTitle {
-    margin-top: 40px;
-    font-size: 1.8em;
-  }
-  .text {
-    margin-top: 40px;
-    line-height: 28px;
-  }
-  .titleReserva {
-    font-size: 1.8em;
-    margin: 60px 0 20px 0;
-  }
-  .messenger,
-  .instagram,
-  .twitter {
-    margin: 20px 0;
-  }
-  .whatsappBtn,
-  .messenger,
-  .instagram,
-  .twitter {
-    border: none;
-    text-decoration: none;
-  }
-  .whatsappBtn {
-    margin: 20px 0;
+
+  .addressCard {
+    max-width: 760px;
   }
 }
 
-@media only screen and (min-width: 768px) {
+/* Celulares */
+@media only screen and (max-width: 767px) {
   .mainSection {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    padding: 40px 20px;
-    width: 100vw;
-    height: 100%;
+    padding: 34px 16px;
   }
+
+  .hero {
+    margin-bottom: 26px;
+  }
+
+  .badge {
+    font-size: 0.82rem;
+    padding: 7px 12px;
+  }
+
   .title {
-    font-size: 2em;
-    text-align: center;
-    margin-bottom: 40px;
+    font-size: clamp(1.8rem, 8vw, 2.2rem);
   }
-  .messenger,
-  .instagram,
-  .web {
-    margin: 20px 0;
+
+  .lead {
+    font-size: 0.98rem;
+    line-height: 1.6;
   }
-  .messenger {
-    margin-top: 0;
+
+  .panel {
+    padding: 20px;
+    border-radius: 18px;
   }
+
+  .panelHeader {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .iconCircle {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 12px;
+  }
+
   .subTitle {
-    margin: 40px 0;
-    font-size: 1.8em;
+    font-size: 1.25rem;
+  }
+
+  .whatsappGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .socialButton,
+  .whatsappButton,
+  .mapButton {
+    min-height: 46px;
+    font-size: 0.92rem;
+  }
+
+  .addressCard {
+    grid-template-columns: 1fr;
     text-align: center;
+    padding: 22px 18px;
+    border-radius: 18px;
   }
-  .text {
-    line-height: 28px;
-    text-align: center;
+
+  .addressIcon {
+    margin: 0 auto;
   }
-  .titleReserva {
-    font-size: 1.8em;
-    margin: 60px 0 20px 0;
-  }
-  .btn {
-    margin: 60px 0 0 0;
-  }
-  .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
-  .contentFlex {
-    display: inherit;
-    flex-flow: row wrap;
-  }
-  .firstSection {
-    flex-flow: column wrap;
-    display: inherit;
-    margin-right: 100px;
-  }
-  .secondSection {
-    margin-left: 100px;
-  }
-  .secondSection a {
-    flex-flow: column wrap;
-    display: inherit;
-  }
-  .whatsappBtn {
-    margin: 40px 0;
+
+  .mapLink {
+    max-width: 260px;
+    margin: 0 auto;
   }
 }

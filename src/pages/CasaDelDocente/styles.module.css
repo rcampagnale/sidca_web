@@ -1,113 +1,186 @@
-@media only screen and (max-width: 767px) {
-  .mainSection {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-  }
-
-  /* Intro: solo el bloque de texto */
-  .intro {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .title {
-    font-size: 2em;
-  }
-  .text {
-    margin-top: 30px;
-    line-height: 26px;
-    text-align: center;
-  }
-  .titleReserva {
-    font-size: 1.6em;
-    margin: 40px 0 20px 0;
-    text-align: center;
-  }
-  .btn {
-    margin: 30px 0 0 0;
-  }
-  .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
-
-  /* Carrusel compacto en mobile */
-  .carouselItem {
-    height: 180px;
-  }
-}
-
-@media only screen and (min-width: 768px) {
-  .mainSection {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-  }
-
-  .intro {
-    display: flex;
-    flex-flow: column wrap;
-    align-items: center;
-    justify-content: center;
-    width: 60%;
-  }
-
-  .title {
-    font-size: 2em;
-    line-height: 38px;
-    text-align: center;
-  }
-  .text {
-    margin-top: 30px;
-    line-height: 26px;
-    text-align: center;
-  }
-  .titleReserva {
-    font-size: 1.6em;
-    margin: 40px 0 20px 0;
-  }
-  .btn {
-    margin: 30px 0 0 0;
-  }
-  .btn a,
-  .whatsappBtn {
-    border: none;
-    text-decoration: none;
-  }
-
-  /* Carrusel compacto en desktop */
-  .carouselItem {
-    height: 880px;
-  }
-}
-
-/* --- Carrusel global --- */
-.p-carousel {
+.mainSection {
   width: 100%;
-  margin-top: 30px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px;
+  box-sizing: border-box;
 }
 
+.intro {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 32px 0;
+  color: #111827;
+}
+
+.text {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: #1f2937;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.titleReserva {
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  font-weight: 500;
+  text-align: center;
+  margin: 42px 0 20px 0;
+  color: #111827;
+}
+
+.whatsappBtn {
+  border: none;
+  text-decoration: none;
+}
+
+.btn {
+  margin: 22px 0 0 0;
+}
+
+/* Carrusel PrimeReact */
+.mainSection :global(.p-carousel) {
+  width: 100%;
+  max-width: 900px;
+  margin-top: 42px;
+}
+
+.mainSection :global(.p-carousel-content) {
+  overflow: hidden;
+}
+
+.mainSection :global(.p-carousel-indicators) {
+  padding-top: 18px;
+}
+
+.mainSection :global(.p-carousel-indicators .p-carousel-indicator button) {
+  width: 30px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+/* Imagen del carrusel */
 .carouselItem {
   width: 100%;
+  height: clamp(260px, 48vw, 560px);
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
 }
 
 .carouselImg {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* cambiar a 'contain' si querés ver todo sin recortes */
+  object-fit: cover;
   display: block;
+}
+
+/* Botones */
+.btn :global(.p-button),
+.whatsappBtn :global(.p-button) {
+  justify-content: center;
+  min-width: 190px;
+}
+
+/* Celulares */
+@media only screen and (max-width: 767px) {
+  .mainSection {
+    padding: 36px 20px;
+  }
+
+  .intro {
+    max-width: 100%;
+  }
+
+  .title {
+    font-size: clamp(1.9rem, 8vw, 2.25rem);
+    margin-bottom: 28px;
+  }
+
+  .text {
+    max-width: 100%;
+    font-size: 1rem;
+    line-height: 1.75;
+    text-align: justify;
+    text-align-last: left;
+  }
+
+  .mainSection :global(.p-carousel) {
+    max-width: 100%;
+    margin-top: 36px;
+  }
+
+  .carouselItem {
+    height: 240px;
+    border-radius: 12px;
+  }
+
+  .titleReserva {
+    margin: 36px 0 18px 0;
+  }
+
+  .btn {
+    margin: 18px 0 0 0;
+  }
+
+  .btn :global(.p-button),
+  .whatsappBtn :global(.p-button) {
+    width: 100%;
+    max-width: 270px;
+  }
+}
+
+/* Tablets y computadoras */
+@media only screen and (min-width: 768px) {
+  .mainSection {
+    padding: 52px 24px;
+  }
+
+  .intro {
+    max-width: 900px;
+  }
+
+  .text {
+    max-width: 850px;
+  }
+}
+
+/* Pantallas grandes */
+@media only screen and (min-width: 1200px) {
+  .text {
+    max-width: 900px;
+    font-size: 1.08rem;
+  }
+
+  .mainSection :global(.p-carousel) {
+    max-width: 960px;
+  }
+
+  .carouselItem {
+    height: 560px;
+  }
 }

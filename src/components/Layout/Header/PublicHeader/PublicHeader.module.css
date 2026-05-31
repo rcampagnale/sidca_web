@@ -1,82 +1,97 @@
-/* Barra negra fija arriba */
 .header {
-  position: fixed;   /* usa sticky si solo querés que siga el scroll */
+  position: fixed;
   top: 0;
   left: 0;
   z-index: 100;
   background: #111;
-  color: #fff;
+  color: #ffffff;
   width: 100%;
   height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
 }
 
-/* Logo */
 .headerLogo {
   width: 120px;
   margin-left: 10px;
 }
 
-/* Navegación */
+/* Navegación general */
 .headerNav {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 18px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .headerNav li {
-  color: #fff;
+  color: #f2f2f2;
   cursor: pointer;
-  font-size: 15px;
-  margin-right: 8px;
+  font-size: 0.95rem;
+  margin-right: 0;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  transition: color 0.15s ease;
 }
 
+/* Hover suave, sin amarillo */
 .headerNav li:hover {
-  color: #ccc;
-  font-size: 16px;
+  color: #d1d5db;
 }
+
+/* Menú del afiliado */
+.affiliateNav {
+  gap: 20px;
+}
+
+/* Ítem activo: sin amarillo */
+.activeItem {
+  color: #f2f2f2 !important;
+  font-weight: 400 !important;
+}
+
+/* Separador del menú público */
 .separator {
   color: #ffffff;
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: default !important;
-  font-weight: 400;
+  font-weight: 300;
   margin: 0 4px;
 }
 
 .separator:hover {
   color: #ffffff !important;
-  font-size: 15px !important;
 }
 
+/* Botón salir */
 .exitItem {
   list-style: none;
   cursor: default !important;
   display: flex;
   align-items: center;
+  margin-left: 10px;
 }
 
 .exitItem:hover {
   color: inherit !important;
-  font-size: inherit !important;
 }
 
 .exitButton {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: #dc2626;
   color: #ffffff;
   display: grid;
   place-items: center;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: background 0.18s ease, transform 0.18s ease;
 }
@@ -88,5 +103,105 @@
 
 .exitButton i {
   color: #ffffff;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+}
+
+/* Botón hamburguesa */
+.menuButton {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #f2f2f2;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  color: #d1d5db;
+}
+
+.menuButton i {
+  font-size: 1.25rem;
+}
+
+/* Celulares */
+@media only screen and (max-width: 767px) {
+  .header {
+    height: 58px;
+    padding: 0 14px;
+  }
+
+  .headerLogo {
+    width: 105px;
+    margin-left: 0;
+  }
+
+  .menuButton {
+    display: grid;
+    place-items: center;
+  }
+
+  .affiliateNav {
+    position: fixed;
+    top: 58px;
+    left: 0;
+    width: 100%;
+    background: #111;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0 14px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  }
+
+  .affiliateNav.navOpen {
+    display: flex;
+  }
+
+  .affiliateNav li {
+    width: 100%;
+    margin: 0;
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: #f2f2f2;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+  }
+
+  .affiliateNav li:hover {
+    color: #d1d5db;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .affiliateNav .exitItem {
+    justify-content: center;
+    padding: 16px 24px 8px;
+  }
+
+  .headerNav:not(.affiliateNav) {
+    gap: 8px;
+  }
+
+  .headerNav:not(.affiliateNav) li {
+    font-size: 13px;
+    margin-right: 4px;
+    font-weight: 400;
+  }
+
+  .exitButton {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* Computadoras */
+@media only screen and (min-width: 768px) {
+  .affiliateNav {
+    display: flex;
+  }
 }

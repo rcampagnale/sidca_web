@@ -69,8 +69,8 @@ const EMPTY_FORM = {
   celular: "",
   departamento: "",
   establecimientos: "",
-  mesaNro: "", // 🆕
-  lugarVotacion: "", // 🆕
+  mesaNro: "",
+  lugarVotacion: "",
   descuento: "",
   nroAfiliacion: "",
   observaciones: "",
@@ -95,11 +95,66 @@ const toDniKey = (dniRaw) =>
     .replace(/[^\d]/g, "")
     .trim();
 
-/** Mapeo de documentos a filas */
+// =======================
+// Helpers dispositivo asistencia
+// =======================
 
+const getDeviceFields = (base = {}) => ({
+  dispositivoAsistenciaId: base.dispositivoAsistenciaId ?? null,
+  asistenciaDispositivoVinculado:
+    typeof base.asistenciaDispositivoVinculado === "boolean"
+      ? base.asistenciaDispositivoVinculado
+      : false,
+  dispositivoVinculadoEn: base.dispositivoVinculadoEn ?? null,
+  dispositivoVinculadoDesde: base.dispositivoVinculadoDesde ?? null,
+  dispositivoUltimaValidacionEn: base.dispositivoUltimaValidacionEn ?? null,
+  dispositivoBloqueado:
+    typeof base.dispositivoBloqueado === "boolean"
+      ? base.dispositivoBloqueado
+      : false,
+  dispositivoAnteriorId: base.dispositivoAnteriorId ?? null,
+  dispositivoReiniciadoEn: base.dispositivoReiniciadoEn ?? null,
+  dispositivoReiniciadoPor: base.dispositivoReiniciadoPor ?? null,
+  dispositivoReinicioMotivo: base.dispositivoReinicioMotivo ?? null,
+});
+
+const shortDeviceId = (value) => {
+  const v = String(value ?? "").trim();
+  if (!v) return "Sin dispositivo vinculado";
+  if (v.length <= 18) return v;
+  return `${v.slice(0, 14)}...${v.slice(-6)}`;
+};
+
+const getEstadoDispositivoLabel = (row) => {
+  if (row?.dispositivoBloqueado) return "Bloqueado";
+  if (row?.asistenciaDispositivoVinculado || row?.dispositivoAsistenciaId) {
+    return "Vinculado";
+  }
+  return "Sin dispositivo vinculado";
+};
+
+const getAdminLabel = () => {
+  try {
+    return (
+      localStorage.getItem("adminEmail") ||
+      localStorage.getItem("userEmail") ||
+      localStorage.getItem("email") ||
+      localStorage.getItem("usuario") ||
+      "admin_web"
+    );
+  } catch {
+    return "admin_web";
+  }
+};
+
+/** Mapeo de documentos a filas */
 const mapUsuarioDocToRow = (d) => {
   const base = { id: d.id, ...d.data() };
-  const r = { ...toRow(base), origen: "usuarios" };
+  const r = {
+    ...toRow(base),
+    ...getDeviceFields(base),
+    origen: "usuarios",
+  };
 
   // 🔹 Normalizamos el departamento SOLO a nivel de UI
   if (r.departamento) {
@@ -111,12 +166,17 @@ const mapUsuarioDocToRow = (d) => {
       r.departamento || ""
     } ${r.motivo || ""} ${r.mesaNro || ""} ${r.lugarVotacion || ""}`
   );
+
   return { ...r, haystack };
 };
 
 const mapNuevoDocToRow = (d) => {
   const base = { id: d.id, ...d.data() };
-  const row = { ...toRow(base), origen: "nuevoAfiliado" };
+  const row = {
+    ...toRow(base),
+    ...getDeviceFields(base),
+    origen: "nuevoAfiliado",
+  };
 
   // 🔹 Igual que arriba, normalizamos el departamento para la UI
   if (row.departamento) {
@@ -130,6 +190,7 @@ const mapNuevoDocToRow = (d) => {
       row.lugarVotacion || ""
     }`
   );
+
   return { ...row, haystack };
 };
 
@@ -150,17 +211,21 @@ async function fetchAllDocsPaged(collectionName, mapFn, batch = 1000) {
     fsLimit(batch)
   );
   let snap = await fsGetDocs(q);
+
   while (!snap.empty) {
     snap.docs.forEach((docSnap) => out.push(mapFn(docSnap)));
     const last = snap.docs[snap.docs.length - 1];
+
     q = fsQuery(
       fsCollection(db, collectionName),
       fsOrderBy(documentId()),
       fsStartAfter(last),
       fsLimit(batch)
     );
+
     snap = await fsGetDocs(q);
   }
+
   return out;
 }
 
@@ -168,19 +233,23 @@ async function fetchAllDocsPaged(collectionName, mapFn, batch = 1000) {
 const unifyByDni = (arrNuevo, arrUsuarios) => {
   const mapN = new Map();
   const mapU = new Map();
+
   arrNuevo.forEach((r) => mapN.set(toDniKey(r.dni), r));
   arrUsuarios.forEach((r) => mapU.set(toDniKey(r.dni), r));
 
   const allKeys = new Set([...mapN.keys(), ...mapU.keys()]);
+
   const pick = (a, b) => {
     const s = (a ?? "").toString().trim();
     return s ? a : b;
   };
 
   const out = [];
+
   for (const k of allKeys) {
     const nr = mapN.get(k);
     const ur = mapU.get(k);
+
     if (nr && ur) {
       const merged = {
         id: nr.id || ur.id,
@@ -189,6 +258,7 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
         rowNuevo: nr,
         rowUsuario: ur,
         origen: "ambos",
+
         nombre: pick(nr.nombre, ur.nombre),
         apellido: pick(nr.apellido, ur.apellido),
         dni: pick(nr.dni, ur.dni),
@@ -197,7 +267,7 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
         departamento: pick(nr.departamento, ur.departamento),
         establecimientos: pick(nr.establecimientos, ur.establecimientos),
 
-        // 🆕 Campos votación
+        // Campos votación
         mesaNro: pick(nr.mesaNro, ur.mesaNro),
         lugarVotacion: pick(nr.lugarVotacion, ur.lugarVotacion),
 
@@ -227,7 +297,47 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
             : typeof ur.cotizante === "boolean"
             ? ur.cotizante
             : false,
+
+        // Campos dispositivo asistencia
+        dispositivoAsistenciaId: pick(
+          nr.dispositivoAsistenciaId,
+          ur.dispositivoAsistenciaId
+        ),
+        asistenciaDispositivoVinculado:
+          !!nr.asistenciaDispositivoVinculado ||
+          !!ur.asistenciaDispositivoVinculado,
+        dispositivoVinculadoEn: pick(
+          nr.dispositivoVinculadoEn,
+          ur.dispositivoVinculadoEn
+        ),
+        dispositivoVinculadoDesde: pick(
+          nr.dispositivoVinculadoDesde,
+          ur.dispositivoVinculadoDesde
+        ),
+        dispositivoUltimaValidacionEn: pick(
+          nr.dispositivoUltimaValidacionEn,
+          ur.dispositivoUltimaValidacionEn
+        ),
+        dispositivoBloqueado:
+          !!nr.dispositivoBloqueado || !!ur.dispositivoBloqueado,
+        dispositivoAnteriorId: pick(
+          nr.dispositivoAnteriorId,
+          ur.dispositivoAnteriorId
+        ),
+        dispositivoReiniciadoEn: pick(
+          nr.dispositivoReiniciadoEn,
+          ur.dispositivoReiniciadoEn
+        ),
+        dispositivoReiniciadoPor: pick(
+          nr.dispositivoReiniciadoPor,
+          ur.dispositivoReiniciadoPor
+        ),
+        dispositivoReinicioMotivo: pick(
+          nr.dispositivoReinicioMotivo,
+          ur.dispositivoReinicioMotivo
+        ),
       };
+
       merged.haystack = norm(
         `${merged.apellido} ${merged.nombre} ${merged.dni} ${
           merged.email || ""
@@ -235,6 +345,7 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
           merged.mesaNro || ""
         } ${merged.lugarVotacion || ""}`
       );
+
       out.push(merged);
     } else if (nr) {
       out.push(nr);
@@ -242,6 +353,7 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
       out.push(ur);
     }
   }
+
   return out;
 };
 
@@ -297,9 +409,9 @@ async function syncAdherentesForPayload(dniKey, payload, preferredId) {
 const normalizeTextBasic = (str) =>
   String(str || "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // saca tildes
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ") // deja letras/números/espacios
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
 // Construye un diccionario a partir del objeto `departamentos`
@@ -307,18 +419,15 @@ const buildDepartamentoLookup = () => {
   const map = new Map();
 
   Object.entries(departamentos || {}).forEach(([code, label]) => {
-    const value = String(label || "").trim(); // ej: "Fray Mamerto Esquiú"
+    const value = String(label || "").trim();
     if (!value) return;
 
-    const normLabel = normalizeTextBasic(value); // "fray mamerto esquiu"
-    const normCode = normalizeTextBasic(code); // "fray", "la paz", etc.
+    const normLabel = normalizeTextBasic(value);
+    const normCode = normalizeTextBasic(code);
 
-    // nombre completo
     if (normLabel) map.set(normLabel, value);
-    // código (FRAY, LA_PAZ, etc.)
     if (normCode) map.set(normCode, value);
 
-    // primer palabra como alias (ej: "fray")
     const first = normLabel.split(" ")[0];
     if (first) map.set(first, value);
   });
@@ -328,28 +437,20 @@ const buildDepartamentoLookup = () => {
 
 const DEPARTAMENTO_LOOKUP = buildDepartamentoLookup();
 
-/**
- * Normaliza un texto cualquiera de departamento (Excel o BD)
- * a uno de los nombres oficiales de `departamentos`.
- * Si no encuentra nada razonable, devuelve el texto original limpio.
- */
 const normalizeDepartamentoLabel = (raw) => {
-  const norm = normalizeTextBasic(raw);
-  if (!norm) return "";
+  const normValue = normalizeTextBasic(raw);
+  if (!normValue) return "";
 
-  // 1) match exacto (nombre, código o alias)
-  if (DEPARTAMENTO_LOOKUP.has(norm)) {
-    return DEPARTAMENTO_LOOKUP.get(norm);
+  if (DEPARTAMENTO_LOOKUP.has(normValue)) {
+    return DEPARTAMENTO_LOOKUP.get(normValue);
   }
 
-  // 2) match por inclusión (ej: "fray m esquiu" contiene "fray")
   for (const [key, label] of DEPARTAMENTO_LOOKUP.entries()) {
-    if (norm === key || norm.includes(key) || key.includes(norm)) {
+    if (normValue === key || normValue.includes(key) || key.includes(normValue)) {
       return label;
     }
   }
 
-  // 3) fallback: devolver texto original limpio
   return String(raw || "").trim();
 };
 
@@ -366,24 +467,30 @@ const normalizeFieldName = (raw) => {
     case "nombre":
     case "nombres":
       return "nombre";
+
     case "apellido":
     case "apellidos":
       return "apellido";
+
     case "dni":
     case "documento":
       return "dni";
+
     case "email":
     case "correo":
     case "correo electrónico":
     case "correo electronico":
       return "email";
+
     case "celular":
     case "telefono":
     case "teléfono":
     case "whatsapp":
       return "celular";
+
     case "departamento":
       return "departamento";
+
     case "establecimientos":
     case "establecimiento":
     case "escuela":
@@ -391,14 +498,12 @@ const normalizeFieldName = (raw) => {
     case "institución":
       return "establecimientos";
 
-    // 🆕 Mesa N°
     case "mesa n°":
     case "mesa nº":
     case "mesa nro":
     case "mesa":
       return "mesaNro";
 
-    // 🆕 Lugar de votación
     case "lugar de votación":
     case "lugar de votacion":
     case "lugar votación":
@@ -409,6 +514,7 @@ const normalizeFieldName = (raw) => {
 
     case "descuento":
       return "descuento";
+
     case "nro afiliacion":
     case "nro_afiliacion":
     case "nroafiliacion":
@@ -417,6 +523,7 @@ const normalizeFieldName = (raw) => {
     case "afiliacion":
     case "afiliación":
       return "nroAfiliacion";
+
     case "titulo grado":
     case "título de grado":
     case "titulo de grado":
@@ -424,12 +531,11 @@ const normalizeFieldName = (raw) => {
     case "título de grado (nombre de la carrera)":
     case "titulo":
       return "tituloGrado";
+
     default:
       return null;
   }
 };
-
-
 
 // 🔹 SOLO mostramos estos campos en el modal de importación
 const FIELD_LABELS = {
@@ -440,13 +546,13 @@ const FIELD_LABELS = {
   establecimientos: "Establecimiento",
   celular: "Celular",
   email: "Email",
-  mesaNro: "Mesa N°",                 // 🆕
-  lugarVotacion: "Lugar de Votación", // 🆕
+  mesaNro: "Mesa N°",
+  lugarVotacion: "Lugar de Votación",
 };
-
 
 const normalizeExcelValue = (field, raw) => {
   if (raw == null) return "";
+
   const s = String(raw).trim();
   if (!s) return "";
 
@@ -456,7 +562,6 @@ const normalizeExcelValue = (field, raw) => {
   }
 
   if (field === "departamento") {
-    // 🔹 Usamos el mismo normalizador para Excel
     return normalizeDepartamentoLabel(s);
   }
 
@@ -468,8 +573,8 @@ const normalizeExcelValue = (field, raw) => {
   }
 
   if (field === "descuento") {
-    const norm = normalizeDescuentoInput(s);
-    return norm || "";
+    const normalized = normalizeDescuentoInput(s);
+    return normalized || "";
   }
 
   return s;
@@ -488,6 +593,7 @@ const buildPatchFromExcelRow = (
   currentData
 ) => {
   const patch = {};
+
   for (const [field, colIndex] of Object.entries(fieldMap)) {
     if (["dni", "nombre", "apellido"].includes(field)) continue;
 
@@ -508,6 +614,7 @@ const buildPatchFromExcelRow = (
       patch[field] = normalized;
     }
   }
+
   return patch;
 };
 
@@ -526,7 +633,10 @@ export default function AfiliadoActualizado() {
   });
 
   const [rowsUsuariosLocal, setRowsUsuariosLocal] = useState([]);
-  useEffect(() => setRowsUsuariosLocal(rowsUsuarios || []), [rowsUsuarios]);
+
+  useEffect(() => {
+    setRowsUsuariosLocal(rowsUsuarios || []);
+  }, [rowsUsuarios]);
 
   const [extraUsuariosRows, setExtraUsuariosRows] = useState([]);
   const [dniFetchLoading, setDniFetchLoading] = useState(false);
@@ -555,7 +665,7 @@ export default function AfiliadoActualizado() {
   const [exportMsg, setExportMsg] = useState("Preparando…");
 
   // Excel import
-  const [excelMeta, setExcelMeta] = useState(null); // { rows, headerRow, fieldMap }
+  const [excelMeta, setExcelMeta] = useState(null);
   const [forceFields, setForceFields] = useState({});
   const [excelConfigVisible, setExcelConfigVisible] = useState(false);
   const [importProcessVisible, setImportProcessVisible] = useState(false);
@@ -565,7 +675,6 @@ export default function AfiliadoActualizado() {
     updated: [],
     errors: [],
   });
-  // 🔹 NUEVO: estadísticas por campo (para la ventana que ves al subir el Excel)
   const [excelFieldStats, setExcelFieldStats] = useState({});
 
   const editableFields = excelMeta?.fieldMap
@@ -581,6 +690,7 @@ export default function AfiliadoActualizado() {
       detail: msg,
       life: 3000,
     });
+
   const showError = (msg) =>
     toast.current?.show({
       severity: "error",
@@ -610,26 +720,36 @@ export default function AfiliadoActualizado() {
   // 2) Búsqueda puntual por DNI en usuarios
   const fetchUsuariosByDniIfNeeded = useCallback(async (term) => {
     const onlyDigits = /^\d{3,}$/.test((term || "").trim());
+
     setExtraUsuariosRows([]);
+
     if (!onlyDigits) return;
+
     try {
       setDniFetchLoading(true);
+
       const results = [];
+
       const qStr = fsQuery(
         fsCollection(db, "usuarios"),
         where("dni", "==", String(term).trim())
       );
+
       const snapStr = await fsGetDocs(qStr);
       snapStr.forEach((d) => results.push(mapUsuarioDocToRow(d)));
+
       const dniNum = Number(term);
+
       if (!Number.isNaN(dniNum)) {
         const qNum = fsQuery(
           fsCollection(db, "usuarios"),
           where("dni", "==", dniNum)
         );
+
         const snapNum = await fsGetDocs(qNum);
         snapNum.forEach((d) => results.push(mapUsuarioDocToRow(d)));
       }
+
       setExtraUsuariosRows(mergeUniqueById([], results));
     } finally {
       setDniFetchLoading(false);
@@ -644,9 +764,14 @@ export default function AfiliadoActualizado() {
 
   const combinedRows = useMemo(() => {
     let arr = [];
-    if (source === "nuevoAfiliado") arr = rowsNuevo;
-    else if (source === "usuarios") arr = rowsUsuariosMerged;
-    else arr = unifyByDni(rowsNuevo, rowsUsuariosMerged);
+
+    if (source === "nuevoAfiliado") {
+      arr = rowsNuevo;
+    } else if (source === "usuarios") {
+      arr = rowsUsuariosMerged;
+    } else {
+      arr = unifyByDni(rowsNuevo, rowsUsuariosMerged);
+    }
 
     return [...arr].sort((a, b) => {
       const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha || "";
@@ -658,21 +783,17 @@ export default function AfiliadoActualizado() {
   // 🔹 Opciones de DEPARTAMENTO normalizadas y sin duplicados
   const departamentosOptions = useMemo(() => {
     const baseOpts = departamentosOptionsFrom(combinedRows) || [];
-
     const map = new Map();
 
     baseOpts.forEach((opt) => {
       if (!opt) return;
 
-      // Soportamos tanto string como { label, value }
       const raw = typeof opt === "string" ? opt : opt.label ?? opt.value;
-
       if (!raw) return;
 
-      const canon = normalizeDepartamentoLabel(raw); // usamos el helper que ya definimos
+      const canon = normalizeDepartamentoLabel(raw);
       if (!canon) return;
 
-      // Guardamos solo una opción por etiqueta canonizada
       if (!map.has(canon)) {
         map.set(canon, { label: canon, value: canon });
       }
@@ -714,9 +835,11 @@ export default function AfiliadoActualizado() {
     await fetchUsuariosByDniIfNeeded(term);
     setQuery(term);
   };
+
   const onSearch = () => {
     void doSearch();
   };
+
   const onClear = () => {
     setSearchInput("");
     setQuery("");
@@ -724,6 +847,7 @@ export default function AfiliadoActualizado() {
     setExtraUsuariosRows([]);
     setDniFetchLoading(false);
   };
+
   const onKeyDown = (e) => {
     if (e.key === "Enter") onSearch();
   };
@@ -736,6 +860,7 @@ export default function AfiliadoActualizado() {
 
   const onVerDetalle = (row) => {
     if (!row) return;
+
     setRowDetail(row);
     actionMenuRef.current?.hide?.();
     setShowDetail(true);
@@ -743,6 +868,7 @@ export default function AfiliadoActualizado() {
 
   const onEliminar = (row) => {
     if (!row) return;
+
     confirmDialog({
       message: `¿Eliminar el registro de ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
       header: "Confirmar eliminación",
@@ -754,15 +880,19 @@ export default function AfiliadoActualizado() {
         try {
           if (row.origen === "nuevoAfiliado") {
             const res = await dispatch(deleteAfiliadoById(row.id));
+
             if (res?.meta?.requestStatus === "rejected") {
               throw new Error(res?.payload || "No se pudo eliminar");
             }
+
             setRowsNuevo((prev) => prev.filter((x) => x.id !== row.id));
           } else {
             await fsDeleteDoc(fsDoc(db, "usuarios", String(row.id)));
+
             setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.id));
             setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.id));
           }
+
           showSuccess("Eliminado correctamente");
         } catch (e) {
           showError(e?.message || "Error al eliminar");
@@ -773,6 +903,7 @@ export default function AfiliadoActualizado() {
 
   const onEliminarAmbos = (row) => {
     if (!row) return;
+
     confirmDialog({
       message: `¿Eliminar en ambas colecciones a ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
       header: "Confirmar eliminación",
@@ -784,22 +915,28 @@ export default function AfiliadoActualizado() {
         try {
           if (row.idNuevo) {
             const res = await dispatch(deleteAfiliadoById(row.idNuevo));
+
             if (res?.meta?.requestStatus === "rejected") {
               throw new Error(
                 res?.payload || "No se pudo eliminar en nuevoAfiliado"
               );
             }
+
             setRowsNuevo((prev) => prev.filter((x) => x.id !== row.idNuevo));
           }
+
           if (row.idUsuario) {
             await fsDeleteDoc(fsDoc(db, "usuarios", String(row.idUsuario)));
+
             setRowsUsuariosLocal((prev) =>
               prev.filter((x) => x.id !== row.idUsuario)
             );
+
             setExtraUsuariosRows((prev) =>
               prev.filter((x) => x.id !== row.idUsuario)
             );
           }
+
           showSuccess("Eliminado en ambas colecciones.");
         } catch (e) {
           showError(e?.message || "Error al eliminar en ambas colecciones");
@@ -808,9 +945,182 @@ export default function AfiliadoActualizado() {
     });
   };
 
+  // ✅ NUEVO: reiniciar dispositivo vinculado para asistencia QR
+  const resetDispositivoDocumento = async ({ collectionName, id }) => {
+    if (!collectionName || !id) return null;
+
+    const ref = fsDoc(db, collectionName, String(id));
+    const snap = await fsGetDoc(ref);
+
+    if (!snap.exists()) return null;
+
+    const data = snap.data() || {};
+    const dispositivoAnteriorId = data.dispositivoAsistenciaId ?? null;
+
+    const patch = {
+      dispositivoAnteriorId,
+      dispositivoAsistenciaId: null,
+      asistenciaDispositivoVinculado: false,
+      dispositivoBloqueado: false,
+
+      // Limpieza de fechas del vínculo anterior para evitar confusión visual
+      dispositivoVinculadoEn: null,
+      dispositivoVinculadoDesde: null,
+      dispositivoUltimaValidacionEn: null,
+
+      // Trazabilidad administrativa
+      dispositivoReiniciadoEn: new Date().toISOString(),
+      dispositivoReiniciadoPor: getAdminLabel(),
+      dispositivoReinicioMotivo: "reinicio_desde_web_administrativa",
+    };
+
+    await fsUpdateDoc(ref, patch);
+
+    return {
+      collectionName,
+      id: String(id),
+      patch,
+    };
+  };
+
+  const onReiniciarDispositivoAsistencia = (row) => {
+    if (!row) return;
+
+    actionMenuRef.current?.hide?.();
+
+    const estadoActual = getEstadoDispositivoLabel(row);
+    const deviceVisible = shortDeviceId(row.dispositivoAsistenciaId);
+
+    confirmDialog({
+      header: "Reiniciar dispositivo de asistencia",
+      icon: "pi pi-exclamation-triangle",
+      message: (
+        <div style={{ display: "grid", gap: 8 }}>
+          <div>
+            ¿Desea reiniciar el dispositivo vinculado a{" "}
+            <strong>
+              {row.apellido}, {row.nombre}
+            </strong>{" "}
+            DNI <strong>{row.dni}</strong>?
+          </div>
+
+          <div style={{ fontSize: 13, color: "#475569" }}>
+            <div>
+              <strong>Estado actual:</strong> {estadoActual}
+            </div>
+            <div>
+              <strong>ID dispositivo:</strong> {deviceVisible}
+            </div>
+          </div>
+
+          <div style={{ fontSize: 13 }}>
+            Esta acción permitirá que el afiliado pueda vincular un nuevo
+            celular la próxima vez que registre asistencia por QR. No se
+            eliminarán sus asistencias anteriores.
+          </div>
+        </div>
+      ),
+      acceptLabel: "Sí, reiniciar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-warning",
+      accept: async () => {
+        try {
+          const targets = [];
+
+          if (row.origen === "ambos") {
+            if (row.idNuevo) {
+              targets.push({
+                collectionName: "nuevoAfiliado",
+                id: row.idNuevo,
+              });
+            }
+
+            if (row.idUsuario) {
+              targets.push({
+                collectionName: "usuarios",
+                id: row.idUsuario,
+              });
+            }
+          } else if (row.origen === "usuarios") {
+            targets.push({
+              collectionName: "usuarios",
+              id: row.id,
+            });
+          } else {
+            targets.push({
+              collectionName: "nuevoAfiliado",
+              id: row.id,
+            });
+          }
+
+          if (!targets.length) {
+            throw new Error("No se pudo determinar la colección del afiliado.");
+          }
+
+          const resultsRaw = await Promise.all(
+            targets.map((target) => resetDispositivoDocumento(target))
+          );
+
+          const results = resultsRaw.filter(Boolean);
+
+          if (!results.length) {
+            throw new Error(
+              "No se encontró el documento del afiliado para reiniciar el dispositivo."
+            );
+          }
+
+          results.forEach(({ collectionName, id, patch }) => {
+            if (collectionName === "nuevoAfiliado") {
+              setRowsNuevo((prev) =>
+                prev.map((r) => (String(r.id) === String(id) ? { ...r, ...patch } : r))
+              );
+            }
+
+            if (collectionName === "usuarios") {
+              setRowsUsuariosLocal((prev) =>
+                prev.map((r) => (String(r.id) === String(id) ? { ...r, ...patch } : r))
+              );
+
+              setExtraUsuariosRows((prev) =>
+                prev.map((r) => (String(r.id) === String(id) ? { ...r, ...patch } : r))
+              );
+            }
+          });
+
+          const firstPatch = results[0]?.patch || {};
+
+          setCurrentRow((prev) => (prev ? { ...prev, ...firstPatch } : prev));
+
+          setRowDetail((prev) => {
+            if (!prev) return prev;
+
+            const sameMainId = String(prev.id) === String(row.id);
+            const sameNuevo =
+              prev.idNuevo && row.idNuevo && String(prev.idNuevo) === String(row.idNuevo);
+            const sameUsuario =
+              prev.idUsuario &&
+              row.idUsuario &&
+              String(prev.idUsuario) === String(row.idUsuario);
+
+            if (sameMainId || sameNuevo || sameUsuario) {
+              return { ...prev, ...firstPatch };
+            }
+
+            return prev;
+          });
+
+          showSuccess("Dispositivo de asistencia reiniciado correctamente.");
+        } catch (e) {
+          showError(e?.message || "No se pudo reiniciar el dispositivo.");
+        }
+      },
+    });
+  };
+
   const openEdit = (row) => {
     setRowId(row.id);
     setEditOrigin(row.origen === "usuarios" ? "usuarios" : "nuevoAfiliado");
+
     setInitialForm({
       nombre: row.nombre ?? "",
       apellido: row.apellido ?? "",
@@ -819,8 +1129,8 @@ export default function AfiliadoActualizado() {
       celular: row.celular ?? "",
       departamento: (row.departamento || "").toString().trim(),
       establecimientos: row.establecimientos ?? "",
-      mesaNro: row.mesaNro ?? "", // 🆕
-      lugarVotacion: row.lugarVotacion ?? "", // 🆕
+      mesaNro: row.mesaNro ?? "",
+      lugarVotacion: row.lugarVotacion ?? "",
       descuento: row.descuento ?? "",
       nroAfiliacion: String(row.nroAfiliacion ?? ""),
       observaciones: row.observaciones ?? "",
@@ -830,12 +1140,14 @@ export default function AfiliadoActualizado() {
       motivo: row.motivo ?? "",
       cotizante: typeof row.cotizante === "boolean" ? row.cotizante : false,
     });
+
     setEditVisible(true);
   };
 
   const openEditBoth = (row) => {
     setRowIdBoth({ nuevo: row.idNuevo, usuario: row.idUsuario });
     setEditOrigin("ambas");
+
     setInitialForm({
       nombre: row.nombre ?? "",
       apellido: row.apellido ?? "",
@@ -844,8 +1156,8 @@ export default function AfiliadoActualizado() {
       celular: row.celular ?? "",
       departamento: (row.departamento || "").toString().trim(),
       establecimientos: row.establecimientos ?? "",
-      mesaNro: row.mesaNro ?? "", // 🆕
-      lugarVotacion: row.lugarVotacion ?? "", // 🆕
+      mesaNro: row.mesaNro ?? "",
+      lugarVotacion: row.lugarVotacion ?? "",
       descuento: row.descuento ?? "",
       nroAfiliacion: String(row.nroAfiliacion ?? ""),
       observaciones: row.observaciones ?? "",
@@ -855,11 +1167,13 @@ export default function AfiliadoActualizado() {
       motivo: row.motivo ?? "",
       cotizante: typeof row.cotizante === "boolean" ? row.cotizante : false,
     });
+
     setEditVisible(true);
   };
 
   const menuModel = useMemo(() => {
     if (!currentRow) return [];
+
     if (currentRow.origen === "ambos") {
       return [
         {
@@ -872,6 +1186,11 @@ export default function AfiliadoActualizado() {
           icon: "pi pi-pencil",
           command: () => openEditBoth(currentRow),
         },
+        {
+          label: "Reiniciar dispositivo de asistencia",
+          icon: "pi pi-mobile",
+          command: () => onReiniciarDispositivoAsistencia(currentRow),
+        },
         { separator: true },
         {
           label: "Eliminar (ambas)",
@@ -881,6 +1200,7 @@ export default function AfiliadoActualizado() {
         },
       ];
     }
+
     return [
       {
         label: "Ver",
@@ -891,6 +1211,11 @@ export default function AfiliadoActualizado() {
         label: "Editar",
         icon: "pi pi-pencil",
         command: () => openEdit(currentRow),
+      },
+      {
+        label: "Reiniciar dispositivo de asistencia",
+        icon: "pi pi-mobile",
+        command: () => onReiniciarDispositivoAsistencia(currentRow),
       },
       { separator: true },
       {
@@ -914,23 +1239,29 @@ export default function AfiliadoActualizado() {
         mapNuevoDocToRow,
         1000
       );
+
       const allUsuariosPromise = (async () => {
         const allNuevo = await allNuevoPromise;
+
         setExportMsg("Leyendo colección usuarios…");
+
         const allUsuarios = await fetchAllDocsPaged(
           "usuarios",
           mapUsuarioDocToRow,
           1000
         );
+
         return { allNuevo, allUsuarios };
       })();
 
       const { allNuevo, allUsuarios } = await allUsuariosPromise;
 
       setExportMsg("Unificando registros por DNI…");
+
       const unified = unifyByDni(allNuevo, allUsuarios);
 
       setExportMsg("Preparando datos…");
+
       const sorted = [...unified].sort((a, b) => {
         const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha || "";
         const sb = b.hora ? `${b.fecha} ${b.hora}` : b.fecha || "";
@@ -943,6 +1274,7 @@ export default function AfiliadoActualizado() {
         : sorted;
 
       setExportMsg("Generando Excel…");
+
       const data = dataset.map((d) => ({
         Fecha: d.fecha || "",
         Hora: d.hora || "",
@@ -951,8 +1283,8 @@ export default function AfiliadoActualizado() {
         DNI: d.dni || "",
         Afiliación: d.nroAfiliacion ? Number(d.nroAfiliacion) : "",
         Departamento: d.departamento || "",
-        "Lugar de Votación": d.lugarVotacion || "", // 🆕
-        "Mesa N°": d.mesaNro || "", // 🆕
+        "Lugar de Votación": d.lugarVotacion || "",
+        "Mesa N°": d.mesaNro || "",
         Establecimientos: d.establecimientos || "",
         Celular: d.celular || "",
         Email: d.email || "",
@@ -961,6 +1293,10 @@ export default function AfiliadoActualizado() {
         Código: d.cod ?? "",
         Origen: d.origen,
         ID: d.id,
+        "Dispositivo asistencia": d.dispositivoAsistenciaId || "",
+        "Estado dispositivo": getEstadoDispositivoLabel(d),
+        "Dispositivo bloqueado": d.dispositivoBloqueado ? "Sí" : "No",
+        "Dispositivo reiniciado en": d.dispositivoReiniciadoEn || "",
       }));
 
       const fileName = qn
@@ -968,6 +1304,7 @@ export default function AfiliadoActualizado() {
         : "afiliados_usuarios_base_unificada";
 
       exportFromJSON({ data, fileName, exportType: "xls" });
+
       showSuccess("Excel generado (unificado por DNI).");
     } catch (e) {
       console.error(e);
@@ -991,13 +1328,17 @@ export default function AfiliadoActualizado() {
   const validateDuplicateNroAfiliacion = async (dni, nro, currentId) => {
     const nroNum = Number(nro);
     const dniStr = String(dni || "").trim();
+
     if (!dniStr || Number.isNaN(nroNum)) return false;
+
     const ref = fsQuery(
       fsCollection(db, "nuevoAfiliado"),
       where("dni", "==", dniStr),
       where("nroAfiliacion", "==", nroNum)
     );
+
     const snap = await fsGetDocs(ref);
+
     return snap.docs.some((d) => d.id !== currentId);
   };
 
@@ -1025,6 +1366,7 @@ export default function AfiliadoActualizado() {
             payload.nroAfiliacion,
             idN
           );
+
           if (duplicated) {
             toast.current?.show({
               severity: "error",
@@ -1032,6 +1374,7 @@ export default function AfiliadoActualizado() {
               detail: "El N° de afiliación ya existe para ese DNI.",
               life: 4000,
             });
+
             setSaving(false);
             return;
           }
@@ -1041,10 +1384,13 @@ export default function AfiliadoActualizado() {
           const res = await dispatch(
             updateAfiliadoById({ id: idN, data: payload })
           );
-          if (res?.meta?.requestStatus === "rejected")
+
+          if (res?.meta?.requestStatus === "rejected") {
             throw new Error(
               res?.payload || "No se pudo actualizar nuevoAfiliado."
             );
+          }
+
           setRowsNuevo((prev) =>
             prev.map((r) => (r.id === idN ? { ...r, ...payload } : r))
           );
@@ -1065,33 +1411,39 @@ export default function AfiliadoActualizado() {
           activo: typeof payload.activo === "boolean" ? payload.activo : true,
           motivo: payload.motivo ?? "",
           cotizante: !!payload.cotizante,
-          mesaNro: payload.mesaNro ?? "", // 🆕
-          lugarVotacion: payload.lugarVotacion ?? "", // 🆕
+          mesaNro: payload.mesaNro ?? "",
+          lugarVotacion: payload.lugarVotacion ?? "",
         };
 
         if (idU) {
           const ref = fsDoc(db, "usuarios", String(idU));
           const snap = await fsGetDoc(ref);
+
           if (snap.exists()) {
             await fsUpdateDoc(ref, payloadUsuarios);
           } else {
             await fsSetDoc(ref, payloadUsuarios, { merge: true });
           }
+
           setRowsUsuariosLocal((prev) =>
             prev.map((r) => (r.id === idU ? { ...r, ...payloadUsuarios } : r))
           );
+
           setExtraUsuariosRows((prev) =>
             prev.map((r) => (r.id === idU ? { ...r, ...payloadUsuarios } : r))
           );
         } else {
           const altId = String(payload.dni).trim();
           const refAlt = fsDoc(db, "usuarios", altId);
+
           await fsSetDoc(refAlt, payloadUsuarios, { merge: true });
+
           setRowsUsuariosLocal((prev) =>
             prev.map((r) =>
               r.id === altId ? { ...r, ...payloadUsuarios } : r
             )
           );
+
           setExtraUsuariosRows((prev) =>
             prev.map((r) =>
               r.id === altId ? { ...r, ...payloadUsuarios } : r
@@ -1100,6 +1452,7 @@ export default function AfiliadoActualizado() {
         }
 
         const dniKey = String(payload.dni || "").trim();
+
         await syncAdherentesForPayload(
           dniKey,
           payload,
@@ -1119,6 +1472,7 @@ export default function AfiliadoActualizado() {
             payload.nroAfiliacion,
             rowId
           );
+
           if (duplicated) {
             toast.current?.show({
               severity: "error",
@@ -1126,6 +1480,7 @@ export default function AfiliadoActualizado() {
               detail: "El N° de afiliación ya existe para ese DNI.",
               life: 4000,
             });
+
             setSaving(false);
             return;
           }
@@ -1134,6 +1489,7 @@ export default function AfiliadoActualizado() {
         const res = await dispatch(
           updateAfiliadoById({ id: rowId, data: payload })
         );
+
         if (res?.meta?.requestStatus === "rejected") {
           throw new Error(res?.payload || "No se pudo actualizar el afiliado.");
         }
@@ -1145,8 +1501,6 @@ export default function AfiliadoActualizado() {
         const prevAdherente = initialForm.adherente === true;
         const nextAdherente = !!payload.adherente;
         const dniKey = String(payload.dni || "").trim();
-        const prevActivo =
-          typeof initialForm.activo === "boolean" ? initialForm.activo : true;
         const nextActivo =
           typeof payload.activo === "boolean" ? payload.activo : true;
 
@@ -1161,15 +1515,19 @@ export default function AfiliadoActualizado() {
             fsCollection(db, "adherentes"),
             where("dni", "==", dniKey)
           );
+
           const snap = await fsGetDocs(q);
-          if (!snap.empty)
+
+          if (!snap.empty) {
             await Promise.all(snap.docs.map((d) => fsDeleteDoc(d.ref)));
+          }
         } else {
           await syncAdherentesForPayload(dniKey, payload, rowId);
         }
       } else {
         // usuarios
         const ref = fsDoc(db, "usuarios", String(rowId));
+
         const payloadUsuarios = {
           nombre: payload.nombre ?? "",
           apellido: payload.apellido ?? "",
@@ -1185,17 +1543,20 @@ export default function AfiliadoActualizado() {
           activo: typeof payload.activo === "boolean" ? payload.activo : true,
           motivo: payload.motivo ?? "",
           cotizante: !!payload.cotizante,
-          mesaNro: payload.mesaNro ?? "", // 🆕
-          lugarVotacion: payload.lugarVotacion ?? "", // 🆕
+          mesaNro: payload.mesaNro ?? "",
+          lugarVotacion: payload.lugarVotacion ?? "",
         };
+
         await fsUpdateDoc(ref, payloadUsuarios);
 
         const dniKey = String(payload.dni || "").trim();
+
         await syncAdherentesForPayload(dniKey, payload, rowId);
 
         setRowsUsuariosLocal((prev) =>
           prev.map((r) => (r.id === rowId ? { ...r, ...payloadUsuarios } : r))
         );
+
         setExtraUsuariosRows((prev) =>
           prev.map((r) => (r.id === rowId ? { ...r, ...payloadUsuarios } : r))
         );
@@ -1215,25 +1576,32 @@ export default function AfiliadoActualizado() {
   // =========================================
   const handleSelectExcel = (e) => {
     const fileObj = e.files?.[0];
+
     if (!fileObj) return;
 
     ExcelRenderer(fileObj, (err, resp) => {
       if (err) {
         console.error(err);
         showError("No se pudo leer el archivo Excel.");
+
         if (e.options?.clear) e.options.clear();
+
         return;
       }
 
       const rows = resp?.rows || [];
+
       if (!rows.length) {
         showError("El archivo Excel está vacío.");
+
         if (e.options?.clear) e.options.clear();
+
         return;
       }
 
       const headerRow = rows[0] || [];
       const fieldMap = {};
+
       headerRow.forEach((colName, idx) => {
         const f = normalizeFieldName(colName);
         if (f) fieldMap[f] = idx;
@@ -1243,22 +1611,28 @@ export default function AfiliadoActualizado() {
         showError(
           'El archivo debe incluir una columna "DNI" (o equivalente) en el encabezado.'
         );
+
         if (e.options?.clear) e.options.clear();
+
         return;
       }
 
       const usable = Object.keys(fieldMap).filter(
         (f) => !["dni", "nombre", "apellido"].includes(f)
       );
+
       if (!usable.length) {
         showError(
           "El Excel no contiene campos editables además de DNI / Nombre / Apellido."
         );
+
         if (e.options?.clear) e.options.clear();
+
         return;
       }
 
       setExcelMeta({ rows, headerRow, fieldMap });
+
       setForceFields(
         usable.reduce((acc, f) => {
           acc[f] = false;
@@ -1266,49 +1640,57 @@ export default function AfiliadoActualizado() {
         }, {})
       );
 
-      // 🔹 NUEVO: calcular estadísticas por campo
+      // 🔹 Calcular estadísticas por campo
       try {
         const unified = unifyByDni(rowsNuevo, rowsUsuariosMerged);
         const mapByDni = new Map();
+
         unified.forEach((r) => {
           const key = toDniKey(r.dni);
           if (key) mapByDni.set(key, r);
         });
 
         const stats = {};
+
         usable.forEach((f) => {
           stats[f] = { willAuto: 0, needForce: 0 };
         });
 
         for (let i = 1; i < rows.length; i++) {
           const excelRow = rows[i];
+
           if (!excelRow) continue;
 
           const rawDni = excelRow[fieldMap.dni];
           const dniKey = toDniKey(rawDni);
+
           if (!dniKey) continue;
 
           const current = mapByDni.get(dniKey);
+
           if (!current) continue;
 
           for (const f of usable) {
             const colIdx = fieldMap[f];
+
             if (colIdx == null) continue;
 
             const raw = excelRow[colIdx];
             const normalized = normalizeExcelValue(f, raw);
+
             if (normalized === undefined || normalized === "") continue;
 
             const prev = current[f];
+
             const isPrevEmpty =
               prev === undefined ||
               prev === null ||
               (typeof prev === "string" && prev.trim() === "");
 
             if (isPrevEmpty) {
-              stats[f].willAuto += 1; // se pueden completar sin forzar
+              stats[f].willAuto += 1;
             } else {
-              stats[f].needForce += 1; // ya tienen info → solo si forzás
+              stats[f].needForce += 1;
             }
           }
         }
@@ -1330,8 +1712,10 @@ export default function AfiliadoActualizado() {
   // =========================================
   const runImportFromExcel = async () => {
     if (!excelMeta) return;
+
     const { rows, fieldMap } = excelMeta;
     const total = rows.length - 1;
+
     if (total <= 0) {
       showError("El Excel no tiene filas de datos.");
       return;
@@ -1344,21 +1728,23 @@ export default function AfiliadoActualizado() {
     const updated = [];
     const errors = [];
 
-    // 🔹 Usamos todo nuevoAfiliado (ya viene completo)
+    // 🔹 Usamos todo nuevoAfiliado
     const mapNuevo = new Map();
+
     rowsNuevo.forEach((r) => {
       const k = toDniKey(r.dni);
       if (k) mapNuevo.set(k, r);
     });
 
-    // 🔹 NUEVO: leemos TODOS los usuarios para la importación
+    // 🔹 Leemos TODOS los usuarios para la importación
     const allUsuariosForImport = await fetchAllDocsPaged(
       "usuarios",
       mapUsuarioDocToRow,
-      1000 // tamaño del lote
+      1000
     );
 
     const mapUsuarios = new Map();
+
     allUsuariosForImport.forEach((r) => {
       const k = toDniKey(r.dni);
       if (k) mapUsuarios.set(k, r);
@@ -1366,16 +1752,19 @@ export default function AfiliadoActualizado() {
 
     for (let i = 1; i < rows.length; i++) {
       const excelRow = rows[i];
+
       if (!excelRow) continue;
 
       const rawDni = excelRow[fieldMap.dni];
       const dniKey = toDniKey(rawDni);
+
       if (!dniKey) {
         errors.push({
           row: i + 1,
           dni: rawDni || "",
           reason: "DNI vacío o inválido",
         });
+
         continue;
       }
 
@@ -1388,12 +1777,14 @@ export default function AfiliadoActualizado() {
           dni: dniKey,
           reason: "No se encontró en usuarios ni en nuevoAfiliado",
         });
+
         continue;
       }
 
       const patchNuevo = currentNuevo
         ? buildPatchFromExcelRow(excelRow, fieldMap, forceFields, currentNuevo)
         : {};
+
       const patchUsuario = currentUsuario
         ? buildPatchFromExcelRow(
             excelRow,
@@ -1412,7 +1803,9 @@ export default function AfiliadoActualizado() {
           dni: dniKey,
           note: "Sin cambios (ya tenía datos o celdas vacías).",
         });
+
         setImportProgress(Math.round((i / total) * 100));
+
         continue;
       }
 
@@ -1422,6 +1815,7 @@ export default function AfiliadoActualizado() {
             fsDoc(db, "nuevoAfiliado", String(currentNuevo.id)),
             patchNuevo
           );
+
           setRowsNuevo((prev) =>
             prev.map((r) =>
               r.id === currentNuevo.id ? { ...r, ...patchNuevo } : r
@@ -1434,6 +1828,7 @@ export default function AfiliadoActualizado() {
             fsDoc(db, "usuarios", String(currentUsuario.id)),
             patchUsuario
           );
+
           const mergedUsuario = { ...currentUsuario, ...patchUsuario };
           const dniStr = String(mergedUsuario.dni || "").trim();
 
@@ -1456,6 +1851,7 @@ export default function AfiliadoActualizado() {
               r.id === currentUsuario.id ? { ...r, ...patchUsuario } : r
             )
           );
+
           setExtraUsuariosRows((prev) =>
             prev.map((r) =>
               r.id === currentUsuario.id ? { ...r, ...patchUsuario } : r
@@ -1466,6 +1862,7 @@ export default function AfiliadoActualizado() {
         updated.push({ row: i + 1, dni: dniKey });
       } catch (err) {
         console.error(err);
+
         errors.push({
           row: i + 1,
           dni: dniKey,
@@ -1499,6 +1896,7 @@ export default function AfiliadoActualizado() {
         }}
       >
         <h3 style={{ margin: 0 }}>Afiliado Actualizado</h3>
+
         <div
           style={{
             display: "flex",
@@ -1508,9 +1906,11 @@ export default function AfiliadoActualizado() {
           }}
         >
           <span className="p-tag p-tag-info">nuevoAfiliado: {countNuevo}</span>
+
           <span className="p-tag p-tag-secondary">
             usuarios: {countUsuarios}
           </span>
+
           <span className="p-tag">
             mostrando: {pageRows.length} / {totalFiltered}
           </span>
@@ -1616,7 +2016,9 @@ export default function AfiliadoActualizado() {
       >
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ fontSize: 14 }}>{exportMsg}</div>
+
           <ProgressBar mode="indeterminate" style={{ height: 6 }} />
+
           <div style={{ fontSize: 12, opacity: 0.8 }}>
             Esto puede tardar unos segundos. No cierres esta ventana.
           </div>
@@ -1636,10 +2038,11 @@ export default function AfiliadoActualizado() {
             Seleccioná los campos que querés{" "}
             <strong>forzar la actualización</strong>.
           </p>
+
           <ul style={{ marginTop: 0, paddingLeft: 18, fontSize: 13 }}>
             <li>
               Si el campo está <strong>tildado</strong>, se actualizará siempre
-              con el valor del Excel (por ejemplo, Departamento: Capital).
+              con el valor del Excel.
             </li>
             <li>
               Si el campo <strong>NO</strong> está tildado, solo se actualizará
@@ -1663,6 +2066,7 @@ export default function AfiliadoActualizado() {
                   willAuto: 0,
                   needForce: 0,
                 };
+
                 return (
                   <div
                     key={f}
@@ -1683,10 +2087,12 @@ export default function AfiliadoActualizado() {
                         }))
                       }
                     />
+
                     <div>
                       <label htmlFor={`force_${f}`}>
                         <strong>{FIELD_LABELS[f] || f}</strong>
                       </label>
+
                       <div
                         style={{
                           fontSize: 11,
@@ -1695,11 +2101,10 @@ export default function AfiliadoActualizado() {
                         }}
                       >
                         {stats.willAuto} registro(s) se pueden completar
-                        automáticamente (actualmente vacíos).
+                        automáticamente.
                         <br />
                         {stats.needForce} registro(s) ya tienen información en
-                        ese campo (solo se actualizan si marcás <em>forzar</em>
-                        ).
+                        ese campo.
                       </div>
                     </div>
                   </div>
@@ -1721,6 +2126,7 @@ export default function AfiliadoActualizado() {
               className="p-button-text"
               onClick={() => setExcelConfigVisible(false)}
             />
+
             <Button
               label="Comenzar actualización"
               icon="pi pi-check"
@@ -1744,9 +2150,11 @@ export default function AfiliadoActualizado() {
             Por favor, no cierres esta ventana mientras se procesan los
             registros.
           </div>
+
           <ProgressBar value={importProgress} />
+
           <div style={{ fontSize: 12, opacity: 0.8 }}>
-            Progreso: {importProgress}%{" "}
+            Progreso: {importProgress}%
           </div>
         </div>
       </Dialog>
@@ -1764,6 +2172,7 @@ export default function AfiliadoActualizado() {
             <strong>{importResult.updated.length}</strong> registro(s) se
             procesaron correctamente.
           </p>
+
           <p>
             <strong>{importResult.errors.length}</strong> registro(s) tuvieron
             algún problema o no encontraron coincidencia por DNI.
@@ -1781,6 +2190,7 @@ export default function AfiliadoActualizado() {
               }}
             >
               <strong>Actualizados (DNI / fila):</strong>
+
               <ul style={{ margin: 0, paddingLeft: 18 }}>
                 {importResult.updated.slice(0, 50).map((u, idx) => (
                   <li key={idx}>
@@ -1788,6 +2198,7 @@ export default function AfiliadoActualizado() {
                     {u.note ? ` (${u.note})` : ""}
                   </li>
                 ))}
+
                 {importResult.updated.length > 50 && <li>… y más registros</li>}
               </ul>
             </div>
@@ -1806,12 +2217,14 @@ export default function AfiliadoActualizado() {
               }}
             >
               <strong>Con errores / sin coincidencia:</strong>
+
               <ul style={{ margin: 0, paddingLeft: 18 }}>
                 {importResult.errors.slice(0, 50).map((err, idx) => (
                   <li key={idx}>
                     Fila {err.row} — DNI {err.dni}: {err.reason}
                   </li>
                 ))}
+
                 {importResult.errors.length > 50 && <li>… y más registros</li>}
               </ul>
             </div>
