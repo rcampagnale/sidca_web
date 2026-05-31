@@ -193,6 +193,54 @@ const splitApellidoNombre = (value) => {
   return { nombre: '', apellido: '' };
 };
 
+const splitApellidoNombreFlexible = (value) => {
+  const s = String(value || '').replace(/\s+/g, ' ').trim();
+
+  if (!s) return { nombre: '', apellido: '' };
+
+  if (s.includes(',')) {
+    return splitApellidoNombre(s);
+  }
+
+  const partes = s.split(' ').filter(Boolean);
+
+  if (partes.length <= 1) {
+    return { nombre: s, apellido: '' };
+  }
+
+  if (partes.length === 2) {
+    return { apellido: partes[0], nombre: partes[1] };
+  }
+
+  const p0 = normalizeText(partes[0]);
+  const p1 = normalizeText(partes[1]);
+
+  // Apellidos con partículas frecuentes: De La Vega Juan Carlos, Del Valle Ana, etc.
+  if (['de', 'del', 'da', 'do', 'di'].includes(p0)) {
+    if (p0 === 'de' && ['la', 'las', 'los', 'el'].includes(p1) && partes.length >= 4) {
+      return {
+        apellido: partes.slice(0, 3).join(' '),
+        nombre: partes.slice(3).join(' '),
+      };
+    }
+
+    return {
+      apellido: partes.slice(0, 2).join(' '),
+      nombre: partes.slice(2).join(' '),
+    };
+  }
+
+  // Criterio usado cuando el dato llega como "Apellido Nombre" sin coma.
+  // 3 palabras: Apellido + dos nombres.
+  // 4 o más palabras: se toma apellido compuesto de 2 palabras + nombres.
+  const cantidadApellido = partes.length >= 4 ? 2 : 1;
+
+  return {
+    apellido: partes.slice(0, cantidadApellido).join(' '),
+    nombre: partes.slice(cantidadApellido).join(' '),
+  };
+};
+
 const deriveNombreApellido = (r = {}) => {
   let nombre = sanitizeMissing(r.nombre);
   let apellido = sanitizeMissing(r.apellido);
@@ -211,6 +259,20 @@ const deriveNombreApellido = (r = {}) => {
     const sp = splitApellidoNombre(apellido);
     apellido = sp.apellido || '';
     nombre = sp.nombre || '';
+  } else if (apellidoMissing && nombre) {
+    const sp = splitApellidoNombreFlexible(nombre);
+
+    if (sp.apellido && sp.nombre) {
+      apellido = sp.apellido;
+      nombre = sp.nombre;
+    }
+  } else if (nombreMissing && apellido) {
+    const sp = splitApellidoNombreFlexible(apellido);
+
+    if (sp.apellido && sp.nombre) {
+      apellido = sp.apellido;
+      nombre = sp.nombre;
+    }
   }
 
   return {
@@ -923,6 +985,7 @@ const ListaAsistencia = () => {
   const [modalidadExport, setModalidadExport] = useState('*');
   const [estadoPresencialExport, setEstadoPresencialExport] = useState('*');
   const [exporting, setExporting] = useState(false);
+  const [exportMode, setExportMode] = useState('asistencia'); // asistencia | moodle
 
   const isBusy = importing;
 
@@ -1188,6 +1251,36 @@ const ListaAsistencia = () => {
 
     return filtrada.sort((a, b) => toTime(b.fecha) - toTime(a.fecha));
   }, [rows, busqueda, filtroFecha, filtroModalidad, dniJoin, cursoAplicado]);
+
+  const resumenCorreos = useMemo(() => {
+    const porDni = new Map();
+
+    dataFiltrada.forEach((row) => {
+      const dni = toDniDigits(row.dni);
+
+      if (!dni) return;
+
+      const joined = dniJoin[dni] || {};
+      const email = sanitizeMissing(row.email) || sanitizeMissing(joined.email);
+      const actual = porDni.get(dni) || { dni, tieneEmail: false };
+
+      if (email) {
+        actual.tieneEmail = true;
+      }
+
+      porDni.set(dni, actual);
+    });
+
+    const total = porDni.size;
+    const conEmail = Array.from(porDni.values()).filter((item) => item.tieneEmail).length;
+    const sinEmail = total - conEmail;
+
+    return {
+      total,
+      conEmail,
+      sinEmail,
+    };
+  }, [dataFiltrada, dniJoin]);
 
   const registrosObjetivoMasivo = useMemo(() => {
     if (!cursoAplicado || filtroModalidad !== 'Presencial' || !filtroFecha) return [];
@@ -1901,10 +1994,185 @@ const ListaAsistencia = () => {
 
   const abrirExportarExcel = () => {
     const pre = cursoAplicado || cursoSeleccionado || '';
+    setExportMode('asistencia');
     setCursoExport(pre);
     setModalidadExport('*');
     setEstadoPresencialExport('*');
     setVisibleExport(true);
+  };
+
+  const abrirExportarMoodle = () => {
+    const pre = cursoAplicado || cursoSeleccionado || '';
+    setExportMode('moodle');
+    setCursoExport(pre);
+    setModalidadExport('*');
+    setEstadoPresencialExport('*');
+    setVisibleExport(true);
+  };
+
+  const getModalidadExportLabel = (row) => {
+    if (isPresencialRow(row)) return 'Presencial';
+
+    return canonModalidad(row?.modalidad || row?.modalidadDb) || row?.modalidad || '';
+  };
+
+  const matchesModalidadExport = (row) => {
+    if (!modalidadExport || modalidadExport === '*') return true;
+
+    if (modalidadExport === 'Presencial') {
+      return isPresencialRow(row);
+    }
+
+    return getModalidadExportLabel(row) === canonModalidad(modalidadExport);
+  };
+
+  const obtenerItemsExportacion = async () => {
+    const colRef = collection(db, 'asistencia');
+    const docsMap = new Map();
+
+    const consultas = [
+      query(colRef, where('curso', '==', cursoExport)),
+      query(colRef, where('cursoTitulo', '==', cursoExport)),
+      query(colRef, where('cursoNombre', '==', cursoExport)),
+    ];
+
+    for (const qRef of consultas) {
+      const qs = await getDocs(qRef);
+
+      qs.docs.forEach((d) => {
+        docsMap.set(d.id, { id: d.id, ...d.data() });
+      });
+    }
+
+    return Array.from(docsMap.values()).filter((r) => {
+      const modalidadOk = matchesModalidadExport(r);
+      const estadoOk = matchesEstadoExport(r, estadoPresencialExport);
+
+      return modalidadOk && estadoOk;
+    });
+  };
+
+  const enriquecerItemsExportacion = async (items) => {
+    const enriched = await Promise.all(
+      items.map(async (r) => {
+        const dni = toDniDigits(r.dni);
+
+        const persona =
+          EMPTY(r.email) ||
+          EMPTY(r.departamento) ||
+          EMPTY(r.nivelEducativo) ||
+          EMPTY(r.nombre) ||
+          EMPTY(r.apellido)
+            ? await getPersonaDataCached(dni)
+            : {};
+
+        return {
+          ...r,
+          dni,
+          modalidad: getModalidadExportLabel(r),
+          email: sanitizeMissing(r.email) || sanitizeMissing(persona.email),
+          departamento: sanitizeMissing(r.departamento) || sanitizeMissing(persona.departamento),
+          nivelEducativo: sanitizeMissing(r.nivelEducativo) || sanitizeMissing(persona.nivelEducativo),
+          nombre: sanitizeMissing(r.nombre) || sanitizeMissing(persona.nombre),
+          apellido: sanitizeMissing(r.apellido) || sanitizeMissing(persona.apellido),
+        };
+      })
+    );
+
+    return enriched.sort((a, b) => {
+      const ta = parseToDate(a.fecha)?.getTime() || 0;
+      const tb = parseToDate(b.fecha)?.getTime() || 0;
+
+      if (ta !== tb) return ta - tb;
+
+      const apellidoA = normalizeText(deriveNombreApellido(a).apellido);
+      const apellidoB = normalizeText(deriveNombreApellido(b).apellido);
+
+      return apellidoA.localeCompare(apellidoB);
+    });
+  };
+
+  const crearFilasControlAsistencia = (enriched, emailPorDni = null) =>
+    enriched.map((r) => {
+      const { nombre, apellido } = deriveNombreApellido(r);
+      const dni = toDniDigits(r.dni);
+      const estado = getEstadoPresencial(r);
+      const email = emailPorDni?.get(dni) || r.email || '';
+
+      return {
+        Fecha: r.fecha || '',
+        Curso: r.curso || r.cursoNombre || r.cursoTitulo || '',
+        Modalidad: r.modalidad || '',
+        Nombre: nombre || '',
+        Apellido: apellido || '',
+        DNI: dni || '',
+        Departamento: r.departamento || '',
+        'Nivel Educativo': r.nivelEducativo || '',
+        Email: email,
+        Ingreso: formatMarcaAsistencia(getIngresoRaw(r)),
+        Salida: formatMarcaAsistencia(getSalidaRaw(r)),
+        'Estado presencial': `${estado.label} - ${estado.detail}`,
+      };
+    });
+
+  const crearFilasMoodle = (enriched) => {
+    const agrupados = new Map();
+
+    enriched.forEach((r) => {
+      const dni = toDniDigits(r.dni);
+
+      if (!dni) return;
+
+      const { nombre, apellido } = deriveNombreApellido(r);
+      const actual = agrupados.get(dni) || {
+        dni,
+        nombre: '',
+        apellido: '',
+        email: '',
+      };
+
+      if (!actual.nombre && nombre) actual.nombre = nombre;
+      if (!actual.apellido && apellido) actual.apellido = apellido;
+      if (!actual.email && sanitizeMissing(r.email)) actual.email = sanitizeMissing(r.email);
+
+      agrupados.set(dni, actual);
+    });
+
+    const ordenados = Array.from(agrupados.values()).sort((a, b) => {
+      const apellidos = normalizeText(a.apellido).localeCompare(normalizeText(b.apellido));
+
+      if (apellidos !== 0) return apellidos;
+
+      return normalizeText(a.nombre).localeCompare(normalizeText(b.nombre));
+    });
+
+    const emailPorDni = new Map();
+    let contadorSinCorreo = 1;
+
+    const moodleRows = ordenados.map((persona) => {
+      const email = persona.email || `usuario${contadorSinCorreo++}@gmail.com.ar`;
+
+      emailPorDni.set(persona.dni, email);
+
+      return {
+        firstname: persona.nombre || '',
+        lastname: persona.apellido || '',
+        username: persona.dni,
+        password: persona.dni,
+        course1: '',
+        email,
+      };
+    });
+
+    return {
+      moodleRows,
+      emailPorDni,
+      correosGenerados: contadorSinCorreo - 1,
+    };
+  };
+
+  const aplicarAnchos = (worksheet, widths) => {
+    worksheet['!cols'] = widths.map((wch) => ({ wch }));
   };
 
   const descargarExcelPorCurso = async () => {
@@ -1921,29 +2189,7 @@ const ListaAsistencia = () => {
     setExporting(true);
 
     try {
-      const colRef = collection(db, 'asistencia');
-
-      let qs = await getDocs(query(colRef, where('curso', '==', cursoExport)));
-      let items = qs.docs.map((d) => d.data());
-
-      if (!items.length) {
-        qs = await getDocs(query(colRef, where('cursoTitulo', '==', cursoExport)));
-        items = qs.docs.map((d) => d.data());
-      }
-
-      if (!items.length) {
-        qs = await getDocs(query(colRef, where('cursoNombre', '==', cursoExport)));
-        items = qs.docs.map((d) => d.data());
-      }
-
-      items = items.filter((r) => {
-        const modalidadOk =
-          modalidadExport === '*' || canonModalidad(r.modalidad) === canonModalidad(modalidadExport);
-
-        const estadoOk = matchesEstadoExport(r, estadoPresencialExport);
-
-        return modalidadOk && estadoOk;
-      });
+      const items = await obtenerItemsExportacion();
 
       if (!items.length) {
         toast.current?.show({
@@ -1956,59 +2202,12 @@ const ListaAsistencia = () => {
         return;
       }
 
-      const enriched = await Promise.all(
-        items.map(async (r) => {
-          const dni = toDniDigits(r.dni);
-
-          const persona =
-            EMPTY(r.email) ||
-            EMPTY(r.departamento) ||
-            EMPTY(r.nivelEducativo) ||
-            EMPTY(r.nombre) ||
-            EMPTY(r.apellido)
-              ? await getPersonaDataCached(dni)
-              : {};
-
-          return {
-            ...r,
-            modalidad: canonModalidad(r.modalidad),
-            email: r.email || persona.email || '',
-            departamento: r.departamento || persona.departamento || '',
-            nivelEducativo: r.nivelEducativo || persona.nivelEducativo || '',
-            nombre: r.nombre || persona.nombre || '',
-            apellido: r.apellido || persona.apellido || '',
-          };
-        })
-      );
-
-      const data = enriched
-        .sort((a, b) => {
-          const ta = parseToDate(a.fecha)?.getTime() || 0;
-          const tb = parseToDate(b.fecha)?.getTime() || 0;
-          return ta - tb;
-        })
-        .map((r) => {
-          const { nombre, apellido } = deriveNombreApellido(r);
-          const estado = getEstadoPresencial(r);
-
-          return {
-            Fecha: r.fecha || '',
-            Curso: r.curso || r.cursoNombre || r.cursoTitulo || '',
-            Modalidad: r.modalidad || '',
-            Nombre: nombre || '',
-            Apellido: apellido || '',
-            DNI: r.dni || '',
-            Departamento: r.departamento || '',
-            'Nivel Educativo': r.nivelEducativo || '',
-            Email: r.email || '',
-            Ingreso: formatMarcaAsistencia(getIngresoRaw(r)),
-            Salida: formatMarcaAsistencia(getSalidaRaw(r)),
-            'Estado presencial': `${estado.label} - ${estado.detail}`,
-          };
-        });
-
+      const enriched = await enriquecerItemsExportacion(items);
+      const data = crearFilasControlAsistencia(enriched);
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
+
+      aplicarAnchos(ws, [12, 34, 14, 20, 22, 14, 20, 20, 30, 22, 22, 24]);
 
       XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
 
@@ -2040,6 +2239,96 @@ const ListaAsistencia = () => {
         severity: 'error',
         summary: 'Error',
         detail: 'No se pudo generar el Excel.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const descargarExcelMoodle = async () => {
+    if (!cursoExport || !String(cursoExport).trim()) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Faltan datos',
+        detail: 'Seleccioná el curso para exportar.',
+      });
+
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const items = await obtenerItemsExportacion();
+
+      if (!items.length) {
+        toast.current?.show({
+          severity: 'info',
+          summary: 'Sin datos',
+          detail: 'No hay registros para los filtros seleccionados.',
+        });
+
+        setExporting(false);
+        return;
+      }
+
+      const enriched = await enriquecerItemsExportacion(items);
+      const { moodleRows, emailPorDni, correosGenerados } = crearFilasMoodle(enriched);
+
+      if (!moodleRows.length) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Sin DNI válidos',
+          detail: 'No hay registros con DNI válido para generar la hoja Moodle.',
+        });
+
+        setExporting(false);
+        return;
+      }
+
+      const controlRows = crearFilasControlAsistencia(enriched, emailPorDni);
+      const wb = XLSX.utils.book_new();
+
+      const wsMoodle = XLSX.utils.json_to_sheet(moodleRows, {
+        header: ['firstname', 'lastname', 'username', 'password', 'course1', 'email'],
+      });
+
+      aplicarAnchos(wsMoodle, [22, 24, 16, 16, 14, 34]);
+
+      const wsControl = XLSX.utils.json_to_sheet(controlRows);
+      aplicarAnchos(wsControl, [12, 34, 14, 20, 22, 14, 20, 20, 30, 22, 22, 24]);
+
+      XLSX.utils.book_append_sheet(wb, wsMoodle, 'Moodle');
+      XLSX.utils.book_append_sheet(wb, wsControl, 'Control asistencia');
+
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+
+      const modaSlug = modalidadExport === '*' ? 'todas' : modalidadExport.toLowerCase();
+      const estadoSlug = estadoPresencialExport === '*' ? 'todos' : estadoPresencialExport;
+
+      const filename = `moodle_${slug(cursoExport)}_${slug(modaSlug)}_${slug(estadoSlug)}_${y}${m}${d}_${hh}${mm}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Excel Moodle generado',
+        detail: `Usuarios únicos: ${moodleRows.length}. Correos generados: ${correosGenerados}.`,
+      });
+
+      setVisibleExport(false);
+    } catch (err) {
+      console.error('descargar excel moodle:', err);
+
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo generar el Excel para Moodle.',
       });
     } finally {
       setExporting(false);
@@ -2251,6 +2540,15 @@ const ListaAsistencia = () => {
         disabled={isBusy}
       />
 
+      <Button
+        label="Descargar Moodle"
+        icon="pi pi-file-excel"
+        severity="success"
+        onClick={guardBusy(abrirExportarMoodle)}
+        disabled={isBusy}
+        title="Genera un Excel con hoja Moodle y hoja Control asistencia"
+      />
+
       <Calendar
         value={filtroFecha}
         onChange={(e) => setFiltroFecha(e.value)}
@@ -2292,6 +2590,24 @@ const ListaAsistencia = () => {
       </div>
 
       <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
+
+      <div className={styles.emailSummary}>
+        <span className={styles.emailSummaryItem}>
+          Usuarios únicos: <strong>{resumenCorreos.total}</strong>
+        </span>
+
+        <span className={styles.emailSummaryItem}>
+          Con correo: <strong>{resumenCorreos.conEmail}</strong>
+        </span>
+
+        <span
+          className={`${styles.emailSummaryItem} ${
+            resumenCorreos.sinEmail > 0 ? styles.emailSummaryWarning : styles.emailSummaryOk
+          }`}
+        >
+          Sin correo: <strong>{resumenCorreos.sinEmail}</strong>
+        </span>
+      </div>
 
       <DataTable
         key={cursoAplicado || 'all'}
@@ -2823,9 +3139,9 @@ const ListaAsistencia = () => {
 
       {/* Modal exportar */}
       <Dialog
-        header="Descargar Excel por curso"
+        header={exportMode === 'moodle' ? 'Descargar Excel para Moodle' : 'Descargar Excel por curso'}
         visible={visibleExport}
-        style={{ width: 560, maxWidth: '95vw' }}
+        style={{ width: 620, maxWidth: '95vw' }}
         modal
         onHide={() => setVisibleExport(false)}
       >
@@ -2873,14 +3189,25 @@ const ListaAsistencia = () => {
               disabled={isBusy}
             />
           </div>
+
+          {exportMode === 'moodle' && (
+            <div className={styles.formRowFull}>
+              <small className={styles.helpText}>
+                La descarga para Moodle genera dos hojas: <strong>Moodle</strong> con una sola fila por DNI
+                y <strong>Control asistencia</strong> con el detalle completo. Si falta el correo, se genera
+                automáticamente como <strong>usuario1@gmail.com.ar</strong>, <strong>usuario2@gmail.com.ar</strong>, etc.
+                El campo <strong>course1</strong> queda vacío y la contraseña es el DNI sin puntos.
+              </small>
+            </div>
+          )}
         </div>
 
         <div className={styles.dialogActions}>
           <Button
-            label="Descargar"
+            label={exportMode === 'moodle' ? 'Descargar Moodle' : 'Descargar'}
             icon="pi pi-download"
             severity="success"
-            onClick={descargarExcelPorCurso}
+            onClick={exportMode === 'moodle' ? descargarExcelMoodle : descargarExcelPorCurso}
             disabled={!cursoExport || !String(cursoExport).trim() || isBusy}
             loading={exporting}
           />

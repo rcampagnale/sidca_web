@@ -98,6 +98,48 @@
 }
 
 /* ==============================
+   RESUMEN CORREOS
+   ============================== */
+
+.emailSummary {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: -4px 0 14px 0;
+}
+
+.emailSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.emailSummaryItem strong {
+  font-weight: 800;
+}
+
+.emailSummaryOk {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.emailSummaryWarning {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+/* ==============================
    TABLA RESPONSIVE
    ============================== */
 
@@ -462,6 +504,15 @@
   .blockCard {
     width: 92vw;
     min-width: auto;
+  }
+
+  .emailSummary {
+    gap: 8px;
+  }
+
+  .emailSummaryItem {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 .hide1450,
