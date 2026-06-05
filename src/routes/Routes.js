@@ -49,6 +49,9 @@ import ReservaCasaDocenteAdmin from "../pages/Admin/ReservaCasaDocente/ReservaCa
 import AfiliadoActualizado from "../pages/Admin/AfiliadoActualizado/AfiliadoActualizado";
 import Convenio from "../pages/Convenios/Convenios";
 
+// Nueva página administrativa: Servicios Contratados
+import Servicios from "../pages/Admin/Servicios/Servicios";
+
 // Página pública Comercio
 import Comercio from "../pages/Comercio/comercio";
 import ComercioLogin from "../pages/Comercio/ComercioLogin";
@@ -272,6 +275,9 @@ const AppRouter = () => {
           path="/admin/AfiliadosDashboard"
           component={AfiliadosDashboard}
         />
+
+        {/* Servicios Contratados */}
+        <AdminRoute exact path="/admin/servicios" component={Servicios} />
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
 

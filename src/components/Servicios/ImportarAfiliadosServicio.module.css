@@ -1,0 +1,119 @@
+/* src/components/Servicios/ImportarAfiliadosServicio.module.css */
+
+.importBox {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #f59e0b;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.importHeader {
+  margin-bottom: 1rem;
+}
+
+.importHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.importHeader p {
+  margin: 5px 0 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.importGrid {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(280px, 1.2fr) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.formRow label {
+  color: #334155;
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+
+.formRow small {
+  color: #64748b;
+}
+
+.monthInput,
+.fileInput {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.importActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.importActions :global(.p-button) {
+  min-height: 44px;
+}
+
+.previewBox {
+  margin-top: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.errorBox {
+  margin-top: 1rem;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.previewBox h4,
+.errorBox h4 {
+  margin: 0 0 0.75rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.previewTable :global(.p-datatable-thead > tr > th) {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.previewTable :global(.p-datatable-tbody > tr > td) {
+  vertical-align: middle;
+}
+
+@media (max-width: 900px) {
+  .importGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .importActions {
+    flex-direction: column;
+  }
+
+  .importActions :global(.p-button) {
+    width: 100%;
+  }
+}

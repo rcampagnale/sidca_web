@@ -1,0 +1,546 @@
+/* src/pages/Admin/Servicios/servicios.module.css */
+
+/* =========================
+   Página principal
+========================= */
+
+.serviciosPage {
+  width: 100%;
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 100%;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffffff, #eef7f1);
+  border-left: 6px solid #22c55e;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.titulo {
+  margin: 0;
+  color: #0f5132;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.subtitulo {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 0.98rem;
+}
+
+/* =========================
+   Tarjetas resumen
+========================= */
+
+.resumenGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.resumenCard {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.resumenCard strong {
+  color: #0f172a;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.resumenLabel {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.infoBox {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-left: 5px solid #10b981;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* =========================
+   Buscador general
+========================= */
+
+.busquedaGeneralBox {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #0ea5e9;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.busquedaGeneralBox h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.busquedaGeneralBox p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.busquedaGeneralControls {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.busquedaGeneralControls :global(.p-inputtext) {
+  min-width: 320px;
+  flex: 1;
+  height: 44px;
+}
+
+/* =========================
+   Resumen mensual del buscador general
+========================= */
+
+.resumenTotalMensualBox {
+  margin-top: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #22c55e;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.resumenTotalMensualPrincipal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 1rem;
+}
+
+.resumenTotalMensualPrincipal span {
+  color: #065f46;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.resumenTotalMensualPrincipal strong {
+  color: #022c22;
+  font-size: 1.5rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.resumenTotalMensualTabla h4 {
+  margin: 0 0 0.75rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.totalMensualServicio {
+  color: #0f5132;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* Lo dejamos por compatibilidad si algún componente anterior todavía lo usa */
+.totalServicio {
+  color: #0f5132;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* =========================
+   Tabla principal
+========================= */
+
+.tableContainer {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  margin-bottom: 1rem;
+}
+
+.loadingBox {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  justify-content: center;
+  align-items: center;
+  color: #64748b;
+}
+
+.sectionTitle {
+  color: #0f172a;
+  margin: 0 0 1rem;
+  font-weight: 800;
+}
+
+.serviciosTable {
+  width: 100%;
+}
+
+.serviciosTable :global(.p-datatable-thead > tr > th) {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.serviciosTable :global(.p-datatable-tbody > tr > td) {
+  vertical-align: middle;
+  font-size: 0.92rem;
+}
+
+.serviciosTable :global(.p-datatable-tbody > tr:hover) {
+  background: #f8fafc;
+}
+
+/* Evita que la columna acciones se corte o baje de línea */
+.serviciosTable :global(.p-datatable-tbody > tr > td:last-child),
+.serviciosTable :global(.p-datatable-thead > tr > th:last-child) {
+  min-width: 230px;
+  width: 230px;
+}
+
+/* =========================
+   Badges y estados
+========================= */
+
+.badgeCuotas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #075985;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.estadoActivo,
+.estadoInactivo,
+.estadoVisible,
+.estadoOculto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  min-width: 78px;
+}
+
+.estadoActivo {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.estadoInactivo {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.estadoVisible {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.estadoOculto {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* =========================
+   Acciones
+========================= */
+
+.accionesTabla {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+}
+
+.accionesTabla :global(.p-button) {
+  width: 38px;
+  height: 38px;
+}
+
+/* =========================
+   Formulario nuevo / editar servicio
+========================= */
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.formRow label {
+  font-weight: 700;
+  color: #334155;
+  font-size: 0.92rem;
+}
+
+.formRow :global(.p-inputtext),
+.formRow :global(.p-inputtextarea) {
+  width: 100%;
+}
+
+.formTwoColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.switchGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.switchItem {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.switchItem strong {
+  color: #0f172a;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.switchItem small {
+  color: #64748b;
+  line-height: 1.35;
+  display: block;
+}
+
+.notaImportante {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* =========================
+   Modal de cuotas
+========================= */
+
+.cuotasHeader {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #0ea5e9;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cuotasHeader strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.cuotasHeader span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.cuotaPendiente,
+.cuotaCobrada,
+.cuotaNoCobrada {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  min-width: 90px;
+}
+
+.cuotaPendiente {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.cuotaCobrada {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.cuotaNoCobrada {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.filaNoCobrada {
+  background: #fff1f2 !important;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 768px) {
+  .serviciosPage {
+    padding: 12px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .resumenGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formTwoColumns,
+  .switchGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialogFooter {
+    justify-content: center;
+  }
+
+  .busquedaGeneralControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .busquedaGeneralControls :global(.p-inputtext) {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .accionesTabla {
+    flex-wrap: wrap;
+  }
+
+  .serviciosTable :global(.p-datatable-tbody > tr > td:last-child),
+  .serviciosTable :global(.p-datatable-thead > tr > th:last-child) {
+    min-width: 180px;
+    width: 180px;
+  }
+
+  .resumenTotalMensualPrincipal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+/* ===== Texto descriptivo en tabla principal ===== */
+
+.descripcionTabla {
+  max-width: 650px;
+  color: #334155;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  text-align: justify;
+  text-justify: inter-word;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.descripcionTabla::first-letter {
+  text-transform: uppercase;
+}
+
+/* ===== Resaltar cuotas no cobradas ===== */
+
+.noCobradasAlerta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border: 1px solid #fecaca;
+}
+
+.noCobradasNormal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: 1px solid #e2e8f0;
+}

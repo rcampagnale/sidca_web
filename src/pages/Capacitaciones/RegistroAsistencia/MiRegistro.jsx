@@ -922,6 +922,90 @@ export default function MiRegistro() {
     return { ref: refDefault, data: null, exists: false };
   };
 
+
+  const cursoCoincideConSesionActual = (data = {}, sesion = {}) => {
+    const cursoIdData = String(
+      data?.cursoId || data?.idCurso || data?.courseId || data?.cursoDocId || ""
+    ).trim();
+
+    const cursoIdSesion = String(sesion?.cursoId || selectedCourseId || "").trim();
+
+    if (cursoIdData && cursoIdSesion && cursoIdData === cursoIdSesion) {
+      return true;
+    }
+
+    const nombreData = normalizarCursoKey(
+      data?.cursoTitulo ||
+        data?.curso ||
+        data?.cursoNombre ||
+        data?.nombreCurso ||
+        data?.capacitacion ||
+        data?.tituloCurso ||
+        ""
+    );
+
+    const nombreSesion = normalizarCursoKey(
+      sesion?.cursoTitulo ||
+        sesion?.curso ||
+        sesion?.cursoNombre ||
+        sesion?.nombreCurso ||
+        selectedCourse ||
+        ""
+    );
+
+    return Boolean(nombreData && nombreSesion && nombreData === nombreSesion);
+  };
+
+  const buscarIngresoPendienteMismoCurso = async ({ dniValue, sesion }) => {
+    if (!dniValue) return null;
+
+    const qDni = query(collection(db, "asistencia"), where("dni", "==", dniValue));
+    const snapDni = await getDocs(qDni);
+
+    const candidatos = snapDni.docs
+      .map((d) => ({
+        ref: d.ref,
+        data: {
+          id: d.id,
+          ...d.data(),
+        },
+      }))
+      .filter(({ data }) => {
+        const esPresencial =
+          normalizarTexto(data?.modalidad || "") === "presencial" ||
+          data?.presencial === true;
+
+        const tieneIngreso = tieneIngresoRegistrado(data);
+        const tieneSalida = tieneSalidaRegistrada(data);
+        const mismoCurso = cursoCoincideConSesionActual(data, sesion);
+
+        return esPresencial && tieneIngreso && !tieneSalida && mismoCurso;
+      })
+      .sort((a, b) => {
+        const fechaA =
+          getSortTime(obtenerValorIngreso(a.data)) ||
+          getSortTime(a.data?.updatedAt) ||
+          getSortTime(a.data?.createdAt) ||
+          0;
+
+        const fechaB =
+          getSortTime(obtenerValorIngreso(b.data)) ||
+          getSortTime(b.data?.updatedAt) ||
+          getSortTime(b.data?.createdAt) ||
+          0;
+
+        return fechaB - fechaA;
+      });
+
+    if (candidatos.length === 0) return null;
+
+    return {
+      ref: candidatos[0].ref,
+      data: candidatos[0].data,
+      exists: true,
+    };
+  };
+
   const resolverSesionPorCodigo = async (codeParam) => {
     const qSes = query(
       collection(db, "asistencia_sesiones"),
@@ -1301,8 +1385,9 @@ export default function MiRegistro() {
     const deviceId = await validarDispositivoAfiliado();
 
     setMensajeProceso("Verificando registro de ingreso y salida...");
-    const docAsistencia = await buscarDocAsistenciaSesion(sessionId, perfil.dni);
-    const anterior = docAsistencia.exists ? docAsistencia.data : null;
+
+    let docAsistencia = await buscarDocAsistenciaSesion(sessionId, perfil.dni);
+    let anterior = docAsistencia.exists ? docAsistencia.data : null;
 
     const tipoDesdeSesion =
       tipoParam ||
@@ -1315,7 +1400,26 @@ export default function MiRegistro() {
       sesion.tipoQR ||
       "";
 
-    const tipoRegistroQR = normalizarTipoRegistroQR(tipoDesdeSesion, anterior);
+    let tipoRegistroQR = normalizarTipoRegistroQR(tipoDesdeSesion, anterior);
+
+    /*
+      Corrección web para QR de salida:
+      Si la salida usa una sesión distinta a la del ingreso, primero no va a
+      encontrar el documento `${sessionId}_${dni}`. En ese caso buscamos un
+      ingreso pendiente del mismo DNI y del mismo curso, y completamos la salida
+      sobre ese mismo documento.
+    */
+    if (tipoRegistroQR === "salida" && !tieneIngresoRegistrado(anterior)) {
+      const ingresoPendiente = await buscarIngresoPendienteMismoCurso({
+        dniValue: perfil.dni,
+        sesion,
+      });
+
+      if (ingresoPendiente?.exists) {
+        docAsistencia = ingresoPendiente;
+        anterior = ingresoPendiente.data;
+      }
+    }
 
     if (tipoRegistroQR === "completa") {
       throw new Error("La asistencia ya tiene ingreso y salida registrados.");
@@ -1408,6 +1512,11 @@ export default function MiRegistro() {
         docAsistencia.ref,
         {
           ...baseRegistro,
+          // Conserva la sesión original del ingreso cuando la salida se marca
+          // con otra sesión/otro QR, y deja auditoría de la sesión de salida.
+          sessionId: anterior?.sessionId || sessionId,
+          sessionIdSalida: sessionId,
+          codigoSalida: codeParam,
           salida: {
             registrado: true,
             codigoUsado: codeParam,
@@ -1416,7 +1525,6 @@ export default function MiRegistro() {
             dispositivoValidado: true,
             createdAt: serverTimestamp(),
           },
-          codigoSalida: codeParam,
           asistenciaValidada: true,
           asistenciaValida: true,
           presente: true,

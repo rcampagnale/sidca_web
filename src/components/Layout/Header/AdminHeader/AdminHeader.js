@@ -14,7 +14,7 @@ const NAV_GROUPS = [
       { label: "Enlaces", path: "/admin/enlaces" },
       { label: "Usuarios", path: "/admin/usuarios" },
       { label: "Habilitar Botones", path: "/admin/botones" },
-      { label: "Oficina de Gestión", path: "/admin/oficina-gestion" }, // ✅ NUEVA PÁGINA
+      { label: "Oficina de Gestión", path: "/admin/oficina-gestion" },
       { label: "Asesoramiento", path: "/admin/asesoramiento" },
       { label: "Novedades", path: "/admin/novedades" },
     ],
@@ -26,6 +26,9 @@ const NAV_GROUPS = [
       { label: "Afiliados", path: "/admin/nuevos-afiliados" },
       { label: "Afiliados Actualizados", path: "/admin/AfiliadoActualizado" },
       { label: "Dashboard de Afiliados", path: "/admin/AfiliadosDashboard" },
+
+      // ✅ Nueva página administrativa de servicios
+      { label: "Servicios Contratados", path: "/admin/servicios" },
     ],
   },
   {

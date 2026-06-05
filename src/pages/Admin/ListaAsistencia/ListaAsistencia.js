@@ -320,13 +320,53 @@ const SALIDA_KEYS = [
   'createdAtSalida',
 ];
 
+const REGISTRO_BOOL_KEYS = [
+  'registrado',
+  'registrada',
+  'registered',
+  'marcado',
+  'marcada',
+  'validado',
+  'validada',
+];
+
+const valueToBool = (value) => {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  const s = normalizeText(value).trim();
+
+  if (['true', 'si', 'sí', '1', 'yes', 'y'].includes(s)) return true;
+  if (['false', 'no', '0', 'n'].includes(s)) return false;
+
+  return null;
+};
+
+const getRegistroFlag = (value) => {
+  if (!value || typeof value !== 'object' || value instanceof Date) return null;
+
+  for (const key of REGISTRO_BOOL_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      const parsed = valueToBool(value[key]);
+
+      if (parsed !== null) return parsed;
+    }
+  }
+
+  return null;
+};
+
+const isMarcaExplicitamenteNoRegistrada = (value) => getRegistroFlag(value) === false;
+
 const getValueByKeys = (row, keys) => {
   for (const key of keys) {
     const value = row?.[key];
 
-    if (!isPlaceholder(value)) {
-      return value;
+    if (isPlaceholder(value) || isMarcaExplicitamenteNoRegistrada(value)) {
+      continue;
     }
+
+    return value;
   }
 
   return '';
@@ -437,7 +477,7 @@ const getObjectFirstValue = (obj, keys) => {
 };
 
 const marcaToDate = (value) => {
-  if (!value) return null;
+  if (!value || isMarcaExplicitamenteNoRegistrada(value)) return null;
 
   if (value instanceof Date) return value;
 
@@ -484,7 +524,7 @@ const marcaToDate = (value) => {
 };
 
 const formatMarcaAsistencia = (value) => {
-  if (!value) return '';
+  if (!value || isMarcaExplicitamenteNoRegistrada(value)) return '';
 
   const date = marcaToDate(value);
 
@@ -493,7 +533,15 @@ const formatMarcaAsistencia = (value) => {
   }
 
   if (typeof value === 'object') {
-    const fechaHora = getObjectFirstValue(value, ['fechaHora', 'fecha_hora', 'fechaHoraTexto']);
+    const flag = getRegistroFlag(value);
+    const fechaHora = getObjectFirstValue(value, [
+      'fechaHora',
+      'fechaHoraISO',
+      'fecha_hora',
+      'fechaHoraTexto',
+      'dateTime',
+      'datetime',
+    ]);
 
     if (fechaHora) return String(fechaHora);
 
@@ -504,17 +552,27 @@ const formatMarcaAsistencia = (value) => {
     if (fecha) return String(fecha);
     if (hora) return `${hora} hs`;
 
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return '';
-    }
+    // Si el objeto indica registrado:true pero no trae hora, cuenta como marca,
+    // pero evitamos mostrar JSON como {"registrado":true}.
+    if (flag === true) return 'Registrado';
+
+    return '';
   }
 
-  return String(value ?? '').trim();
+  const text = String(value ?? '').trim();
+  const boolValue = valueToBool(text);
+
+  if (boolValue === false) return '';
+  if (boolValue === true) return 'Registrado';
+
+  return text;
 };
 
-const hasMarca = (value) => !isPlaceholder(formatMarcaAsistencia(value));
+const hasMarca = (value) => {
+  const formatted = formatMarcaAsistencia(value);
+
+  return !isPlaceholder(formatted);
+};
 
 const getEstadoPresencial = (row) => {
   const modalidad = canonModalidad(row?.modalidad);

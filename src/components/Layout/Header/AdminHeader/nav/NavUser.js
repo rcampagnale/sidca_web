@@ -1,4 +1,5 @@
 // src/pages/Admin/components/AdminHeader/nav/NavUser.js
+
 import React, { useState } from "react";
 import { Sidebar } from "primereact/sidebar";
 import { useHistory } from "react-router-dom";
@@ -39,6 +40,9 @@ const NavUser = ({ active, setActive }) => {
         { label: "Afiliados", path: "/admin/nuevos-afiliados" },
         { label: "Afiliados Actualizados", path: "/admin/AfiliadoActualizado" },
         { label: "Dashboard de Afiliados", path: "/admin/AfiliadosDashboard" },
+
+        // ✅ Nueva página administrativa
+        { label: "Servicios Contratados", path: "/admin/servicios" },
       ],
     },
     {
