@@ -15,6 +15,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   onSnapshot,
@@ -846,7 +847,7 @@ async function getPersonaByDni(dni) {
 
   if (!cleanDni) return null;
 
-  const sources = ['usuarios', 'usuario', 'nuevoAfiliado'];
+  const sources = ['usuarios', 'nuevoAfiliado', 'usuario'];
 
   for (const source of sources) {
     const found = await findPersonaDocByDni(source, cleanDni);
@@ -881,35 +882,100 @@ const pickPersonaFields = (raw, fallbackDni = '', source = '') => {
   };
 
   const dni = toDniDigits(
-    getFirst('dni', 'DNI', 'documento', 'Documento', 'nroDocumento', 'numeroDocumento') || fallbackDni
+    getFirst(
+      'dni',
+      'DNI',
+      'documento',
+      'Documento',
+      'nroDocumento',
+      'numeroDocumento',
+      'numDocumento',
+      'idnumber',
+      'idNumber'
+    ) || fallbackDni
   );
 
-  let nombre = getFirst('nombre', 'Nombre', 'nombres', 'Nombres', 'name', 'Name');
-  let apellido = getFirst('apellido', 'Apellido', 'apellidos', 'Apellidos', 'surname', 'lastName');
+  /*
+    Algunos documentos históricos tienen los datos separados:
+      nombre: "Pablo" / apellido: "Tejeda"
+
+    Otros vienen en un solo campo:
+      nombre: "Tejeda, Pablo"
+      nombreCompleto: "Tejeda, Pablo"
+      apellidoNombre: "Tejeda Pablo"
+
+    Primero tomamos los campos posibles y después normalizamos.
+  */
+  let nombre = getFirst(
+    'nombre',
+    'Nombre',
+    'nombres',
+    'Nombres',
+    'name',
+    'Name',
+    'firstName',
+    'firstname'
+  );
+
+  let apellido = getFirst(
+    'apellido',
+    'Apellido',
+    'apellidos',
+    'Apellidos',
+    'surname',
+    'lastName',
+    'lastname'
+  );
 
   const apenom = getFirst(
     'apenom',
+    'apeNom',
     'apellidoNombre',
+    'apellido_nombre',
     'apellido_y_nombre',
     'apellidoNombreCompleto',
     'nombreApellido',
+    'nombre_apellido',
     'nombreCompleto',
+    'NombreCompleto',
     'displayName',
-    'fullName'
+    'display_name',
+    'fullName',
+    'fullname',
+    'Apellido y Nombre',
+    'Nombre y Apellido'
   );
 
   if ((!nombre || !apellido) && apenom) {
-    if (apenom.includes(',')) {
-      const sp = splitApellidoNombre(apenom);
+    const sp = apenom.includes(',')
+      ? splitApellidoNombre(apenom)
+      : splitApellidoNombreFlexible(apenom);
 
-      if (!apellido && sp.apellido) apellido = sp.apellido;
-      if (!nombre && sp.nombre) nombre = sp.nombre;
-    } else if (!nombre) {
+    if (!apellido && sp.apellido) apellido = sp.apellido;
+    if (!nombre && sp.nombre) nombre = sp.nombre;
+
+    // Si no se pudo separar por formato flexible, conservamos el texto
+    // para que deriveNombreApellido intente resolverlo.
+    if (!nombre && !apellido) {
       nombre = apenom;
     }
   }
 
-  const departamento = getFirst('departamento', 'Departamento', 'depto', 'Depto', 'dep', 'Dep');
+  const normalizado = deriveNombreApellido({
+    nombre,
+    apellido,
+  });
+
+  const departamento = getFirst(
+    'departamento',
+    'Departamento',
+    'depto',
+    'Depto',
+    'dep',
+    'Dep',
+    'localidad',
+    'Localidad'
+  );
 
   const nivelEducativo = getFirst(
     'nivelEducativo',
@@ -917,15 +983,28 @@ const pickPersonaFields = (raw, fallbackDni = '', source = '') => {
     'nivel',
     'Nivel',
     'nivel_educativo',
-    'Nivel_Educativo'
+    'Nivel_Educativo',
+    'nivel educativo',
+    'Nivel Educativo'
   );
 
-  const email = getFirst('email', 'Email', 'correo', 'Correo', 'mail', 'Mail', 'e-mail', 'E-mail');
+  const email = getFirst(
+    'email',
+    'Email',
+    'correo',
+    'Correo',
+    'mail',
+    'Mail',
+    'e-mail',
+    'E-mail',
+    'correoElectronico',
+    'correo_electronico'
+  );
 
   return {
     dni,
-    nombre: sanitizeMissing(nombre),
-    apellido: sanitizeMissing(apellido),
+    nombre: sanitizeMissing(normalizado.nombre),
+    apellido: sanitizeMissing(normalizado.apellido),
     departamento: sanitizeMissing(departamento),
     nivelEducativo: sanitizeMissing(nivelEducativo),
     email: sanitizeMissing(email),
@@ -1398,11 +1477,11 @@ const ListaAsistencia = () => {
       return;
     }
 
-    if (!ingresoMasivo || !salidaMasivo) {
+    if (!ingresoMasivo && !salidaMasivo) {
       toast.current?.show({
         severity: 'warn',
         summary: 'Horarios incompletos',
-        detail: 'Indicá ingreso y salida.',
+        detail: 'Indicá al menos ingreso o salida.',
       });
 
       return;
@@ -1418,10 +1497,10 @@ const ListaAsistencia = () => {
       return;
     }
 
-    const ingresoTexto = formatDateTimeAR(ingresoMasivo);
-    const salidaTexto = formatDateTimeAR(salidaMasivo);
-    const ingresoISO = dateToLocalISOArgentina(ingresoMasivo);
-    const salidaISO = dateToLocalISOArgentina(salidaMasivo);
+    const ingresoTexto = ingresoMasivo ? formatDateTimeAR(ingresoMasivo) : '';
+    const salidaTexto = salidaMasivo ? formatDateTimeAR(salidaMasivo) : '';
+    const ingresoISO = ingresoMasivo ? dateToLocalISOArgentina(ingresoMasivo) : '';
+    const salidaISO = salidaMasivo ? dateToLocalISOArgentina(salidaMasivo) : '';
 
     setSavingMasivo(true);
 
@@ -1434,20 +1513,29 @@ const ListaAsistencia = () => {
         const tieneIngreso = hasMarca(getIngresoRaw(row));
         const tieneSalida = hasMarca(getSalidaRaw(row));
 
-        const debeActualizarIngreso = sobrescribirMarcas || !tieneIngreso;
-        const debeActualizarSalida = sobrescribirMarcas || !tieneSalida;
+        const debeActualizarIngreso = !!ingresoMasivo && (sobrescribirMarcas || !tieneIngreso);
+        const debeActualizarSalida = !!salidaMasivo && (sobrescribirMarcas || !tieneSalida);
 
         if (!debeActualizarIngreso && !debeActualizarSalida) {
           sinCambios += 1;
           continue;
         }
 
+        const finalTieneIngreso = debeActualizarIngreso ? true : tieneIngreso;
+        const finalTieneSalida = debeActualizarSalida ? true : tieneSalida;
+        const registroCompleto = finalTieneIngreso && finalTieneSalida;
+
         const patch = {
           presencial: true,
           modalidad: 'presencial',
           modalidadDb: 'presencial',
-          estado: 'Presente',
-          estadoAsistencia: 'validada',
+          estado: registroCompleto ? 'Presente' : 'Incompleto',
+          estadoAsistencia: registroCompleto ? 'validada' : 'parcial',
+          estadoPresencial: registroCompleto
+            ? 'completo'
+            : finalTieneIngreso
+            ? 'solo_ingreso'
+            : 'solo_salida',
           asistenciaValidada: true,
           actualizadoIngresoSalidaMasivoAdmin: true,
           updatedAt: new Date(),
@@ -1655,8 +1743,9 @@ const ListaAsistencia = () => {
       if (!formToSave.apellido?.trim()) faltan.push('Apellido');
 
       if (formToSave.modalidad === 'Presencial') {
-        if (!formToSave.ingreso) faltan.push('Ingreso');
-        if (!formToSave.salida) faltan.push('Salida');
+        if (!formToSave.ingreso && !formToSave.salida) {
+          faltan.push('Ingreso o Salida');
+        }
       }
 
       if (faltan.length) {
@@ -1695,29 +1784,58 @@ const ListaAsistencia = () => {
       };
 
       if (formToSave.modalidad === 'Presencial') {
-        const ingresoTexto = formatDateTimeAR(formToSave.ingreso);
-        const salidaTexto = formatDateTimeAR(formToSave.salida);
-        const ingresoISO = dateToLocalISOArgentina(formToSave.ingreso);
-        const salidaISO = dateToLocalISOArgentina(formToSave.salida);
+        const tieneIngreso = !!formToSave.ingreso;
+        const tieneSalida = !!formToSave.salida;
+        const registroCompleto = tieneIngreso && tieneSalida;
 
         payload.presencial = true;
-        payload.ingreso = {
-          registrado: true,
-          fechaHora: ingresoTexto,
-          fechaHoraISO: ingresoISO,
-          metodo: 'manual_admin',
-        };
-        payload.salida = {
-          registrado: true,
-          fechaHora: salidaTexto,
-          fechaHoraISO: salidaISO,
-          metodo: 'manual_admin',
-        };
-        payload.ingresoFechaHora = ingresoTexto;
-        payload.salidaFechaHora = salidaTexto;
+        payload.estado = registroCompleto ? 'Presente' : 'Incompleto';
+        payload.estadoAsistencia = registroCompleto ? 'validada' : 'parcial';
+        payload.estadoPresencial = registroCompleto
+          ? 'completo'
+          : tieneIngreso
+          ? 'solo_ingreso'
+          : 'solo_salida';
+        payload.asistenciaValidada = true;
         payload.creadoManualAdmin = true;
+
+        if (tieneIngreso) {
+          const ingresoTexto = formatDateTimeAR(formToSave.ingreso);
+          const ingresoISO = dateToLocalISOArgentina(formToSave.ingreso);
+
+          payload.ingreso = {
+            registrado: true,
+            fechaHora: ingresoTexto,
+            fechaHoraISO: ingresoISO,
+            metodo: 'manual_admin',
+          };
+          payload.ingresoFechaHora = ingresoTexto;
+        } else if (editandoId) {
+          payload.ingreso = deleteField();
+          payload.ingresoFechaHora = deleteField();
+        }
+
+        if (tieneSalida) {
+          const salidaTexto = formatDateTimeAR(formToSave.salida);
+          const salidaISO = dateToLocalISOArgentina(formToSave.salida);
+
+          payload.salida = {
+            registrado: true,
+            fechaHora: salidaTexto,
+            fechaHoraISO: salidaISO,
+            metodo: 'manual_admin',
+          };
+          payload.salidaFechaHora = salidaTexto;
+        } else if (editandoId) {
+          payload.salida = deleteField();
+          payload.salidaFechaHora = deleteField();
+        }
       } else {
         payload.presencial = false;
+        payload.estado = 'Presente';
+        payload.estadoAsistencia = 'validada';
+        payload.estadoPresencial = 'virtual';
+        payload.asistenciaValidada = true;
         payload.ingreso = '';
         payload.salida = '';
         payload.ingresoFechaHora = '';
@@ -2828,7 +2946,7 @@ const ListaAsistencia = () => {
               </span>
             </div>
             <small className={styles.helpText}>
-              Recomendado: dejar desactivado para no pisar registros cargados desde QR o editados manualmente.
+              Recomendado: dejar desactivado para no pisar registros cargados desde QR o editados manualmente. Podés cargar solo ingreso, solo salida o ambos.
             </small>
           </div>
         </div>
@@ -2840,7 +2958,7 @@ const ListaAsistencia = () => {
             severity="success"
             onClick={cargarIngresoSalidaMasivo}
             loading={savingMasivo}
-            disabled={savingMasivo || !ingresoMasivo || !salidaMasivo || registrosObjetivoMasivo.length === 0}
+            disabled={savingMasivo || (!ingresoMasivo && !salidaMasivo) || registrosObjetivoMasivo.length === 0}
           />
           <Button
             label="Cancelar"
