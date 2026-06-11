@@ -50,6 +50,8 @@ import {
   startAfter as fsStartAfter,
   limit as fsLimit,
   documentId,
+  arrayUnion,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config.js";
 
@@ -94,6 +96,14 @@ const toDniKey = (dniRaw) =>
   String(dniRaw ?? "")
     .replace(/[^\d]/g, "")
     .trim();
+
+const getTodayDateInput = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 // =======================
 // Helpers dispositivo asistencia
@@ -659,6 +669,13 @@ export default function AfiliadoActualizado() {
 
   const [currentRow, setCurrentRow] = useState(null);
 
+  // Baja / eliminación con fecha
+  const [bajaVisible, setBajaVisible] = useState(false);
+  const [bajaFecha, setBajaFecha] = useState(getTodayDateInput());
+  const [bajaRow, setBajaRow] = useState(null);
+  const [bajaTipo, setBajaTipo] = useState(null); // "simple" | "ambos"
+  const [bajaSaving, setBajaSaving] = useState(false);
+
   // Export
   const [exporting, setExporting] = useState(false);
   const [exportModal, setExportModal] = useState(false);
@@ -866,84 +883,128 @@ export default function AfiliadoActualizado() {
     setShowDetail(true);
   };
 
-  const onEliminar = (row) => {
+  const abrirModalBaja = (row, tipo = "simple") => {
     if (!row) return;
 
-    confirmDialog({
-      message: `¿Eliminar el registro de ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
-      header: "Confirmar eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Sí, eliminar",
-      rejectLabel: "Cancelar",
-      acceptClassName: "p-button-danger",
-      accept: async () => {
-        try {
-          if (row.origen === "nuevoAfiliado") {
-            const res = await dispatch(deleteAfiliadoById(row.id));
-
-            if (res?.meta?.requestStatus === "rejected") {
-              throw new Error(res?.payload || "No se pudo eliminar");
-            }
-
-            setRowsNuevo((prev) => prev.filter((x) => x.id !== row.id));
-          } else {
-            await fsDeleteDoc(fsDoc(db, "usuarios", String(row.id)));
-
-            setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.id));
-            setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.id));
-          }
-
-          showSuccess("Eliminado correctamente");
-        } catch (e) {
-          showError(e?.message || "Error al eliminar");
-        }
-      },
-    });
+    actionMenuRef.current?.hide?.();
+    setBajaRow(row);
+    setBajaTipo(tipo);
+    setBajaFecha(getTodayDateInput());
+    setBajaVisible(true);
   };
 
-  const onEliminarAmbos = (row) => {
-    if (!row) return;
+  const cerrarModalBaja = () => {
+    if (bajaSaving) return;
 
-    confirmDialog({
-      message: `¿Eliminar en ambas colecciones a ${row.apellido}, ${row.nombre} (DNI ${row.dni})?`,
-      header: "Confirmar eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Sí, eliminar en ambas",
-      rejectLabel: "Cancelar",
-      acceptClassName: "p-button-danger",
-      accept: async () => {
-        try {
-          if (row.idNuevo) {
-            const res = await dispatch(deleteAfiliadoById(row.idNuevo));
-
-            if (res?.meta?.requestStatus === "rejected") {
-              throw new Error(
-                res?.payload || "No se pudo eliminar en nuevoAfiliado"
-              );
-            }
-
-            setRowsNuevo((prev) => prev.filter((x) => x.id !== row.idNuevo));
-          }
-
-          if (row.idUsuario) {
-            await fsDeleteDoc(fsDoc(db, "usuarios", String(row.idUsuario)));
-
-            setRowsUsuariosLocal((prev) =>
-              prev.filter((x) => x.id !== row.idUsuario)
-            );
-
-            setExtraUsuariosRows((prev) =>
-              prev.filter((x) => x.id !== row.idUsuario)
-            );
-          }
-
-          showSuccess("Eliminado en ambas colecciones.");
-        } catch (e) {
-          showError(e?.message || "Error al eliminar en ambas colecciones");
-        }
-      },
-    });
+    setBajaVisible(false);
+    setBajaFecha(getTodayDateInput());
+    setBajaRow(null);
+    setBajaTipo(null);
   };
+
+  const registrarFechaBajaCounter = async (row, fechaBaja) => {
+    const dniKey = toDniKey(row?.dni);
+
+    if (!dniKey) {
+      throw new Error("No se pudo registrar la baja: DNI inválido.");
+    }
+
+    if (!fechaBaja) {
+      throw new Error("Seleccioná la fecha de baja.");
+    }
+
+    await fsSetDoc(
+      fsDoc(db, "nuevoAfiliado_counters", dniKey),
+      {
+        fechaUltimaBaja: fechaBaja,
+        fechasBaja: arrayUnion(fechaBaja),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  };
+
+  const ejecutarEliminarSimple = async (row) => {
+    if (row.origen === "nuevoAfiliado") {
+      const res = await dispatch(deleteAfiliadoById(row.id));
+
+      if (res?.meta?.requestStatus === "rejected") {
+        throw new Error(res?.payload || "No se pudo eliminar");
+      }
+
+      setRowsNuevo((prev) => prev.filter((x) => x.id !== row.id));
+      return;
+    }
+
+    await fsDeleteDoc(fsDoc(db, "usuarios", String(row.id)));
+
+    setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.id));
+    setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.id));
+  };
+
+  const ejecutarEliminarAmbos = async (row) => {
+    if (row.idNuevo) {
+      const res = await dispatch(deleteAfiliadoById(row.idNuevo));
+
+      if (res?.meta?.requestStatus === "rejected") {
+        throw new Error(res?.payload || "No se pudo eliminar en nuevoAfiliado");
+      }
+
+      setRowsNuevo((prev) => prev.filter((x) => x.id !== row.idNuevo));
+    }
+
+    if (row.idUsuario) {
+      await fsDeleteDoc(fsDoc(db, "usuarios", String(row.idUsuario)));
+
+      setRowsUsuariosLocal((prev) =>
+        prev.filter((x) => x.id !== row.idUsuario)
+      );
+
+      setExtraUsuariosRows((prev) =>
+        prev.filter((x) => x.id !== row.idUsuario)
+      );
+    }
+  };
+
+  const confirmarBajaYEliminar = async () => {
+    if (!bajaRow) return;
+
+    if (!bajaFecha) {
+      showError("Seleccioná la fecha de baja.");
+      return;
+    }
+
+    try {
+      setBajaSaving(true);
+
+      await registrarFechaBajaCounter(bajaRow, bajaFecha);
+
+      if (bajaTipo === "ambos") {
+        await ejecutarEliminarAmbos(bajaRow);
+      } else {
+        await ejecutarEliminarSimple(bajaRow);
+      }
+
+      setBajaVisible(false);
+      setBajaFecha(getTodayDateInput());
+      setBajaRow(null);
+      setBajaTipo(null);
+
+      showSuccess(
+        bajaTipo === "ambos"
+          ? "Fecha de baja registrada y afiliado eliminado en ambas colecciones."
+          : "Fecha de baja registrada y afiliado eliminado correctamente."
+      );
+    } catch (e) {
+      showError(e?.message || "Error al registrar la baja y eliminar.");
+    } finally {
+      setBajaSaving(false);
+    }
+  };
+
+  const onEliminar = (row) => abrirModalBaja(row, "simple");
+
+  const onEliminarAmbos = (row) => abrirModalBaja(row, "ambos");
 
   // ✅ NUEVO: reiniciar dispositivo vinculado para asistencia QR
   const resetDispositivoDocumento = async ({ collectionName, id }) => {
@@ -2003,6 +2064,110 @@ export default function AfiliadoActualizado() {
         saving={saving}
         showActivo={false}
       />
+
+      {/* Modal baja con fecha antes de eliminar */}
+      <Dialog
+        header="Registrar fecha de baja"
+        visible={bajaVisible}
+        modal
+        closable={!bajaSaving}
+        style={{ width: 520, maxWidth: "95vw" }}
+        onHide={cerrarModalBaja}
+        footer={
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <Button
+              label="Cancelar"
+              className="p-button-text"
+              onClick={cerrarModalBaja}
+              disabled={bajaSaving}
+            />
+            <Button
+              label={
+                bajaSaving
+                  ? "Procesando..."
+                  : bajaTipo === "ambos"
+                  ? "Registrar baja y eliminar en ambas"
+                  : "Registrar baja y eliminar"
+              }
+              icon={bajaSaving ? "pi pi-spin pi-spinner" : "pi pi-trash"}
+              className="p-button-danger"
+              onClick={confirmarBajaYEliminar}
+              disabled={bajaSaving || !bajaFecha}
+            />
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div
+            style={{
+              border: "1px solid #fecaca",
+              background: "#fff7f7",
+              borderRadius: 8,
+              padding: 12,
+              color: "#7f1d1d",
+              fontSize: 14,
+            }}
+          >
+            Antes de eliminar el registro, se guardará la fecha de baja en
+            <strong>
+              {" "}
+              nuevoAfiliado_counters/{toDniKey(bajaRow?.dni) || "DNI"}
+            </strong>
+            . El contador <strong>last</strong> no se modifica.
+          </div>
+
+          {bajaRow && (
+            <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+              <div>
+                <strong>Afiliado:</strong> {bajaRow.apellido || ""},{" "}
+                {bajaRow.nombre || ""}
+              </div>
+              <div>
+                <strong>DNI:</strong> {bajaRow.dni || "—"}
+              </div>
+              <div>
+                <strong>Origen:</strong>{" "}
+                {bajaTipo === "ambos"
+                  ? "nuevoAfiliado + usuarios"
+                  : bajaRow.origen}
+              </div>
+            </div>
+          )}
+
+          <div className="p-field" style={{ display: "grid", gap: 6 }}>
+            <label htmlFor="fecha_baja_afiliado">
+              <strong>Fecha de baja</strong>
+            </label>
+            <input
+              id="fecha_baja_afiliado"
+              type="date"
+              value={bajaFecha}
+              onChange={(e) => setBajaFecha(e.target.value)}
+              disabled={bajaSaving}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                fontSize: 15,
+              }}
+            />
+          </div>
+
+          <small style={{ color: "#64748b", lineHeight: 1.4 }}>
+            Se guardarán los campos <strong>fechaUltimaBaja</strong> y
+            <strong> fechasBaja</strong>. No se agregan motivos ni otra
+            colección.
+          </small>
+        </div>
+      </Dialog>
 
       {/* Modal progreso export */}
       <Dialog

@@ -8,21 +8,14 @@ import AfiliadoAdherenteResumen from "../../../components/dashboard/AfiliadoAdhe
 import CursosDashboardSection from "../../../components/dashboard/CursosDashboardSection";
 import RegistroAsistencia from "../../../components/dashboard/RegistroAsistencia";
 import DetalleInformacionAfiliado from "../../../components/dashboard/DetalleInformacionAfiliado";
+import PadronDashboardSection from "../../../components/dashboard/PadronDashboardSection";
 
 import styles from "./afiliadosDashboard.module.css";
 
 const AfiliadosDashboard = () => {
-  // Año actual automático
   const currentYear = new Date().getFullYear();
-
-  // Año mínimo desde donde querés mostrar los gráficos
   const startYear = 2021;
 
-  /**
-   * Genera los años de forma descendente.
-   * Ejemplo si estamos en 2026:
-   * [2026, 2025, 2024]
-   */
   const years = useMemo(() => {
     return Array.from(
       { length: currentYear - startYear + 1 },
@@ -30,24 +23,21 @@ const AfiliadosDashboard = () => {
     );
   }, [currentYear]);
 
-  // Pestaña activa
-  // dept | altas | adherentes | info | cursos | asistencia
   const [activeTab, setActiveTab] = useState("dept");
 
   return (
     <div className={styles.container}>
-      {/* Título */}
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard de Afiliados y Cursos</h1>
         <span className={styles.subtitle}>
           Vista general de afiliados por departamento, adherentes, información
-          personal, cursos, docentes aprobados y asistencia.
+          personal, cursos, docentes aprobados, asistencia y control de padrón.
         </span>
       </div>
 
-      {/* Pestañas */}
       <div className={styles.tabsRow}>
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "dept" ? styles.tabButtonActive : ""
           }`}
@@ -57,6 +47,7 @@ const AfiliadosDashboard = () => {
         </button>
 
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "altas" ? styles.tabButtonActive : ""
           }`}
@@ -66,6 +57,7 @@ const AfiliadosDashboard = () => {
         </button>
 
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "adherentes" ? styles.tabButtonActive : ""
           }`}
@@ -75,6 +67,7 @@ const AfiliadosDashboard = () => {
         </button>
 
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "info" ? styles.tabButtonActive : ""
           }`}
@@ -84,6 +77,7 @@ const AfiliadosDashboard = () => {
         </button>
 
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "cursos" ? styles.tabButtonActive : ""
           }`}
@@ -93,6 +87,7 @@ const AfiliadosDashboard = () => {
         </button>
 
         <button
+          type="button"
           className={`${styles.tabButton} ${
             activeTab === "asistencia" ? styles.tabButtonActive : ""
           }`}
@@ -100,9 +95,18 @@ const AfiliadosDashboard = () => {
         >
           Registro de asistencia
         </button>
+
+        <button
+          type="button"
+          className={`${styles.tabButton} ${
+            activeTab === "padron" ? styles.tabButtonActive : ""
+          }`}
+          onClick={() => setActiveTab("padron")}
+        >
+          Padrón
+        </button>
       </div>
 
-      {/* Contenido de cada pestaña */}
       <div className={styles.tabContent}>
         {activeTab === "dept" && <AfiliadosPorDepartamento />}
 
@@ -131,6 +135,8 @@ const AfiliadosDashboard = () => {
         {activeTab === "asistencia" && (
           <RegistroAsistencia year={currentYear} />
         )}
+
+        {activeTab === "padron" && <PadronDashboardSection />}
       </div>
     </div>
   );

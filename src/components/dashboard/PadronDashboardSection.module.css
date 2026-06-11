@@ -1,0 +1,355 @@
+/* src/components/dashboard/PadronDashboardSection.module.css */
+
+.padronSection {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.padronPanelBody {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.infoBox {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-left: 5px solid #0ea5e9;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  color: #374151;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.systemDropdown {
+  min-width: 300px;
+  max-width: 100%;
+}
+
+.toolbar :global(.p-button) {
+  white-space: nowrap;
+}
+
+.loadedBox {
+  font-size: 0.86rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  color: #4b5563;
+  display: grid;
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.loadedItem {
+  word-break: break-word;
+}
+
+/* =========================
+   KPIs
+   ========================= */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.kpiCard {
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  min-height: 90px;
+  display: grid;
+  align-content: center;
+  gap: 0.3rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.kpiLabel {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.kpiValue {
+  font-size: clamp(1.55rem, 2.5vw, 2.05rem);
+  line-height: 1;
+  font-weight: 800;
+  color: #111827;
+}
+
+.kpiDefault {
+  border-color: #e5e7eb;
+  background: #ffffff;
+}
+
+.kpiSuccess {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.kpiSuccess .kpiValue {
+  color: #166534;
+}
+
+.kpiDanger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.kpiDanger .kpiValue {
+  color: #991b1b;
+}
+
+.kpiWarning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.kpiWarning .kpiValue {
+  color: #92400e;
+}
+
+.kpiInfo {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.kpiInfo .kpiValue {
+  color: #1d4ed8;
+}
+
+/* =========================
+   Botones de vistas
+   ========================= */
+
+.viewButtons {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+
+/* =========================
+   Tabla
+   ========================= */
+
+.tableCard {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+/*
+  Importante:
+  Antes este contenedor tenía overflow-x:auto.
+  Eso generaba una segunda barra horizontal.
+  Ahora dejamos que PrimeReact maneje la tabla.
+*/
+.tableScroll {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Tabla principal: intenta entrar completa en pantalla */
+.padronDataTable {
+  width: 100%;
+  max-width: 100%;
+}
+
+.padronDataTableSmall {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Wrapper interno de PrimeReact */
+.padronDataTable :global(.p-datatable-wrapper),
+.padronDataTableSmall :global(.p-datatable-wrapper) {
+  width: 100%;
+  overflow-x: hidden !important;
+}
+
+/* Tabla sin ancho forzado */
+.padronDataTable :global(.p-datatable-table),
+.padronDataTableSmall :global(.p-datatable-table) {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed;
+}
+
+/* Encabezados */
+.padronDataTable :global(.p-datatable-thead > tr > th),
+.padronDataTableSmall :global(.p-datatable-thead > tr > th) {
+  background: #f8fafc;
+  color: #374151;
+  font-weight: 800;
+  font-size: 0.82rem;
+  white-space: normal;
+  line-height: 1.2;
+  padding: 0.75rem 0.65rem;
+  vertical-align: middle;
+}
+
+/* Celdas */
+.padronDataTable :global(.p-datatable-tbody > tr > td),
+.padronDataTableSmall :global(.p-datatable-tbody > tr > td) {
+  font-size: 0.82rem;
+  color: #374151;
+  vertical-align: top;
+  padding: 0.75rem 0.65rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.padronDataTable :global(.p-datatable-tbody > tr:hover),
+.padronDataTableSmall :global(.p-datatable-tbody > tr:hover) {
+  background: #f9fafb;
+}
+
+/* Paginador */
+.padronDataTable :global(.p-paginator),
+.padronDataTableSmall :global(.p-paginator) {
+  border-top: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+/* Textos internos */
+.nameCell {
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.textCell {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.tagWrap {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.tagWrap :global(.p-tag) {
+  white-space: normal;
+  line-height: 1.15;
+  text-align: left;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.4rem;
+}
+
+.emptyState {
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1.2rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.progressDialogContent {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.progressSubText {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* =========================
+   Responsive
+   En pantallas chicas sí dejamos scroll horizontal.
+   ========================= */
+
+@media (max-width: 900px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .systemDropdown {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .toolbar :global(.p-button),
+  .toolbar :global(.p-fileupload-choose) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .viewButtons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .viewButtons :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tableScroll {
+    overflow-x: auto;
+  }
+
+  .padronDataTable :global(.p-datatable-wrapper),
+  .padronDataTableSmall :global(.p-datatable-wrapper) {
+    overflow-x: auto !important;
+  }
+
+  .padronDataTable :global(.p-datatable-table) {
+    min-width: 1150px !important;
+  }
+
+  .padronDataTableSmall :global(.p-datatable-table) {
+    min-width: 800px !important;
+  }
+}
+
+.actionButton {
+  min-width: 92px;
+  width: 100%;
+  max-width: 110px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.actionButton :global(.p-button-label) {
+  white-space: nowrap;
+}
+
+.actionButton :global(.p-button-icon) {
+  flex-shrink: 0;
+}

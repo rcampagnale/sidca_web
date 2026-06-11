@@ -32,6 +32,7 @@ const normalizeDni = (dniRaw) =>
  * - { seconds, nanoseconds }
  * - número en milisegundos
  * - string "DD/MM/YYYY HH:mm" o "DD-MM-YYYY HH:mm"
+ * - string "YYYY-MM-DD"
  * - string compatible con new Date()
  */
 const parseDateFlexible = (value) => {
@@ -64,6 +65,19 @@ const parseDateFlexible = (value) => {
     const s = value.trim();
     if (!s) return null;
 
+    // Formato YYYY-MM-DD
+    const matchYMD = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (matchYMD) {
+      const [, yy, mm, dd] = matchYMD;
+      const d = new Date(
+        parseInt(yy, 10),
+        parseInt(mm, 10) - 1,
+        parseInt(dd, 10)
+      );
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Formato DD/MM/YYYY o DD-MM-YYYY
     const matchDMY = s.match(
       /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/
     );
@@ -90,7 +104,7 @@ const parseDateFlexible = (value) => {
   return null;
 };
 
-/** Convierte una fecha a { year, month, key } */
+/** Convierte una fecha a { year, month, key, dateKey } */
 const extractMonthInfo = (value) => {
   const date = parseDateFlexible(value);
   if (!date) return null;
@@ -98,15 +112,18 @@ const extractMonthInfo = (value) => {
   const year = date.getFullYear();
   const month = date.getMonth();
   const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
 
-  return { year, month, key };
+  return { year, month, key, dateKey };
 };
 
 /** Fecha de alta desde nuevoAfiliado */
 const getAltaDateFromNuevoAfiliado = (d) =>
   d.fechaServer || d.fecha || d.fechaAlta || d.fechaRegistro;
 
-/** Fecha de baja desde usuarios */
+/** Fecha de baja desde usuarios - compatibilidad con datos viejos */
 const getBajaDateFromUsuario = (d) =>
   d.fechaBajaServer ||
   d.fechaBaja ||
@@ -114,6 +131,63 @@ const getBajaDateFromUsuario = (d) =>
   d.fechaDesafiliacion ||
   d.fechaServer ||
   d.fecha;
+
+/**
+ * Fechas de baja desde nuevoAfiliado_counters/{dni}
+ *
+ * Estructura esperada nueva:
+ * {
+ *   fechaUltimaBaja: "2026-06-11",
+ *   fechasBaja: ["2026-06-11", "2026-08-03"]
+ * }
+ *
+ * También soporta formatos alternativos por seguridad.
+ */
+const getBajaDatesFromCounter = (d) => {
+  const fechas = [];
+
+  const pushFecha = (value) => {
+    if (value !== undefined && value !== null && value !== "") {
+      fechas.push(value);
+    }
+  };
+
+  if (Array.isArray(d.fechasBaja)) {
+    d.fechasBaja.forEach(pushFecha);
+  }
+
+  if (Array.isArray(d.fechas_baja)) {
+    d.fechas_baja.forEach(pushFecha);
+  }
+
+  if (Array.isArray(d.bajas)) {
+    d.bajas.forEach((item) => {
+      if (!item) return;
+
+      if (typeof item === "string" || item instanceof Date) {
+        pushFecha(item);
+        return;
+      }
+
+      if (typeof item === "object") {
+        pushFecha(
+          item.fecha ||
+            item.fechaBaja ||
+            item.fecha_baja ||
+            item.date ||
+            item.createdAt
+        );
+      }
+    });
+  }
+
+  // Fallback: si no hay array, usamos la última baja
+  if (!fechas.length) {
+    pushFecha(d.fechaUltimaBaja || d.fechaBaja || d.fecha_baja);
+  }
+
+  return fechas;
+};
 
 /** Crea las claves de los 12 meses del año elegido */
 const buildMonthKeysForYear = (year) =>
@@ -123,11 +197,41 @@ const buildMonthKeysForYear = (year) =>
   });
 
 /**
+ * Suma una baja al mapa mensual evitando duplicar la misma baja exacta.
+ *
+ * Regla:
+ * - Mismo DNI + misma fecha exacta = no duplica.
+ * - Mismo DNI + dos fechas distintas en el mismo mes = cuenta dos bajas.
+ */
+const addBajaToMonth = ({
+  dni,
+  rawDate,
+  effectiveYear,
+  seenBajas,
+  bajasByMonth,
+}) => {
+  if (!dni || !rawDate) return;
+
+  const info = extractMonthInfo(rawDate);
+  if (!info) return;
+
+  if (info.year !== effectiveYear) return;
+
+  const tag = `${dni}-${info.dateKey}`;
+
+  if (seenBajas.has(tag)) return;
+
+  seenBajas.add(tag);
+  bajasByMonth.set(info.key, (bajasByMonth.get(info.key) || 0) + 1);
+};
+
+/**
  * 📊 Altas y bajas de afiliados por mes
  *
- * - Altas: SOLO documentos en "nuevoAfiliado"
- * - Bajas: SOLO documentos en "usuarios" con activo === false
- * - Evita duplicar el mismo DNI en el mismo mes
+ * - Altas: documentos en "nuevoAfiliado"
+ * - Bajas principales: fechas guardadas en "nuevoAfiliado_counters/{dni}"
+ * - Bajas legacy/fallback: usuarios con activo === false
+ * - Evita duplicar la misma baja exacta por DNI y fecha
  * - Si no se pasa year, toma automáticamente el año actual
  */
 export default function AltasBajasMensual({ year }) {
@@ -183,9 +287,10 @@ export default function AltasBajasMensual({ year }) {
       setError("");
 
       try {
-        const [usuariosSnap, nuevoSnap] = await Promise.all([
+        const [usuariosSnap, nuevoSnap, countersSnap] = await Promise.all([
           getDocs(collection(db, "usuarios")),
           getDocs(collection(db, "nuevoAfiliado")),
+          getDocs(collection(db, "nuevoAfiliado_counters")),
         ]);
 
         const altasByMonth = new Map();
@@ -209,19 +314,43 @@ export default function AltasBajasMensual({ year }) {
 
           if (!info) return;
 
-          // Año automático
           if (info.year !== effectiveYear) return;
 
-          const key = info.key;
-          const tag = `${dni}-${key}`;
+          const tag = `${dni}-${info.dateKey}`;
 
           if (seenAltas.has(tag)) return;
 
           seenAltas.add(tag);
-          altasByMonth.set(key, (altasByMonth.get(key) || 0) + 1);
+          altasByMonth.set(info.key, (altasByMonth.get(info.key) || 0) + 1);
         });
 
-        // ✅ BAJAS: usuarios con activo === false
+        // ✅ BAJAS PRINCIPALES: nuevoAfiliado_counters/{dni}
+        countersSnap.forEach((docSnap) => {
+          const d = docSnap.data() || {};
+
+          // En counters el ID del documento es el DNI
+          const dni = normalizeDni(
+            d.dni || d.DNI || d.documento || d.Documento || docSnap.id
+          );
+
+          if (!dni) return;
+
+          const fechasBaja = getBajaDatesFromCounter(d);
+
+          fechasBaja.forEach((rawDate) => {
+            addBajaToMonth({
+              dni,
+              rawDate,
+              effectiveYear,
+              seenBajas,
+              bajasByMonth,
+            });
+          });
+        });
+
+        // ✅ BAJAS LEGACY/FALLBACK: usuarios con activo === false
+        // Esto queda por compatibilidad con registros anteriores que todavía
+        // tengan fecha de baja en usuarios y no en counters.
         usuariosSnap.forEach((docSnap) => {
           const d = docSnap.data();
 
@@ -234,20 +363,14 @@ export default function AltasBajasMensual({ year }) {
           if (!dni) return;
 
           const rawDate = getBajaDateFromUsuario(d);
-          const info = extractMonthInfo(rawDate);
 
-          if (!info) return;
-
-          // Año automático
-          if (info.year !== effectiveYear) return;
-
-          const key = info.key;
-          const tag = `${dni}-${key}`;
-
-          if (seenBajas.has(tag)) return;
-
-          seenBajas.add(tag);
-          bajasByMonth.set(key, (bajasByMonth.get(key) || 0) + 1);
+          addBajaToMonth({
+            dni,
+            rawDate,
+            effectiveYear,
+            seenBajas,
+            bajasByMonth,
+          });
         });
 
         // Mostramos siempre los 12 meses del año efectivo
