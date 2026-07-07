@@ -1,7 +1,7 @@
 // src/pages/Admin/LoginAdmin/LoginAdmin.js
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
-import { useHistory } from 'react-router-dom';
+import { useHistory, Route } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import { adminLogin } from '../../../redux/reducers/user/actions';
 import styles from './styles.module.css';

@@ -3,4 +3,8 @@ export { default as ServicioAccionesTabla } from "./ServicioAccionesTabla";
 export { default as ServicioFormDialog } from "./ServicioFormDialog";
 export { default as BusquedaGeneralServicios } from "./BusquedaGeneralServicios";
 export { default as DetalleServicioDialog } from "./DetalleServicioDialog";
+export { default as CuotasServicioDialog } from "./CuotasServicioDialog";
+export { default as AfiliadosMultiServicioPanel } from "./AfiliadosMultiServicioPanel";
+export { default as CenaDocentePanel } from "./CenaDocentePanel";
 export { default as ImportarAfiliadosServicio } from "./ImportarAfiliadosServicio";
+export { default as ImportarDescuentosServicio } from "./ImportarDescuentosServicio";

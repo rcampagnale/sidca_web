@@ -72,16 +72,1562 @@
   font-weight: 600;
 }
 
-.infoBox {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-  border-left: 5px solid #10b981;
-  padding: 14px 16px;
-  border-radius: 12px;
+/* =========================
+   Tablero ejecutivo
+========================= */
+
+.executiveHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.executiveEyebrow,
+.alertCenterHeader span,
+.serviceDetailHeader > div:first-child > span,
+.serviceSectionHeader span {
+  color: #a56600;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.executiveHeader h1 {
+  margin: 0.2rem 0;
+  color: #172033;
+  font-size: clamp(1.8rem, 3vw, 2.65rem);
+  letter-spacing: -0.04em;
+}
+
+.executiveHeader p {
+  margin: 0;
+  color: #6d7787;
+}
+
+.serviciosTabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  margin-bottom: 1rem;
+  border: 1px solid #dce3df;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(24, 36, 29, 0.05);
+}
+
+.serviciosTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  color: #64748b;
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.serviciosTabActiva {
+  color: #172033 !important;
+  background: #fff0d5 !important;
+  box-shadow: inset 0 0 0 1px #f1bd5f;
+}
+
+.multiServicioPanel {
+  padding: 1rem;
+  border: 1px solid #dce3df;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(24, 36, 29, 0.08);
+}
+
+.multiServicioHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e4e9e6;
+}
+
+.multiServicioHeader span,
+.multiServicioDetalleHeader span {
+  color: #a56600;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.multiServicioHeader h2,
+.multiServicioDetalleHeader h3 {
+  margin: 0.2rem 0;
+  color: #172033;
+}
+
+.multiServicioHeader p,
+.multiServicioDetalleHeader p {
+  margin: 0;
+  color: #778291;
+}
+
+.multiServicioKpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 0.55rem;
+  min-width: min(520px, 100%);
+}
+
+.multiServicioKpis article {
+  padding: 0.8rem;
+  border: 1px solid #e2e7e4;
+  border-radius: 12px;
+  background: #fbfcfb;
+}
+
+.multiServicioKpis article span {
+  display: block;
+  color: #778291;
+  font-size: 0.62rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.multiServicioKpis article strong {
+  display: block;
+  margin-top: 0.15rem;
+  color: #172033;
+  font-size: 1.35rem;
+}
+
+.multiServicioSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 660px;
+  margin: 1rem 0;
+}
+
+.multiServicioFiltros {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.multiServicioFiltros .multiServicioSearch {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.multiServicioPeriodoFiltro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 340px;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.multiServicioPeriodoFiltro :global(.p-dropdown) {
+  width: 100%;
+}
+
+.multiServicioSearch i {
+  color: #87918c;
+}
+
+.multiServicioSearch :global(.p-inputtext) {
+  width: 100%;
+}
+
+.multiServicioLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.7fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.multiServicioTablaWrap {
+  overflow: auto;
+  border: 1px solid #e2e7e4;
+  border-radius: 14px;
+}
+
+.multiServicioTabla {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.multiServicioTabla th {
+  padding: 0.8rem;
+  color: #46556a;
+  background: #f4f7f9;
+  font-size: 0.72rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.multiServicioTabla td {
+  padding: 0.75rem 0.8rem;
+  border-top: 1px solid #e9edf0;
+  color: #172033;
+  vertical-align: middle;
+}
+
+.multiServicioTabla tr {
+  cursor: pointer;
+}
+
+.multiServicioTabla td:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.multiServicioTabla small {
+  color: #6d7787;
+}
+
+.multiServicioFilaActiva {
+  background: #fff8ea;
+  box-shadow: inset 4px 0 #f0a11a;
+}
+
+.multiServicioCantidad {
+  display: inline-flex;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  color: #005b88;
+  background: #dff2ff;
+  font-weight: 800;
+}
+
+.multiServicioDescuentosMes {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 245px;
+}
+
+.multiServicioDescuentosMes div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border-left: 3px solid #f0a11a;
+  border-radius: 6px;
+  background: #fff8ea;
+}
+
+.multiServicioDescuentosMes strong { color: #172033; }
+.multiServicioDescuentosMes small { font-size: 0.7rem; }
+
+.multiServicioBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.multiServicioBadges span,
+.badgeCobrado,
+.badgeParcial,
+.badgeNoCobrado,
+.badgePendiente {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.badgeCobrado {
+  color: #006437;
+  background: #d9fbe7;
+}
+
+.badgeParcial {
+  color: #9a5f00;
+  background: #fff0c9;
+}
+
+.badgeNoCobrado {
+  color: #aa1515;
+  background: #ffe0e0;
+}
+
+.badgePendiente {
+  color: #005b88;
+  background: #dff2ff;
+}
+
+.multiServicioDetalle {
+  padding: 1rem;
+  border: 1px solid #e2e7e4;
+  border-radius: 14px;
+  background: #fbfcfb;
+}
+
+.multiServicioResumen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.multiServicioResumen span {
+  padding: 0.7rem;
+  border: 1px solid #e3e8e5;
+  border-radius: 11px;
+  color: #6d7787;
+  background: #fff;
+  font-size: 0.7rem;
+}
+
+.multiServicioResumen b {
+  display: block;
+  color: #172033;
+  font-size: 1.05rem;
+}
+
+.multiServicioContratos {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.multiServicioContratos article {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid #e3e8e5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.multiServicioContratos article.multiServicioLeyendaPagado {
+  border-color: #8be0aa;
+  background: #f4fff7;
+}
+
+.multiServicioContratos article.multiServicioLeyendaCancelado {
+  border-color: #c9b7ff;
+  background: #fbf8ff;
+}
+
+.multiServicioContratos article.multiServicioLeyendaPendiente {
+  border-color: #f4c36d;
+  background: #fffaf0;
+}
+
+.multiServicioContratos article strong {
+  color: #172033;
+}
+
+.multiServicioContratos article small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #6d7787;
+}
+
+.multiServicioLeyenda {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.multiServicioHaberFaltante {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #f6c453;
+  border-radius: 10px;
+  background: #fff8e6;
+  color: #8a5200;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.multiServicioHaberFaltante i {
+  margin-top: 0.1rem;
+  color: #e59a00;
+}
+
+@media (max-width: 800px) {
+  .multiServicioFiltros {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .multiServicioPeriodoFiltro {
+    min-width: 0;
+  }
+}
+
+.multiServicioLeyenda i {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #0f7a3b;
+  background: #ddfbe8;
+}
+
+.multiServicioLeyendaCancelado .multiServicioLeyenda i {
+  color: #5b21b6;
+  background: #ede7ff;
+}
+
+.multiServicioLeyendaPendiente .multiServicioLeyenda i {
+  color: #9a5f00;
+  background: #fff0c9;
+}
+
+.multiServicioLeyenda b {
+  display: block;
+  color: #172033;
+  font-size: 0.82rem;
+}
+
+.cenaExecutiveHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cenaExecutiveHeader span {
+  color: #a06400;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cenaExecutiveHeader h2 {
+  margin: 0.15rem 0 0.25rem;
+  color: #172033;
+  font-size: 1.35rem;
+}
+
+.cenaExecutiveHeader p {
+  max-width: 760px;
+  margin: 0;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.cenaExecutiveHeader .cenaToolbar {
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.cenaDocenteGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.cenaDocenteGridSimple {
+  grid-template-columns: 1fr;
+}
+
+.cenaToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  align-items: center;
+}
+
+.cenaNuevaBox,
+.cenaServiciosBox,
+.cenaServicioSeleccionado {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.cenaNuevaBox {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1.2fr);
+  gap: 1rem;
+  align-items: end;
+  border-left: 5px solid #f59e0b;
+  background: #fffaf0;
+}
+
+.cenaNuevaBox span,
+.cenaServiciosBox .cenaTablaHeader span,
+.cenaServicioSeleccionado span {
+  color: #a06400;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cenaNuevaBox h3,
+.cenaServicioSeleccionado h3 {
+  margin: 0.15rem 0 0.25rem;
+  color: #172033;
+}
+
+.cenaNuevaBox p,
+.cenaServicioSeleccionado p {
+  margin: 0;
+  color: #64748b;
+}
+
+.cenaNuevaForm {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px) minmax(220px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.cenaNuevaForm label {
+  display: grid;
+  gap: 0.35rem;
+  color: #46556a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.cenaNuevaForm :global(.p-inputtext) {
+  width: 100%;
+}
+
+.cenaServiciosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.cenaServicioCard {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.95rem;
+  border: 1px solid #d8e1eb;
+  border-radius: 14px;
+  color: #172033;
+  text-align: left;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cenaServicioCard:hover {
+  border-color: #f5b422;
+  box-shadow: 0 10px 24px rgba(245, 158, 11, 0.13);
+  transform: translateY(-1px);
+}
+
+.cenaServicioCard span {
+  width: max-content;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 900;
+  background: #fef3c7;
+}
+
+.cenaServicioCardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.cenaServicioCardHeader :global(.p-button) {
+  flex: 0 0 auto;
+}
+
+.cenaServicioCard strong {
+  color: #06162f;
+  font-size: 1rem;
+}
+
+.cenaServicioCard small {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.cenaServicioCardActiva {
+  border-color: #f59e0b;
+  box-shadow: inset 4px 0 0 #f59e0b, 0 12px 28px rgba(245, 158, 11, 0.14);
+  background: #fffbeb;
+}
+
+.cenaServicioEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+  padding: 1.5rem;
+  border: 1px dashed #f5b422;
+  border-radius: 14px;
+  color: #64748b;
+  text-align: center;
+  background: #fffaf0;
+}
+
+.cenaServicioEmpty i {
+  color: #f59e0b;
+  font-size: 1.6rem;
+}
+
+.cenaServicioEmpty strong {
+  color: #172033;
+}
+
+.cenaServicioSeleccionado {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  border-left: 5px solid #0ea5e9;
+  background: #f8fbff;
+}
+
+.cenaImportResult {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #1e3a8a;
+  background: #eff6ff;
+}
+
+.cenaImportResult strong {
+  color: #172033;
+}
+
+.cenaImportResult span {
+  font-weight: 800;
+}
+
+.cenaProgressBox {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #fde68a;
+  border-radius: 14px;
+  color: #172033;
+  background: #fffbeb;
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.09);
+}
+
+.cenaProgressHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.cenaProgressHeader span {
+  display: block;
+  color: #a06400;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cenaProgressHeader strong {
+  display: block;
+  margin-top: 0.15rem;
+  color: #172033;
   font-size: 0.95rem;
+}
+
+.cenaProgressHeader b {
+  color: #0f766e;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.cenaProgressTrack {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.cenaProgressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f59e0b, #22c55e);
+  transition: width 0.18s ease;
+}
+
+.cenaProgressBox small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.cenaFormCard,
+.cenaTablaCard,
+.cenaResumenMensual {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.detalleAfiliadoSeleccionado {
+  margin-top: 1rem;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px dashed #bfdbfe;
+  border-radius: 16px;
+}
+
+.detalleAfiliadoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.detalleAfiliadoHeader span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.detalleAfiliadoHeader strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.cenaFormCard {
+  position: sticky;
+  top: 0.75rem;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+}
+
+.cenaFormCard > div:first-child span,
+.cenaTablaHeader span {
+  color: #a06400;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cenaFormCard h3,
+.cenaTablaHeader h3 {
+  margin: 0.15rem 0 0;
+  color: #172033;
+}
+
+.cenaTablaHeader p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+}
+
+.cenaForm {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.cenaForm label {
+  display: grid;
+  gap: 0.35rem;
+  color: #46556a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.cenaForm label > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.cenaForm :global(.p-inputtext),
+.cenaForm :global(.p-dropdown) {
+  width: 100%;
+}
+
+.cenaResumenReserva {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.cenaResumenReserva strong,
+.cenaResumenReserva span {
+  display: block;
+}
+
+.cenaTablaHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.cenaResumenMensual {
+  margin-bottom: 1rem;
+  border-left: 5px solid #22c55e;
+  background: #fbfffd;
+}
+
+.cenaResumenMensualTabla {
+  margin-top: 0.85rem;
+  overflow-x: auto;
+}
+
+.cenaResumenMensualTabla table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.cenaResumenMensualTabla th,
+.cenaResumenMensualTabla td {
+  padding: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  color: #172033;
+  text-align: left;
+}
+
+.cenaResumenMensualTabla th {
+  color: #46556a;
+  background: #f8fafc;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cenaResumenMensualTabla td:last-child {
+  color: #006437;
+  font-weight: 900;
+}
+
+.cenaReservaCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cenaReservaCell strong {
+  color: #005b88;
+}
+
+.cenaReservaCell span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.cenaAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.multiServicioLeyenda small {
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+.multiServicioAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.executiveKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.executiveKpis article {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #e0e5e2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(24, 36, 29, 0.05);
+}
+
+.executiveKpis article > i {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 1.1rem;
+}
+
+.executiveKpis article > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.executiveKpis span {
+  color: #778291;
+  font-size: 0.72rem;
+}
+
+.executiveKpis strong {
+  margin: 0.12rem 0;
+  color: #172033;
+  font-size: 1.45rem;
+}
+
+.executiveKpis small {
+  overflow: hidden;
+  color: #849087;
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executiveKpiBlue > i {
+  color: #1769aa;
+  background: #e7f3ff;
+}
+
+.executiveKpiGreen > i {
+  color: #247849;
+  background: #e8f7ee;
+}
+
+.executiveKpiOrange > i {
+  color: #b36b00;
+  background: #fff0d5;
+}
+
+.executiveKpiRed > i {
+  color: #bd3535;
+  background: #ffebeb;
+}
+
+.alertCenter {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #e0e5e2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.alertCenterHeader h2 {
+  margin: 0.15rem 0 0.8rem;
+  color: #172033;
+  font-size: 1rem;
+}
+
+.alertCenterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.alertCenterGrid > div {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  border-radius: 11px;
+}
+
+.alertCenterGrid > div > i {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 9px;
+}
+
+.alertCenterGrid > div > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.alertCenterGrid strong {
+  color: #243128;
+  font-size: 0.78rem;
+}
+
+.alertCenterGrid small {
+  margin-top: 0.12rem;
+  color: #7c8795;
+  font-size: 0.62rem;
+}
+
+.alertCenterPartial {
+  border: 1px solid #eedebd;
+  background: #fffbf2;
+}
+
+.alertCenterPartial > i {
+  color: #ac6c00;
+  background: #ffedca;
+}
+
+.alertCenterUnpaid {
+  border: 1px solid #f3d1d1;
+  background: #fff7f7;
+}
+
+.alertCenterUnpaid > i {
+  color: #bd3535;
+  background: #ffe5e5;
+}
+
+.alertCenterRule {
+  border: 1px solid #cfe2f2;
+  background: #f5faff;
+}
+
+.alertCenterRule > i {
+  color: #1769aa;
+  background: #e2f2ff;
+}
+
+.masterDetail {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border: 1px solid #dce3df;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(24, 36, 29, 0.08);
+}
+
+.servicesMaster {
+  padding: 1rem;
+  border-right: 1px solid #e2e7e4;
+  background: #f9fbfa;
+}
+
+.servicesMasterHeader > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.servicesMasterHeader span {
+  color: #7d8794;
+  font-size: 0.68rem;
+}
+
+.servicesMasterHeader strong {
+  color: #253129;
+  font-size: 0.9rem;
+}
+
+.servicesSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.85rem 0;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid #dce3df;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.servicesSearch i {
+  color: #87918c;
+}
+
+.servicesSearch input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #27332c;
+  background: transparent;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.servicesList {
+  max-height: 650px;
+  display: grid;
+  gap: 0.55rem;
+  overflow-y: auto;
+}
+
+.serviceExecutiveCard {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #e0e6e2;
+  border-radius: 11px;
+  color: inherit;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.serviceExecutiveCardActive {
+  border-color: #e7b55a;
+  background: #fff8ea;
+  box-shadow: inset 3px 0 #e4980b;
+}
+
+.serviceExecutiveIcon {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  place-items: center;
+  border-radius: 10px;
+  color: #a96800;
+  background: #ffedca;
+}
+
+.serviceExecutiveCopy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.serviceExecutiveCopy small {
+  color: #26734a;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.serviceExecutiveCopy strong {
+  margin: 0.14rem 0;
+  overflow: hidden;
+  color: #243128;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serviceExecutiveCopy em {
+  color: #849087;
+  font-size: 0.59rem;
+  font-style: normal;
+}
+
+.serviceExecutiveAlerts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.serviceExecutiveAlerts b {
+  min-width: 38px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  font-size: 0.52rem;
+  text-align: center;
+}
+
+.serviceAlertPartial {
+  color: #926000;
+  background: #fff0ce;
+}
+
+.serviceAlertUnpaid {
+  color: #a72e2e;
+  background: #ffe5e5;
+}
+
+.serviceDetail {
+  min-width: 0;
+  padding: 1.1rem;
+}
+
+.serviceDetailHeader,
+.serviceSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.serviceDetailHeader {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e4e9e6;
+}
+
+.serviceDetailHeader h2 {
+  margin: 0.2rem 0;
+  color: #172033;
+  font-size: 1.35rem;
+}
+
+.serviceDetailHeader p {
+  max-width: 680px;
+  margin: 0;
+  color: #778291;
+  font-size: 0.72rem;
   line-height: 1.45;
+}
+
+.serviceDetailActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.serviceMetrics {
+  display: grid;
+  grid-template-columns: 1.2fr repeat(4, 1fr);
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.serviceMetrics article,
+.monthlyStatus,
+.serviceConfiguration,
+.incidentsPreview {
+  padding: 0.85rem;
+  border: 1px solid #e2e7e4;
+  border-radius: 12px;
+  background: #fbfcfb;
+}
+
+.serviceMetrics span {
+  color: #778291;
+  font-size: 0.64rem;
+}
+
+.serviceMetrics strong {
+  display: block;
+  margin: 0.12rem 0;
+  color: #1f2b24;
+  font-size: 1.25rem;
+}
+
+.serviceMetrics small {
+  color: #8a948e;
+  font-size: 0.57rem;
+}
+
+.serviceProgress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eae7;
+}
+
+.serviceProgress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2e995d;
+}
+
+.serviceStatusGrid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.8fr;
+  gap: 0.75rem;
+}
+
+.serviceSectionHeader h3 {
+  margin: 0.12rem 0 0;
+  color: #253129;
+  font-size: 0.92rem;
+}
+
+.serviceSectionHeader button {
+  border: 0;
+  color: #276c48;
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.statusStack {
+  height: 12px;
+  display: flex;
+  overflow: hidden;
+  margin: 1.1rem 0 0.8rem;
+  border-radius: 999px;
+  background: #e7ebe9;
+}
+
+.statusStack i {
+  min-width: 0;
+  height: 100%;
+}
+
+.statusCobrado,
+.dotCobrado {
+  background: #38a866;
+}
+
+.statusParcial,
+.dotParcial {
+  background: #e9a51d;
+}
+
+.statusNoCobrado,
+.dotNoCobrado {
+  background: #de4a4a;
+}
+
+.statusPendiente,
+.dotPendiente {
+  background: #cbd2ce;
+}
+
+.statusLegend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+}
+
+.statusLegend span,
+.statusLegendAction {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #6f7a73;
+  font-size: 0.64rem;
+}
+
+.statusLegendAction {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.statusLegendAction:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.statusLegend span > i,
+.statusLegendAction > i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.statusLegend b,
+.statusLegendAction b {
+  margin-left: auto;
+  color: #303b35;
+}
+
+.serviceConfiguration dl {
+  margin: 0.8rem 0 0;
+}
+
+.serviceConfiguration dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.48rem 0;
+  border-bottom: 1px solid #e8ecea;
+}
+
+.serviceConfiguration dt {
+  color: #778291;
+  font-size: 0.64rem;
+}
+
+.serviceConfiguration dd {
+  margin: 0;
+  color: #253129;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.planesMultiples {
+  display: block !important;
+  padding: 0.48rem 0;
+  border-bottom: 1px solid #e8ecea;
+}
+
+.planesMultiples dt {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.planesMultiplesLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.planesMultiplesLista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.66rem;
+}
+
+.planesMultiplesLista li strong {
+  color: #253129;
+  font-weight: 800;
+}
+
+.planesMultiplesLista li span {
+  color: #778291;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inlineLoading {
+  min-height: 115px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: #778291;
+  font-size: 0.7rem;
+}
+
+.incidentsPreview {
+  margin-top: 0.75rem;
+  background: #fff;
+}
+
+.incidentsTable {
+  margin-top: 0.7rem;
+}
+
+.incidentsTable > div {
+  display: grid;
+  grid-template-columns: 1.4fr 0.75fr 0.6fr 0.7fr 0.65fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.4rem;
+  border-top: 1px solid #edf0ee;
+  color: #56625b;
+  font-size: 0.64rem;
+}
+
+.incidentsTableHead {
+  border: 0;
+  color: #89938d;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.incidentsTable strong {
+  color: #28342d;
+}
+
+.incidentsTable button {
+  border: 0;
+  color: #276c48;
+  background: transparent;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.incidentPartial,
+.incidentUnpaid {
+  width: max-content;
+  min-width: 30px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.incidentPartial {
+  color: #926000;
+  background: #fff0ce;
+}
+
+.incidentUnpaid {
+  color: #a72e2e;
+  background: #ffe5e5;
+}
+
+.noIncidents,
+.emptyServiceDetail {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #56806a;
+  font-size: 0.72rem;
+}
+
+.emptyServiceDetail {
+  min-height: 460px;
+  flex-direction: column;
+  color: #89948e;
+}
+
+.emptyServiceDetail i {
+  font-size: 2rem;
+}
+
+.emptyServiceDetail h3,
+.emptyServiceDetail p {
+  margin: 0;
 }
 
 /* =========================
@@ -176,7 +1722,206 @@
   white-space: nowrap;
 }
 
+.totalMensualServicioCelda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.totalMensualServicioCelda small {
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.totalMensualSinDescuento {
+  color: #b91c1c;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 /* Lo dejamos por compatibilidad si algún componente anterior todavía lo usa */
+.movimientosMensuales {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.movimientosVacios {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.movimientoMes {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #dbe4ee;
+  border-radius: 14px;
+}
+
+.movimientoMesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #f0fdf4, #f8fafc);
+  border-bottom: 1px solid #dbe4ee;
+}
+
+.movimientoMesHeader > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.movimientoMesHeader > div:first-child strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.movimientoMesHeader > div:first-child span {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.movimientoLista {
+  display: flex;
+  flex-direction: column;
+}
+
+.movimientoFila {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 140px minmax(150px, auto);
+  align-items: center;
+  gap: 16px;
+  min-height: 66px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.movimientoFila:last-child {
+  border-bottom: 0;
+}
+
+.movimientoServicio {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.movimientoIcono {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 10px;
+}
+
+.movimientoServicio > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.movimientoServicio strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.movimientoServicio > div > span {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.movimientoEstadoCobrado,
+.movimientoEstadoParcial,
+.movimientoEstadoRechazado {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.movimientoEstadoCobrado {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.movimientoEstadoParcial {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.movimientoEstadoRechazado {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.movimientoImporte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.movimientoImporte strong {
+  color: #0f5132;
+  font-size: 0.95rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.movimientoImporte small {
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.movimientoImporte .movimientoImporteCero {
+  color: #b91c1c;
+}
+
+@media (max-width: 760px) {
+  .movimientoFila {
+    grid-template-columns: 1fr auto;
+  }
+
+  .movimientoImporte {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    padding-left: 45px;
+    text-align: left;
+  }
+}
+
 .totalServicio {
   color: #0f5132;
   font-weight: 800;
@@ -307,6 +2052,47 @@
   height: 38px;
 }
 
+.alertasChips {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 100px;
+}
+
+.alertaChipParcial,
+.alertaChipNoCobrado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+  width: fit-content;
+}
+
+.alertaChipParcial:hover,
+.alertaChipNoCobrado:hover {
+  opacity: 0.82;
+  transform: scale(1.04);
+}
+
+.alertaChipParcial {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.alertaChipNoCobrado {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 /* =========================
    Formulario nuevo / editar servicio
 ========================= */
@@ -415,6 +2201,7 @@
 
 .cuotaPendiente,
 .cuotaCobrada,
+.cuotaParcial,
 .cuotaNoCobrada {
   display: inline-flex;
   align-items: center;
@@ -436,6 +2223,11 @@
   color: #166534;
 }
 
+.cuotaParcial {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .cuotaNoCobrada {
   background: #fee2e2;
   color: #991b1b;
@@ -443,6 +2235,10 @@
 
 .filaNoCobrada {
   background: #fff1f2 !important;
+}
+
+.filaParcial {
+  background: #fffbeb !important;
 }
 
 /* =========================
@@ -496,6 +2292,86 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .executiveHeader,
+  .serviceDetailHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .executiveKpis,
+  .alertCenterGrid,
+  .masterDetail,
+  .serviceStatusGrid,
+  .cenaDocenteGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cenaFormCard {
+    position: static;
+  }
+
+  .cenaNuevaBox,
+  .cenaNuevaForm {
+    grid-template-columns: 1fr;
+  }
+
+  .cenaServicioSeleccionado {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cenaExecutiveHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cenaExecutiveHeader .cenaToolbar {
+    justify-content: flex-start;
+  }
+
+  .cenaTablaHeader,
+  .cenaResumenReserva {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cenaForm label > span {
+    grid-template-columns: 1fr;
+  }
+
+  .servicesMaster {
+    border-right: 0;
+    border-bottom: 1px solid #e2e7e4;
+  }
+
+  .servicesList {
+    grid-template-columns: repeat(3, minmax(230px, 1fr));
+    overflow-x: auto;
+  }
+
+  .serviceMetrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .serviceDetailActions :global(.p-button) {
+    flex: 1;
+  }
+
+  .incidentsTable {
+    overflow-x: auto;
+  }
+
+  .incidentsTable > div {
+    min-width: 650px;
+  }
+}
+
+@media (max-width: 520px) {
+  .executiveKpis,
+  .serviceMetrics {
+    grid-template-columns: 1fr;
+  }
 }
 /* ===== Texto descriptivo en tabla principal ===== */
 
@@ -543,4 +2419,149 @@
   font-weight: 700;
   font-size: 0.95rem;
   border: 1px solid #e2e8f0;
+}
+/* =========================
+   Búsqueda general compacta
+========================= */
+
+.busquedaGeneralTable :global(.p-datatable-wrapper) {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.busquedaGeneralTable :global(.p-datatable-thead > tr > th) {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.busquedaGeneralTable :global(.p-datatable-tbody > tr > td) {
+  vertical-align: middle;
+  color: #334155;
+}
+
+.busquedaAfiliadoCell,
+.busquedaServicioCell,
+.busquedaPeriodosCell,
+.busquedaImporteResumenCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.busquedaAfiliadoCell strong,
+.busquedaServicioCell strong,
+.busquedaImporteResumenCell strong {
+  color: #0f172a;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.busquedaAfiliadoCell span,
+.busquedaPeriodosCell span {
+  color: #475569;
+  line-height: 1.3;
+}
+
+.busquedaPeriodosCell b {
+  color: #64748b;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+}
+
+.busquedaBadgeContado,
+.busquedaBadgeCuotas,
+.busquedaBadgeCancelado,
+.busquedaBadgeCobrado,
+.busquedaBadgeParcial,
+.busquedaBadgeNoCobrado,
+.busquedaBadgeCanceladoMini,
+.busquedaBadgePendiente {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 900;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.busquedaBadgeContado,
+.busquedaBadgeCuotas,
+.busquedaBadgeCancelado {
+  width: fit-content;
+  min-width: 96px;
+  padding: 5px 11px;
+  font-size: 0.82rem;
+}
+
+.busquedaBadgeContado {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.busquedaBadgeCuotas {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.busquedaBadgeCancelado {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #c4b5fd;
+}
+
+.busquedaResumenBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.busquedaBadgeCobrado,
+.busquedaBadgeParcial,
+.busquedaBadgeNoCobrado,
+.busquedaBadgeCanceladoMini,
+.busquedaBadgePendiente {
+  min-width: 42px;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.busquedaBadgeCobrado {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.busquedaBadgeParcial {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.busquedaBadgeNoCobrado {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.busquedaBadgeCanceladoMini {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #c4b5fd;
+}
+
+.busquedaBadgePendiente {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
 }

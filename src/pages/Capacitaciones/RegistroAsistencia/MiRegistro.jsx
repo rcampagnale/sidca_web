@@ -23,6 +23,7 @@ import { Card } from "primereact/card";
 import { Message } from "primereact/message";
 import { Dialog } from "primereact/dialog";
 import { ProgressSpinner } from "primereact/progressspinner";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { QrReader } from "react-qr-reader";
 
 import styles from "./miRegistro.module.css";
@@ -700,6 +701,88 @@ const normalizarTipoRegistroQR = (value, asistenciaExistente = null) => {
 
 const DEVICE_STORAGE_KEY = "sidca_asistencia_device_id";
 
+const normalizarDni = (valor) => String(valor || "").replace(/\D/g, "");
+
+const obtenerNombreAfiliado = (data = {}) => {
+  const nombreCompleto = String(
+    data.apellidoNombre || data.nombreCompleto || data.displayName || ""
+  ).trim();
+
+  if (nombreCompleto) return nombreCompleto;
+
+  return [data.apellido, data.nombre]
+    .map((valor) => String(valor || "").trim())
+    .filter(Boolean)
+    .join(", ") || "otro afiliado";
+};
+
+const MODELOS_DISPOSITIVO_CONOCIDOS = {
+  "SM-A705": "Samsung Galaxy A70",
+  "SM-A705F": "Samsung Galaxy A70",
+  "SM-A705FN": "Samsung Galaxy A70",
+  "SM-A705GM": "Samsung Galaxy A70",
+  "SM-A705MN": "Samsung Galaxy A70",
+};
+
+const obtenerInfoDispositivo = async () => {
+  const userAgent = String(navigator?.userAgent || "");
+  let codigoModelo = "";
+  let plataforma = String(
+    navigator?.userAgentData?.platform || navigator?.platform || ""
+  ).trim();
+
+  try {
+    if (navigator?.userAgentData?.getHighEntropyValues) {
+      const datos = await navigator.userAgentData.getHighEntropyValues([
+        "model",
+        "platform",
+      ]);
+      codigoModelo = String(datos?.model || "").trim();
+      plataforma = String(datos?.platform || plataforma).trim();
+    }
+  } catch {
+    // Algunos navegadores no permiten acceder a estos datos.
+  }
+
+  if (!codigoModelo) {
+    const androidMatch = userAgent.match(
+      /Android[^;]*;\s*([^;)]+?)(?:\s+Build\/|\))/i
+    );
+    codigoModelo = String(androidMatch?.[1] || "").trim();
+  }
+
+  const codigoNormalizado = codigoModelo.toUpperCase();
+  let modelo = MODELOS_DISPOSITIVO_CONOCIDOS[codigoNormalizado] || "";
+
+  if (!modelo && codigoNormalizado.startsWith("SM-")) {
+    modelo = `Samsung ${codigoModelo}`;
+  } else if (!modelo && codigoModelo) {
+    modelo = codigoModelo;
+  } else if (!modelo) {
+    modelo = plataforma || "Dispositivo no identificado";
+  }
+
+  return {
+    dispositivoModelo: modelo,
+    dispositivoCodigoModelo: codigoModelo || null,
+    dispositivoPlataforma: plataforma || null,
+    dispositivoUserAgent: userAgent || null,
+  };
+};
+
+const formatearFechaHoraDispositivo = (value) => {
+  const fecha = value?.toDate?.() || (value ? new Date(value) : null);
+  if (!fecha || Number.isNaN(fecha.getTime())) return "Fecha no informada";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(fecha);
+};
+
 const generarDeviceId = () => {
   const random =
     typeof crypto !== "undefined" && crypto.randomUUID
@@ -761,6 +844,10 @@ export default function MiRegistro() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [modalidad, setModalidad] = useState("virtual");
+  const [requisitoPresencialVirtual, setRequisitoPresencialVirtual] =
+    useState("ninguno");
+  const [encuentrosPresencialesRequeridos, setEncuentrosPresencialesRequeridos] =
+    useState([]);
   const [metodo, setMetodo] = useState(undefined);
   const [sessionIdCfg, setSessionIdCfg] = useState(undefined);
   const [habilitadaCfg, setHabilitadaCfg] = useState(false);
@@ -834,24 +921,134 @@ export default function MiRegistro() {
     return refs;
   };
 
+  const buscarTitularDelDispositivo = async (deviceId, dniActual) => {
+    const dniNormalizado = normalizarDni(dniActual);
+    const colecciones = ["usuarios", "nuevoAfiliado"];
+
+    const resultados = await Promise.all(
+      colecciones.map(async (nombreColeccion) => {
+        const snap = await getDocs(
+          query(
+            collection(db, nombreColeccion),
+            where("dispositivoAsistenciaId", "==", deviceId),
+            limit(10)
+          )
+        );
+
+        return snap.docs.map((documento) => ({
+          id: documento.id,
+          ref: documento.ref,
+          data: {
+            ...(documento.data() || {}),
+            dni: documento.data()?.dni || documento.id,
+          },
+        }));
+      })
+    );
+
+    return resultados
+      .flat()
+      .find(
+        ({ id, data }) =>
+          normalizarDni(data?.dni || id) !== dniNormalizado
+      ) || null;
+  };
+
+  const auditarBloqueoDispositivo = async ({
+    motivo,
+    deviceId,
+    titular = null,
+    infoDispositivo = null,
+  }) => {
+    try {
+      await addDoc(collection(db, "asistencia_intentos_bloqueados"), {
+        motivo,
+        deviceId,
+        dniIntento: normalizarDni(perfil?.dni),
+        afiliadoIntento: obtenerNombreAfiliado(perfil),
+        dniTitular: titular ? normalizarDni(titular?.dni) : null,
+        afiliadoTitular: titular ? obtenerNombreAfiliado(titular) : null,
+        dispositivoModeloIntento: infoDispositivo?.dispositivoModelo || null,
+        dispositivoCodigoModeloIntento:
+          infoDispositivo?.dispositivoCodigoModelo || null,
+        dispositivoPlataformaIntento:
+          infoDispositivo?.dispositivoPlataforma || null,
+        dispositivoTitularId: titular?.dispositivoAsistenciaId || null,
+        dispositivoTitularModelo:
+          titular?.dispositivoModelo || titular?.dispositivoCodigoModelo || null,
+        cursoId: selectedCourseId || null,
+        cursoTitulo: selectedCourse || null,
+        sessionId: sessionIdCfg || null,
+        metodoRegistro: metodo || null,
+        modalidad: "presencial",
+        creadoEn: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("No se pudo auditar el bloqueo de dispositivo:", error);
+    }
+  };
+
   const validarDispositivoAfiliado = async () => {
     if (!perfil?.dni) throw new Error("No se encontró el DNI del usuario.");
 
     const deviceId = getOrCreateDeviceId();
+    const infoDispositivo = await obtenerInfoDispositivo();
     const documentos = await buscarDocumentosAfiliado(perfil.dni);
 
     if (documentos.length === 0) {
       throw new Error("No se encontró el afiliado en usuarios o nuevoAfiliado.");
     }
 
-    const documentoBloqueado = documentos.find(({ data }) => {
+    const titularOtroDni = await buscarTitularDelDispositivo(
+      deviceId,
+      perfil.dni
+    );
+
+    if (titularOtroDni) {
+      await auditarBloqueoDispositivo({
+        motivo: "dispositivo_asociado_a_otro_dni",
+        deviceId,
+        titular: titularOtroDni.data,
+        infoDispositivo,
+      });
+
+      throw new Error(
+        `Este dispositivo está autorizado para ${obtenerNombreAfiliado(
+          titularOtroDni.data
+        )}. Registrado el ${formatearFechaHoraDispositivo(
+          titularOtroDni.data?.dispositivoVinculadoEn
+        )}. Iniciá sesión desde tu dispositivo personal para registrar la asistencia.`
+      );
+    }
+
+    const documentoMismoDispositivo = documentos.find(({ data }) => {
+      const vinculado = String(data?.dispositivoAsistenciaId || "").trim();
+      return vinculado === deviceId;
+    });
+
+    const documentoBloqueado = !documentoMismoDispositivo && documentos.find(({ data }) => {
       const vinculado = String(data?.dispositivoAsistenciaId || "").trim();
       return vinculado && vinculado !== deviceId;
     });
 
     if (documentoBloqueado) {
+      await auditarBloqueoDispositivo({
+        motivo: "dni_asociado_a_otro_dispositivo",
+        deviceId,
+        titular: documentoBloqueado.data,
+        infoDispositivo,
+      });
+
       throw new Error(
-        "Este celular ya está vinculado a otro DNI para registrar asistencia. Por seguridad, no se puede marcar asistencia de otro afiliado desde este dispositivo."
+        `El DNI ${perfil.dni} de ${obtenerNombreAfiliado(
+          documentoBloqueado.data
+        )} está vinculado a otro dispositivo (${
+          documentoBloqueado.data?.dispositivoModelo ||
+          documentoBloqueado.data?.dispositivoCodigoModelo ||
+          "modelo no informado"
+        }), registrado el ${formatearFechaHoraDispositivo(
+          documentoBloqueado.data?.dispositivoVinculadoEn
+        )}. Esta computadora no coincide con el dispositivo autorizado. Si cambiaste de equipo, solicitá la actualización desde administración.`
       );
     }
 
@@ -877,6 +1074,7 @@ export default function MiRegistro() {
           asistenciaDispositivoVinculado: true,
           dispositivoVinculadoDesde: "web-mi-registro",
           dispositivoUltimaValidacionEn: serverTimestamp(),
+          ...infoDispositivo,
         };
 
         if (!yaTieneDispositivo) payload.dispositivoVinculadoEn = serverTimestamp();
@@ -1153,6 +1351,14 @@ export default function MiRegistro() {
           setSelectedCourse(data?.cursoTitulo || data?.curso || "");
           setSelectedCourseId(data?.cursoId || "");
           setModalidad(data?.modalidad || "virtual");
+          setRequisitoPresencialVirtual(
+            data?.requisitoPresencialVirtual || "ninguno"
+          );
+          setEncuentrosPresencialesRequeridos(
+            Array.isArray(data?.encuentrosPresencialesRequeridos)
+              ? data.encuentrosPresencialesRequeridos
+              : []
+          );
           setMetodo(data?.metodo);
           setSessionIdCfg(data?.sessionId);
           setHabilitadaCfg(Boolean(data?.habilitada));
@@ -1160,6 +1366,8 @@ export default function MiRegistro() {
           setSelectedCourse("");
           setSelectedCourseId("");
           setModalidad("virtual");
+          setRequisitoPresencialVirtual("ninguno");
+          setEncuentrosPresencialesRequeridos([]);
           setMetodo(undefined);
           setSessionIdCfg(undefined);
           setHabilitadaCfg(false);
@@ -1170,6 +1378,8 @@ export default function MiRegistro() {
         setSelectedCourse("");
         setSelectedCourseId("");
         setModalidad("virtual");
+        setRequisitoPresencialVirtual("ninguno");
+        setEncuentrosPresencialesRequeridos([]);
         setMetodo(undefined);
         setSessionIdCfg(undefined);
         setHabilitadaCfg(false);
@@ -1286,15 +1496,92 @@ export default function MiRegistro() {
       const qDni = query(collection(db, "asistencia"), where("dni", "==", perfil.dni));
       const snapDni = await getDocs(qDni);
 
+      const presencialesCompletos = snapDni.docs
+        .map((documento) => ({ id: documento.id, ...(documento.data() || {}) }))
+        .filter((data) => {
+          const esPresencial =
+            data.presencial === true ||
+            normalizarTexto(data.modalidad) === "presencial";
+          const mismoCurso =
+            (selectedCourseId && data.cursoId === selectedCourseId) ||
+            normalizarTexto(data.cursoTitulo || data.curso) ===
+              normalizarTexto(selectedCourse);
+          const ingresoCompleto = tieneIngresoRegistrado(data);
+          const salidaCompleta = tieneSalidaRegistrada(data);
+
+          return (
+            esPresencial &&
+            mismoCurso &&
+            ingresoCompleto &&
+            salidaCompleta
+          );
+        });
+
+      const idsEncuentrosCumplidos = new Set(
+        presencialesCompletos.map(
+          (data) =>
+            data.sessionId ||
+            data.sessionIdIngreso ||
+            `${selectedCourseId}-${data.fecha || "sin-fecha"}`
+        )
+      );
+
+      if (
+        requisitoPresencialVirtual === "alguno" &&
+        presencialesCompletos.length === 0
+      ) {
+        throw new Error(
+          "No podés registrar asistencia a la instancia virtual, por inasistencia al encuentro presencial."
+        );
+      }
+
+      if (
+        requisitoPresencialVirtual === "todos" ||
+        requisitoPresencialVirtual === "especificos"
+      ) {
+        if (!encuentrosPresencialesRequeridos.length) {
+          throw new Error(
+            "La asistencia virtual requiere encuentros presenciales, pero la configuración no indica cuáles."
+          );
+        }
+
+        const faltantes = encuentrosPresencialesRequeridos.filter(
+          (encuentro) => !idsEncuentrosCumplidos.has(encuentro.id)
+        );
+
+        if (faltantes.length) {
+          const fechasFaltantes = faltantes
+            .map((encuentro) => encuentro.fecha || "fecha no informada")
+            .join(", ");
+
+          throw new Error(
+            faltantes.length === 1
+              ? `No registraste asistencia al encuentro presencial del ${fechasFaltantes}. Por este motivo, no podrás cargar la asistencia virtual correspondiente a este encuentro.`
+              : `No registraste asistencia a los encuentros presenciales de las fechas ${fechasFaltantes}. Por este motivo, no podrás cargar la asistencia virtual correspondiente.`
+          );
+        }
+      }
+
       const yaTieneVirtual = snapDni.docs.some((d) => {
         const data = d.data() || {};
         const curso = data?.cursoTitulo || data?.curso || "";
-        const mod = normalizarTexto(data?.modalidad || "virtual");
-        return curso === selectedCourse && mod === "virtual";
+        const mod =
+          data.presencial === true
+            ? "presencial"
+            : normalizarTexto(data?.modalidad || "virtual");
+        const mismoCurso =
+          (selectedCourseId && data.cursoId && data.cursoId === selectedCourseId) ||
+          normalizarCursoKey(curso) === normalizarCursoKey(selectedCourse);
+        const fechaRegistro = normalizarFechaYMD(
+          data.fecha || data.fechaYMD || data.createdAt
+        );
+        const mismaJornada = fechaRegistro === normalizarFechaYMD(fechaDisplay);
+
+        return mismoCurso && mod === "virtual" && mismaJornada;
       });
 
       if (yaTieneVirtual) {
-        alert("Ya registraste asistencia virtual para este curso.");
+        alert("Ya registraste asistencia virtual para este curso en la jornada de hoy.");
         await fetchAsistencias(perfil.dni);
         return;
       }
@@ -1309,12 +1596,15 @@ export default function MiRegistro() {
         cursoTitulo: selectedCourse,
         cursoId: selectedCourseId || null,
         fecha: fechaDisplay,
+        fechaYMD: normalizarFechaYMD(fechaDisplay),
         presencial: false,
         modalidad: "virtual",
         estadoAsistencia: "validada",
         asistenciaValidada: true,
         asistenciaValida: true,
         presente: true,
+        requisitoPresencialVirtual,
+        encuentrosPresencialesValidados: Array.from(idsEncuentrosCumplidos),
         createdAt: serverTimestamp(),
       });
 
@@ -1323,7 +1613,7 @@ export default function MiRegistro() {
       await fetchAsistencias(perfil.dni);
     } catch (e) {
       console.error(e);
-      alert("No se pudo registrar. Intente nuevamente.");
+      alert(e?.message || "No se pudo registrar. Intente nuevamente.");
     } finally {
       setProcesandoAsistencia(false);
       setMensajeProceso("Procesando asistencia...");
@@ -1346,6 +1636,33 @@ export default function MiRegistro() {
     scannedRef.current = false;
     setCodeInput("");
     setQrVisible(true);
+  };
+
+  const confirmarRegistroPresencial = () => {
+    if (!nivel) return alert("Seleccione un nivel educativo antes de continuar.");
+
+    confirmDialog({
+      header: "Confirmar titular del dispositivo",
+      icon: "pi pi-exclamation-triangle",
+      message: (
+        <div style={{ display: "grid", gap: 10 }}>
+          <div>
+            Vas a registrar asistencia como <strong>{afiliadoLabel}</strong>, DNI{" "}
+            <strong>{perfil.dni}</strong>.
+          </div>
+          <div>
+            Este dispositivo quedará vinculado a ese afiliado. Si el celular no
+            te pertenece, no continúes: no podrá utilizarse para registrar la
+            asistencia de otra persona.
+          </div>
+          <strong>¿Confirmás que sos el titular de esta cuenta y del dispositivo?</strong>
+        </div>
+      ),
+      acceptLabel: "Sí, continuar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-warning",
+      accept: abrirQR,
+    });
   };
 
   const validarYRegistrarPresencial = async (sessionId, codeParam, tipoParam = "") => {
@@ -1581,6 +1898,8 @@ export default function MiRegistro() {
   };
 
   const verConstancia = ({ item, grupo, configCurso }) => {
+    if (item?.modalidad !== "presencial") return;
+
     if (!puedeMostrarConstanciaEnItem(item, configCurso)) {
       alert(
         getMensajeConstanciaNoDisponible({
@@ -1635,6 +1954,7 @@ export default function MiRegistro() {
 
   return (
     <div className={styles.page}>
+      <ConfirmDialog />
       <h2 className={styles.title}>Mi registro de asistencia</h2>
 
       <Card className={styles.card}>
@@ -1741,7 +2061,7 @@ export default function MiRegistro() {
           ) : (
             <Button
               label="Registrar asistencia Presencial QR"
-              onClick={abrirQR}
+              onClick={confirmarRegistroPresencial}
               disabled={!isPresencialQRActive || cargandoCfg || cargandoBoton || procesandoAsistencia}
               className={styles.btnPrimary}
             />
@@ -1778,10 +2098,9 @@ export default function MiRegistro() {
                       a,
                       constanciasPorCurso
                     ) || obtenerConfigConstanciaParaGrupo(grupo, constanciasPorCurso);
-                    const puedeVerConstancia = puedeMostrarConstanciaEnItem(
-                      a,
-                      configCurso
-                    );
+                    const puedeVerConstancia =
+                      esPresencial &&
+                      puedeMostrarConstanciaEnItem(a, configCurso);
 
                     const itemClass =
                       estadoClase === "ok"

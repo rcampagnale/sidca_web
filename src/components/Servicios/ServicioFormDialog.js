@@ -93,33 +93,19 @@ const ServicioFormDialog = ({
           </div>
         </div>
 
-        <div className={styles.switchGrid}>
-          <div className={styles.switchItem}>
-            <div>
-              <strong>Servicio activo</strong>
-              <small>Permite asignarlo a afiliados.</small>
-            </div>
-
-            <InputSwitch
-              checked={form.activo}
-              onChange={(e) => onChange("activo", e.value)}
-              disabled={guardando}
-            />
+        <div className={styles.switchItem}>
+          <div>
+            <strong>Visible en app</strong>
+            <small>Más adelante el afiliado podrá verlo desde la app.</small>
           </div>
 
-          <div className={styles.switchItem}>
-            <div>
-              <strong>Visible en app</strong>
-              <small>Más adelante el afiliado podrá verlo desde la app.</small>
-            </div>
-
-            <InputSwitch
-              checked={form.visibleEnApp}
-              onChange={(e) => onChange("visibleEnApp", e.value)}
-              disabled={guardando}
-            />
-          </div>
+          <InputSwitch
+            checked={form.visibleEnApp}
+            onChange={(e) => onChange("visibleEnApp", e.value)}
+            disabled={guardando}
+          />
         </div>
+
       </div>
     </Dialog>
   );

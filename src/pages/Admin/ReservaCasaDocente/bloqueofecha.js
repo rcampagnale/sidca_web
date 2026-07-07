@@ -10,6 +10,7 @@ import {
   orderBy,
   addDoc,
   deleteDoc,
+  doc,
 } from "firebase/firestore";
 
 const TIPO_BLOQUEO_OPCIONES = [
@@ -104,12 +105,8 @@ const BloqueoFecha = () => {
     }
 
     try {
-      const ref = collection(dbReservas, "bloqueosCasaDocente");
-      await deleteDoc(
-        // docId viene en bloqueo.id
-        // usamos la referencia completa: dbReservas / bloqueosCasaDocente / id
-        require("firebase/firestore").doc(dbReservas, "bloqueosCasaDocente", bloqueo.id)
-      );
+      const bloqueoRef = doc(dbReservas, "bloqueosCasaDocente", bloqueo.id);
+      await deleteDoc(bloqueoRef);
     } catch (error) {
       console.error("[BloqueoFecha] Error al eliminar bloqueo:", error);
       alert(
@@ -117,11 +114,6 @@ const BloqueoFecha = () => {
       );
     }
   };
-
-  // Versión sin require (más limpia) – si preferís, reemplazá el deleteDoc por esto:
-  // import { doc } arriba y usa:
-  // const ref = doc(dbReservas, "bloqueosCasaDocente", bloqueo.id);
-  // await deleteDoc(ref);
 
   return (
     <section className={styles.tableSection}>

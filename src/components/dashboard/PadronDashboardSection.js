@@ -15,19 +15,23 @@ import { ProgressBar } from "primereact/progressbar";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Tag } from "primereact/tag";
-import { Dropdown } from "primereact/dropdown";
 import { ExcelRenderer } from "react-excel-renderer";
 import exportFromJSON from "export-from-json";
 
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  collectionGroup,
+  doc,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
 
 import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/AfiliadosDashboard/afiliadosDashboard.module.css";
 import padronStyles from "./PadronDashboardSection.module.css";
 
 /* =========================================================
-   Sistemas educativos / padrones válidos
+   Sugerencias conocidas para detectar reparticiones
    ========================================================= */
 
 const SISTEMAS_PADRON = [
@@ -54,6 +58,57 @@ const getSistemaLabel = (value) => {
   return found?.label || value || "Sin sistema";
 };
 
+const detectReparticionFromFile = (fileName) => {
+  const normalized = normalizeText(
+    String(fileName || "").replace(/\.(xlsx?|xls)$/i, "")
+  );
+
+  const rules = [
+    {
+      patterns: ["provincia", "provincial"],
+      label: "Provincia",
+      confidence: 96,
+      reason: "Se detectó una referencia provincial en el nombre del archivo.",
+    },
+    {
+      patterns: ["municipal capital", "municipalidad capital", "capital"],
+      label: "Sistema Educativo Municipal Capital",
+      confidence: 90,
+      reason: "Se detectó una referencia al sistema municipal de Capital.",
+    },
+    {
+      patterns: ["fray mamerto esquiu", "fray m esquiu", "fme"],
+      label: "Sistema Educativo Fray Mamerto Esquiú",
+      confidence: 92,
+      reason: "Se detectó una referencia a Fray Mamerto Esquiú.",
+    },
+    {
+      patterns: ["juan pablo"],
+      label: "Juan Pablo",
+      confidence: 94,
+      reason: "Se detectó el nombre Juan Pablo en el archivo.",
+    },
+    {
+      patterns: ["salud", "hospital", "sanitario"],
+      label: "Ministerio de Salud",
+      confidence: 86,
+      reason: "Se detectó una referencia al área de Salud.",
+    },
+  ];
+
+  const match = rules.find((rule) =>
+    rule.patterns.some((pattern) => normalized.includes(pattern))
+  );
+
+  if (match) return match;
+
+  return {
+    label: "",
+    confidence: 30,
+    reason: "No se pudo inferir la repartición desde el nombre del archivo.",
+  };
+};
+
 /* =========================================================
    Helpers generales
    ========================================================= */
@@ -65,6 +120,9 @@ const normalizeText = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+
+const createSistemaValue = (label) =>
+  normalizeText(label).replace(/\s+/g, "_") || "sin_reparticion";
 
 const normalizeDni = (dniRaw) => {
   const digits = String(dniRaw ?? "").replace(/[^\d]/g, "");
@@ -85,6 +143,91 @@ const firstNonEmpty = (...values) => {
   }
 
   return "";
+};
+
+const normalizarEstadoCurso = (value) => normalizeText(value);
+
+const esCursoAprobado = (curso = {}) => {
+  const valores = [
+    curso.aprobo,
+    curso.aprobado,
+    curso.aprobada,
+    curso.aprobacion,
+    curso.estadoAprobacion,
+    curso.estado,
+    curso.condicion,
+    curso.resultado,
+    curso.status,
+    curso.finalizado,
+    curso.finalizada,
+  ];
+
+  return valores.some((value) => {
+    if (value === true || value === 1) return true;
+    return [
+      "true",
+      "si",
+      "aprobado",
+      "aprobada",
+      "aprobo",
+      "aprobado a",
+      "terminado",
+      "terminada",
+      "finalizado",
+      "finalizada",
+    ].includes(normalizarEstadoCurso(value));
+  });
+};
+
+const formatearFechaHoraRegistro = (value) => {
+  const fecha =
+    value?.toDate?.() ||
+    (value?.seconds ? new Date(value.seconds * 1000) : value ? new Date(value) : null);
+
+  if (!fecha || Number.isNaN(fecha.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(fecha);
+};
+
+const obtenerRegistroHistorico = (data = {}) => {
+  const candidatos = [
+    ["createdAt", data.createdAt],
+    ["fechaServer", data.fechaServer],
+    ["fechaRegistro", data.fechaRegistro],
+    ["registradoEn", data.registradoEn],
+    ["fechaAlta", data.fechaAlta],
+    ["timestamp", data.timestamp],
+  ];
+
+  for (const [campo, value] of candidatos) {
+    const texto = formatearFechaHoraRegistro(value);
+    if (texto) return { texto, campo };
+  }
+
+  const fechaFormateada = formatearFechaHoraRegistro(data.fecha);
+  const horaTexto = String(data.hora || "").trim();
+  if (fechaFormateada) {
+    return {
+      texto: fechaFormateada,
+      campo: "fecha",
+    };
+  }
+
+  const fechaTexto = String(data.fecha || "").trim();
+  if (fechaTexto) {
+    return {
+      texto: [fechaTexto, horaTexto].filter(Boolean).join(" "),
+      campo: horaTexto ? "fecha + hora" : "fecha",
+    };
+  }
+
+  return { texto: "", campo: "" };
 };
 
 const formatSiNo = (value) => {
@@ -174,8 +317,10 @@ const getCell = (row, index) => {
   return row?.[index] ?? "";
 };
 
-const parsePadronRows = ({ rows, fileName, sistema }) => {
+const parsePadronRows = ({ rows, fileName, sistema, sistemaLabel }) => {
   const detected = detectHeader(rows);
+  const resolvedSistemaLabel =
+    String(sistemaLabel || "").trim() || getSistemaLabel(sistema);
 
   if (!detected) {
     throw new Error(
@@ -224,7 +369,7 @@ const parsePadronRows = ({ rows, fileName, sistema }) => {
       filaExcel: i + 1,
       archivo: fileName || "",
       sistema,
-      sistemaLabel: getSistemaLabel(sistema),
+      sistemaLabel: resolvedSistemaLabel,
     };
 
     if (padronByDni.has(dni)) {
@@ -232,7 +377,7 @@ const parsePadronRows = ({ rows, fileName, sistema }) => {
         dni,
         fila: i + 1,
         sistema,
-        sistemaLabel: getSistemaLabel(sistema),
+        sistemaLabel: resolvedSistemaLabel,
         archivo: fileName || "",
       });
 
@@ -265,13 +410,13 @@ const parsePadronRows = ({ rows, fileName, sistema }) => {
 
   return {
     sistema,
-    sistemaLabel: getSistemaLabel(sistema),
+    sistemaLabel: resolvedSistemaLabel,
     fileName,
     padronByDni,
     padronRows: Array.from(padronByDni.values()),
     meta: {
       sistema,
-      sistemaLabel: getSistemaLabel(sistema),
+      sistemaLabel: resolvedSistemaLabel,
       fileName,
       headerIndex,
       totalFilasExcel: rows.length,
@@ -282,6 +427,44 @@ const parsePadronRows = ({ rows, fileName, sistema }) => {
   };
 };
 
+const assignReparticionToParsed = (parsed, reparticion) => {
+  const sistemaLabel = String(reparticion || "").trim();
+  const sistema = createSistemaValue(sistemaLabel);
+
+  return {
+    ...parsed,
+    sistema,
+    sistemaLabel,
+    padronRows: parsed.padronRows.map((row) => ({
+      ...row,
+      sistema,
+      sistemaLabel,
+    })),
+    meta: {
+      ...parsed.meta,
+      sistema,
+      sistemaLabel,
+      duplicados: (parsed.meta?.duplicados || []).map((row) => ({
+        ...row,
+        sistema,
+        sistemaLabel,
+      })),
+    },
+  };
+};
+
+const renderExcelFile = (fileObj) =>
+  new Promise((resolve, reject) => {
+    ExcelRenderer(fileObj, (error, response) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(response);
+    });
+  });
+
 /* =========================================================
    Consolidación multisistema
    ========================================================= */
@@ -290,10 +473,12 @@ const buildPadronConsolidado = (padronesBySistema) => {
   const consolidadoByDni = new Map();
   const duplicadosInternos = [];
 
-  Object.entries(padronesBySistema || {}).forEach(([sistema, parsed]) => {
+  Object.values(padronesBySistema || {}).forEach((parsed) => {
     if (!parsed) return;
 
     duplicadosInternos.push(...(parsed.meta?.duplicados || []));
+    const sistema = parsed.sistema;
+    const sistemaLabel = parsed.sistemaLabel || getSistemaLabel(sistema);
 
     parsed.padronRows.forEach((row) => {
       const existing =
@@ -317,7 +502,16 @@ const buildPadronConsolidado = (padronesBySistema) => {
         new Set([...existing.sistemasPadron, sistema])
       );
 
-      const sistemasPadronLabels = sistemasPadron.map(getSistemaLabel);
+      const labelsBySistema = new Map(
+        existing.sistemasPadron.map((value, index) => [
+          value,
+          existing.sistemasPadronLabels[index] || getSistemaLabel(value),
+        ])
+      );
+      labelsBySistema.set(sistema, sistemaLabel);
+      const sistemasPadronLabels = sistemasPadron.map(
+        (value) => labelsBySistema.get(value) || getSistemaLabel(value)
+      );
 
       const archivosPadron = Array.from(
         new Set([...existing.archivosPadron, row.archivo].filter(Boolean))
@@ -345,7 +539,7 @@ const buildPadronConsolidado = (padronesBySistema) => {
           ...existing.filasExcel,
           {
             sistema,
-            sistemaLabel: getSistemaLabel(sistema),
+            sistemaLabel,
             archivo: row.archivo,
             fila: row.filaExcel,
           },
@@ -354,7 +548,7 @@ const buildPadronConsolidado = (padronesBySistema) => {
           ...existing.registrosPorSistema,
           {
             sistema,
-            sistemaLabel: getSistemaLabel(sistema),
+            sistemaLabel,
             archivo: row.archivo,
             filaExcel: row.filaExcel,
           },
@@ -441,11 +635,15 @@ const buildAppRecords = (usuariosSnap, nuevoSnap) => {
         sistemasPadron: [],
         sistemasPadronLabels: [],
         cantidadSistemasPadron: 0,
+        fechaRegistroApp: "",
+        fuenteFechaRegistroApp: "",
+        cursosAprobados: [],
         docs: [],
         sources: [],
       };
 
     const preferThisSource = collectionName === "usuarios";
+    const registroHistorico = obtenerRegistroHistorico(data);
 
     const next = {
       ...existing,
@@ -514,6 +712,24 @@ const buildAppRecords = (usuariosSnap, nuevoSnap) => {
         typeof data?.cantidadSistemasPadron === "number"
           ? data.cantidadSistemasPadron
           : existing.cantidadSistemasPadron,
+
+      fechaRegistroApp: preferThisSource
+        ? firstNonEmpty(registroHistorico.texto, existing.fechaRegistroApp)
+        : firstNonEmpty(existing.fechaRegistroApp, registroHistorico.texto),
+
+      fuenteFechaRegistroApp: preferThisSource
+        ? firstNonEmpty(
+            registroHistorico.campo
+              ? `${collectionName}.${registroHistorico.campo}`
+              : "",
+            existing.fuenteFechaRegistroApp
+          )
+        : firstNonEmpty(
+            existing.fuenteFechaRegistroApp,
+            registroHistorico.campo
+              ? `${collectionName}.${registroHistorico.campo}`
+              : ""
+          ),
 
       docs: [
         ...existing.docs,
@@ -610,11 +826,13 @@ export default function PadronDashboardSection() {
   const [markProgress, setMarkProgress] = useState(0);
   const [markDialogVisible, setMarkDialogVisible] = useState(false);
 
-  const [selectedSistema, setSelectedSistema] = useState("provincia");
+  const [pendingImports, setPendingImports] = useState([]);
   const [appRecords, setAppRecords] = useState([]);
   const [padronesBySistema, setPadronesBySistema] = useState({});
   const [comparisonResult, setComparisonResult] = useState(null);
   const [selectedView, setSelectedView] = useState("noEnNingunPadron");
+  const [selectedResultDni, setSelectedResultDni] = useState("");
+  const [resultSearch, setResultSearch] = useState("");
 
   const showSuccess = useCallback((detail) => {
     toast.current?.show({
@@ -647,12 +865,66 @@ export default function PadronDashboardSection() {
     setLoadingBase(true);
 
     try {
-      const [usuariosSnap, nuevoSnap] = await Promise.all([
+      const [usuariosSnap, nuevoSnap, cursosSnap] = await Promise.all([
         getDocs(collection(db, "usuarios")),
         getDocs(collection(db, "nuevoAfiliado")),
+        getDocs(collectionGroup(db, "cursos")),
       ]);
 
-      const records = buildAppRecords(usuariosSnap, nuevoSnap);
+      const cursosPorUsuario = new Map();
+
+      cursosSnap.docs.forEach((cursoDoc) => {
+        const usuarioRef = cursoDoc.ref.parent.parent;
+        if (!usuarioRef || usuarioRef.parent.id !== "usuarios") return;
+
+        const data = cursoDoc.data() || {};
+        if (!esCursoAprobado(data)) return;
+
+        const curso = {
+          id: cursoDoc.id,
+          titulo: firstNonEmpty(
+            data.titulo,
+            data.nombre,
+            data.cursoTitulo,
+            data.cursoNombre,
+            "Curso sin título"
+          ),
+          estado: firstNonEmpty(
+            data.estado,
+            data.condicion,
+            data.resultado,
+            "Aprobado"
+          ),
+          fechaAprobacion: firstNonEmpty(
+            formatearFechaHoraRegistro(data.fechaAprobacion),
+            formatearFechaHoraRegistro(data.updatedAt),
+            formatearFechaHoraRegistro(data.createdAt)
+          ),
+        };
+
+        const actuales = cursosPorUsuario.get(usuarioRef.id) || [];
+        cursosPorUsuario.set(usuarioRef.id, [...actuales, curso]);
+      });
+
+      const records = buildAppRecords(usuariosSnap, nuevoSnap).map((row) => {
+        const cursos = row.docs
+          .filter((item) => item.collectionName === "usuarios")
+          .flatMap((item) => cursosPorUsuario.get(item.id) || []);
+        const cursosUnicos = Array.from(
+          new Map(
+            cursos.map((curso) => [
+              normalizeText(curso.titulo) || curso.id,
+              curso,
+            ])
+          ).values()
+        ).sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
+
+        return {
+          ...row,
+          cursosAprobados: cursosUnicos,
+          cantidadCursosAprobados: cursosUnicos.length,
+        };
+      });
       setAppRecords(records);
 
       return records;
@@ -695,69 +967,164 @@ export default function PadronDashboardSection() {
     [appRecords, fetchBaseApp]
   );
 
-  const handleSelectPadronExcel = (event) => {
-    const fileObj = event.files?.[0];
+  const handleSelectPadronExcel = async (event) => {
+    const files = Array.from(event.files || []);
+    if (!files.length) return;
 
-    if (!fileObj) return;
+    setProcessingExcel(true);
 
-    if (!selectedSistema) {
-      showWarn("Primero seleccioná el sistema educativo del padrón.");
-      if (event.options?.clear) event.options.clear();
+    try {
+      const baseId = Date.now();
+      const imported = await Promise.all(
+        files.map(async (fileObj, index) => {
+          const detection = detectReparticionFromFile(fileObj.name);
+
+          try {
+            const response = await renderExcelFile(fileObj);
+            const rows = response?.rows || [];
+
+            if (!rows.length) {
+              throw new Error("El archivo Excel está vacío.");
+            }
+
+            const initialLabel = detection.label || "Repartición pendiente";
+            const parsed = parsePadronRows({
+              rows,
+              fileName: fileObj.name,
+              sistema: createSistemaValue(initialLabel),
+              sistemaLabel: initialLabel,
+            });
+
+            if (!parsed.padronRows.length) {
+              throw new Error("No se encontraron DNI válidos en el padrón.");
+            }
+
+            return {
+              id: `${baseId}-${index}-${fileObj.name}`,
+              fileName: fileObj.name,
+              fileSize: fileObj.size || 0,
+              reparticion: detection.label,
+              confidence: detection.confidence,
+              reason: detection.reason,
+              parsed,
+              status: detection.label ? "ready" : "review",
+              error: "",
+            };
+          } catch (error) {
+            console.error(
+              `[PadronDashboardSection] Error procesando ${fileObj.name}:`,
+              error
+            );
+
+            return {
+              id: `${baseId}-${index}-${fileObj.name}`,
+              fileName: fileObj.name,
+              fileSize: fileObj.size || 0,
+              reparticion: detection.label,
+              confidence: detection.confidence,
+              reason: detection.reason,
+              parsed: null,
+              status: "error",
+              error: error?.message || "No se pudo procesar el archivo.",
+            };
+          }
+        })
+      );
+
+      setPendingImports((current) => [...current, ...imported]);
+
+      const validCount = imported.filter((item) => item.parsed).length;
+      const errorCount = imported.length - validCount;
+
+      if (validCount) {
+        showSuccess(
+          `${validCount} archivo${
+            validCount === 1 ? "" : "s"
+          } analizado${validCount === 1 ? "" : "s"} correctamente.`
+        );
+      }
+
+      if (errorCount) {
+        showWarn(
+          `${errorCount} archivo${
+            errorCount === 1 ? "" : "s"
+          } requiere${errorCount === 1 ? "" : "n"} revisión.`
+        );
+      }
+    } finally {
+      setProcessingExcel(false);
+
+      if (event.options?.clear) {
+        event.options.clear();
+      }
+    }
+  };
+
+  const updatePendingReparticion = (id, reparticion) => {
+    setPendingImports((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              reparticion,
+              status: item.parsed && reparticion.trim() ? "ready" : "review",
+            }
+          : item
+      )
+    );
+  };
+
+  const removePendingImport = (id) => {
+    setPendingImports((current) => current.filter((item) => item.id !== id));
+  };
+
+  const clearPendingImports = () => {
+    setPendingImports([]);
+  };
+
+  const confirmPendingImports = async () => {
+    const validImports = pendingImports.filter((item) => item.parsed);
+    const incomplete = validImports.filter(
+      (item) => !String(item.reparticion || "").trim()
+    );
+
+    if (!validImports.length) {
+      showWarn("No hay archivos válidos para consolidar.");
+      return;
+    }
+
+    if (incomplete.length) {
+      showWarn("Completá la repartición de todos los archivos válidos.");
       return;
     }
 
     setProcessingExcel(true);
 
-    ExcelRenderer(fileObj, async (err, resp) => {
-      try {
-        if (err) {
-          console.error(err);
-          showError("No se pudo leer el archivo Excel del padrón.");
-          return;
-        }
+    try {
+      const nextPadrones = { ...padronesBySistema };
 
-        const rows = resp?.rows || [];
-
-        if (!rows.length) {
-          showError("El archivo Excel está vacío.");
-          return;
-        }
-
-        const parsed = parsePadronRows({
-          rows,
-          fileName: fileObj.name,
-          sistema: selectedSistema,
-        });
-
-        if (!parsed.padronRows.length) {
-          showError("No se encontraron DNI válidos en el padrón.");
-          return;
-        }
-
-        const nextPadrones = {
-          ...padronesBySistema,
-          [selectedSistema]: parsed,
-        };
-
-        setPadronesBySistema(nextPadrones);
-        await recalcularComparacion(nextPadrones);
-
-        showSuccess(
-          `Padrón de ${getSistemaLabel(
-            selectedSistema
-          )} procesado correctamente.`
+      validImports.forEach((item) => {
+        nextPadrones[item.id] = assignReparticionToParsed(
+          item.parsed,
+          item.reparticion
         );
-      } catch (error) {
-        console.error("[PadronDashboardSection] Error procesando padrón:", error);
-        showError(error?.message || "No se pudo procesar el padrón.");
-      } finally {
-        setProcessingExcel(false);
+      });
 
-        if (event.options?.clear) {
-          event.options.clear();
-        }
-      }
-    });
+      setPadronesBySistema(nextPadrones);
+      await recalcularComparacion(nextPadrones);
+      setPendingImports((current) => current.filter((item) => !item.parsed));
+
+      showSuccess(
+        `${validImports.length} padrón${
+          validImports.length === 1 ? "" : "es"
+        } consolidado${validImports.length === 1 ? "" : "s"} correctamente.`
+      );
+    } catch (error) {
+      console.error("[PadronDashboardSection] Error consolidando padrones:", error);
+      showError("No se pudieron consolidar los padrones seleccionados.");
+    } finally {
+      setProcessingExcel(false);
+    }
   };
 
   const limpiarPadrones = () => {
@@ -771,6 +1138,7 @@ export default function PadronDashboardSection() {
       acceptClassName: "p-button-warning",
       accept: () => {
         setPadronesBySistema({});
+        setPendingImports([]);
         setComparisonResult(null);
         setSelectedView("noEnNingunPadron");
         showSuccess("Padrones cargados eliminados de la comparación actual.");
@@ -821,10 +1189,61 @@ export default function PadronDashboardSection() {
       return comparisonResult.duplicadosInternos;
     }
 
+    if (selectedView === "noPadronConCursos") {
+      return comparisonResult.noEnNingunPadron.filter(
+        (row) => row.cantidadCursosAprobados > 0
+      );
+    }
+
     return comparisonResult.noEnNingunPadron;
   }, [comparisonResult, selectedView]);
 
-  const updateLocalMarkedRows = (dniSet, estadoPadron, sistemasPadron = []) => {
+  const filteredVisibleRows = useMemo(() => {
+    const search = normalizeText(resultSearch);
+    if (!search) return visibleRows;
+
+    return visibleRows.filter((row) => {
+      const searchable = normalizeText(
+        [
+          row.dni,
+          row.apellido,
+          row.nombre,
+          row.apellidoNombre,
+          row.departamento,
+          row.establecimiento,
+          ...(row.sistemasPadronLabels || []),
+        ].join(" ")
+      );
+
+      return searchable.includes(search);
+    });
+  }, [visibleRows, resultSearch]);
+
+  useEffect(() => {
+    const selectedStillVisible = filteredVisibleRows.some(
+      (row) => row.dni === selectedResultDni
+    );
+
+    if (!selectedStillVisible) {
+      setSelectedResultDni(filteredVisibleRows[0]?.dni || "");
+    }
+  }, [filteredVisibleRows, selectedResultDni]);
+
+  const selectedResultRow =
+    filteredVisibleRows.find((row) => row.dni === selectedResultDni) ||
+    filteredVisibleRows[0] ||
+    null;
+
+  const selectedResultIndex = selectedResultRow
+    ? filteredVisibleRows.findIndex((row) => row.dni === selectedResultRow.dni)
+    : -1;
+
+  const updateLocalMarkedRows = (
+    dniSet,
+    estadoPadron,
+    sistemasPadron = [],
+    sistemasPadronLabels = []
+  ) => {
     const nowIso = new Date().toISOString();
 
     setComparisonResult((prev) => {
@@ -839,7 +1258,7 @@ export default function PadronDashboardSection() {
                 estadoPadron,
                 posibleDesafiliado: estadoPadron === "NO_EN_NINGUN_PADRON",
                 sistemasPadron,
-                sistemasPadronLabels: sistemasPadron.map(getSistemaLabel),
+                sistemasPadronLabels,
                 cantidadSistemasPadron: sistemasPadron.length,
                 fechaUltimaComparacionPadron: nowIso,
               }
@@ -852,7 +1271,7 @@ export default function PadronDashboardSection() {
                 estadoPadron,
                 posibleDesafiliado: false,
                 sistemasPadron,
-                sistemasPadronLabels: sistemasPadron.map(getSistemaLabel),
+                sistemasPadronLabels,
                 cantidadSistemasPadron: sistemasPadron.length,
                 fechaUltimaComparacionPadron: nowIso,
               }
@@ -869,7 +1288,7 @@ export default function PadronDashboardSection() {
               estadoPadron,
               posibleDesafiliado: estadoPadron === "NO_EN_NINGUN_PADRON",
               sistemasPadron,
-              sistemasPadronLabels: sistemasPadron.map(getSistemaLabel),
+              sistemasPadronLabels,
               cantidadSistemasPadron: sistemasPadron.length,
               fechaUltimaComparacionPadron: nowIso,
             }
@@ -895,6 +1314,7 @@ export default function PadronDashboardSection() {
           collectionName: target.collectionName,
           id: target.id,
           sistemasPadron: row.sistemasPadron || [],
+          sistemasPadronLabels: row.sistemasPadronLabels || [],
         });
       });
     });
@@ -920,6 +1340,14 @@ export default function PadronDashboardSection() {
       for (const target of targets) {
         const ref = doc(db, target.collectionName, String(target.id));
         const sistemasPadron = target.sistemasPadron || [];
+        const sistemasPadronLabels = target.sistemasPadronLabels || [];
+        const reparticionesCargadas = Array.from(
+          new Set(
+            Object.values(padronesBySistema)
+              .map((parsed) => parsed?.sistemaLabel)
+              .filter(Boolean)
+          )
+        );
 
         batch.set(
           ref,
@@ -927,11 +1355,11 @@ export default function PadronDashboardSection() {
             estadoPadron,
             posibleDesafiliado: estadoPadron === "NO_EN_NINGUN_PADRON",
             sistemasPadron,
-            sistemasPadronLabels: sistemasPadron.map(getSistemaLabel),
+            sistemasPadronLabels,
             cantidadSistemasPadron: sistemasPadron.length,
             fechaUltimaComparacionPadron: nowIso,
             origenComparacionPadron: "excel_padron_multisistema",
-            sistemasPadronCargados: Object.keys(padronesBySistema),
+            sistemasPadronCargados: reparticionesCargadas,
           },
           { merge: true }
         );
@@ -958,7 +1386,8 @@ export default function PadronDashboardSection() {
       updateLocalMarkedRows(
         affectedDnis,
         estadoPadron,
-        firstRow?.sistemasPadron || []
+        firstRow?.sistemasPadron || [],
+        firstRow?.sistemasPadronLabels || []
       );
 
       showSuccess(`Se actualizaron ${affectedDnis.size} DNI en Firestore.`);
@@ -1051,6 +1480,12 @@ export default function PadronDashboardSection() {
         .join(" | "),
       "Estado padrón guardado": row.estadoPadron || "",
       "Posible desafiliado": formatSiNo(row.posibleDesafiliado),
+      "Tiene cursos aprobados": row.cantidadCursosAprobados > 0 ? "Sí" : "No",
+      "Cantidad cursos aprobados": row.cantidadCursosAprobados || 0,
+      "Cursos aprobados":
+        row.cursosAprobados?.map((curso) => curso.titulo).join(" | ") || "Sin cursos",
+      "Fecha y hora registro app": row.fechaRegistroApp || "",
+      "Fuente fecha registro": row.fuenteFechaRegistroApp || "",
     }));
 
     const enAmbos = comparisonResult.coinciden.map((row) => ({
@@ -1122,13 +1557,24 @@ export default function PadronDashboardSection() {
       "Posible desafiliado": "",
     }));
 
-    return [
-      ...appNoPadron,
-      ...enAmbos,
-      ...padronSinApp,
-      ...multiples,
-      ...duplicados,
-    ];
+    const datasetsPorVista = {
+      noEnNingunPadron: appNoPadron,
+      coinciden: enAmbos,
+      padronNoEnApp: padronSinApp,
+      multiplesSistemas: multiples,
+      duplicadosInternos: duplicados,
+    };
+
+    return {
+      datasetsPorVista,
+      todos: [
+        ...appNoPadron,
+        ...enAmbos,
+        ...padronSinApp,
+        ...multiples,
+        ...duplicados,
+      ],
+    };
   };
 
   const handleExportResults = () => {
@@ -1137,7 +1583,7 @@ export default function PadronDashboardSection() {
       return;
     }
 
-    const data = buildExportDataset();
+    const data = buildExportDataset().todos;
 
     if (!data.length) {
       showWarn("No hay datos para exportar.");
@@ -1153,77 +1599,50 @@ export default function PadronDashboardSection() {
     showSuccess("Resultado exportado correctamente.");
   };
 
-  const sistemasBody = (row) => {
-    const labels = row.sistemasPadronLabels || [];
-
-    if (!labels.length && row.sistemaLabel) {
-      return <Tag value={row.sistemaLabel} severity="warning" />;
+  const handleExportSelectedView = () => {
+    if (!comparisonResult) {
+      showWarn("Primero tenés que cargar y comparar al menos un padrón.");
+      return;
     }
 
-    if (!labels.length) return "—";
+    const exportConfig = {
+      noEnNingunPadron: {
+        label: "App sin ningún padrón",
+        fileName: "app_sin_ningun_padron_sidca",
+      },
+      coinciden: {
+        label: "Coinciden",
+        fileName: "app_y_padron_coinciden_sidca",
+      },
+      padronNoEnApp: {
+        label: "Padrón sin app",
+        fileName: "padron_sin_app_sidca",
+      },
+      multiplesSistemas: {
+        label: "Múltiples sistemas",
+        fileName: "multiples_sistemas_sidca",
+      },
+      duplicadosInternos: {
+        label: "Duplicados internos",
+        fileName: "duplicados_internos_sidca",
+      },
+    };
 
-    return (
-      <div className={padronStyles.tagWrap}>
-        {labels.map((label) => (
-          <Tag key={label} value={label} severity="success" />
-        ))}
-      </div>
-    );
-  };
+    const config = exportConfig[selectedView];
+    const data = buildExportDataset().datasetsPorVista[selectedView] || [];
 
-  const sourceBody = (row) => {
-    if (row.estadoComparacion === "PADRON_NO_APP") {
-      return <Tag value="Padrón Excel" severity="warning" />;
+    if (!config || !data.length) {
+      showWarn("No hay datos en esta opción para exportar.");
+      return;
     }
 
-    if (row.sources?.length > 1) {
-      return (
-        <div className={padronStyles.tagWrap}>
-          {row.sources.map((source) => (
-            <Tag
-              key={source}
-              value={source}
-              severity={source === "usuarios" ? "info" : "contrast"}
-            />
-          ))}
-        </div>
-      );
-    }
+    exportFromJSON({
+      data,
+      fileName: config.fileName,
+      exportType: "xls",
+    });
 
-    const source = row.sources?.[0] || "—";
-
-    return (
-      <Tag
-        value={source}
-        severity={source === "usuarios" ? "info" : "contrast"}
-      />
-    );
-  };
-
-  const estadoBody = (row) => {
-    if (row.estadoComparacion === "APP_NO_NINGUN_PADRON") {
-      return <Tag value="No está en ningún padrón" severity="danger" />;
-    }
-
-    if (row.estadoComparacion === "PADRON_NO_APP") {
-      return <Tag value="No está en app" severity="warning" />;
-    }
-
-    if (row.cantidadSistemasPadron > 1) {
-      return <Tag value="Múltiples sistemas" severity="info" />;
-    }
-
-    return <Tag value="En padrón" severity="success" />;
-  };
-
-  const posibleDesafiliadoBody = (row) => {
-    if (row.estadoComparacion !== "APP_NO_NINGUN_PADRON") return "—";
-
-    return row.posibleDesafiliado ? (
-      <Tag value="Marcado" severity="danger" />
-    ) : (
-      <Tag value="Pendiente" severity="warning" />
-    );
+    showSuccess(`${config.label} exportado correctamente.`);
   };
 
   const nombreBody = (row) => {
@@ -1251,28 +1670,59 @@ export default function PadronDashboardSection() {
     return "—";
   };
 
-  const actionBody = (row) => {
-    if (row.estadoComparacion !== "APP_NO_NINGUN_PADRON") return null;
-
-    return (
-      <Button
-        label={row.posibleDesafiliado ? "Marcado" : "Marcar"}
-        icon={row.posibleDesafiliado ? "pi pi-check" : "pi pi-flag"}
-        className={`${padronStyles.actionButton} ${
-          row.posibleDesafiliado
-            ? "p-button-sm p-button-success"
-            : "p-button-sm p-button-warning"
-        }`}
-        onClick={() => confirmMarkOneNoPadron(row)}
-        disabled={marking || row.posibleDesafiliado}
-      />
-    );
-  };
-
   const duplicadoNombreBody = (row) =>
     row.sistemaLabel || getSistemaLabel(row.sistema);
 
   const duplicadoArchivoBody = (row) => row.archivo || "—";
+
+  const getRowInitials = (row) => {
+    const fullName = nombreBody(row);
+    const parts = String(fullName || "")
+      .replace(",", " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!parts.length) return "—";
+    return parts
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  const getRowSourceText = (row) => {
+    if (row.estadoComparacion === "PADRON_NO_APP") return "Padrón Excel";
+    return row.sources?.join(" + ") || "—";
+  };
+
+  const getRowStatusLabel = (row) => {
+    if (row.estadoComparacion === "APP_NO_NINGUN_PADRON") {
+      return "No está en ningún padrón";
+    }
+    if (row.estadoComparacion === "PADRON_NO_APP") return "No está en app";
+    if (row.cantidadSistemasPadron > 1) return "Múltiples sistemas";
+    return "En padrón";
+  };
+
+  const getRowStatusClass = (row) => {
+    if (row.estadoComparacion === "APP_NO_NINGUN_PADRON") {
+      return padronStyles.masterStatusDanger;
+    }
+    if (row.estadoComparacion === "PADRON_NO_APP") {
+      return padronStyles.masterStatusWarning;
+    }
+    if (row.cantidadSistemasPadron > 1) {
+      return padronStyles.masterStatusInfo;
+    }
+    return padronStyles.masterStatusSuccess;
+  };
+
+  const selectAdjacentResult = (direction) => {
+    if (selectedResultIndex < 0) return;
+    const nextIndex = selectedResultIndex + direction;
+    const nextRow = filteredVisibleRows[nextIndex];
+    if (nextRow) setSelectedResultDni(nextRow.dni);
+  };
 
   const renderTablaGeneral = () => {
     if (!comparisonResult) {
@@ -1340,150 +1790,514 @@ export default function PadronDashboardSection() {
     }
 
     return (
-      <div className={padronStyles.tableCard}>
-        <div className={padronStyles.tableScroll}>
-          <DataTable
-            value={visibleRows}
-            size="small"
-            stripedRows
-            paginator
-            rows={15}
-            rowsPerPageOptions={[15, 30, 50, 100]}
-            scrollable
-            scrollHeight="560px"
-            dataKey="dni"
-            className={padronStyles.padronDataTable}
-            tableStyle={{
-              width: "100%",
-              tableLayout: "fixed",
-            }}
-          >
-            <Column field="dni" header="DNI" style={{ width: "8%" }} />
-
-            <Column
-              header="Apellido y Nombre"
-              body={(row) => (
-                <div className={padronStyles.nameCell}>{nombreBody(row)}</div>
-              )}
-              style={{ width: "16%" }}
+      <div className={padronStyles.masterDetailLayout}>
+        <aside className={padronStyles.masterListPanel}>
+          <div className={padronStyles.masterSearch}>
+            <i className="pi pi-search" aria-hidden="true" />
+            <input
+              type="search"
+              value={resultSearch}
+              onChange={(event) => setResultSearch(event.target.value)}
+              placeholder="Buscar por nombre, DNI o departamento..."
             />
+          </div>
 
-            <Column
-              field="departamento"
-              header="Departamento"
-              body={(row) => (
-                <div className={padronStyles.textCell}>
-                  {row.departamento || "—"}
+          <div className={padronStyles.masterListMeta}>
+            <span>
+              {filteredVisibleRows.length.toLocaleString("es-AR")} resultados
+            </span>
+            {resultSearch && (
+              <button type="button" onClick={() => setResultSearch("")}>
+                Limpiar búsqueda
+              </button>
+            )}
+          </div>
+
+          <div className={padronStyles.masterList}>
+            {filteredVisibleRows.length ? (
+              filteredVisibleRows.map((row) => (
+                <button
+                  type="button"
+                  key={`${selectedView}-${row.dni}-${row.archivo || ""}`}
+                  className={`${padronStyles.masterListItem} ${
+                    selectedResultRow?.dni === row.dni
+                      ? padronStyles.masterListItemActive
+                      : ""
+                  }`}
+                  onClick={() => setSelectedResultDni(row.dni)}
+                >
+                  <span className={padronStyles.masterAvatar}>
+                    {getRowInitials(row)}
+                  </span>
+                  <span className={padronStyles.masterPerson}>
+                    <strong>{nombreBody(row)}</strong>
+                    <small>
+                      DNI {row.dni} · {row.departamento || "Sin departamento"}
+                    </small>
+                  </span>
+                  <i
+                    className={`${padronStyles.masterStatusDot} ${getRowStatusClass(
+                      row
+                    )}`}
+                    title={getRowStatusLabel(row)}
+                  />
+                </button>
+              ))
+            ) : (
+              <div className={padronStyles.masterListEmpty}>
+                No se encontraron registros con esa búsqueda.
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <section className={padronStyles.masterDetailPanel}>
+          {selectedResultRow ? (
+            <>
+              <div className={padronStyles.masterDetailHeader}>
+                <div className={padronStyles.masterIdentity}>
+                  <span className={padronStyles.masterAvatarLarge}>
+                    {getRowInitials(selectedResultRow)}
+                  </span>
+                  <div>
+                    <h3>{nombreBody(selectedResultRow)}</h3>
+                    <p>
+                      DNI {selectedResultRow.dni} ·{" "}
+                      {getRowSourceText(selectedResultRow)}
+                    </p>
+                  </div>
                 </div>
-              )}
-              style={{ width: "10%" }}
-            />
+                <span
+                  className={`${padronStyles.masterStatusBadge} ${getRowStatusClass(
+                    selectedResultRow
+                  )}`}
+                >
+                  {getRowStatusLabel(selectedResultRow)}
+                </span>
+              </div>
 
-            <Column
-              field="establecimiento"
-              header="Establecimiento"
-              body={(row) => (
-                <div className={padronStyles.textCell}>
-                  {row.establecimiento || "—"}
+              <div className={padronStyles.masterDetailGrid}>
+                <article className={padronStyles.masterDetailCard}>
+                  <h4>Información del afiliado</h4>
+                  <dl>
+                    <div>
+                      <dt>Departamento</dt>
+                      <dd>{selectedResultRow.departamento || "Sin informar"}</dd>
+                    </div>
+                    <div>
+                      <dt>Establecimiento</dt>
+                      <dd>
+                        {selectedResultRow.establecimiento || "Sin informar"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Origen</dt>
+                      <dd>{getRowSourceText(selectedResultRow)}</dd>
+                    </div>
+                    <div>
+                      <dt>Contacto</dt>
+                      <dd>
+                        {firstNonEmpty(
+                          selectedResultRow.email,
+                          selectedResultRow.celular,
+                          "Sin informar"
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+
+                <article className={padronStyles.masterDetailCard}>
+                  <h4>Resultado de comparación</h4>
+                  <dl>
+                    <div>
+                      <dt>Reparticiones encontradas</dt>
+                      <dd>
+                        {selectedResultRow.sistemasPadronLabels?.join(", ") ||
+                          selectedResultRow.sistemaLabel ||
+                          "Ninguna"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Cantidad de reparticiones</dt>
+                      <dd>{selectedResultRow.cantidadSistemasPadron || 0}</dd>
+                    </div>
+                    <div>
+                      <dt>Posible desafiliado</dt>
+                      <dd>
+                        {selectedResultRow.estadoComparacion ===
+                        "APP_NO_NINGUN_PADRON"
+                          ? selectedResultRow.posibleDesafiliado
+                            ? "Marcado"
+                            : "Pendiente"
+                          : "No corresponde"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Archivos de padrón</dt>
+                      <dd>
+                        {selectedResultRow.archivosPadron?.join(", ") || "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+
+                {selectedResultRow.estadoComparacion ===
+                  "APP_NO_NINGUN_PADRON" && (
+                  <article
+                    className={`${padronStyles.masterDetailCard} ${padronStyles.masterDetailCardWide}`}
+                  >
+                    <h4>Cursos aprobados y registro histórico</h4>
+                    <dl>
+                      <div>
+                        <dt>Tiene cursos aprobados</dt>
+                        <dd>
+                          {selectedResultRow.cantidadCursosAprobados > 0
+                            ? `Sí (${selectedResultRow.cantidadCursosAprobados})`
+                            : "No"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Fecha y hora de registro encontrada</dt>
+                        <dd>
+                          {selectedResultRow.fechaRegistroApp || "No disponible"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Campo de origen</dt>
+                        <dd>
+                          {selectedResultRow.fuenteFechaRegistroApp ||
+                            "No se encontró un campo histórico"}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {selectedResultRow.cursosAprobados?.length > 0 && (
+                      <ul className={padronStyles.masterCourseList}>
+                        {selectedResultRow.cursosAprobados.map((curso) => (
+                          <li key={`${curso.id}-${curso.titulo}`}>
+                            <strong>{curso.titulo}</strong>
+                            <span>
+                              {curso.estado || "Aprobado"}
+                              {curso.fechaAprobacion
+                                ? ` · ${curso.fechaAprobacion}`
+                                : ""}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                )}
+              </div>
+
+              <div className={padronStyles.masterDetailActions}>
+                <div className={padronStyles.masterNavigation}>
+                  <Button
+                    label="Anterior"
+                    icon="pi pi-chevron-left"
+                    className="p-button-sm p-button-outlined"
+                    onClick={() => selectAdjacentResult(-1)}
+                    disabled={selectedResultIndex <= 0}
+                  />
+                  <span>
+                    {selectedResultIndex + 1} de {filteredVisibleRows.length}
+                  </span>
+                  <Button
+                    label="Siguiente"
+                    icon="pi pi-chevron-right"
+                    iconPos="right"
+                    className="p-button-sm p-button-outlined"
+                    onClick={() => selectAdjacentResult(1)}
+                    disabled={
+                      selectedResultIndex < 0 ||
+                      selectedResultIndex >= filteredVisibleRows.length - 1
+                    }
+                  />
                 </div>
-              )}
-              style={{ width: "15%" }}
-            />
 
-            <Column header="Origen" body={sourceBody} style={{ width: "8%" }} />
-
-            <Column
-              header="Sistemas encontrados"
-              body={(row) => (
-                <div className={padronStyles.tagWrap}>
-                  {sistemasBody(row)}
-                </div>
-              )}
-              style={{ width: "17%" }}
-            />
-
-            <Column
-              header="Estado comparación"
-              body={estadoBody}
-              style={{ width: "12%" }}
-            />
-
-            <Column
-              header="Posible desafiliado"
-              body={posibleDesafiliadoBody}
-              style={{ width: "6%" }}
-            />
-
-            <Column
-              header="Acción"
-              body={actionBody}
-              style={{ width: "8%" }}
-            />
-          </DataTable>
-        </div>
+                {selectedResultRow.estadoComparacion ===
+                  "APP_NO_NINGUN_PADRON" && (
+                  <Button
+                    label={
+                      selectedResultRow.posibleDesafiliado
+                        ? "Afiliado marcado"
+                        : "Marcar posible desafiliado"
+                    }
+                    icon={
+                      selectedResultRow.posibleDesafiliado
+                        ? "pi pi-check"
+                        : "pi pi-flag"
+                    }
+                    className={
+                      selectedResultRow.posibleDesafiliado
+                        ? "p-button-sm p-button-success"
+                        : "p-button-sm p-button-warning"
+                    }
+                    onClick={() =>
+                      confirmMarkOneNoPadron(selectedResultRow)
+                    }
+                    disabled={marking || selectedResultRow.posibleDesafiliado}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={padronStyles.masterDetailEmpty}>
+              Seleccioná un registro para ver su detalle.
+            </div>
+          )}
+        </section>
       </div>
     );
   };
 
   const sistemasCargados = Object.entries(padronesBySistema);
+  const pendingValidCount = pendingImports.filter((item) => item.parsed).length;
+  const pendingReviewCount = pendingImports.filter(
+    (item) => item.parsed && !String(item.reparticion || "").trim()
+  ).length;
+  const pendingErrorCount = pendingImports.filter(
+    (item) => !item.parsed
+  ).length;
+  const reparticionesSugeridas = Array.from(
+    new Set([
+      ...SISTEMAS_PADRON.map((item) => item.label),
+      ...Object.values(padronesBySistema)
+        .map((parsed) => parsed?.sistemaLabel)
+        .filter(Boolean),
+      "Ministerio de Salud",
+    ])
+  );
 
   return (
     <div className={`${styles.infoAfiliadoRow} ${padronStyles.padronSection}`}>
       <Toast ref={toast} />
       <ConfirmDialog />
 
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
-          Control de padrón actualizado multisistema
-        </div>
+      <div className={`${styles.panel} ${padronStyles.mainPanel}`}>
+        <header className={padronStyles.header}>
+          <div>
+            <span className={padronStyles.eyebrow}>Control multisistema</span>
+            <h2 className={padronStyles.title}>Padrón actualizado</h2>
+            <p className={padronStyles.subtitle}>
+              Importá varios Excel, confirmá libremente sus reparticiones y
+              consolidalos por DNI antes de comparar.
+            </p>
+          </div>
+          <span className={padronStyles.headerBadge}>
+            {sistemasCargados.length} archivos consolidados
+          </span>
+        </header>
 
         <div className={`${styles.panelBody} ${padronStyles.padronPanelBody}`}>
           {loadingBase ? (
-            <div style={{ textAlign: "center", padding: "2rem" }}>
+            <div className={padronStyles.loadingState}>
               <ProgressSpinner
                 style={{ width: "42px", height: "42px" }}
                 strokeWidth="4"
               />
-              <div style={{ marginTop: 10, color: "#6b7280" }}>
-                Leyendo usuarios y nuevoAfiliado...
-              </div>
+              <span>Leyendo usuarios y nuevos afiliados...</span>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: "1rem" }}>
+            <div className={padronStyles.content}>
               <div className={padronStyles.infoBox}>
-                <strong>Objetivo:</strong> cargar padrones de distintos sistemas
-                educativos y consolidarlos por DNI. Un afiliado solo será
-                considerado <strong>posible desafiliado</strong> si está en la app
-                pero no aparece en ninguno de los padrones cargados.
+                <i className="pi pi-info-circle" aria-hidden="true" />
+                <div>
+                  <strong>Comparación segura:</strong> un afiliado solo será
+                  considerado <strong>posible desafiliado</strong> si está en la
+                  app pero no aparece en ninguno de los padrones consolidados.
+                </div>
               </div>
 
+              <section className={padronStyles.importerCard}>
+                <div className={padronStyles.importerHeader}>
+                  <div>
+                    <span className={padronStyles.importerStep}>
+                      Importador inteligente
+                    </span>
+                    <h3>Analizar padrones Excel</h3>
+                    <p>
+                      La repartición se sugiere desde el nombre del archivo y
+                      siempre puede corregirse o escribirse desde cero.
+                    </p>
+                  </div>
+                  <FileUpload
+                    name="padrones"
+                    mode="basic"
+                    accept=".xls,.xlsx"
+                    maxFileSize={10_000_000}
+                    multiple
+                    chooseLabel={
+                      processingExcel
+                        ? "Analizando archivos..."
+                        : "Seleccionar varios Excel"
+                    }
+                    customUpload
+                    uploadHandler={handleSelectPadronExcel}
+                    auto
+                    disabled={processingExcel || loadingBase}
+                    className={padronStyles.uploadButton}
+                  />
+                </div>
+
+                {pendingImports.length === 0 ? (
+                  <div className={padronStyles.dropZone}>
+                    <div className={padronStyles.dropIcon}>
+                      <i className="pi pi-file-excel" aria-hidden="true" />
+                    </div>
+                    <strong>Seleccioná todos los padrones de esta revisión</strong>
+                    <span>
+                      Se admiten varios archivos .xls y .xlsx de reparticiones
+                      diferentes.
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className={padronStyles.analysisSummary}>
+                      <span>
+                        <strong>{pendingImports.length}</strong> analizados
+                      </span>
+                      <span className={padronStyles.summaryReady}>
+                        <strong>{pendingValidCount - pendingReviewCount}</strong>{" "}
+                        listos
+                      </span>
+                      <span className={padronStyles.summaryReview}>
+                        <strong>{pendingReviewCount}</strong> por revisar
+                      </span>
+                      <span className={padronStyles.summaryError}>
+                        <strong>{pendingErrorCount}</strong> con error
+                      </span>
+                    </div>
+
+                    <div className={padronStyles.importList}>
+                      {pendingImports.map((item) => (
+                        <article
+                          key={item.id}
+                          className={`${padronStyles.importRow} ${
+                            item.status === "error"
+                              ? padronStyles.importRowError
+                              : ""
+                          }`}
+                        >
+                          <div className={padronStyles.fileIdentity}>
+                            <div className={padronStyles.excelIcon}>XLS</div>
+                            <div>
+                              <strong>{item.fileName}</strong>
+                              <span>
+                                {(item.fileSize / 1024 / 1024).toFixed(2)} MB
+                                {item.parsed
+                                  ? ` · ${item.parsed.meta.totalPadron.toLocaleString(
+                                      "es-AR"
+                                    )} DNI`
+                                  : ""}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className={padronStyles.detection}>
+                            <div className={padronStyles.confidenceTop}>
+                              <span>Detección automática</span>
+                              <strong>{item.confidence}%</strong>
+                            </div>
+                            <div className={padronStyles.confidenceTrack}>
+                              <span
+                                className={
+                                  item.confidence >= 70
+                                    ? padronStyles.confidenceGood
+                                    : padronStyles.confidenceLow
+                                }
+                                style={{ width: `${item.confidence}%` }}
+                              />
+                            </div>
+                            <small>{item.error || item.reason}</small>
+                          </div>
+
+                          <div className={padronStyles.reparticionField}>
+                            <label htmlFor={`reparticion-${item.id}`}>
+                              Repartición
+                            </label>
+                            <input
+                              id={`reparticion-${item.id}`}
+                              type="text"
+                              list="reparticiones-padron"
+                              value={item.reparticion}
+                              onChange={(event) =>
+                                updatePendingReparticion(
+                                  item.id,
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Escribir repartición..."
+                              disabled={!item.parsed || processingExcel}
+                            />
+                          </div>
+
+                          <div className={padronStyles.importStatus}>
+                            <span
+                              className={`${padronStyles.statusBadge} ${
+                                item.status === "ready"
+                                  ? padronStyles.statusReady
+                                  : item.status === "error"
+                                  ? padronStyles.statusError
+                                  : padronStyles.statusReview
+                              }`}
+                            >
+                              {item.status === "ready"
+                                ? "Listo"
+                                : item.status === "error"
+                                ? "Error"
+                                : "Revisar"}
+                            </span>
+                            <Button
+                              icon="pi pi-times"
+                              className="p-button-rounded p-button-text p-button-danger p-button-sm"
+                              onClick={() => removePendingImport(item.id)}
+                              disabled={processingExcel}
+                              aria-label={`Quitar ${item.fileName}`}
+                            />
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+
+                    <datalist id="reparticiones-padron">
+                      {reparticionesSugeridas.map((label) => (
+                        <option key={label} value={label} />
+                      ))}
+                    </datalist>
+
+                    <div className={padronStyles.importActions}>
+                      <span>
+                        Confirmá las reparticiones antes de incorporarlas a la
+                        comparación.
+                      </span>
+                      <div>
+                        <Button
+                          label="Descartar análisis"
+                          icon="pi pi-times"
+                          className="p-button-sm p-button-outlined"
+                          onClick={clearPendingImports}
+                          disabled={processingExcel}
+                        />
+                        <Button
+                          label={`Confirmar y consolidar (${pendingValidCount})`}
+                          icon="pi pi-check"
+                          className="p-button-sm p-button-success"
+                          onClick={confirmPendingImports}
+                          disabled={
+                            processingExcel ||
+                            !pendingValidCount ||
+                            pendingReviewCount > 0
+                          }
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+
               <div className={padronStyles.toolbar}>
-                <Dropdown
-                  value={selectedSistema}
-                  options={SISTEMAS_PADRON}
-                  onChange={(e) => setSelectedSistema(e.value)}
-                  placeholder="Seleccionar sistema"
-                  className={padronStyles.systemDropdown}
-                  disabled={processingExcel}
-                />
-
-                <FileUpload
-                  name="padron"
-                  mode="basic"
-                  accept=".xls,.xlsx"
-                  maxFileSize={10_000_000}
-                  chooseLabel={
-                    processingExcel
-                      ? "Procesando padrón..."
-                      : "Subir padrón del sistema seleccionado"
-                  }
-                  customUpload
-                  uploadHandler={handleSelectPadronExcel}
-                  auto
-                  disabled={processingExcel || loadingBase || !selectedSistema}
-                  className="p-button-sm p-button-warning"
-                />
-
                 <Button
                   label="Recargar base app"
                   icon="pi pi-refresh"
@@ -1525,9 +2339,9 @@ export default function PadronDashboardSection() {
                 <div className={padronStyles.loadedBox}>
                   <strong>Padrones cargados:</strong>
 
-                  {sistemasCargados.map(([sistema, parsed]) => (
-                    <div key={sistema} className={padronStyles.loadedItem}>
-                      <strong>{getSistemaLabel(sistema)}:</strong>{" "}
+                  {sistemasCargados.map(([uploadId, parsed]) => (
+                    <div key={uploadId} className={padronStyles.loadedItem}>
+                      <strong>{parsed.sistemaLabel}:</strong>{" "}
                       {parsed.meta.fileName} · {parsed.meta.totalPadron} DNI
                       únicos · {parsed.meta.duplicados.length} duplicados
                       internos · {parsed.meta.omitidos.length} filas omitidas
@@ -1630,6 +2444,37 @@ export default function PadronDashboardSection() {
                         : "p-button-outlined p-button-warning p-button-sm"
                     }
                     onClick={() => setSelectedView("duplicadosInternos")}
+                  />
+
+                  <Button
+                    label="Descargar opción seleccionada"
+                    icon="pi pi-download"
+                    className="p-button-sm p-button-success"
+                    onClick={handleExportSelectedView}
+                    disabled={
+                      !visibleRows.length ||
+                      processingExcel ||
+                      selectedView === "noPadronConCursos"
+                    }
+                  />
+
+                  <Button
+                    label={`Sin padrón con cursos (${comparisonResult.noEnNingunPadron.filter(
+                      (row) => row.cantidadCursosAprobados > 0
+                    ).length})`}
+                    icon="pi pi-eye"
+                    className={
+                      selectedView === "noPadronConCursos"
+                        ? "p-button-sm p-button-help"
+                        : "p-button-sm p-button-outlined p-button-help"
+                    }
+                    onClick={() => setSelectedView("noPadronConCursos")}
+                    disabled={
+                      processingExcel ||
+                      !comparisonResult.noEnNingunPadron.some(
+                        (row) => row.cantidadCursosAprobados > 0
+                      )
+                    }
                   />
                 </div>
               )}

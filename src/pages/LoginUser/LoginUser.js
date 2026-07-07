@@ -11,6 +11,7 @@ import logo from "../../assets/img/logo-01.png";
 import { Spinner } from "../../components/Spinner/Spinner";
 import { useHistory } from "react-router-dom";
 import "primeicons/primeicons.css";
+import whatsappLogo from "../../assets/logos/logo wsp.png";
 
 /** Normaliza el DNI: solo números, máx. 12 caracteres */
 const normalizeDni = (dniRaw) =>
@@ -32,7 +33,7 @@ const isSuspendedMessage = (msg) => {
 };
 
 // Datos de WhatsApp del Área Afiliado Adherente
-const WHATSAPP_NUMBER = "5493834539754";
+const WHATSAPP_NUMBER = "5493832437803";
 const WHATSAPP_BASE_MESSAGE =
   "Estimados/as, solicito ayuda para normalizar mi situación de Afiliado Adherente y restablecer el acceso a la app/web SiDCa. Muchas gracias.";
 
@@ -102,61 +103,123 @@ const LoginUser = () => {
   return (
     <div className={styles.visibleContent}>
       <div className={styles.container}>
-        <div className={styles.imgContainer}>
-          <img className={styles.img} src={logo} alt="Logo de SiDCa" />
-        </div>
+        <section className={styles.brandPanel}>
+          <div className={styles.brandGlowTop} />
+          <div className={styles.brandGlowBottom} />
+          <div className={styles.brandContent}>
+            <img className={styles.brandLogo} src={logo} alt="Logo de SiDCa" />
 
-        <form onSubmit={handleSubmit} className={styles.formAdmin}>
-          <h2 className={styles.title}>Iniciar sesión</h2>
+            <div className={styles.brandCopy}>
+              <span className={styles.eyebrow}>Portal de afiliados</span>
+              <h1>Tu espacio sindical, siempre cerca.</h1>
+              <p>
+                Accedé a tu credencial, convenios, beneficios y servicios del
+                Sindicato Docente de Catamarca.
+              </p>
+            </div>
 
-          <span className={`p-float-label ${styles.inputSection}`}>
-            <InputText
-              className={styles.inputForm}
-              value={form.dni}
-              name="dni"
-              id="dni"
-              type="text"
-              onChange={handleInputChange}
-            />
-            <label htmlFor="dni">DNI</label>
-          </span>
-
-          {/* Mensajes de error solo cuando NO es suspensión
-              (la suspensión la mostramos en el modal) */}
-          <div
-            style={{ display: "flex", justifyContent: "center", minHeight: 28 }}
-          >
-            {user.processing && <Spinner />}
-            {user.status === "AUTH_FAILURE" && !suspended && (
-              <small className="p-error">{user.msg}</small>
-            )}
+            <div className={styles.benefits}>
+              <span>
+                <i className="pi pi-id-card" aria-hidden="true" />
+                Credencial digital
+              </span>
+              <span>
+                <i className="pi pi-star" aria-hidden="true" />
+                Convenios y beneficios
+              </span>
+              <span>
+                <i className="pi pi-briefcase" aria-hidden="true" />
+                Oficina de gestión
+              </span>
+              <span>
+                <i className="pi pi-book" aria-hidden="true" />
+                Capacitaciones
+              </span>
+            </div>
           </div>
+        </section>
 
-          {/* Grupo de botones */}
-          <div className={styles.buttonGroup}>
+        <section className={styles.accessPanel}>
+          <form onSubmit={handleSubmit} className={styles.formAdmin}>
+            <div className={styles.mobileLogo}>
+              <img src={logo} alt="Logo de SiDCa" />
+            </div>
+
+            <span className={styles.formEyebrow}>Acceso seguro</span>
+            <h2 className={styles.title}>Ingresar a mi cuenta</h2>
+            <p className={styles.formSubtitle}>
+              Escribí tu DNI para acceder al portal de afiliados.
+            </p>
+
+            <label className={styles.inputLabel} htmlFor="dni">
+              Documento Nacional de Identidad
+            </label>
+            <span className={`p-input-icon-left ${styles.inputSection}`}>
+              <i className="pi pi-id-card" aria-hidden="true" />
+              <InputText
+                className={styles.inputForm}
+                value={form.dni}
+                name="dni"
+                id="dni"
+                type="text"
+                inputMode="numeric"
+                placeholder="DNI sin puntos"
+                onChange={handleInputChange}
+              />
+            </span>
+
+            <div className={styles.messageArea}>
+              {user.processing && <Spinner />}
+              {user.status === "AUTH_FAILURE" && !suspended && (
+                <small className="p-error">{user.msg}</small>
+              )}
+            </div>
+
             <Button
               type="submit"
               label="Ingresar"
+              icon="pi pi-arrow-right"
+              iconPos="right"
               className={`${styles.btnBase} ${styles.btnIngresar}`}
             />
 
-            <Button
-              type="button"
-              label="Afiliarse"
-              onClick={handleAfiliarse}
-              className={`${styles.btnBase} ${styles.btnAfiliarse}`}
-            />
+            <div className={styles.secondaryActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={handleAfiliarse}
+              >
+                <i className="pi pi-user-plus" aria-hidden="true" />
+                <span>
+                  <strong>Quiero afiliarme</strong>
+                  <small>Iniciar solicitud</small>
+                </span>
+              </button>
 
-            <Button
-              type="button"
-              label="Soporte Técnico"
-              icon="pi pi-whatsapp"
-              iconPos="right"
-              onClick={handleSoporte}
-              className={`${styles.btnBase} ${styles.btnSoporte}`}
-            />
-          </div>
-        </form>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.supportButton}`}
+                onClick={handleSoporte}
+              >
+                <img
+                  className={styles.whatsappLogo}
+                  src={whatsappLogo}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>
+                  <strong>Soporte técnico</strong>
+                  <small>Ayuda por WhatsApp</small>
+                </span>
+              </button>
+            </div>
+
+            <div className={styles.securityNote}>
+              <i className="pi pi-shield" aria-hidden="true" />
+              Acceso exclusivo para afiliados SIDCA
+            </div>
+          </form>
+        </section>
       </div>
 
       {/* 🔔 Modal de cuenta suspendida */}
@@ -181,7 +244,7 @@ const LoginUser = () => {
         >
           <Button
             type="button"
-            label="Afiliado Adherente"
+            label="Soporte técnico"
             icon="pi pi-whatsapp"
             onClick={handleSoporte}
             className={styles.btnSoporte}

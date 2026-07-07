@@ -16,6 +16,8 @@ import { Dialog } from "primereact/dialog";
 import { ProgressBar } from "primereact/progressbar";
 import { FileUpload } from "primereact/fileupload";
 import { Checkbox } from "primereact/checkbox";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
 import { ExcelRenderer } from "react-excel-renderer";
 import "../../../assets/styles/excel/excel-2007.css";
 import exportFromJSON from "export-from-json";
@@ -52,6 +54,7 @@ import {
   documentId,
   arrayUnion,
   serverTimestamp,
+  writeBatch as fsWriteBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config.js";
 
@@ -105,6 +108,124 @@ const getTodayDateInput = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const MESES_BAJA = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+const MESES_BAJA_ALIASES = {
+  ene: 1,
+  enero: 1,
+  feb: 2,
+  febrero: 2,
+  mar: 3,
+  marzo: 3,
+  abr: 4,
+  abril: 4,
+  may: 5,
+  mayo: 5,
+  jun: 6,
+  junio: 6,
+  jul: 7,
+  julio: 7,
+  ago: 8,
+  agosto: 8,
+  sep: 9,
+  sept: 9,
+  set: 9,
+  septiembre: 9,
+  setiembre: 9,
+  oct: 10,
+  octubre: 10,
+  nov: 11,
+  noviembre: 11,
+  dic: 12,
+  diciembre: 12,
+};
+
+const normalizarEncabezadoBaja = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const parsePeriodoBaja = (value) => {
+  if (typeof value === "number" && value > 20000 && value < 80000) {
+    const fechaExcel = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+    const mes = fechaExcel.getUTCMonth() + 1;
+    const anio = fechaExcel.getUTCFullYear();
+    return {
+      periodo: `${anio}-${String(mes).padStart(2, "0")}`,
+      mes,
+      anio,
+      label: `${MESES_BAJA[mes - 1]} ${anio}`,
+    };
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const mes = value.getMonth() + 1;
+    const anio = value.getFullYear();
+    return {
+      periodo: `${anio}-${String(mes).padStart(2, "0")}`,
+      mes,
+      anio,
+      label: `${MESES_BAJA[mes - 1]} ${anio}`,
+    };
+  }
+
+  const textoOriginal = String(value || "").trim();
+  const isoMatch = textoOriginal.match(/^(20\d{2})[-/]([01]?\d)(?:[-/]\d{1,2})?$/);
+  if (isoMatch) {
+    const anio = Number(isoMatch[1]);
+    const mes = Number(isoMatch[2]);
+    if (mes >= 1 && mes <= 12) {
+      return {
+        periodo: `${anio}-${String(mes).padStart(2, "0")}`,
+        mes,
+        anio,
+        label: `${MESES_BAJA[mes - 1]} ${anio}`,
+      };
+    }
+  }
+
+  const texto = normalizarEncabezadoBaja(value).replace(/^baja\s+/, "");
+  if (!texto) return null;
+
+  let mes = 0;
+  let anio = 0;
+  const tokens = texto.split(/\s+/).filter(Boolean);
+  const tokenMes = tokens.find((token) => MESES_BAJA_ALIASES[token]);
+
+  if (tokenMes) mes = MESES_BAJA_ALIASES[tokenMes];
+
+  const numeros = texto.match(/\d{1,4}/g) || [];
+  if (!mes && numeros.length >= 2) mes = Number(numeros[0]);
+
+  const candidatoAnio = Number(numeros[numeros.length - 1]);
+  if (candidatoAnio) anio = candidatoAnio < 100 ? 2000 + candidatoAnio : candidatoAnio;
+
+  if (!mes || mes < 1 || mes > 12 || anio < 2000 || anio > 2100) return null;
+
+  return {
+    periodo: `${anio}-${String(mes).padStart(2, "0")}`,
+    mes,
+    anio,
+    label: `${MESES_BAJA[mes - 1]} ${anio}`,
+  };
+};
+
 // =======================
 // Helpers dispositivo asistencia
 // =======================
@@ -118,6 +239,10 @@ const getDeviceFields = (base = {}) => ({
   dispositivoVinculadoEn: base.dispositivoVinculadoEn ?? null,
   dispositivoVinculadoDesde: base.dispositivoVinculadoDesde ?? null,
   dispositivoUltimaValidacionEn: base.dispositivoUltimaValidacionEn ?? null,
+  dispositivoModelo: base.dispositivoModelo ?? null,
+  dispositivoCodigoModelo: base.dispositivoCodigoModelo ?? null,
+  dispositivoPlataforma: base.dispositivoPlataforma ?? null,
+  dispositivoUserAgent: base.dispositivoUserAgent ?? null,
   dispositivoBloqueado:
     typeof base.dispositivoBloqueado === "boolean"
       ? base.dispositivoBloqueado
@@ -141,6 +266,19 @@ const getEstadoDispositivoLabel = (row) => {
     return "Vinculado";
   }
   return "Sin dispositivo vinculado";
+};
+
+const formatFechaHoraDispositivo = (value) => {
+  const fecha = value?.toDate?.() || (value ? new Date(value) : null);
+  if (!fecha || Number.isNaN(fecha.getTime())) return "No informada";
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(fecha);
 };
 
 const getAdminLabel = () => {
@@ -327,6 +465,22 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
         dispositivoUltimaValidacionEn: pick(
           nr.dispositivoUltimaValidacionEn,
           ur.dispositivoUltimaValidacionEn
+        ),
+        dispositivoModelo: pick(
+          nr.dispositivoModelo,
+          ur.dispositivoModelo
+        ),
+        dispositivoCodigoModelo: pick(
+          nr.dispositivoCodigoModelo,
+          ur.dispositivoCodigoModelo
+        ),
+        dispositivoPlataforma: pick(
+          nr.dispositivoPlataforma,
+          ur.dispositivoPlataforma
+        ),
+        dispositivoUserAgent: pick(
+          nr.dispositivoUserAgent,
+          ur.dispositivoUserAgent
         ),
         dispositivoBloqueado:
           !!nr.dispositivoBloqueado || !!ur.dispositivoBloqueado,
@@ -676,6 +830,13 @@ export default function AfiliadoActualizado() {
   const [bajaTipo, setBajaTipo] = useState(null); // "simple" | "ambos"
   const [bajaSaving, setBajaSaving] = useState(false);
 
+  // Baja masiva por Excel
+  const [bajaMasivaVisible, setBajaMasivaVisible] = useState(false);
+  const [bajaMasivaRows, setBajaMasivaRows] = useState([]);
+  const [bajaMasivaArchivo, setBajaMasivaArchivo] = useState("");
+  const [bajaMasivaAnalizando, setBajaMasivaAnalizando] = useState(false);
+  const [bajaMasivaProcesando, setBajaMasivaProcesando] = useState(false);
+
   // Export
   const [exporting, setExporting] = useState(false);
   const [exportModal, setExportModal] = useState(false);
@@ -1006,6 +1167,225 @@ export default function AfiliadoActualizado() {
 
   const onEliminarAmbos = (row) => abrirModalBaja(row, "ambos");
 
+  const buscarDocumentosPorDni = async (collectionName, dni, incluirDirecto = false) => {
+    const encontrados = new Map();
+    const agregar = (snap) => {
+      if (snap?.exists?.()) encontrados.set(snap.ref.path, snap);
+    };
+    const agregarQuery = (snap) =>
+      snap.docs.forEach((documento) => encontrados.set(documento.ref.path, documento));
+
+    if (incluirDirecto) {
+      try {
+        agregar(await fsGetDoc(fsDoc(db, collectionName, dni)));
+      } catch {
+        // La búsqueda por campo DNI continúa aunque el ID directo no exista.
+      }
+    }
+
+    const valores = [dni];
+    const dniNumero = Number(dni);
+    if (Number.isFinite(dniNumero)) valores.push(dniNumero);
+
+    for (const valor of valores) {
+      const snap = await fsGetDocs(
+        fsQuery(fsCollection(db, collectionName), where("dni", "==", valor))
+      );
+      agregarQuery(snap);
+    }
+
+    return Array.from(encontrados.values());
+  };
+
+  const analizarFilaBajaMasiva = async (fila) => {
+    if (!fila.dni) return { ...fila, valido: false, error: "DNI inválido" };
+    if (!fila.periodo) {
+      return { ...fila, valido: false, error: "Mes/año de baja inválido" };
+    }
+    if (fila.duplicado) {
+      return { ...fila, valido: false, error: "DNI duplicado en el Excel" };
+    }
+
+    try {
+      const [usuarios, nuevoAfiliado, asistencias] = await Promise.all([
+        buscarDocumentosPorDni("usuarios", fila.dni, true),
+        buscarDocumentosPorDni("nuevoAfiliado", fila.dni, true),
+        buscarDocumentosPorDni("asistencia", fila.dni, false),
+      ]);
+      const referencia = usuarios[0]?.data?.() || nuevoAfiliado[0]?.data?.() || {};
+      const total = usuarios.length + nuevoAfiliado.length + asistencias.length;
+
+      return {
+        ...fila,
+        nombre:
+          fila.nombre ||
+          [referencia.apellido, referencia.nombre].filter(Boolean).join(", ") ||
+          referencia.apellidoNombre ||
+          "Sin nombre",
+        pathsUsuarios: usuarios.map((item) => item.ref.path),
+        pathsNuevoAfiliado: nuevoAfiliado.map((item) => item.ref.path),
+        pathsAsistencia: asistencias.map((item) => item.ref.path),
+        cantidadUsuarios: usuarios.length,
+        cantidadNuevoAfiliado: nuevoAfiliado.length,
+        cantidadAsistencias: asistencias.length,
+        valido: total > 0,
+        error: total > 0 ? "" : "Sin coincidencias en las colecciones",
+      };
+    } catch (error) {
+      return { ...fila, valido: false, error: error?.message || "No se pudo validar el DNI" };
+    }
+  };
+
+  const handleSelectExcelBajaMasiva = (e) => {
+    const fileObj = e.files?.[0];
+    if (!fileObj) return;
+    setBajaMasivaAnalizando(true);
+
+    ExcelRenderer(fileObj, async (err, resp) => {
+      try {
+        if (err) throw new Error("No se pudo leer el archivo Excel.");
+        const rows = resp?.rows || [];
+        const headerIndex = rows.slice(0, 15).findIndex((row) =>
+          (row || []).some((cell) => normalizarEncabezadoBaja(cell) === "dni")
+        );
+        if (headerIndex < 0) throw new Error('El Excel debe incluir una columna "DNI".');
+
+        const headers = rows[headerIndex].map(normalizarEncabezadoBaja);
+        const dniIndex = headers.findIndex((header) => header === "dni");
+        const periodoIndex = headers.findIndex(
+          (header) => header.includes("mes de baja") || header.includes("fecha de baja")
+        );
+        const nombreIndex = headers.findIndex(
+          (header) => header.includes("apellido") && header.includes("nombre")
+        );
+        const sistemaIndex = headers.findIndex((header) => header === "sistema");
+        const departamentoIndex = headers.findIndex((header) => header === "departamento");
+
+        if (periodoIndex < 0) {
+          throw new Error('El Excel debe incluir una columna "MES DE BAJA" o "FECHA DE BAJA".');
+        }
+
+        const filasBase = rows
+          .slice(headerIndex + 1)
+          .map((row, index) => {
+            const dni = toDniKey(row?.[dniIndex]);
+            const periodo = parsePeriodoBaja(row?.[periodoIndex]);
+            return {
+              filaExcel: headerIndex + index + 2,
+              dni,
+              nombre: nombreIndex >= 0 ? String(row?.[nombreIndex] || "").trim() : "",
+              sistema: sistemaIndex >= 0 ? String(row?.[sistemaIndex] || "").trim() : "",
+              departamento: departamentoIndex >= 0 ? String(row?.[departamentoIndex] || "").trim() : "",
+              periodo: periodo?.periodo || "",
+              periodoLabel: periodo?.label || String(row?.[periodoIndex] || "").trim(),
+              mesBaja: periodo?.mes || null,
+              anioBaja: periodo?.anio || null,
+            };
+          })
+          .filter((fila) => fila.dni || fila.periodoLabel);
+
+        if (!filasBase.length) throw new Error("El Excel no contiene filas para procesar.");
+
+        const repeticiones = filasBase.reduce((map, fila) => {
+          if (fila.dni) map.set(fila.dni, (map.get(fila.dni) || 0) + 1);
+          return map;
+        }, new Map());
+        const preparadas = filasBase.map((fila) => ({
+          ...fila,
+          duplicado: fila.dni && repeticiones.get(fila.dni) > 1,
+        }));
+        const analizadas = [];
+
+        for (let i = 0; i < preparadas.length; i += 10) {
+          const bloque = await Promise.all(
+            preparadas.slice(i, i + 10).map(analizarFilaBajaMasiva)
+          );
+          analizadas.push(...bloque);
+        }
+
+        setBajaMasivaArchivo(fileObj.name || "bajas.xlsx");
+        setBajaMasivaRows(analizadas);
+        setBajaMasivaVisible(true);
+      } catch (error) {
+        showError(error?.message || "No se pudo analizar el Excel de bajas.");
+      } finally {
+        setBajaMasivaAnalizando(false);
+        e.options?.clear?.();
+      }
+    });
+  };
+
+  const cerrarBajaMasiva = () => {
+    if (bajaMasivaProcesando) return;
+    setBajaMasivaVisible(false);
+    setBajaMasivaRows([]);
+    setBajaMasivaArchivo("");
+  };
+
+  const confirmarBajaMasiva = async () => {
+    const filasValidas = bajaMasivaRows.filter((fila) => fila.valido);
+    if (!filasValidas.length) return showError("No hay filas válidas para eliminar.");
+
+    setBajaMasivaProcesando(true);
+    const eliminados = [];
+    const errores = [];
+
+    for (const fila of filasValidas) {
+      try {
+        const paths = [
+          ...fila.pathsUsuarios,
+          ...fila.pathsNuevoAfiliado,
+          ...fila.pathsAsistencia,
+        ];
+        const operaciones = [
+          { tipo: "counter" },
+          ...paths.map((path) => ({ tipo: "delete", path })),
+        ];
+
+        for (let i = 0; i < operaciones.length; i += 450) {
+          const batch = fsWriteBatch(db);
+          operaciones.slice(i, i + 450).forEach((operacion) => {
+            if (operacion.tipo === "counter") {
+              batch.set(
+                fsDoc(db, "nuevoAfiliado_counters", fila.dni),
+                {
+                  fechaUltimaBaja: fila.periodo,
+                  fechasBaja: arrayUnion(fila.periodo),
+                  mesBaja: fila.mesBaja,
+                  anioBaja: fila.anioBaja,
+                  bajaMasivaArchivo,
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+              );
+            } else {
+              batch.delete(fsDoc(db, operacion.path));
+            }
+          });
+          await batch.commit();
+        }
+        eliminados.push(fila);
+      } catch (error) {
+        errores.push({ ...fila, error: error?.message || "Error durante la eliminación" });
+      }
+    }
+
+    const dnisEliminados = new Set(eliminados.map((fila) => fila.dni));
+    setRowsNuevo((prev) => prev.filter((row) => !dnisEliminados.has(toDniKey(row.dni))));
+    setRowsUsuariosLocal((prev) => prev.filter((row) => !dnisEliminados.has(toDniKey(row.dni))));
+    setExtraUsuariosRows((prev) => prev.filter((row) => !dnisEliminados.has(toDniKey(row.dni))));
+    setBajaMasivaProcesando(false);
+
+    if (errores.length) {
+      setBajaMasivaRows(errores.map((fila) => ({ ...fila, valido: false })));
+      showError(`Se eliminaron ${eliminados.length} afiliados y fallaron ${errores.length}.`);
+      return;
+    }
+
+    cerrarBajaMasiva();
+    showSuccess(`Baja masiva completada: ${eliminados.length} afiliados eliminados junto con sus asistencias.`);
+  };
+
   // ✅ NUEVO: reiniciar dispositivo vinculado para asistencia QR
   const resetDispositivoDocumento = async ({ collectionName, id }) => {
     if (!collectionName || !id) return null;
@@ -1020,9 +1400,15 @@ export default function AfiliadoActualizado() {
 
     const patch = {
       dispositivoAnteriorId,
+      dispositivoAnteriorModelo:
+        data.dispositivoModelo || data.dispositivoCodigoModelo || null,
       dispositivoAsistenciaId: null,
       asistenciaDispositivoVinculado: false,
       dispositivoBloqueado: false,
+      dispositivoModelo: null,
+      dispositivoCodigoModelo: null,
+      dispositivoPlataforma: null,
+      dispositivoUserAgent: null,
 
       // Limpieza de fechas del vínculo anterior para evitar confusión visual
       dispositivoVinculadoEn: null,
@@ -1044,6 +1430,55 @@ export default function AfiliadoActualizado() {
     };
   };
 
+  const obtenerDocumentosParaReiniciarDispositivo = async (row) => {
+    const targets = new Map();
+    const agregar = (collectionName, id) => {
+      if (!collectionName || !id) return;
+      const key = `${collectionName}/${String(id)}`;
+      targets.set(key, { collectionName, id: String(id) });
+    };
+
+    agregar("nuevoAfiliado", row?.idNuevo);
+    agregar("usuarios", row?.idUsuario);
+
+    if (row?.origen === "usuarios") agregar("usuarios", row?.id);
+    if (row?.origen === "nuevoAfiliado") agregar("nuevoAfiliado", row?.id);
+
+    const dniTexto = String(row?.dni || "").replace(/\D/g, "");
+    if (!dniTexto) return Array.from(targets.values());
+
+    await Promise.all(
+      ["usuarios", "nuevoAfiliado"].map(async (collectionName) => {
+        const valoresDni = [dniTexto];
+        const dniNumero = Number(dniTexto);
+        if (Number.isFinite(dniNumero)) valoresDni.push(dniNumero);
+
+        await Promise.all(
+          valoresDni.map(async (dniValue) => {
+            try {
+              const snap = await fsGetDocs(
+                fsQuery(
+                  fsCollection(db, collectionName),
+                  where("dni", "==", dniValue)
+                )
+              );
+              snap.docs.forEach((documento) =>
+                agregar(collectionName, documento.id)
+              );
+            } catch (error) {
+              console.error(
+                `No se pudo buscar el DNI en ${collectionName}:`,
+                error
+              );
+            }
+          })
+        );
+      })
+    );
+
+    return Array.from(targets.values());
+  };
+
   const onReiniciarDispositivoAsistencia = (row) => {
     if (!row) return;
 
@@ -1051,6 +1486,11 @@ export default function AfiliadoActualizado() {
 
     const estadoActual = getEstadoDispositivoLabel(row);
     const deviceVisible = shortDeviceId(row.dispositivoAsistenciaId);
+    const modeloDispositivo =
+      row.dispositivoModelo || row.dispositivoCodigoModelo || "No informado";
+    const fechaVinculacion = formatFechaHoraDispositivo(
+      row.dispositivoVinculadoEn
+    );
 
     confirmDialog({
       header: "Reiniciar dispositivo de asistencia",
@@ -1072,6 +1512,12 @@ export default function AfiliadoActualizado() {
             <div>
               <strong>ID dispositivo:</strong> {deviceVisible}
             </div>
+            <div>
+              <strong>Modelo:</strong> {modeloDispositivo}
+            </div>
+            <div>
+              <strong>Vinculado:</strong> {fechaVinculacion}
+            </div>
           </div>
 
           <div style={{ fontSize: 13 }}>
@@ -1086,33 +1532,7 @@ export default function AfiliadoActualizado() {
       acceptClassName: "p-button-warning",
       accept: async () => {
         try {
-          const targets = [];
-
-          if (row.origen === "ambos") {
-            if (row.idNuevo) {
-              targets.push({
-                collectionName: "nuevoAfiliado",
-                id: row.idNuevo,
-              });
-            }
-
-            if (row.idUsuario) {
-              targets.push({
-                collectionName: "usuarios",
-                id: row.idUsuario,
-              });
-            }
-          } else if (row.origen === "usuarios") {
-            targets.push({
-              collectionName: "usuarios",
-              id: row.id,
-            });
-          } else {
-            targets.push({
-              collectionName: "nuevoAfiliado",
-              id: row.id,
-            });
-          }
+          const targets = await obtenerDocumentosParaReiniciarDispositivo(row);
 
           if (!targets.length) {
             throw new Error("No se pudo determinar la colección del afiliado.");
@@ -1989,6 +2409,23 @@ export default function AfiliadoActualizado() {
             className="p-button-sm p-button-warning"
           />
 
+          <FileUpload
+            name="excel_bajas"
+            mode="basic"
+            accept=".xls,.xlsx"
+            maxFileSize={5_000_000}
+            chooseLabel={
+              bajaMasivaAnalizando
+                ? "Analizando bajas..."
+                : "Baja masiva desde Excel"
+            }
+            customUpload
+            uploadHandler={handleSelectExcelBajaMasiva}
+            auto
+            disabled={bajaMasivaAnalizando || bajaMasivaProcesando}
+            className="p-button-sm p-button-danger"
+          />
+
           {/* EXPORTAR */}
           <Button
             label={
@@ -2166,6 +2603,111 @@ export default function AfiliadoActualizado() {
             <strong> fechasBaja</strong>. No se agregan motivos ni otra
             colección.
           </small>
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Confirmar baja masiva desde Excel"
+        visible={bajaMasivaVisible}
+        modal
+        closable={!bajaMasivaProcesando}
+        style={{ width: "95vw", maxWidth: 1250 }}
+        onHide={cerrarBajaMasiva}
+        footer={
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <Button
+              label="Cancelar"
+              className="p-button-text"
+              onClick={cerrarBajaMasiva}
+              disabled={bajaMasivaProcesando}
+            />
+            <Button
+              label={
+                bajaMasivaProcesando
+                  ? "Eliminando..."
+                  : `Confirmar y eliminar ${bajaMasivaRows.filter((fila) => fila.valido).length}`
+              }
+              icon={
+                bajaMasivaProcesando ? "pi pi-spin pi-spinner" : "pi pi-trash"
+              }
+              className="p-button-danger"
+              onClick={confirmarBajaMasiva}
+              disabled={
+                bajaMasivaProcesando ||
+                bajaMasivaRows.filter((fila) => fila.valido).length === 0
+              }
+            />
+          </div>
+        }
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          <div
+            style={{
+              border: "1px solid #fecaca",
+              background: "#fff7f7",
+              color: "#7f1d1d",
+              borderRadius: 8,
+              padding: 12,
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>Acción irreversible.</strong> Se guardará el mes y año de baja
+            en <strong>nuevoAfiliado_counters</strong> y luego se eliminarán las
+            coincidencias encontradas en <strong>usuarios</strong>,{" "}
+            <strong>nuevoAfiliado</strong> y <strong>asistencia</strong>. Las filas
+            inválidas no serán procesadas.
+          </div>
+
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <strong>Archivo: {bajaMasivaArchivo || "—"}</strong>
+            <span>Total: {bajaMasivaRows.length}</span>
+            <span style={{ color: "#166534" }}>
+              Válidas: {bajaMasivaRows.filter((fila) => fila.valido).length}
+            </span>
+            <span style={{ color: "#991b1b" }}>
+              Omitidas: {bajaMasivaRows.filter((fila) => !fila.valido).length}
+            </span>
+          </div>
+
+          <DataTable
+            value={bajaMasivaRows}
+            dataKey="filaExcel"
+            scrollable
+            scrollHeight="55vh"
+            stripedRows
+            emptyMessage="No hay filas para mostrar."
+          >
+            <Column field="filaExcel" header="Fila" style={{ width: 70 }} />
+            <Column field="nombre" header="Apellido y nombre" />
+            <Column field="dni" header="DNI" style={{ width: 120 }} />
+            <Column field="sistema" header="Sistema" />
+            <Column field="departamento" header="Departamento" />
+            <Column field="periodoLabel" header="Mes de baja" />
+            <Column field="cantidadUsuarios" header="Usuarios" style={{ width: 90 }} />
+            <Column
+              field="cantidadNuevoAfiliado"
+              header="Nuevo afiliado"
+              style={{ width: 120 }}
+            />
+            <Column
+              field="cantidadAsistencias"
+              header="Asistencias"
+              style={{ width: 105 }}
+            />
+            <Column
+              header="Validación"
+              body={(fila) => (
+                <span
+                  style={{
+                    color: fila.valido ? "#166534" : "#991b1b",
+                    fontWeight: 700,
+                  }}
+                >
+                  {fila.valido ? "Lista para eliminar" : fila.error || "Omitida"}
+                </span>
+              )}
+            />
+          </DataTable>
         </div>
       </Dialog>
 

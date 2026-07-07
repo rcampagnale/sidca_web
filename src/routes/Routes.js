@@ -51,6 +51,8 @@ import Convenio from "../pages/Convenios/Convenios";
 
 // Nueva página administrativa: Servicios Contratados
 import Servicios from "../pages/Admin/Servicios/Servicios";
+import GestionDelegadosAdmin from "../pages/Admin/GestionDelegadosAdmin/GestionDelegadosAdmin";
+import GestionDelegadosUsuario from "../pages/Delegado/GestionDelegadosUsuario/GestionDelegadosUsuario";
 
 // Página pública Comercio
 import Comercio from "../pages/Comercio/comercio";
@@ -64,6 +66,8 @@ import OficinaGestion from "../pages/OficinaGestion/OficinaGestion";
 
 // Oficina de Gestión - Formulario público
 import FormularioGestionPublico from "../pages/OficinaGestion/FormularioGestionPublico";
+import MenuNavegacion from "../pages/Prototipos/MenuNavegacion/MenuNavegacion";
+import ServiciosContratadosPrototipo from "../pages/Prototipos/ServiciosContratados/ServiciosContratados";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
 
@@ -80,11 +84,26 @@ const AppRouter = () => {
   return (
     <BrowserRouter basename={"/"}>
       <Switch>
+        <Route
+          exact
+          path="/prototipos/menu-navegacion"
+          component={MenuNavegacion}
+        />
+        <Route
+          exact
+          path="/prototipos/servicios-contratados"
+          component={ServiciosContratadosPrototipo}
+        />
         {/* ===========================
             WEB PÚBLICA
         =========================== */}
 
-        <PublicRoute exact path="/" component={LoginUser} />
+        <PublicRoute
+          exact
+          path="/"
+          component={LoginUser}
+          fullBleed
+        />
 
         <PublicRoute
           exact
@@ -194,6 +213,12 @@ const AppRouter = () => {
 
         <PrivateRoute exact path="/cuotas" component={Cuotas} />
 
+        <PrivateRoute
+          exact
+          path="/delegado/gestion-delegados"
+          component={GestionDelegadosUsuario}
+        />
+
         {/* ===========================
             ADMIN
         =========================== */}
@@ -278,6 +303,12 @@ const AppRouter = () => {
 
         {/* Servicios Contratados */}
         <AdminRoute exact path="/admin/servicios" component={Servicios} />
+
+        <AdminRoute
+          exact
+          path="/admin/gestion-delegados"
+          component={GestionDelegadosAdmin}
+        />
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
 

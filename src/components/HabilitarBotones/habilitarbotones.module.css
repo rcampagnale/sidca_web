@@ -117,6 +117,119 @@
 }
 
 /* ==============================
+   GESTION DELEGADOS
+   ============================== */
+
+.delegadosPanel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.delegadosFormCard,
+.delegadosTableCard {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.delegadosFormHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.delegadosFormHeader span {
+  color: #b45309;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.delegadosFormHeader h4 {
+  margin: 0.2rem 0 0;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.delegadosFormGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dniSearchRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dniSearchRow :global(.p-inputtext) {
+  flex: 1;
+}
+
+.permisosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  padding: 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.permisoItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.permisoItem:has(:global(.p-inputswitch-checked)) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.permisoItemPeligroso {
+  border-color: #fca5a5;
+}
+
+.permisoItemPeligroso:has(:global(.p-inputswitch-checked)) {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.permisoItemPeligroso b {
+  color: #b91c1c;
+}
+
+.permisosTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 240px;
+}
+
+.tableActions {
+  display: flex;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+/* ==============================
    RESPONSIVE
    ============================== */
 
@@ -137,6 +250,15 @@
 
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .delegadosFormGrid,
+  .permisosGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dniSearchRow {
+    flex-direction: column;
   }
 
   .formRowFull {

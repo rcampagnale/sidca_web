@@ -7,16 +7,23 @@ import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { InputSwitch } from "primereact/inputswitch";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Tag } from "primereact/tag";
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 
 import { db } from "../../firebase/firebase-config";
@@ -29,6 +36,134 @@ import QRSessionPanel from "./qr/QRSessionPanel.js";
 import QRScreenRegisterDialog from "./qr/QRScreenRegisterDialog.js";
 import QRSyncDialog from "./qr/QRSyncDialog.js";
 import QRDisplayDialog from "./qr/QRDisplayDialog.js";
+
+const normalizarDni = (valor) => String(valor || "").replace(/\D/g, "");
+
+const PERMISO_LABELS = {
+  ver: "Ver",
+  agregarObservaciones: "Observaciones",
+  cambiarEstado: "Cambiar estado",
+  exportarExcel: "Exportar Excel",
+  importarExcel: "Importar Excel",
+  eliminar: "Eliminar",
+};
+
+const delegadoFormInicial = {
+  dni: "",
+  apellido: "",
+  nombre: "",
+  apellidoNombre: "",
+  email: "",
+  telefono: "",
+  departamento: "",
+  registradoApp: false,
+  origenApp: "no_registrado",
+  habilitado: true,
+  pantallaQrHabilitada: false,
+  expedienteSueldoHabilitado: true,
+  permisos: {
+    ver: true,
+    agregarObservaciones: false,
+    cambiarEstado: false,
+    exportarExcel: false,
+    importarExcel: false,
+    eliminar: false,
+  },
+  observaciones: "",
+};
+
+const camposDni = ["dni", "DNI", "documento", "Documento", "cuil", "CUIL"];
+
+const obtenerCampo = (data, campos) => {
+  for (const campo of campos) {
+    if (data?.[campo] !== undefined && data?.[campo] !== null) {
+      return data[campo];
+    }
+  }
+  return "";
+};
+
+const normalizarPersona = (docSnap, origen) => {
+  const data = docSnap?.data?.() || {};
+  const apellido = String(
+    obtenerCampo(data, ["apellido", "Apellido", "apellidos", "Apellidos"])
+  ).trim();
+  const nombre = String(
+    obtenerCampo(data, ["nombre", "Nombre", "nombres", "Nombres"])
+  ).trim();
+  const apellidoNombre = String(
+    obtenerCampo(data, [
+      "apellidoNombre",
+      "ApellidoNombre",
+      "apellido_nombre",
+      "nombreCompleto",
+      "NombreCompleto",
+    ])
+  ).trim();
+
+  return {
+    id: docSnap.id,
+    apellido,
+    nombre,
+    apellidoNombre:
+      apellidoNombre || [apellido, nombre].filter(Boolean).join(", "),
+    email: String(
+      obtenerCampo(data, ["email", "correo", "mail", "Email", "Correo"])
+    ).trim(),
+    telefono: String(
+      obtenerCampo(data, [
+        "telefono",
+        "tel",
+        "celular",
+        "whatsapp",
+        "Telefono",
+        "Celular",
+      ])
+    ).trim(),
+    departamento: String(
+      obtenerCampo(data, ["departamento", "Departamento", "depto", "Depto"])
+    ).trim(),
+    origen,
+  };
+};
+
+const formatearFecha = (valor) => {
+  const fecha = valor?.toDate?.() || (valor ? new Date(valor) : null);
+  if (!fecha || Number.isNaN(fecha.getTime())) return "-";
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(fecha);
+};
+
+const tieneDatoAsistencia = (valor) =>
+  valor !== undefined &&
+  valor !== null &&
+  valor !== "" &&
+  valor !== false;
+
+const tieneIngresoCompleto = (data = {}) =>
+  data.ingreso?.registrado === true ||
+  tieneDatoAsistencia(data.codigoIngreso) ||
+  tieneDatoAsistencia(data.ingresoFechaHora) ||
+  tieneDatoAsistencia(data.horaIngreso) ||
+  tieneDatoAsistencia(data.fechaIngreso) ||
+  tieneDatoAsistencia(data.entrada) ||
+  tieneDatoAsistencia(data.checkIn) ||
+  (typeof data.ingreso !== "object" && tieneDatoAsistencia(data.ingreso));
+
+const tieneSalidaCompleta = (data = {}) =>
+  data.salida?.registrado === true ||
+  tieneDatoAsistencia(data.codigoSalida) ||
+  tieneDatoAsistencia(data.salidaFechaHora) ||
+  tieneDatoAsistencia(data.horaSalida) ||
+  tieneDatoAsistencia(data.fechaSalida) ||
+  tieneDatoAsistencia(data.egreso) ||
+  tieneDatoAsistencia(data.checkOut) ||
+  (typeof data.salida !== "object" && tieneDatoAsistencia(data.salida));
 
 const HabilitarBotonesPanel = () => {
   const toast = useRef(null);
@@ -76,6 +211,13 @@ const HabilitarBotonesPanel = () => {
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [selectedCursoId, setSelectedCursoId] = useState(null);
   const [selectedModalidad, setSelectedModalidad] = useState(null);
+  const [requisitoPresencialVirtual, setRequisitoPresencialVirtual] =
+    useState("ninguno");
+  const [encuentrosPresenciales, setEncuentrosPresenciales] = useState([]);
+  const [encuentrosPresencialesSeleccionados, setEncuentrosPresencialesSeleccionados] =
+    useState([]);
+  const [loadingEncuentrosPresenciales, setLoadingEncuentrosPresenciales] =
+    useState(false);
 
   const [desdeLocal, setDesdeLocal] = useState("");
   const [hastaLocal, setHastaLocal] = useState("");
@@ -130,6 +272,344 @@ const HabilitarBotonesPanel = () => {
   const CFG_REF = useMemo(() => doc(db, "config", "app"), []);
 
   /* =====================================================
+     GESTION DELEGADOS
+     ===================================================== */
+
+  const [visibleDialogDelegados, setVisibleDialogDelegados] = useState(false);
+  const [delegadosAutorizados, setDelegadosAutorizados] = useState([]);
+  const [loadingDelegados, setLoadingDelegados] = useState(false);
+  const [savingDelegado, setSavingDelegado] = useState(false);
+  const [searchingDelegado, setSearchingDelegado] = useState(false);
+  const [editingDelegadoId, setEditingDelegadoId] = useState(null);
+  const [delegadoForm, setDelegadoForm] = useState(delegadoFormInicial);
+
+  const adminActual = useMemo(() => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+      return user?.email || user?.uid || user?.dni || "admin";
+    } catch {
+      return "admin";
+    }
+  }, []);
+
+  const actualizarDelegadoCampo = (campo, valor) => {
+    setDelegadoForm((prev) => ({
+      ...prev,
+      [campo]: valor,
+      ...(campo === "apellido" || campo === "nombre"
+        ? {
+            apellidoNombre: [
+              campo === "apellido" ? valor : prev.apellido,
+              campo === "nombre" ? valor : prev.nombre,
+            ]
+              .filter(Boolean)
+              .join(", "),
+          }
+        : {}),
+    }));
+  };
+
+  const actualizarPermisoDelegado = (permiso, valor) => {
+    setDelegadoForm((prev) => ({
+      ...prev,
+      permisos: {
+        ...prev.permisos,
+        [permiso]: valor,
+      },
+    }));
+  };
+
+  const cargarDelegadosAutorizados = useCallback(async () => {
+    setLoadingDelegados(true);
+    try {
+      const snap = await getDocs(
+        query(collection(db, "delegadosAutorizados"), orderBy("apellidoNombre", "asc"))
+      );
+      setDelegadosAutorizados(
+        snap.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }))
+      );
+    } catch (error) {
+      console.error("Error al cargar delegados autorizados:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los delegados autorizados.",
+      });
+    } finally {
+      setLoadingDelegados(false);
+    }
+  }, []);
+
+  const abrirDialogDelegados = () => {
+    setVisibleDialogDelegados(true);
+    cargarDelegadosAutorizados();
+  };
+
+  const limpiarDelegadoForm = () => {
+    setEditingDelegadoId(null);
+    setDelegadoForm(delegadoFormInicial);
+  };
+
+  const buscarPersonaPorDniEnColeccion = async (coleccion, dni) => {
+    const directo = await getDoc(doc(db, coleccion, dni));
+    if (directo.exists()) return normalizarPersona(directo, coleccion);
+
+    for (const campo of camposDni) {
+      try {
+        const snap = await getDocs(
+          query(collection(db, coleccion), where(campo, "==", dni), limit(1))
+        );
+        if (!snap.empty) return normalizarPersona(snap.docs[0], coleccion);
+
+        const dniNumero = Number(dni);
+        if (!Number.isNaN(dniNumero)) {
+          const snapNumero = await getDocs(
+            query(collection(db, coleccion), where(campo, "==", dniNumero), limit(1))
+          );
+          if (!snapNumero.empty) {
+            return normalizarPersona(snapNumero.docs[0], coleccion);
+          }
+        }
+      } catch {
+        // Algunos campos pueden no existir o no tener indice. Seguimos con el siguiente.
+      }
+    }
+
+    return null;
+  };
+
+  const buscarDelegadoPorDni = async () => {
+    const dni = normalizarDni(delegadoForm.dni);
+    if (!dni) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "DNI requerido",
+        detail: "Ingresá un DNI válido para buscar.",
+      });
+      return;
+    }
+
+    setSearchingDelegado(true);
+    try {
+      const [enUsuarios, enNuevoAfiliado] = await Promise.all([
+        buscarPersonaPorDniEnColeccion("usuarios", dni),
+        buscarPersonaPorDniEnColeccion("nuevoAfiliado", dni),
+      ]);
+
+      const encontrado = enNuevoAfiliado || enUsuarios;
+      const origenApp =
+        enUsuarios && enNuevoAfiliado
+          ? "ambos"
+          : enNuevoAfiliado
+          ? "nuevoAfiliado"
+          : enUsuarios
+          ? "usuarios"
+          : "no_registrado";
+
+      setDelegadoForm((prev) => ({
+        ...prev,
+        dni,
+        apellido: encontrado?.apellido || prev.apellido,
+        nombre: encontrado?.nombre || prev.nombre,
+        apellidoNombre:
+          encontrado?.apellidoNombre ||
+          [prev.apellido, prev.nombre].filter(Boolean).join(", "),
+        email: encontrado?.email || prev.email,
+        telefono: encontrado?.telefono || prev.telefono,
+        departamento: encontrado?.departamento || prev.departamento,
+        registradoApp: !!encontrado,
+        origenApp,
+      }));
+
+      toast.current?.show({
+        severity: encontrado ? "success" : "info",
+        summary: encontrado ? "Delegado encontrado" : "No registrado en app",
+        detail: encontrado
+          ? `Datos cargados desde ${origenApp}.`
+          : "Podés cargar apellido y nombre manualmente.",
+      });
+    } catch (error) {
+      console.error("Error al buscar delegado:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo buscar el DNI.",
+      });
+    } finally {
+      setSearchingDelegado(false);
+    }
+  };
+
+  const guardarDelegadoAutorizado = async () => {
+    const dni = normalizarDni(delegadoForm.dni);
+    const apellido = String(delegadoForm.apellido || "").trim();
+    const nombre = String(delegadoForm.nombre || "").trim();
+    const apellidoNombre =
+      String(delegadoForm.apellidoNombre || "").trim() ||
+      [apellido, nombre].filter(Boolean).join(", ");
+
+    if (!dni) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "DNI requerido",
+        detail: "Ingresá el DNI del delegado.",
+      });
+      return;
+    }
+
+    if (!apellidoNombre) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Nombre requerido",
+        detail: "Completá apellido y nombre del delegado.",
+      });
+      return;
+    }
+
+    setSavingDelegado(true);
+    try {
+      const ref = doc(db, "delegadosAutorizados", dni);
+      const existente = await getDoc(ref);
+      const payload = {
+        dni,
+        apellido,
+        nombre,
+        apellidoNombre,
+        email: String(delegadoForm.email || "").trim(),
+        telefono: String(delegadoForm.telefono || "").trim(),
+        departamento: String(delegadoForm.departamento || "").trim(),
+        registradoApp: !!delegadoForm.registradoApp,
+        origenApp: delegadoForm.origenApp || "no_registrado",
+        habilitado: !!delegadoForm.habilitado,
+        herramientas: {
+          pantallaQr: {
+            habilitado: !!delegadoForm.pantallaQrHabilitada,
+          },
+          expedienteSueldo: {
+            habilitado: !!delegadoForm.expedienteSueldoHabilitado,
+            permisos: {
+              ver: !!delegadoForm.permisos.ver,
+              agregarObservaciones: !!delegadoForm.permisos.agregarObservaciones,
+              cambiarEstado: !!delegadoForm.permisos.cambiarEstado,
+              exportarExcel: !!delegadoForm.permisos.exportarExcel,
+              importarExcel: !!delegadoForm.permisos.importarExcel,
+              eliminar: !!delegadoForm.permisos.eliminar,
+            },
+          },
+        },
+        observaciones: String(delegadoForm.observaciones || "").trim(),
+        updatedAt: serverTimestamp(),
+        updatedBy: adminActual,
+      };
+
+      if (!existente.exists()) {
+        payload.createdAt = serverTimestamp();
+        payload.createdBy = adminActual;
+      }
+
+      await setDoc(ref, payload, { merge: true });
+
+      toast.current?.show({
+        severity: "success",
+        summary: existente.exists() ? "Delegado actualizado" : "Delegado creado",
+        detail: "La autorización fue guardada correctamente.",
+      });
+
+      limpiarDelegadoForm();
+      await cargarDelegadosAutorizados();
+    } catch (error) {
+      console.error("Error al guardar delegado:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar la autorización.",
+      });
+    } finally {
+      setSavingDelegado(false);
+    }
+  };
+
+  const editarDelegado = (delegado) => {
+    setEditingDelegadoId(delegado.dni || delegado.id);
+    setDelegadoForm({
+      ...delegadoFormInicial,
+      dni: delegado.dni || delegado.id || "",
+      apellido: delegado.apellido || "",
+      nombre: delegado.nombre || "",
+      apellidoNombre: delegado.apellidoNombre || "",
+      email: delegado.email || "",
+      telefono: delegado.telefono || "",
+      departamento: delegado.departamento || "",
+      registradoApp: !!delegado.registradoApp,
+      origenApp: delegado.origenApp || "no_registrado",
+      habilitado: delegado.habilitado === true,
+      pantallaQrHabilitada:
+        delegado.herramientas?.pantallaQr?.habilitado === true,
+      expedienteSueldoHabilitado:
+        delegado.herramientas?.expedienteSueldo?.habilitado === true,
+      permisos: {
+        ...delegadoFormInicial.permisos,
+        ...(delegado.herramientas?.expedienteSueldo?.permisos || {}),
+      },
+      observaciones: delegado.observaciones || "",
+    });
+  };
+
+  const toggleDelegadoHabilitado = async (delegado) => {
+    const dni = delegado.dni || delegado.id;
+    if (!dni) return;
+    try {
+      await setDoc(
+        doc(db, "delegadosAutorizados", dni),
+        {
+          habilitado: !(delegado.habilitado === true),
+          updatedAt: serverTimestamp(),
+          updatedBy: adminActual,
+        },
+        { merge: true }
+      );
+      await cargarDelegadosAutorizados();
+    } catch (error) {
+      console.error("Error al cambiar estado del delegado:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cambiar el estado del delegado.",
+      });
+    }
+  };
+
+  const eliminarDelegadoAutorizado = async (delegado) => {
+    const dni = delegado.dni || delegado.id;
+    if (!dni) return;
+
+    if (!window.confirm(`¿Eliminar la autorización de ${delegado.apellidoNombre || dni}?`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "delegadosAutorizados", dni));
+      if (editingDelegadoId === dni) limpiarDelegadoForm();
+      await cargarDelegadosAutorizados();
+      toast.current?.show({
+        severity: "success",
+        summary: "Autorización eliminada",
+        detail: "El delegado fue eliminado de delegadosAutorizados.",
+      });
+    } catch (error) {
+      console.error("Error al eliminar delegado:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar la autorización.",
+      });
+    }
+  };
+
+  /* =====================================================
      SINCRONIZAR SELECCIÓN ACTUAL CON cod/asistencia
      ===================================================== */
 
@@ -149,12 +629,124 @@ const HabilitarBotonesPanel = () => {
     if (asistenciaConfig?.autoRefreshSeconds) {
       setAutoRefreshSeconds(Number(asistenciaConfig.autoRefreshSeconds) || 60);
     }
+
+    setRequisitoPresencialVirtual(
+      asistenciaConfig?.requisitoPresencialVirtual || "ninguno"
+    );
+    setEncuentrosPresencialesSeleccionados(
+      Array.isArray(asistenciaConfig?.encuentrosPresencialesRequeridos)
+        ? asistenciaConfig.encuentrosPresencialesRequeridos.map(
+            (encuentro) => encuentro.id
+          )
+        : []
+    );
   }, [
     asistenciaConfig?.cursoId,
     asistenciaConfig?.modalidad,
     asistenciaConfig?.tipoRegistro,
     asistenciaConfig?.autoRefreshSeconds,
+    asistenciaConfig?.requisitoPresencialVirtual,
+    asistenciaConfig?.encuentrosPresencialesRequeridos,
   ]);
+
+  useEffect(() => {
+    const cargarEncuentrosPresenciales = async () => {
+      if (selectedModalidad !== "virtual" || !selectedCursoId) {
+        setEncuentrosPresenciales([]);
+        return;
+      }
+
+      setLoadingEncuentrosPresenciales(true);
+      try {
+        const curso = cursos.find((item) => item.value === selectedCursoId);
+        const consultas = [
+          query(
+            collection(db, "asistencia"),
+            where("cursoId", "==", selectedCursoId)
+          ),
+        ];
+
+        if (curso?.label) {
+          consultas.push(
+            query(
+              collection(db, "asistencia"),
+              where("cursoTitulo", "==", curso.label)
+            )
+          );
+          consultas.push(
+            query(
+              collection(db, "asistencia"),
+              where("curso", "==", curso.label)
+            )
+          );
+          consultas.push(
+            query(
+              collection(db, "asistencia"),
+              where("cursoNombre", "==", curso.label)
+            )
+          );
+        }
+
+        const snapshots = await Promise.all(
+          consultas.map((consulta) => getDocs(consulta))
+        );
+        const documentos = new Map();
+        snapshots.forEach((snap) =>
+          snap.docs.forEach((documento) =>
+            documentos.set(documento.ref.path, documento)
+          )
+        );
+
+        const encuentros = new Map();
+        documentos.forEach((documento) => {
+          const data = documento.data() || {};
+          const esPresencial =
+            data.presencial === true ||
+            String(data.modalidad || data.modalidadDb || "").toLowerCase() ===
+              "presencial";
+          const ingresoCompleto = tieneIngresoCompleto(data);
+          const salidaCompleta = tieneSalidaCompleta(data);
+
+          if (
+            !esPresencial ||
+            !ingresoCompleto ||
+            !salidaCompleta
+          ) {
+            return;
+          }
+
+          const id =
+            data.sessionId ||
+            data.sessionIdIngreso ||
+            `${selectedCursoId}-${data.fecha || "sin-fecha"}`;
+          if (!id || encuentros.has(id)) return;
+
+          encuentros.set(id, {
+            id,
+            label: data.fecha
+              ? `Encuentro presencial ${data.fecha}`
+              : `Encuentro presencial ${encuentros.size + 1}`,
+            fecha: data.fecha || "",
+          });
+        });
+
+        const encuentrosDisponibles = Array.from(encuentros.values());
+        setEncuentrosPresenciales(encuentrosDisponibles);
+        setEncuentrosPresencialesSeleccionados((actuales) =>
+          actuales.filter((id) =>
+            encuentrosDisponibles.some((encuentro) => encuentro.id === id)
+          )
+        );
+      } catch (error) {
+        console.error("Cargar encuentros presenciales:", error);
+        setEncuentrosPresenciales([]);
+      } finally {
+        setLoadingEncuentrosPresenciales(false);
+      }
+    };
+
+    cargarEncuentrosPresenciales();
+  }, [selectedCursoId, selectedModalidad, cursos]);
 
   /* =====================================================
      ESCUCHA FLAG SIMPLE cod/boton
@@ -412,6 +1004,33 @@ const HabilitarBotonesPanel = () => {
           });
           return;
         }
+
+        if (
+          selectedModalidad === "virtual" &&
+          requisitoPresencialVirtual !== "ninguno" &&
+          encuentrosPresenciales.length === 0
+        ) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Sin encuentros presenciales",
+            detail:
+              "No se encontraron encuentros presenciales completos para este curso.",
+          });
+          return;
+        }
+
+        if (
+          selectedModalidad === "virtual" &&
+          requisitoPresencialVirtual === "especificos" &&
+          encuentrosPresencialesSeleccionados.length === 0
+        ) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Seleccioná encuentros",
+            detail: "Elegí al menos un encuentro presencial requerido.",
+          });
+          return;
+        }
       }
 
       await setDoc(
@@ -427,12 +1046,27 @@ const HabilitarBotonesPanel = () => {
       const curso = cursos.find((c) => c.value === selectedCursoId);
 
       const cursoTitulo = curso?.label || asistenciaConfig?.cursoTitulo || "";
+      const encuentrosRequeridos =
+        selectedModalidad !== "virtual" ||
+        requisitoPresencialVirtual === "ninguno" ||
+        requisitoPresencialVirtual === "alguno"
+          ? []
+          : requisitoPresencialVirtual === "todos"
+          ? encuentrosPresenciales
+          : encuentrosPresenciales.filter((encuentro) =>
+              encuentrosPresencialesSeleccionados.includes(encuentro.id)
+            );
 
       await actualizarConfigAsistencia({
         habilitar,
         selectedCursoId,
         selectedModalidad,
         cursoTitulo,
+        requisitoPresencialVirtual:
+          selectedModalidad === "virtual"
+            ? requisitoPresencialVirtual
+            : "ninguno",
+        encuentrosPresencialesRequeridos: encuentrosRequeridos,
       });
 
       if (!habilitar) {
@@ -442,6 +1076,8 @@ const HabilitarBotonesPanel = () => {
         setHastaLocal("");
         setTipoRegistro("ingreso");
         setAutoRefreshSeconds(60);
+        setRequisitoPresencialVirtual("ninguno");
+        setEncuentrosPresencialesSeleccionados([]);
       }
 
       toast.current?.show({
@@ -1003,7 +1639,320 @@ const HabilitarBotonesPanel = () => {
           onClick={() => setVisibleDialogUpdate(true)}
           loading={loadingUpdate}
         />
+
+        <Button
+          label="Gestión Delegados"
+          icon="pi pi-users"
+          severity="info"
+          onClick={abrirDialogDelegados}
+        />
       </div>
+
+      {/* MODAL GESTION DELEGADOS */}
+      <Dialog
+        header="Gestión de Delegados Autorizados"
+        visible={visibleDialogDelegados}
+        style={{ width: "95vw", maxWidth: 1200 }}
+        modal
+        onHide={() => setVisibleDialogDelegados(false)}
+      >
+        <section className={styles.delegadosPanel}>
+          <div className={styles.delegadosFormCard}>
+            <div className={styles.delegadosFormHeader}>
+              <div>
+                <span>{editingDelegadoId ? "Editar delegado" : "Nuevo delegado"}</span>
+                <h4>Autorización de acceso</h4>
+              </div>
+              {editingDelegadoId && (
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-text"
+                  onClick={limpiarDelegadoForm}
+                />
+              )}
+            </div>
+
+            <div className={styles.delegadosFormGrid}>
+              <div className={styles.formRow}>
+                <label>DNI</label>
+                <div className={styles.dniSearchRow}>
+                  <InputText
+                    value={delegadoForm.dni}
+                    onChange={(e) =>
+                      actualizarDelegadoCampo("dni", normalizarDni(e.target.value))
+                    }
+                    placeholder="DNI sin puntos"
+                  />
+                  <Button
+                    icon="pi pi-search"
+                    label="Buscar"
+                    onClick={buscarDelegadoPorDni}
+                    loading={searchingDelegado}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Registrado en app</label>
+                <Tag
+                  value={
+                    delegadoForm.registradoApp
+                      ? `Si - ${delegadoForm.origenApp}`
+                      : "No registrado"
+                  }
+                  severity={delegadoForm.registradoApp ? "success" : "warning"}
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Apellido</label>
+                <InputText
+                  value={delegadoForm.apellido}
+                  onChange={(e) => actualizarDelegadoCampo("apellido", e.target.value)}
+                  placeholder="Apellido"
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Nombre</label>
+                <InputText
+                  value={delegadoForm.nombre}
+                  onChange={(e) => actualizarDelegadoCampo("nombre", e.target.value)}
+                  placeholder="Nombre"
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Email</label>
+                <InputText
+                  value={delegadoForm.email}
+                  onChange={(e) => actualizarDelegadoCampo("email", e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Teléfono</label>
+                <InputText
+                  value={delegadoForm.telefono}
+                  onChange={(e) => actualizarDelegadoCampo("telefono", e.target.value)}
+                  placeholder="Teléfono"
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Departamento</label>
+                <InputText
+                  value={delegadoForm.departamento}
+                  onChange={(e) => actualizarDelegadoCampo("departamento", e.target.value)}
+                  placeholder="Departamento"
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Delegado habilitado</label>
+                <InputSwitch
+                  checked={delegadoForm.habilitado}
+                  onChange={(e) => actualizarDelegadoCampo("habilitado", e.value)}
+                />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Pantalla QR</label>
+                <InputSwitch
+                  checked={delegadoForm.pantallaQrHabilitada}
+                  onChange={(e) =>
+                    actualizarDelegadoCampo("pantallaQrHabilitada", e.value)
+                  }
+                />
+                <small>Permite registrar su celular o computadora para visualizar el QR.</small>
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Expediente de sueldo</label>
+                <InputSwitch
+                  checked={delegadoForm.expedienteSueldoHabilitado}
+                  onChange={(e) =>
+                    actualizarDelegadoCampo("expedienteSueldoHabilitado", e.value)
+                  }
+                />
+              </div>
+
+              <div className={styles.formRowFull}>
+                <label>Permisos expediente de sueldo</label>
+                <div className={styles.permisosGrid}>
+                  {[
+                    ["ver", "Ver"],
+                    ["agregarObservaciones", "Agregar observaciones"],
+                    ["cambiarEstado", "Cambiar estado"],
+                    ["exportarExcel", "Exportar Excel"],
+                    ["importarExcel", "Importar Excel"],
+                    ["eliminar", "Eliminar expedientes"],
+                  ].map(([permiso, label]) => (
+                    <span
+                      key={permiso}
+                      className={`${styles.permisoItem} ${
+                        permiso === "eliminar" ? styles.permisoItemPeligroso : ""
+                      }`}
+                    >
+                      <InputSwitch
+                        checked={!!delegadoForm.permisos[permiso]}
+                        onChange={(e) => actualizarPermisoDelegado(permiso, e.value)}
+                      />
+                      <b>{label}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.formRowFull}>
+                <label>Observaciones</label>
+                <InputText
+                  value={delegadoForm.observaciones}
+                  onChange={(e) =>
+                    actualizarDelegadoCampo("observaciones", e.target.value)
+                  }
+                  placeholder="Observaciones internas"
+                />
+              </div>
+            </div>
+
+            <div className={styles.dialogActions}>
+              <Button
+                label={editingDelegadoId ? "Actualizar delegado" : "Guardar delegado"}
+                icon="pi pi-save"
+                onClick={guardarDelegadoAutorizado}
+                loading={savingDelegado}
+              />
+              <Button
+                label="Limpiar"
+                icon="pi pi-refresh"
+                className="p-button-text"
+                onClick={limpiarDelegadoForm}
+                disabled={savingDelegado}
+              />
+            </div>
+          </div>
+
+          <div className={styles.delegadosTableCard}>
+            <div className={styles.delegadosFormHeader}>
+              <div>
+                <span>Delegados existentes</span>
+                <h4>{delegadosAutorizados.length} autorizaciones</h4>
+              </div>
+              <Button
+                icon="pi pi-refresh"
+                label="Recargar"
+                className="p-button-text"
+                onClick={cargarDelegadosAutorizados}
+                loading={loadingDelegados}
+              />
+            </div>
+
+            <DataTable
+              value={delegadosAutorizados}
+              loading={loadingDelegados}
+              paginator
+              rows={8}
+              responsiveLayout="scroll"
+              emptyMessage="No hay delegados autorizados."
+            >
+              <Column field="dni" header="DNI" sortable />
+              <Column
+                header="Apellido y nombre"
+                sortable
+                sortField="apellidoNombre"
+                body={(row) => row.apellidoNombre || "-"}
+              />
+              <Column field="departamento" header="Departamento" sortable />
+              <Column
+                header="Registrado en app"
+                body={(row) => (
+                  <Tag
+                    value={row.registradoApp ? row.origenApp || "si" : "no"}
+                    severity={row.registradoApp ? "success" : "warning"}
+                  />
+                )}
+              />
+              <Column
+                header="Estado"
+                body={(row) => (
+                  <Tag
+                    value={row.habilitado ? "Habilitado" : "Deshabilitado"}
+                    severity={row.habilitado ? "success" : "danger"}
+                  />
+                )}
+              />
+              <Column
+                header="Expediente sueldo"
+                body={(row) => (
+                  <Tag
+                    value={
+                      row.herramientas?.expedienteSueldo?.habilitado
+                        ? "Activo"
+                        : "Inactivo"
+                    }
+                    severity={
+                      row.herramientas?.expedienteSueldo?.habilitado
+                        ? "success"
+                        : "warning"
+                    }
+                  />
+                )}
+              />
+              <Column
+                header="Permisos"
+                body={(row) => {
+                  const permisos = row.herramientas?.expedienteSueldo?.permisos || {};
+                  return (
+                    <div className={styles.permisosTags}>
+                      {Object.entries(permisos)
+                        .filter(([, activo]) => activo)
+                        .map(([permiso]) => (
+                          <Tag
+                            key={permiso}
+                            value={PERMISO_LABELS[permiso] || permiso}
+                            severity={permiso === "eliminar" ? "danger" : "info"}
+                          />
+                        ))}
+                    </div>
+                  );
+                }}
+              />
+              <Column
+                header="Última modificación"
+                body={(row) => formatearFecha(row.updatedAt)}
+              />
+              <Column
+                header="Acciones"
+                body={(row) => (
+                  <div className={styles.tableActions}>
+                    <Button
+                      icon="pi pi-pencil"
+                      className="p-button-rounded p-button-text p-button-sm"
+                      tooltip="Editar"
+                      onClick={() => editarDelegado(row)}
+                    />
+                    <Button
+                      icon={row.habilitado ? "pi pi-ban" : "pi pi-check"}
+                      className="p-button-rounded p-button-text p-button-sm"
+                      tooltip={row.habilitado ? "Deshabilitar" : "Habilitar"}
+                      onClick={() => toggleDelegadoHabilitado(row)}
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      className="p-button-rounded p-button-text p-button-danger p-button-sm"
+                      tooltip="Eliminar autorización"
+                      onClick={() => eliminarDelegadoAutorizado(row)}
+                    />
+                  </div>
+                )}
+              />
+            </DataTable>
+          </div>
+        </section>
+      </Dialog>
 
       {/* MODAL ASISTENCIA / QR */}
       <Dialog
@@ -1023,6 +1972,16 @@ const HabilitarBotonesPanel = () => {
           setSelectedCursoId={setSelectedCursoId}
           selectedModalidad={selectedModalidad}
           setSelectedModalidad={setSelectedModalidad}
+          requisitoPresencialVirtual={requisitoPresencialVirtual}
+          setRequisitoPresencialVirtual={setRequisitoPresencialVirtual}
+          encuentrosPresenciales={encuentrosPresenciales}
+          encuentrosPresencialesSeleccionados={
+            encuentrosPresencialesSeleccionados
+          }
+          setEncuentrosPresencialesSeleccionados={
+            setEncuentrosPresencialesSeleccionados
+          }
+          loadingEncuentrosPresenciales={loadingEncuentrosPresenciales}
           tipoRegistro={tipoRegistro}
           setTipoRegistro={setTipoRegistro}
           autoRefreshSeconds={autoRefreshSeconds}

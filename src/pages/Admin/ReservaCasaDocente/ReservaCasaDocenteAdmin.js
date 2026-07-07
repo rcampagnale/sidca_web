@@ -4,6 +4,7 @@ import styles from "./ReservaCasaDocenteAdmin.module.css";
 import HabitacionesAdmin from "./HabitacionesAdmin";
 import BloqueoFecha from "./bloqueofecha";
 import ReservarHabitacionAdmin from "./ReservarHabitacionAdmin";
+import OcupacionAdmin from "./OcupacionAdmin";
 
 import { dbReservas } from "../../../firebase/firebaseReservas";
 import {
@@ -13,6 +14,7 @@ import {
   orderBy,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 const ESTADOS = [
@@ -290,18 +292,18 @@ const ReservaCasaDocenteAdmin = () => {
       return true;
     });
 
-    // 2) Ordenamos por fecha de ingreso: más reciente → más vieja
+    // 2) Ordenamos por fecha de creación: más reciente → más vieja
     return filtradas.slice().sort((a, b) => {
-      const da = toDate(a.fechaIngreso);
-      const db = toDate(b.fechaIngreso);
-
-      // Sin fecha van al final
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-
-      // Descendente
-      return db - da;
+      const getTs = (r) => {
+        if (r.fechaCreacion) {
+          const d = toDate(r.fechaCreacion);
+          if (d) return d.getTime();
+        }
+        // fallback: fechaIngreso
+        const d = toDate(r.fechaIngreso);
+        return d ? d.getTime() : 0;
+      };
+      return getTs(b) - getTs(a);
     });
   }, [reservas, filtroDni, filtroEstado, filtroDesde, filtroHasta]);
 
@@ -417,6 +419,24 @@ const ReservaCasaDocenteAdmin = () => {
       "\nAnte cualquier duda podés volver a comunicarte con SIDCA. ¡Muchas gracias!";
 
     return mensaje;
+  };
+
+  const handleEliminarReserva = async () => {
+    if (!selectedReserva) return;
+
+    const confirmar = window.confirm(
+      `¿Eliminar la reserva de ${selectedReserva.apellidoNombre} (DNI ${selectedReserva.dni})?\n\nEsta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const reservaRef = doc(dbReservas, "reservasCasaDocente", selectedReserva.id);
+      await deleteDoc(reservaRef);
+      cerrarModal();
+    } catch (error) {
+      console.error("[ReservaCasaDocenteAdmin] Error al eliminar reserva:", error);
+      alert("Ocurrió un error al eliminar la reserva. Revisá la consola.");
+    }
   };
 
   const handleGuardarCambios = async () => {
@@ -547,6 +567,15 @@ const ReservaCasaDocenteAdmin = () => {
           onClick={() => setActiveTab("reservar")}
         >
           Reservar habitación
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabButton} ${
+            activeTab === "ocupacion" ? styles.tabButtonActive : ""
+          }`}
+          onClick={() => setActiveTab("ocupacion")}
+        >
+          Ocupación
         </button>
       </div>
 
@@ -939,18 +968,27 @@ const ReservaCasaDocenteAdmin = () => {
                 <div className={styles.modalFooter}>
                   <button
                     type="button"
-                    className={styles.secondaryButton}
-                    onClick={cerrarModal}
+                    className={styles.dangerButton}
+                    onClick={handleEliminarReserva}
                   >
-                    Cancelar
+                    Eliminar reserva
                   </button>
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    onClick={handleGuardarCambios}
-                  >
-                    Guardar cambios
-                  </button>
+                  <div className={styles.modalFooterActions}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={cerrarModal}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      onClick={handleGuardarCambios}
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -966,6 +1004,14 @@ const ReservaCasaDocenteAdmin = () => {
 
       {/* ========= TAB 4: RESERVAR HABITACIÓN ========= */}
       {activeTab === "reservar" && <ReservarHabitacionAdmin />}
+
+      {/* ========= TAB 5: OCUPACIÓN ========= */}
+      {activeTab === "ocupacion" && (
+        <OcupacionAdmin
+          habitaciones={habitaciones}
+          reservas={reservas}
+        />
+      )}
     </div>
   );
 };

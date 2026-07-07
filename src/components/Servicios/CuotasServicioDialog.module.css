@@ -1,0 +1,810 @@
+/* src/components/Servicios/CuotasServicioDialog.module.css */
+
+.cuotasDialog :global(.p-dialog) {
+  max-height: 96vh;
+}
+
+.cuotasDialog :global(.p-dialog-header) {
+  padding: 1rem 1.35rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cuotasDialog :global(.p-dialog-title) {
+  color: #334155;
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+
+.cuotasDialog :global(.p-dialog-content) {
+  background: #f8fafc;
+  padding: 1.25rem;
+}
+
+.cuotasBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* =========================
+   Encabezado
+========================= */
+
+.headerCard {
+  background: linear-gradient(135deg, #ffffff, #f8fbff);
+  border: 1px solid #dbeafe;
+  border-left: 6px solid #0ea5e9;
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: start;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.headerMain {
+  min-width: 0;
+}
+
+.headerLabel {
+  display: inline-flex;
+  margin-bottom: 0.35rem;
+  color: #0369a1;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.headerMain h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.18rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.headerMain p {
+  margin: 7px 0 0;
+  color: #475569;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.headerBadges {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badgeContado,
+.badgeCancelado {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.badgeContado {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.badgeCancelado {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #c4b5fd;
+}
+
+.headerMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(118px, auto));
+  gap: 0.75rem;
+  flex-shrink: 0;
+  align-items: start;
+}
+
+.headerMetaPersonas {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.headerMetaPersonas span {
+  display: block;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex: 1;
+}
+
+.headerMetaPersonas strong {
+  display: block;
+  color: #1e3a8a;
+  font-size: 1.35rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.editPersonasDisplay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editPersonasBtn {
+  width: 26px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  color: #1d4ed8 !important;
+  opacity: 0.7;
+}
+
+.editPersonasBtn:hover {
+  opacity: 1;
+}
+
+.editPersonasInline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.editPersonasInput {
+  width: 64px;
+  height: 32px;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  padding: 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #1e3a8a;
+  background: #ffffff;
+  text-align: center;
+}
+
+.editPersonasInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.headerMeta div {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align: right;
+}
+
+.headerMeta span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.headerMeta strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* =========================
+   Resumen
+========================= */
+
+.resumenGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.resumenCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 13px 14px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+}
+
+.resumenCard span {
+  display: block;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-bottom: 0.3rem;
+}
+
+.resumenCard strong {
+  color: #0f172a;
+  font-size: 1.28rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.resumenCobradas {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.resumenCobradas strong,
+.resumenCobradas span {
+  color: #166534;
+}
+
+.resumenParciales {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.resumenParciales strong,
+.resumenParciales span {
+  color: #92400e;
+}
+
+.resumenNoCobradas {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.resumenNoCobradas strong,
+.resumenNoCobradas span {
+  color: #991b1b;
+}
+
+.resumenCanceladas {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.resumenCanceladas strong,
+.resumenCanceladas span {
+  color: #5b21b6;
+}
+
+.resumenPendientes {
+  background: #fefce8;
+  border-color: #fef08a;
+}
+
+.resumenPendientes strong,
+.resumenPendientes span {
+  color: #854d0e;
+}
+
+/* =========================
+   Tabla
+========================= */
+
+.tableWrap {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.cuotasTable {
+  width: 100%;
+}
+
+.cuotasTable :global(.p-datatable-wrapper) {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.cuotasTable :global(.p-datatable-table) {
+  width: 100%;
+  min-width: 1160px;
+  table-layout: fixed;
+}
+
+.cuotasTable :global(.p-datatable-thead > tr > th) {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 900;
+  white-space: nowrap;
+  padding: 14px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.cuotasTable :global(.p-datatable-tbody > tr > td) {
+  color: #334155;
+  padding: 14px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.cuotasTable :global(.p-datatable-tbody > tr:hover > td) {
+  background: #f8fafc;
+}
+
+.filaCobrada {
+  background: #fbfffd !important;
+}
+
+.filaParcial {
+  background: #fffbeb !important;
+}
+
+.filaNoCobrada {
+  background: #fff1f2 !important;
+}
+
+.filaCancelada {
+  background: #f5f3ff !important;
+}
+
+/* =========================
+   Celdas agrupadas
+========================= */
+
+.cuotaCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.composicionLugares {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.composicionLugares span {
+  width: max-content;
+  padding: 3px 7px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #1e40af;
+  background: #eff6ff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cuotaCell strong {
+  color: #0f172a;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.cuotaCell span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.periodosCell,
+.importesCell {
+  display: grid;
+  gap: 8px;
+}
+
+.periodosCell div,
+.importesCell div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.periodosCell span,
+.importesCell span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.periodosCell strong,
+.importesCell strong {
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.importesCell strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.saldoOk {
+  color: #166534 !important;
+}
+
+.saldoDebe {
+  color: #b45309 !important;
+}
+
+.sinDato {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+/* =========================
+   Estados
+========================= */
+
+.estadoPendiente,
+.estadoCobrada,
+.estadoParcial,
+.estadoNoCobrada,
+.estadoCancelada,
+.estadoRegularizada {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 145px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.83rem;
+  font-weight: 900;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.estadoPendiente {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.estadoCobrada {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.estadoParcial {
+  background: #fef3c7;
+  color: #a16207;
+  border-color: #facc15;
+}
+
+.estadoNoCobrada {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.estadoCancelada {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #c4b5fd;
+}
+
+.estadoRegularizada {
+  background: #ccfbf1;
+  color: #115e59;
+  border-color: #99f6e4;
+}
+
+/* =========================
+   Observación y acciones
+========================= */
+
+.observacionBox {
+  width: 100%;
+  max-width: 255px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 9px 10px;
+}
+
+.observacionBox p {
+  margin: 6px 0 0;
+  color: #334155;
+  line-height: 1.35;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.origenExcel,
+.origenManual,
+.origenRegularizada {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.origenExcel {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.origenManual {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.origenRegularizada {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.accionesTd {
+  background: #ffffff !important;
+}
+
+.accionesPanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.accionIcono {
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+}
+
+.accionIcono :global(.p-button-icon) {
+  font-size: 0.85rem;
+}
+
+/* =========================
+   Editar personas
+========================= */
+
+.editPersonasPanel {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 5px solid #3b82f6;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.editPersonasTitle {
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #1e40af;
+}
+
+.editPersonasTitle i {
+  font-size: 1rem;
+  color: #3b82f6;
+}
+
+.editPersonasGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.ampliacionPreview {
+  margin-top: 0.9rem;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #334155;
+  background: #ffffff;
+}
+
+.ampliacionPreview > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #1e40af;
+}
+
+.ampliacionPreview p {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ampliacionPreview small {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .editPersonasGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   Cuota extra por saldo
+========================= */
+
+.cuotaExtraPanel {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 5px solid #f59e0b;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.cuotaExtraBtn {
+  width: 100%;
+  justify-content: center;
+  font-weight: 800 !important;
+}
+
+.cuotaExtraAviso {
+  display: block;
+  margin-top: 0.65rem;
+  color: #92400e;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cuotaExtraForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.cuotaExtraTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #92400e;
+}
+
+.cuotaExtraTitle i {
+  font-size: 1rem;
+  color: #f59e0b;
+}
+
+.cuotaExtraGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.cuotaExtraField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cuotaExtraField label {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #334155;
+}
+
+.cuotaExtraField small {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.cuotaExtraInput {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  font-size: 0.95rem;
+  color: #334155;
+  background: #ffffff;
+}
+
+.cuotaExtraInput:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.cuotaExtraActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .cuotaExtraGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cuotaExtraActions {
+    flex-direction: column;
+  }
+
+  .cuotaExtraActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.loadingBox {
+  min-height: 260px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+@media (max-width: 1200px) {
+  .headerCard {
+    grid-template-columns: 1fr;
+  }
+
+  .headerMeta {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .headerMeta div {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .headerMetaPersonas {
+    grid-column: 1 / -1;
+  }
+
+  .resumenGrid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .cuotasDialog :global(.p-dialog-content) {
+    padding: 1rem;
+  }
+
+  .headerMeta,
+  .resumenGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cuotasTable :global(.p-datatable-table) {
+    min-width: 1180px;
+  }
+}

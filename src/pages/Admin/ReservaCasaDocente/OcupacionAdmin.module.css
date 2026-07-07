@@ -1,0 +1,264 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 1.25rem 0;
+}
+
+/* ── Toast ── */
+.toast {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.toast_ok    { background: #eaf3de; color: #3b6d11; }
+.toast_error { background: #fcebeb; color: #a32d2d; }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tabBtn {
+  padding: 7px 18px;
+  font-size: 13px;
+  border: 0.5px solid #d1d5db;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tabActivo {
+  background: #fff;
+  color: #111827;
+  font-weight: 500;
+  border-color: #9ca3af;
+}
+
+.navMes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.navBtn {
+  padding: 4px 14px;
+  font-size: 16px;
+  border: 0.5px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mesLabel {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 130px;
+  text-align: center;
+  color: #111827;
+}
+
+/* ── Alerta vencimiento ── */
+.alertaVence {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(239,159,39,0.12);
+  border-left: 3px solid #EF9F27;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111827;
+}
+.alertaIcon { font-size: 15px; color: #EF9F27; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Grilla mensual ── */
+.gridWrap {
+  overflow-x: auto;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 12px;
+  border: 0.5px solid #e5e7eb;
+}
+
+.gridTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 700px;
+  table-layout: fixed;
+}
+
+.thHab {
+  text-align: left;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  width: 120px;
+}
+.thDia {
+  padding: 3px 2px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+.thHoy {
+  color: #2563eb;
+  font-weight: 500;
+  background: rgba(59,130,246,0.06);
+}
+
+.tdHabNombre {
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #374151;
+  white-space: nowrap;
+}
+.tdDia {
+  padding: 3px 2px;
+  text-align: center;
+}
+.tdHoy { background: rgba(59,130,246,0.04); }
+
+.celda {
+  display: inline-block;
+  width: 22px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity .15s, outline .1s;
+}
+.celda:hover { opacity: 0.75; }
+.celda_libre   { background: #97C459; }
+.celda_ocupada { background: #E24B4A; }
+.celda_vence   { background: #EF9F27; }
+.celdaSel { outline: 2px solid #374151; outline-offset: 1px; }
+
+/* ── Leyenda ── */
+.leyenda {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  color: #6b7280;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.leyendaHint { color: #9ca3af; }
+
+/* ── Detalle día ── */
+.detalleDia {
+  border: 0.5px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.detalleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 0.5px solid #e5e7eb;
+}
+.detalleTitulo { font-size: 14px; font-weight: 500; color: #111827; }
+.hoyPill { font-size: 11px; font-weight: 500; color: #2563eb; background: #e6f1fb; padding: 2px 8px; border-radius: 6px; margin-left: 4px; }
+.cerrarDetalle {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 0 4px;
+}
+.detalleBody { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ── Métricas (vista día) ── */
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.metCard {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  border: 0.5px solid #e5e7eb;
+}
+.metLibre  { background: #eaf3de; border-color: #c0dd97; }
+.metOcup   { background: #fcebeb; border-color: #f7c1c1; }
+.metVence  { background: #faeeda; border-color: #fac775; }
+
+.metNum   { display: block; font-size: 24px; font-weight: 500; color: #111827; }
+.metLabel { display: block; font-size: 11px; color: #6b7280; margin-top: 2px; }
+.metLibre .metNum  { color: #3b6d11; }
+.metLibre .metLabel { color: #3b6d11; }
+.metOcup .metNum   { color: #a32d2d; }
+.metOcup .metLabel { color: #a32d2d; }
+.metVence .metNum  { color: #854f0b; }
+.metVence .metLabel { color: #854f0b; }
+
+/* ── Lista habitaciones ── */
+.listaHoy { display: flex; flex-direction: column; gap: 8px; }
+.listaFecha { font-size: 13px; font-weight: 500; color: #374151; margin: 0 0 4px; }
+.emptyText  { font-size: 13px; color: #9ca3af; }
+
+/* ── Fila habitación ── */
+.filaHab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 0.5px solid #e5e7eb;
+  background: #fff;
+  flex-wrap: wrap;
+}
+.filaHab.vence { border-color: #EF9F27; }
+
+.filaInfo { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 2px; }
+.filaHabNombre { font-size: 13px; font-weight: 500; color: #111827; }
+.filaHuesped   { font-size: 12px; color: #6b7280; }
+
+/* dots */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot_libre   { background: #639922; }
+.dot_ocupada { background: #E24B4A; }
+.dot_vence   { background: #EF9F27; }
+
+/* badges */
+.badge { font-size: 11px; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+.badge_libre   { background: #eaf3de; color: #3b6d11; }
+.badge_ocupada { background: #fcebeb; color: #a32d2d; }
+.badge_vence   { background: #faeeda; color: #854f0b; }
+
+/* botones acción */
+.acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+.btnAccion {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  border: 0.5px solid;
+  transition: opacity .15s;
+}
+.btnAccion:disabled { opacity: .5; cursor: not-allowed; }
+.btnLiberar  { background: #eaf3de; color: #3b6d11; border-color: #c0dd97; }
+.btnDiaExtra { background: #faeeda; color: #854f0b; border-color: #fac775; }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .header { flex-direction: column; align-items: flex-start; }
+}

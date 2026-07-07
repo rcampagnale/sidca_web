@@ -53,6 +53,13 @@ const fechaEmisionLarga = (date = new Date()) => {
 
 const normalizarMayuscula = (value) => limpiarTexto(value).toUpperCase();
 
+const clasePorLongitud = (value, limiteLargo, limiteMuyLargo) => {
+  const longitud = limpiarTexto(value).length;
+  if (longitud > limiteMuyLargo) return styles.textoMuyLargo;
+  if (longitud > limiteLargo) return styles.textoLargo;
+  return "";
+};
+
 const nombreCompleto = (perfil = {}) => {
   const apellido = limpiarTexto(perfil?.apellido);
   const nombre = limpiarTexto(perfil?.nombre);
@@ -273,7 +280,13 @@ export default function ConstanciaPreview({
 
             <div className={styles.watermarkPreview}>DOCUMENTO NO VÁLIDO</div>
 
-            <div className={`${styles.field} ${styles.afiliado}`}>
+            <div
+              className={`${styles.field} ${styles.afiliado} ${clasePorLongitud(
+                datos.afiliado,
+                28,
+                45,
+              )}`}
+            >
               {datos.afiliado}
             </div>
 
@@ -281,21 +294,45 @@ export default function ConstanciaPreview({
               {datos.dni || "-"}
             </div>
 
-            <div className={`${styles.field} ${styles.curso}`}>
+            <div
+              className={`${styles.field} ${styles.curso} ${clasePorLongitud(
+                datos.cursoNombre || datos.curso,
+                58,
+                92,
+              )}`}
+            >
               {normalizarMayuscula(datos.cursoNombre || datos.curso)}
             </div>
 
             {datos.resolucion && (
-              <div className={`${styles.field} ${styles.resolucion}`}>
+              <div
+                className={`${styles.field} ${styles.resolucion} ${clasePorLongitud(
+                  datos.resolucion,
+                  24,
+                  42,
+                )}`}
+              >
                 {datos.resolucion}
               </div>
             )}
 
-            <div className={`${styles.field} ${styles.diasCurso}`}>
+            <div
+              className={`${styles.field} ${styles.diasCurso} ${clasePorLongitud(
+                datos.diasCurso,
+                30,
+                50,
+              )}`}
+            >
               {datos.diasCurso}
             </div>
 
-            <div className={`${styles.field} ${styles.fechaEmision}`}>
+            <div
+              className={`${styles.field} ${styles.fechaEmision} ${clasePorLongitud(
+                datos.fechaEmision,
+                46,
+                72,
+              )}`}
+            >
               {datos.fechaEmision}
             </div>
           </div>

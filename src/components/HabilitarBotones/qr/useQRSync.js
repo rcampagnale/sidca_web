@@ -53,6 +53,8 @@ export function useQRSync({ toastRef }) {
     sessionId: null,
     tipoRegistro: "ingreso",
     autoRefreshSeconds: 60,
+    requisitoPresencialVirtual: "ninguno",
+    encuentrosPresencialesRequeridos: [],
   });
 
   const [sesionActual, setSesionActual] = useState(null);
@@ -102,6 +104,8 @@ export function useQRSync({ toastRef }) {
             sessionId: null,
             tipoRegistro: "ingreso",
             autoRefreshSeconds: 60,
+            requisitoPresencialVirtual: "ninguno",
+            encuentrosPresencialesRequeridos: [],
           });
 
           setPantallasRegistradas({});
@@ -123,6 +127,13 @@ export function useQRSync({ toastRef }) {
           sessionId: data.sessionId ?? null,
           tipoRegistro: normalizarTipoRegistro(data.tipoRegistro),
           autoRefreshSeconds: normalizarIntervalo(data.autoRefreshSeconds),
+          requisitoPresencialVirtual:
+            data.requisitoPresencialVirtual || "ninguno",
+          encuentrosPresencialesRequeridos: Array.isArray(
+            data.encuentrosPresencialesRequeridos
+          )
+            ? data.encuentrosPresencialesRequeridos
+            : [],
         });
 
         setPantallasRegistradas(
@@ -359,7 +370,14 @@ export function useQRSync({ toastRef }) {
   }, []);
 
   const actualizarConfigAsistencia = useCallback(
-    async ({ habilitar, selectedCursoId, selectedModalidad, cursoTitulo }) => {
+    async ({
+      habilitar,
+      selectedCursoId,
+      selectedModalidad,
+      cursoTitulo,
+      requisitoPresencialVirtual = "ninguno",
+      encuentrosPresencialesRequeridos = [],
+    }) => {
       if (habilitar) {
         if (selectedModalidad === "virtual") {
           if (asistenciaConfig?.sessionId) {
@@ -373,6 +391,10 @@ export function useQRSync({ toastRef }) {
               cursoId: selectedCursoId,
               cursoTitulo,
               modalidad: "virtual",
+              requisitoPresencialVirtual,
+              encuentrosPresencialesRequeridos,
+              cantidadEncuentrosPresencialesRequeridos:
+                encuentrosPresencialesRequeridos.length,
               metodo: deleteField(),
               sessionId: deleteField(),
               tipoRegistro: deleteField(),
@@ -401,6 +423,9 @@ export function useQRSync({ toastRef }) {
             cursoId: selectedCursoId,
             cursoTitulo,
             modalidad: "presencial",
+            requisitoPresencialVirtual: deleteField(),
+            encuentrosPresencialesRequeridos: deleteField(),
+            cantidadEncuentrosPresencialesRequeridos: deleteField(),
             metodo: "qr_static",
             sessionId: deleteField(),
             qrSync: {

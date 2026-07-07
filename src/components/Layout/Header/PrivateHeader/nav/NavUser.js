@@ -4,7 +4,13 @@ import { useHistory } from "react-router";
 import styles from "./navUser.module.scss";
 import { confirmDialog } from "primereact/confirmdialog";
 
-const NavUser = ({ active, setActive, user }) => {
+const NavUser = ({
+  active,
+  setActive,
+  mostrarGestionDelegados = false,
+  mostrarPantallaQR = false,
+  onRegistrarPantallaQR,
+}) => {
   const history = useHistory();
 
   const confirm = () => {
@@ -40,6 +46,23 @@ const NavUser = ({ active, setActive, user }) => {
         <li onClick={() => navigateTo("/oficina-gestion")}>
           Oficina de Gestión
         </li>
+
+        {mostrarGestionDelegados && (
+          <li onClick={() => navigateTo("/delegado/gestion-delegados")}>
+            Gestión Delegados
+          </li>
+        )}
+
+        {mostrarPantallaQR && (
+          <li
+            onClick={() => {
+              setActive(false);
+              onRegistrarPantallaQR?.();
+            }}
+          >
+            Pantalla QR
+          </li>
+        )}
 
         <li onClick={() => navigateTo("/nosotros")}>Nosotros</li>
 

@@ -5,6 +5,7 @@ import { Chart } from "primereact/chart";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/AfiliadosDashboard/afiliadosDashboard.module.css";
+import adherenteStyles from "./AfiliadoAdherenteResumen.module.css";
 
 // 📌 Imagen del mapa beige con los números 1–16
 import mapaCatamarca from "../../assets/mapas/mapa_catamarca_departamentos.png";
@@ -192,7 +193,7 @@ const getDepartamentoFromDoc = (d) =>
   "";
 
 /** Mapa de Catamarca con imagen de fondo + lista a la derecha (reutilizado para adherentes) */
-const MapaCatamarcaAfiliados = ({ data, hint }) => {
+const MapaCatamarcaAfiliados = ({ data, hint, showList = true }) => {
   if (!data || !data.length) {
     return (
       <p className={styles.mapEmpty}>
@@ -228,9 +229,17 @@ const MapaCatamarcaAfiliados = ({ data, hint }) => {
   }
 
   return (
-    <div className={styles.mapLayout}>
+    <div
+      className={`${styles.mapLayout} ${
+        !showList ? adherenteStyles.mapOnlyLayout : ""
+      }`}
+    >
       {/* 🗺️ Mapa con imagen de fondo y marcadores (porcentaje) */}
-      <div className={styles.mapImageWrapper}>
+      <div
+        className={`${styles.mapImageWrapper} ${
+          !showList ? adherenteStyles.mapOnlyImage : ""
+        }`}
+      >
         <img
           src={mapaCatamarca}
           alt="Mapa de Catamarca por departamentos"
@@ -263,43 +272,45 @@ const MapaCatamarcaAfiliados = ({ data, hint }) => {
       </div>
 
       {/* 📋 Lista ordenada por número de departamento, mismo color que el mapa */}
-      <div className={styles.mapListWrapper}>
-        <div className={styles.mapHint}>
-          {hint ||
-            "Afiliados adherentes por departamento (usuarios + nuevoAfiliado, sin duplicar DNI). Ordenado según número de departamento."}
-        </div>
-        <ul className={styles.mapList}>
-          {data.map((d) => {
-            const color =
-              d.key === SIN_DEP_KEY
-                ? DEPT_COLORS[SIN_DEP_KEY]
-                : DEPT_COLORS[d.key] || "#cfe2ff";
+      {showList && (
+        <div className={styles.mapListWrapper}>
+          <div className={styles.mapHint}>
+            {hint ||
+              "Afiliados adherentes por departamento (usuarios + nuevoAfiliado, sin duplicar DNI). Ordenado según número de departamento."}
+          </div>
+          <ul className={styles.mapList}>
+            {data.map((d) => {
+              const color =
+                d.key === SIN_DEP_KEY
+                  ? DEPT_COLORS[SIN_DEP_KEY]
+                  : DEPT_COLORS[d.key] || "#cfe2ff";
 
-            return (
-              <li key={d.key} className={styles.mapListItem}>
-                <span className={styles.mapDeptName}>
-                  {/* Número de departamento si existe */}
-                  {d.id > 0 && (
-                    <span className={styles.mapDeptId}>{d.id}</span>
-                  )}
-                  <span
-                    className={styles.mapListColorDot}
-                    style={{ backgroundColor: color }}
-                  />
-                  {d.departamento}
-                </span>
-                <span className={styles.mapDeptValue}>
-                  {d.total}
-                  <span className={styles.mapDeptPercent}>
-                    {" "}
-                    ({((d.total / totalList) * 100).toFixed(1)}%)
+              return (
+                <li key={d.key} className={styles.mapListItem}>
+                  <span className={styles.mapDeptName}>
+                    {/* Número de departamento si existe */}
+                    {d.id > 0 && (
+                      <span className={styles.mapDeptId}>{d.id}</span>
+                    )}
+                    <span
+                      className={styles.mapListColorDot}
+                      style={{ backgroundColor: color }}
+                    />
+                    {d.departamento}
                   </span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+                  <span className={styles.mapDeptValue}>
+                    {d.total}
+                    <span className={styles.mapDeptPercent}>
+                      {" "}
+                      ({((d.total / totalList) * 100).toFixed(1)}%)
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
@@ -455,6 +466,22 @@ export default function AfiliadoAdherenteResumen() {
       ? ((noHabilitados / totalAdherentes) * 100).toFixed(1)
       : "0.0";
 
+  const adherentesConDepartamento = adherentesDept.filter(
+    (departamento) => departamento.key !== SIN_DEP_KEY
+  );
+  const totalConDepartamento = adherentesConDepartamento.reduce(
+    (total, departamento) => total + departamento.total,
+    0
+  );
+  const departamentosRanking = [...adherentesConDepartamento].sort(
+    (a, b) => b.total - a.total
+  );
+  const departamentoPrincipal = departamentosRanking[0] || null;
+  const maxDepartamento = departamentoPrincipal?.total || 1;
+  const sinDepartamento =
+    adherentesDept.find((departamento) => departamento.key === SIN_DEP_KEY)
+      ?.total || 0;
+
   // 🎯 Datos para el gráfico doughnut
   const chartData = useMemo(
     () => ({
@@ -475,13 +502,7 @@ export default function AfiliadoAdherenteResumen() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: "top",
-          labels: {
-            color: "#495057",
-            usePointStyle: true,
-            boxWidth: 14,
-            boxHeight: 14,
-          },
+          display: false,
         },
       },
       layout: {
@@ -496,86 +517,259 @@ export default function AfiliadoAdherenteResumen() {
   );
 
   return (
-    <div className={styles.adherentesRow}>
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>Afiliado Adherente</div>
-        {/* 🗺️ Mapa Afiliado Adherente por departamento */}
-{totalAdherentes > 0 && (
-  <div className={styles.adherentesMapWrapper}>
-    <MapaCatamarcaAfiliados
-      data={adherentesDept}
-      hint="Afiliados adherentes (campo adherente = true o tipo 'adherente') por departamento (usuarios + nuevoAfiliado, sin duplicar DNI)."
-    />
-  </div>
-)}
+    <div className={`${styles.adherentesRow} ${adherenteStyles.root}`}>
+      <div className={`${styles.panel} ${adherenteStyles.panel}`}>
+        <header className={adherenteStyles.header}>
+          <div>
+            <span className={adherenteStyles.eyebrow}>
+              Distribución territorial
+            </span>
+            <h2 className={adherenteStyles.title}>Afiliado Adherente</h2>
+            <p className={adherenteStyles.subtitle}>
+              Resumen geográfico y estado de habilitación de afiliados
+              adherentes, consolidados por DNI.
+            </p>
+          </div>
+          {!loading && !error && (
+            <span className={adherenteStyles.headerBadge}>
+              {adherentesConDepartamento.length} departamentos con registros
+            </span>
+          )}
+        </header>
 
-        <div className={styles.panelBody}>
+        <div className={`${styles.panelBody} ${adherenteStyles.panelBody}`}>
           {loading ? (
-            <div style={{ textAlign: "center", paddingTop: "1.5rem" }}>
+            <div className={adherenteStyles.loading}>
               <ProgressSpinner
                 style={{ width: "40px", height: "40px" }}
                 strokeWidth="4"
               />
+              <span>Cargando distribución de adherentes...</span>
             </div>
           ) : error ? (
-            <p className={styles.errorText}>{error}</p>
+            <div className={adherenteStyles.errorBox}>
+              <i className="pi pi-exclamation-circle" aria-hidden="true" />
+              <p className={styles.errorText}>{error}</p>
+            </div>
           ) : (
             <>
-              {/* KPIs */}
-              <div className={styles.adherentesKpis}>
-                <div className={styles.adherentesKpiCard}>
-                  <div className={styles.adherentesKpiLabel}>
-                    Total afiliados adherentes
+              <div className={adherenteStyles.kpiGrid}>
+                <article
+                  className={`${adherenteStyles.kpiCard} ${adherenteStyles.kpiBlue}`}
+                >
+                  <div className={adherenteStyles.kpiIcon}>
+                    <i className="pi pi-users" aria-hidden="true" />
                   </div>
-                  <div className={styles.adherentesKpiValue}>
-                    {totalAdherentes}
+                  <div>
+                    <span className={adherenteStyles.kpiLabel}>
+                      Total adherentes
+                    </span>
+                    <strong className={adherenteStyles.kpiValue}>
+                      {totalAdherentes.toLocaleString("es-AR")}
+                    </strong>
+                    <small className={adherenteStyles.kpiHint}>
+                      DNI únicos consolidados
+                    </small>
                   </div>
-                  <div className={styles.adherentesKpiSub}>
-                    (DNI únicos, usuarios + nuevoAfiliado)
-                  </div>
-                </div>
+                </article>
 
-                <div className={styles.adherentesKpiCard}>
-                  <div className={styles.adherentesKpiLabel}>
-                    Habilitados
+                <article
+                  className={`${adherenteStyles.kpiCard} ${adherenteStyles.kpiGreen}`}
+                >
+                  <div className={adherenteStyles.kpiIcon}>
+                    <i className="pi pi-check-circle" aria-hidden="true" />
                   </div>
-                  <div className={styles.adherentesKpiValue}>
-                    {habilitados}
+                  <div>
+                    <span className={adherenteStyles.kpiLabel}>
+                      Habilitados
+                    </span>
+                    <strong className={adherenteStyles.kpiValue}>
+                      {habilitados.toLocaleString("es-AR")}
+                    </strong>
+                    <small className={adherenteStyles.kpiHint}>
+                      {percHabilitados}% del total
+                    </small>
                   </div>
-                  <div className={styles.adherentesKpiSub}>
-                    {totalAdherentes > 0 && (
-                      <span>{percHabilitados}% del total</span>
-                    )}
-                  </div>
-                </div>
+                </article>
 
-                <div className={styles.adherentesKpiCard}>
-                  <div className={styles.adherentesKpiLabel}>
-                    No habilitados
+                <article
+                  className={`${adherenteStyles.kpiCard} ${adherenteStyles.kpiRed}`}
+                >
+                  <div className={adherenteStyles.kpiIcon}>
+                    <i className="pi pi-ban" aria-hidden="true" />
                   </div>
-                  <div className={styles.adherentesKpiValue}>
-                    {noHabilitados}
+                  <div>
+                    <span className={adherenteStyles.kpiLabel}>
+                      No habilitados
+                    </span>
+                    <strong className={adherenteStyles.kpiValue}>
+                      {noHabilitados.toLocaleString("es-AR")}
+                    </strong>
+                    <small className={adherenteStyles.kpiHint}>
+                      {percNoHabilitados}% del total
+                    </small>
                   </div>
-                  <div className={styles.adherentesKpiSub}>
-                    {totalAdherentes > 0 && (
-                      <span>{percNoHabilitados}% del total</span>
-                    )}
+                </article>
+
+                <article
+                  className={`${adherenteStyles.kpiCard} ${adherenteStyles.kpiAmber}`}
+                >
+                  <div className={adherenteStyles.kpiIcon}>
+                    <i className="pi pi-map-marker" aria-hidden="true" />
                   </div>
-                </div>
+                  <div>
+                    <span className={adherenteStyles.kpiLabel}>
+                      Mayor concentración
+                    </span>
+                    <strong
+                      className={`${adherenteStyles.kpiValue} ${adherenteStyles.kpiTextValue}`}
+                    >
+                      {departamentoPrincipal?.departamento || "Sin datos"}
+                    </strong>
+                    <small className={adherenteStyles.kpiHint}>
+                      {departamentoPrincipal
+                        ? `${departamentoPrincipal.total.toLocaleString(
+                            "es-AR"
+                          )} adherentes`
+                        : "Sin registros departamentales"}
+                    </small>
+                  </div>
+                </article>
               </div>
 
-              {/* Gráfico doughnut */}
-              {totalAdherentes > 0 && (
-                <div className={styles.adherentesChartWrapper}>
-                  <Chart
-                    type="doughnut"
-                    data={chartData}
-                    options={chartOptions}
-                  />
-                </div>
-              )}
+              {totalAdherentes > 0 ? (
+                <div className={adherenteStyles.contentGrid}>
+                  <section className={adherenteStyles.mapCard}>
+                    <div className={adherenteStyles.sectionHeader}>
+                      <div>
+                        <h3>Mapa de distribución</h3>
+                        <p>
+                          Porcentaje sobre adherentes con departamento asignado.
+                        </p>
+                      </div>
+                      {sinDepartamento > 0 && (
+                        <span className={adherenteStyles.missingBadge}>
+                          {sinDepartamento.toLocaleString("es-AR")} sin
+                          departamento
+                        </span>
+                      )}
+                    </div>
+                    <MapaCatamarcaAfiliados
+                      data={adherentesDept}
+                      showList={false}
+                    />
+                  </section>
 
-              
+                  <aside className={adherenteStyles.sidebar}>
+                    <section className={adherenteStyles.rankingCard}>
+                      <div className={adherenteStyles.sectionHeader}>
+                        <div>
+                          <h3>Departamentos principales</h3>
+                          <p>Ordenados por cantidad de adherentes.</p>
+                        </div>
+                        <span className={adherenteStyles.rankingCount}>
+                          {departamentosRanking.length}
+                        </span>
+                      </div>
+
+                      <div className={adherenteStyles.rankingList}>
+                        {departamentosRanking.map((departamento, index) => {
+                          const percent = totalConDepartamento
+                            ? (
+                                (departamento.total / totalConDepartamento) *
+                                100
+                              ).toFixed(1)
+                            : "0.0";
+                          const width =
+                            (departamento.total / maxDepartamento) * 100;
+                          const color =
+                            DEPT_COLORS[departamento.key] || "#cfe2ff";
+
+                          return (
+                            <div
+                              key={departamento.key}
+                              className={adherenteStyles.rankingRow}
+                            >
+                              <span className={adherenteStyles.rankingPosition}>
+                                {index + 1}
+                              </span>
+                              <div className={adherenteStyles.rankingInfo}>
+                                <div className={adherenteStyles.rankingTop}>
+                                  <span>
+                                    <i
+                                      className={adherenteStyles.departmentDot}
+                                      style={{ backgroundColor: color }}
+                                    />
+                                    {departamento.departamento}
+                                  </span>
+                                  <strong>
+                                    {departamento.total.toLocaleString("es-AR")}
+                                  </strong>
+                                </div>
+                                <div className={adherenteStyles.rankingTrack}>
+                                  <span
+                                    style={{
+                                      width: `${width}%`,
+                                      backgroundColor: color,
+                                    }}
+                                  />
+                                </div>
+                                <small>{percent}% del total asignado</small>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className={adherenteStyles.statusCard}>
+                      <div className={adherenteStyles.sectionHeader}>
+                        <div>
+                          <h3>Estado de habilitación</h3>
+                          <p>Relación sobre el total de adherentes.</p>
+                        </div>
+                      </div>
+                      <div className={adherenteStyles.statusContent}>
+                        <div className={adherenteStyles.chartWrapper}>
+                          <Chart
+                            type="doughnut"
+                            data={chartData}
+                            options={chartOptions}
+                          />
+                          <div className={adherenteStyles.chartCenter}>
+                            <strong>{percHabilitados}%</strong>
+                            <span>habilitados</span>
+                          </div>
+                        </div>
+                        <div className={adherenteStyles.statusLegend}>
+                          <div>
+                            <span>
+                              <i className={adherenteStyles.statusGreen} />
+                              Habilitados
+                            </span>
+                            <strong>
+                              {habilitados.toLocaleString("es-AR")}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>
+                              <i className={adherenteStyles.statusRed} />
+                              No habilitados
+                            </span>
+                            <strong>
+                              {noHabilitados.toLocaleString("es-AR")}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </aside>
+                </div>
+              ) : (
+                <p className={styles.mapEmpty}>
+                  No hay datos de afiliados adherentes para mostrar.
+                </p>
+              )}
             </>
           )}
         </div>

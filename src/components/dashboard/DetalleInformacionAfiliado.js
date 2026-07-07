@@ -1,10 +1,10 @@
 // src/components/dashboard/DetalleInformacionAfiliado.js
 import React, { useEffect, useState } from "react";
 import { ProgressSpinner } from "primereact/progressspinner";
-import { ProgressBar } from "primereact/progressbar";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/AfiliadosDashboard/afiliadosDashboard.module.css";
+import infoStyles from "./DetalleInformacionAfiliado.module.css";
 
 /** Normaliza DNI a solo números */
 const normalizeDni = (dniRaw) =>
@@ -23,7 +23,7 @@ const getFromPaths = (obj, paths) => {
   return null;
 };
 
-/** Formatea fecha (Timestamp o string) a texto legible */
+/** Formatea solo la fecha de un Timestamp o valor combinado fecha/hora */
 const formatDate = (value) => {
   if (!value) return "";
   if (value.toDate) {
@@ -33,7 +33,30 @@ const formatDate = (value) => {
       return "";
     }
   }
-  return String(value);
+  const raw = String(value).trim();
+  if (!raw) return "";
+  return raw.split(/[T\s]+/)[0] || raw;
+};
+
+/** Obtiene la hora guardada separada o incluida dentro de fecha */
+const formatTime = (value) => {
+  if (!value) return "";
+  if (value.toDate) {
+    try {
+      return value.toDate().toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  const timeMatch = raw.match(/(?:T|\s)(\d{1,2}:\d{2}(?::\d{2})?)/);
+  return timeMatch?.[1] || "";
 };
 
 /** Mapeo de campos que queremos controlar */
@@ -65,13 +88,20 @@ const FIELDS_CONFIG = [
   {
     id: "hora",
     label: "Hora",
-    getter: (p) => getFromPaths(p, ["horaAlta", "hora"]),
+    getter: (p) =>
+      getFromPaths(p, ["horaAlta", "hora", "hs", "horaRegistro"]) ||
+      formatTime(getFromPaths(p, ["fechaAlta", "fecha"])),
   },
   {
     id: "afiliacion",
     label: "Afiliación",
     getter: (p) =>
-      getFromPaths(p, ["afiliacion", "tipoAfiliado", "tipo"]),
+      getFromPaths(p, [
+        "nroAfiliacion",
+        "afiliacion",
+        "tipoAfiliado",
+        "tipo",
+      ]),
   },
   {
     id: "descuento",
@@ -126,6 +156,33 @@ const FIELDS_CONFIG = [
         : null),
   },
 ];
+
+const formatNumber = (value) =>
+  new Intl.NumberFormat("es-AR").format(Number(value) || 0);
+
+const getCoverageLevel = (percent) => {
+  if (percent >= 80) {
+    return {
+      label: "Bueno",
+      className: infoStyles.levelGood,
+      fillClassName: infoStyles.fillGood,
+    };
+  }
+
+  if (percent >= 50) {
+    return {
+      label: "Atención",
+      className: infoStyles.levelWarning,
+      fillClassName: infoStyles.fillWarning,
+    };
+  }
+
+  return {
+    label: "Crítico",
+    className: infoStyles.levelCritical,
+    fillClassName: infoStyles.fillCritical,
+  };
+};
 
 /**
  * Panel "Información del Afiliado" -> estadísticas globales
@@ -279,83 +336,209 @@ export default function DetalleInformacionAfiliado() {
     };
   }, []);
 
+  const camposCriticos = camposStats.filter(
+    (field) => field.percentComplete < 50
+  ).length;
+
   return (
-    <div className={styles.infoAfiliadoRow}>
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>Información del afiliado</div>
-        <div className={styles.panelBody}>
+    <div className={`${styles.infoAfiliadoRow} ${infoStyles.root}`}>
+      <div className={`${styles.panel} ${infoStyles.panel}`}>
+        <div className={infoStyles.header}>
+          <div>
+            <span className={infoStyles.eyebrow}>Calidad de datos</span>
+            <h2 className={infoStyles.title}>Información del afiliado</h2>
+            <p className={infoStyles.subtitle}>
+              Cobertura de los datos registrados en usuarios y nuevos afiliados,
+              unificados por DNI.
+            </p>
+          </div>
+          {!loading && !error && resumenGlobal && (
+            <span className={infoStyles.headerBadge}>
+              {FIELDS_CONFIG.length} campos evaluados
+            </span>
+          )}
+        </div>
+
+        <div className={`${styles.panelBody} ${infoStyles.panelBody}`}>
           {loading && (
-            <div style={{ textAlign: "center", paddingTop: "1rem" }}>
+            <div className={infoStyles.loading}>
               <ProgressSpinner
-                style={{ width: "35px", height: "35px" }}
+                style={{ width: "38px", height: "38px" }}
                 strokeWidth="4"
               />
+              <span>Calculando la calidad de la información...</span>
             </div>
           )}
 
           {!loading && error && (
-            <p className={styles.errorText}>{error}</p>
+            <div className={infoStyles.errorBox}>
+              <i className="pi pi-exclamation-circle" aria-hidden="true" />
+              <p className={styles.errorText}>{error}</p>
+            </div>
           )}
 
           {!loading && !error && resumenGlobal && (
             <>
-              {/* Resumen global de completitud */}
-              <div className={styles.infoResumenCampos}>
-                <div>
-                  <strong>{resumenGlobal.totalAfiliados}</strong> afiliados
-                  únicos (usuarios + nuevoAfiliado).
-                </div>
-                <div>
-                  <strong>{resumenGlobal.completosTotales}</strong> de{" "}
-                  <strong>{resumenGlobal.totalCampos}</strong> datos personales
-                  completos (
-                  {resumenGlobal.completenessPct}
-                  %).
-                </div>
-                {resumenGlobal.faltantesTotales > 0 && (
-                  <div className={styles.infoResumenSub}>
-                    Faltan completar{" "}
-                    {resumenGlobal.faltantesTotales} datos personales en total.
+              <div className={infoStyles.kpiGrid}>
+                <article className={`${infoStyles.kpiCard} ${infoStyles.kpiBlue}`}>
+                  <div className={infoStyles.kpiIcon}>
+                    <i className="pi pi-users" aria-hidden="true" />
                   </div>
-                )}
+                  <div>
+                    <span className={infoStyles.kpiLabel}>Afiliados únicos</span>
+                    <strong className={infoStyles.kpiValue}>
+                      {formatNumber(resumenGlobal.totalAfiliados)}
+                    </strong>
+                    <small className={infoStyles.kpiHint}>
+                      Usuarios + nuevos afiliados
+                    </small>
+                  </div>
+                </article>
+
+                <article className={`${infoStyles.kpiCard} ${infoStyles.kpiGreen}`}>
+                  <div className={infoStyles.kpiIcon}>
+                    <i className="pi pi-check-circle" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <span className={infoStyles.kpiLabel}>Datos completos</span>
+                    <strong className={infoStyles.kpiValue}>
+                      {formatNumber(resumenGlobal.completosTotales)}
+                    </strong>
+                    <small className={infoStyles.kpiHint}>
+                      De {formatNumber(resumenGlobal.totalCampos)} relevados
+                    </small>
+                  </div>
+                </article>
+
+                <article className={`${infoStyles.kpiCard} ${infoStyles.kpiRed}`}>
+                  <div className={infoStyles.kpiIcon}>
+                    <i className="pi pi-exclamation-triangle" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <span className={infoStyles.kpiLabel}>Datos faltantes</span>
+                    <strong className={infoStyles.kpiValue}>
+                      {formatNumber(resumenGlobal.faltantesTotales)}
+                    </strong>
+                    <small className={infoStyles.kpiHint}>
+                      Requieren actualización
+                    </small>
+                  </div>
+                </article>
+
+                <article className={`${infoStyles.kpiCard} ${infoStyles.kpiAmber}`}>
+                  <div className={infoStyles.kpiIcon}>
+                    <i className="pi pi-flag" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <span className={infoStyles.kpiLabel}>Campos críticos</span>
+                    <strong className={infoStyles.kpiValue}>
+                      {camposCriticos}
+                    </strong>
+                    <small className={infoStyles.kpiHint}>
+                      Con cobertura menor al 50%
+                    </small>
+                  </div>
+                </article>
               </div>
 
-              <div className={styles.infoCompletenessBar}>
-                <ProgressBar
-                  value={resumenGlobal.completenessPct}
-                  showValue
-                />
-              </div>
-
-              {/* Estadística por campo */}
-              {camposStats.length > 0 ? (
-                <div className={styles.infoFieldsGrid}>
-                  {camposStats.map((field) => (
-                    <div key={field.id} className={styles.infoField}>
-                      <div className={styles.infoFieldLabel}>
-                        {field.label}
-                      </div>
-                      <div className={styles.infoFieldValue}>
-                        <div style={{ marginTop: "0.25rem" }}>
-                          <ProgressBar
-                            value={field.percentComplete}
-                            showValue
-                          />
-                        </div>
-                        <div className={styles.infoResumenSub}>
-                          {field.percentComplete}% de afiliados con este dato
-                          completo · {field.completos} completos ·{" "}
-                          {field.faltantes} faltantes
-                        </div>
-                      </div>
+              <div className={infoStyles.overviewGrid}>
+                <section className={infoStyles.scoreCard}>
+                  <div className={infoStyles.scoreGlow} />
+                  <div className={infoStyles.scoreContent}>
+                    <span className={infoStyles.scoreLabel}>
+                      Completitud general
+                    </span>
+                    <strong className={infoStyles.scoreValue}>
+                      {resumenGlobal.completenessPct}%
+                    </strong>
+                    <div
+                      className={infoStyles.scoreTrack}
+                      role="progressbar"
+                      aria-label="Completitud general"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow={resumenGlobal.completenessPct}
+                    >
+                      <span
+                        className={infoStyles.scoreFill}
+                        style={{ width: `${resumenGlobal.completenessPct}%` }}
+                      />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.mapEmpty}>
-                  No hay datos suficientes para calcular estadísticas.
-                </p>
-              )}
+                    <span className={infoStyles.scoreHint}>
+                      {formatNumber(resumenGlobal.completosTotales)} de{" "}
+                      {formatNumber(resumenGlobal.totalCampos)} datos completos
+                    </span>
+                  </div>
+                </section>
+
+                <section className={infoStyles.fieldsSection}>
+                  <div className={infoStyles.fieldsHeader}>
+                    <div>
+                      <h3>Cobertura por campo</h3>
+                      <p>Ordenados desde los que más atención necesitan.</p>
+                    </div>
+                    <div className={infoStyles.legend}>
+                      <span><i className={infoStyles.dotCritical} />Crítico</span>
+                      <span><i className={infoStyles.dotWarning} />Atención</span>
+                      <span><i className={infoStyles.dotGood} />Bueno</span>
+                    </div>
+                  </div>
+
+                  {camposStats.length > 0 ? (
+                    <div className={infoStyles.fieldsGrid}>
+                      {camposStats.map((field) => {
+                        const level = getCoverageLevel(field.percentComplete);
+
+                        return (
+                          <article key={field.id} className={infoStyles.fieldCard}>
+                            <div className={infoStyles.fieldTop}>
+                              <span className={infoStyles.fieldLabel}>
+                                {field.label}
+                              </span>
+                              <span
+                                className={`${infoStyles.levelBadge} ${level.className}`}
+                              >
+                                {level.label}
+                              </span>
+                            </div>
+                            <div className={infoStyles.fieldMetric}>
+                              <strong>{field.percentComplete}%</strong>
+                              <span>
+                                {formatNumber(field.completos)} completos
+                              </span>
+                            </div>
+                            <div
+                              className={infoStyles.fieldTrack}
+                              role="progressbar"
+                              aria-label={`Cobertura de ${field.label}`}
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                              aria-valuenow={field.percentComplete}
+                            >
+                              <span
+                                className={`${infoStyles.fieldFill} ${level.fillClassName}`}
+                                style={{ width: `${field.percentComplete}%` }}
+                              />
+                            </div>
+                            <div className={infoStyles.fieldFooter}>
+                              <span>
+                                {formatNumber(field.faltantes)} faltantes
+                              </span>
+                              <span>
+                                {formatNumber(resumenGlobal.totalAfiliados)} afiliados
+                              </span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className={infoStyles.emptyState}>
+                      No hay datos suficientes para calcular estadísticas.
+                    </p>
+                  )}
+                </section>
+              </div>
             </>
           )}
         </div>

@@ -5,6 +5,10 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import styles from "../../pages/Admin/Servicios/servicios.module.css";
 
+const ESTADO_CUOTA_COBRADO = "cobrado";
+const ESTADO_CUOTA_DESCUENTO_PARCIAL = "descuento_parcial";
+const ESTADO_CUOTA_NO_COBRADO = "no_cobrado";
+
 const MESES = [
   "enero",
   "febrero",
@@ -63,19 +67,122 @@ const formatearMoneda = (valor) => {
   }).format(numero);
 };
 
-const obtenerMesesCobradosDelServicio = (servicio) => {
+const obtenerMontoDescontadoCuota = (cuota, valorCuotaServicio = 0) => {
+  const estado = cuota?.estado;
+
+  if (estado === ESTADO_CUOTA_DESCUENTO_PARCIAL) {
+    return Number(cuota?.importeDescontado || 0);
+  }
+
+  if (estado === ESTADO_CUOTA_COBRADO) {
+    return Number(cuota?.importeDescontado || cuota?.valorCuota || valorCuotaServicio || 0);
+  }
+
+  return 0;
+};
+
+const esCuotaRegularizacion = (cuota) =>
+  cuota?.origenActualizacion === "manual_extra" ||
+  cuota?.esRegularizacionDeuda === true ||
+  String(cuota?.etiquetaCuota || "").toUpperCase() === "EXTRA";
+
+const obtenerDetalleRegularizacion = (cuota, cuotas) => {
+  const cuotasPorId = new Map(
+    (cuotas || []).map((item) => [String(item.id), item])
+  );
+  const fuentes = [];
+  const visitadas = new Set();
+
+  const agregarFuentes = (cuotaActual) => {
+    if (!cuotaActual || visitadas.has(cuotaActual.id)) return;
+    visitadas.add(cuotaActual.id);
+
+    const idsVinculados = Array.isArray(cuotaActual.regularizaCuotasIds)
+      ? cuotaActual.regularizaCuotasIds
+      : [];
+    let vinculadas = idsVinculados
+      .map((id) => cuotasPorId.get(String(id)))
+      .filter(Boolean);
+    if (vinculadas.length === 0 && esCuotaRegularizacion(cuotaActual)) {
+      vinculadas = (cuotas || []).filter(
+        (item) =>
+          String(item?.cuotaRegularizacionId || "") ===
+          String(cuotaActual.id)
+      );
+    }
+
+    if (esCuotaRegularizacion(cuotaActual) && vinculadas.length > 0) {
+      vinculadas.forEach(agregarFuentes);
+      return;
+    }
+
+    if (!esCuotaRegularizacion(cuotaActual)) {
+      fuentes.push(cuotaActual);
+    }
+  };
+
+  agregarFuentes(cuota);
+
+  if (fuentes.length === 0) return "Cuota extra por saldo pendiente";
+
+  const detalleFuentes = fuentes
+    .map((fuente) => {
+      const cuotaTexto =
+        fuente?.etiquetaCuota || fuente?.numeroCuota || fuente?.id || "-";
+      const motivo =
+        fuente?.estado === ESTADO_CUOTA_DESCUENTO_PARCIAL
+          ? "pago parcial"
+          : fuente?.estado === ESTADO_CUOTA_NO_COBRADO
+          ? "no cobrada"
+          : "saldo pendiente";
+
+      return `Cuota ${cuotaTexto} · ${motivo}`;
+    })
+    .join(" + ");
+
+  return `Cuota extra por saldo pendiente · ${detalleFuentes}`;
+};
+
+const obtenerMovimientosMensualesDelServicio = (servicio) => {
   const valorCuotaServicio = Number(servicio?.valorCuota || 0);
   const servicioKey =
-    servicio?.servicioId || servicio?.id || servicio?.servicioNombre || "";
+    servicio?.path ||
+    `${servicio?.servicioId || servicio?.servicioNombre || "servicio"}-${
+      servicio?.subcontratacionId || servicio?.id || servicio?.dni || ""
+    }`;
+  const servicioNombre = servicio?.servicioNombre || "Servicio";
+  const esPagoContado =
+    servicio?.esPagoContado === true || servicio?.tipoPago === "contado";
 
   if (Array.isArray(servicio?.cuotas) && servicio.cuotas.length > 0) {
-    return servicio.cuotas
-      .filter((cuota) => cuota?.estado === "cobrado")
+    const cuotas = servicio.cuotas;
+
+    return cuotas
+      .filter((cuota) =>
+        [
+          ESTADO_CUOTA_COBRADO,
+          ESTADO_CUOTA_DESCUENTO_PARCIAL,
+          ESTADO_CUOTA_NO_COBRADO,
+        ].includes(cuota?.estado)
+      )
       .map((cuota) => ({
         periodo: cuota?.periodoCobro || "",
         periodoTexto: periodoTexto(cuota?.periodoCobro),
-        valorCuota: Number(cuota?.valorCuota || valorCuotaServicio || 0),
+        valorDescontado: obtenerMontoDescontadoCuota(cuota, valorCuotaServicio),
         servicioKey,
+        servicioNombre,
+        cuotaTexto: esCuotaRegularizacion(cuota)
+            ? obtenerDetalleRegularizacion(cuota, cuotas)
+            : esPagoContado
+            ? "Pago único"
+            : `Cuota ${
+                cuota?.etiquetaCuota || cuota?.numeroCuota || "-"
+              }`,
+        estado: cuota?.estado,
+        descuentoRealizado: [
+          ESTADO_CUOTA_COBRADO,
+          ESTADO_CUOTA_DESCUENTO_PARCIAL,
+        ].includes(cuota?.estado),
       }))
       .filter((item) => item.periodo);
   }
@@ -92,8 +199,12 @@ const obtenerMesesCobradosDelServicio = (servicio) => {
       meses.push({
         periodo,
         periodoTexto: periodoTexto(periodo),
-        valorCuota: valorCuotaServicio,
+        valorDescontado: valorCuotaServicio,
         servicioKey,
+        servicioNombre,
+        cuotaTexto: esPagoContado ? "Pago único" : `Cuota ${i + 1}`,
+        estado: ESTADO_CUOTA_COBRADO,
+        descuentoRealizado: true,
       });
     }
   }
@@ -115,18 +226,25 @@ const BusquedaGeneralServicios = ({
     const mapa = new Map();
 
     (resultadosBusquedaGeneral || []).forEach((servicio) => {
-      const mesesCobrados = obtenerMesesCobradosDelServicio(servicio);
+      const movimientosMensuales =
+        obtenerMovimientosMensualesDelServicio(servicio);
 
-      mesesCobrados.forEach((item) => {
+      movimientosMensuales.forEach((item) => {
         const actual = mapa.get(item.periodo) || {
           periodo: item.periodoTexto,
           periodoOrden: item.periodo,
           totalMensual: 0,
           serviciosSet: new Set(),
+          serviciosDescontadosSet: new Set(),
+          movimientos: [],
         };
 
-        actual.totalMensual += Number(item.valorCuota || 0);
+        actual.totalMensual += Number(item.valorDescontado || 0);
         actual.serviciosSet.add(item.servicioKey);
+        if (item.descuentoRealizado) {
+          actual.serviciosDescontadosSet.add(item.servicioKey);
+        }
+        actual.movimientos.push(item);
 
         mapa.set(item.periodo, actual);
       });
@@ -134,34 +252,126 @@ const BusquedaGeneralServicios = ({
 
     return Array.from(mapa.values())
       .sort((a, b) =>
-        String(a.periodoOrden).localeCompare(String(b.periodoOrden))
+        String(b.periodoOrden).localeCompare(String(a.periodoOrden))
       )
       .map((item) => ({
         periodo: item.periodo,
         periodoOrden: item.periodoOrden,
         cantidadServicios: item.serviciosSet.size,
+        cantidadServiciosDescontados: item.serviciosDescontadosSet.size,
         totalMensual: item.totalMensual,
+        movimientos: item.movimientos.sort((a, b) =>
+          String(a.servicioNombre).localeCompare(
+            String(b.servicioNombre),
+            "es"
+          )
+        ),
       }));
   }, [resultadosBusquedaGeneral]);
 
-  const totalDescontadoRegistrado = useMemo(() => {
-    return resumenMensual.reduce((acumulado, item) => {
-      return acumulado + Number(item?.totalMensual || 0);
-    }, 0);
-  }, [resumenMensual]);
-
-  const valorCuotaTemplate = (rowData) => {
-    return <strong>{formatearMoneda(rowData?.valorCuota)}</strong>;
+  const afiliadoTemplate = (rowData) => {
+    return (
+      <div className={styles.busquedaAfiliadoCell}>
+        <strong>{rowData?.apellidoNombre || "Sin nombre registrado"}</strong>
+        <span>DNI {rowData?.dni || "-"}</span>
+      </div>
+    );
   };
 
-  const noCobradasTemplate = (rowData) => {
-    const cantidad = Number(rowData?.cuotasNoCobradas || 0);
+  const servicioTemplate = (rowData) => {
+    const cancelado = rowData?.cancelado === true || rowData?.estadoContratacion === "cancelada";
+    const contado = rowData?.esPagoContado === true || rowData?.tipoPago === "contado";
 
-    if (cantidad > 0) {
-      return <span className={styles.noCobradasAlerta}>{cantidad}</span>;
+    return (
+      <div className={styles.busquedaServicioCell}>
+        <strong>{rowData?.servicioNombre || "Servicio"}</strong>
+        <span
+          className={
+            cancelado
+              ? styles.busquedaBadgeCancelado
+              : contado
+              ? styles.busquedaBadgeContado
+              : styles.busquedaBadgeCuotas
+          }
+        >
+          {cancelado ? "Viaje cancelado" : contado ? "Contado" : "Cuotas"}
+        </span>
+      </div>
+    );
+  };
+
+  const periodosTemplate = (rowData) => {
+    return (
+      <div className={styles.busquedaPeriodosCell}>
+        <span>
+          <b>Haber:</b> {rowData?.periodoHaberInicialTexto || "-"}
+        </span>
+        <span>
+          <b>Primer cobro:</b> {rowData?.periodoCobroInicialTexto || "-"}
+        </span>
+      </div>
+    );
+  };
+
+  const importeResumenTemplate = (rowData) => {
+    const cobradas = Number(rowData?.cuotasCobradas || 0);
+    const parciales = Number(rowData?.cuotasParciales || 0);
+    const noCobradas = Number(rowData?.cuotasNoCobradas || 0);
+    const canceladas = Number(rowData?.cuotasCanceladas || 0);
+    const pendientes = Number(rowData?.cuotasPendientes || 0);
+
+    return (
+      <div className={styles.busquedaImporteResumenCell}>
+        <strong>{formatearMoneda(rowData?.valorCuota)}</strong>
+        <div className={styles.busquedaResumenBadges}>
+          <span className={styles.busquedaBadgeCobrado}>C {cobradas}</span>
+          <span className={styles.busquedaBadgeParcial}>P {parciales}</span>
+          <span className={styles.busquedaBadgeNoCobrado}>NC {noCobradas}</span>
+          <span className={styles.busquedaBadgeCanceladoMini}>CAN {canceladas}</span>
+          <span className={styles.busquedaBadgePendiente}>PE {pendientes}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const totalMensualTemplate = (rowData) => {
+    const sinDescuento =
+      Number(rowData?.totalMensual || 0) <= 0 &&
+      Number(rowData?.cantidadServicios || 0) > 0;
+
+    return (
+      <div className={styles.totalMensualServicioCelda}>
+        <strong
+          className={
+            sinDescuento
+              ? styles.totalMensualSinDescuento
+              : styles.totalMensualServicio
+          }
+        >
+          {formatearMoneda(rowData?.totalMensual)}
+        </strong>
+        {sinDescuento && <small>No se realizó el descuento</small>}
+      </div>
+    );
+  };
+
+  const estadoMovimiento = (movimiento) => {
+    if (movimiento?.estado === ESTADO_CUOTA_NO_COBRADO) {
+      return {
+        texto: "No descontado",
+        clase: styles.movimientoEstadoRechazado,
+      };
     }
-
-    return <span className={styles.noCobradasNormal}>{cantidad}</span>;
+    if (movimiento?.estado === ESTADO_CUOTA_DESCUENTO_PARCIAL) {
+      return {
+        texto: "Pago parcial",
+        clase: styles.movimientoEstadoParcial,
+      };
+    }
+    return {
+      texto: "Cobrado",
+      clase: styles.movimientoEstadoCobrado,
+    };
   };
 
   const accionesTemplate = (rowData) => {
@@ -172,14 +382,6 @@ const BusquedaGeneralServicios = ({
         className="p-button-sm p-button-info"
         onClick={() => onVerCuotas(rowData)}
       />
-    );
-  };
-
-  const totalMensualTemplate = (rowData) => {
-    return (
-      <strong className={styles.totalMensualServicio}>
-        {formatearMoneda(rowData?.totalMensual)}
-      </strong>
     );
   };
 
@@ -229,41 +431,94 @@ const BusquedaGeneralServicios = ({
             paginator
             rows={5}
             rowsPerPageOptions={[5, 10, 20]}
+            className={styles.busquedaGeneralTable}
           >
-            <Column field="apellidoNombre" header="Afiliado" sortable />
-            <Column field="dni" header="DNI" sortable />
-            <Column field="servicioNombre" header="Servicio" sortable />
-            <Column header="Valor cuota mensual" body={valorCuotaTemplate} />
-            <Column field="periodoHaberInicialTexto" header="Haber inicial" />
-            <Column field="periodoCobroInicialTexto" header="Primer cobro" />
-            <Column field="cuotasCobradas" header="Cobradas" />
-            <Column header="No cobradas" body={noCobradasTemplate} />
-            <Column field="cuotasPendientes" header="Pendientes" />
-            <Column header="Acciones" body={accionesTemplate} />
+            <Column header="Afiliado" body={afiliadoTemplate} sortable style={{ minWidth: "220px" }} />
+            <Column header="Servicio" body={servicioTemplate} sortable style={{ minWidth: "260px" }} />
+            <Column header="Períodos" body={periodosTemplate} style={{ minWidth: "260px" }} />
+            <Column header="Valor y resumen" body={importeResumenTemplate} style={{ minWidth: "320px" }} />
+            <Column header="Acciones" body={accionesTemplate} style={{ minWidth: "130px" }} />
           </DataTable>
 
           {resultadosBusquedaGeneral?.length > 0 && (
             <div className={styles.resumenTotalMensualBox}>
-              <div className={styles.resumenTotalMensualPrincipal}>
-                <span>Total descontado registrado en meses cobrados</span>
-                <strong>{formatearMoneda(totalDescontadoRegistrado)}</strong>
-              </div>
-
               <div className={styles.resumenTotalMensualTabla}>
-                <h4>Resumen de meses descontados</h4>
+                <h4>Movimientos por mes de cobro</h4>
 
-                <DataTable
-                  value={resumenMensual}
-                  emptyMessage="Todavía no hay cuotas marcadas como cobradas."
-                  responsiveLayout="scroll"
-                >
-                  <Column field="periodo" header="Mes descontado" />
-                  <Column field="cantidadServicios" header="Servicios" />
-                  <Column
-                    header="Total descontado"
-                    body={totalMensualTemplate}
-                  />
-                </DataTable>
+                <div className={styles.movimientosMensuales}>
+                  {resumenMensual.length === 0 && (
+                    <div className={styles.movimientosVacios}>
+                      Todavía no hay cobros procesados.
+                    </div>
+                  )}
+
+                  {resumenMensual.map((mes) => (
+                    <section
+                      key={mes.periodoOrden}
+                      className={styles.movimientoMes}
+                    >
+                      <header className={styles.movimientoMesHeader}>
+                        <div>
+                          <strong>{mes.periodo}</strong>
+                          <span>
+                            {mes.cantidadServicios}{" "}
+                            {mes.cantidadServicios === 1
+                              ? "servicio"
+                              : "servicios"}
+                          </span>
+                        </div>
+                        {totalMensualTemplate(mes)}
+                      </header>
+
+                      <div className={styles.movimientoLista}>
+                        {mes.movimientos.map((movimiento, index) => {
+                          const estado = estadoMovimiento(movimiento);
+                          const sinDescuento =
+                            Number(movimiento.valorDescontado || 0) <= 0;
+
+                          return (
+                            <div
+                              key={`${movimiento.servicioKey}-${index}`}
+                              className={styles.movimientoFila}
+                            >
+                              <div className={styles.movimientoServicio}>
+                                <span className={styles.movimientoIcono}>
+                                  <i className="pi pi-briefcase" />
+                                </span>
+                                <div>
+                                  <strong>{movimiento.servicioNombre}</strong>
+                                  <span>{movimiento.cuotaTexto}</span>
+                                </div>
+                              </div>
+
+                              <span className={estado.clase}>
+                                {estado.texto}
+                              </span>
+
+                              <div className={styles.movimientoImporte}>
+                                <strong
+                                  className={
+                                    sinDescuento
+                                      ? styles.movimientoImporteCero
+                                      : ""
+                                  }
+                                >
+                                  {sinDescuento ? "" : "-"}
+                                  {formatearMoneda(
+                                    movimiento.valorDescontado
+                                  )}
+                                </strong>
+                                {sinDescuento && (
+                                  <small>No se realizó el descuento</small>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
               </div>
             </div>
           )}

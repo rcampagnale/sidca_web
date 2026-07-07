@@ -1,0 +1,24 @@
+.root { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.header h2 { margin: 0; color: #172033; font-size: 1.25rem; }
+.header p { margin: .3rem 0 0; color: #64748b; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; margin: 1.2rem 0; }
+.kpis article { border: 1px solid #dbe4ef; border-left: 5px solid #2563eb; border-radius: 12px; padding: .85rem 1rem; background: #f8fafc; }
+.kpis article.ok { border-left-color: #16a34a; }
+.kpis article.danger { border-left-color: #dc2626; }
+.kpis span { display: block; color: #64748b; font-size: .78rem; font-weight: 700; }
+.kpis strong { display: block; margin-top: .25rem; color: #172033; font-size: 1.65rem; }
+.filters { display: grid; grid-template-columns: minmax(280px, 1fr) 240px 300px; gap: .8rem; margin-bottom: 1rem; }
+.filters :global(.p-inputtext), .filters :global(.p-dropdown) { width: 100%; }
+.tableWrap { overflow: auto; max-height: 620px; border: 1px solid #e2e8f0; border-radius: 12px; }
+.tableWrap table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+.tableWrap th { position: sticky; top: 0; z-index: 1; padding: .75rem; text-align: left; background: #f1f5f9; color: #475569; font-size: .75rem; text-transform: uppercase; }
+.tableWrap td { padding: .75rem; border-top: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
+.tableWrap td strong, .tableWrap td small { display: block; }
+.tableWrap td small { margin-top: .2rem; color: #64748b; }
+.muted { color: #64748b; }
+.message { min-height: 180px; display: flex; align-items: center; justify-content: center; gap: .75rem; color: #64748b; }
+.message :global(.p-progress-spinner) { width: 38px; height: 38px; }
+.error { padding: 1rem; border-radius: 10px; background: #fff1f2; color: #b91c1c; }
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .header { flex-direction: column; } .kpis { grid-template-columns: 1fr; } }

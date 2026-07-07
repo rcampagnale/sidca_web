@@ -1,0 +1,50 @@
+/* src/components/Servicios/AlertaAfiliadosDialog.module.css */
+
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bannerParcial,
+.bannerNoCobrado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 14px;
+  padding: 14px 18px;
+  border: 1px solid;
+}
+
+.bannerParcial {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.bannerNoCobrado {
+  background: #fff1f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.bannerParcial strong,
+.bannerNoCobrado strong {
+  display: block;
+  font-size: 0.97rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.bannerParcial span,
+.bannerNoCobrado span {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.busqueda :global(.p-inputtext) {
+  width: 100%;
+  max-width: 480px;
+  height: 44px;
+}

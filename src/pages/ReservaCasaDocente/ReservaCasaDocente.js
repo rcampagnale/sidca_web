@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from "react";
 import styles from "./ReservaCasaDocente.module.css";
 
-// Firebase reservas (sidcareservas)
 import { dbReservas } from "../../firebase/firebaseReservas";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-} from "firebase/firestore";
-
-// Imagen de portada (hero)
 import banner from "../../assets/reserva-casa-docente/banner.jpg";
-
-// Imágenes del carrusel general
 import casa01 from "../../assets/reserva-casa-docente/casa01.jpg";
 import casa02 from "../../assets/reserva-casa-docente/casa02.jpg";
 import casa03 from "../../assets/reserva-casa-docente/casa03.jpg";
@@ -25,330 +15,234 @@ import casa07 from "../../assets/reserva-casa-docente/casa07.jpg";
 import casa08 from "../../assets/reserva-casa-docente/casa08.jpg";
 import casa09 from "../../assets/reserva-casa-docente/casa09.jpg";
 
-// Componente nuevo con los modales
 import ReservaCasaDocenteModales from "./ReservaCasaDocenteModales";
 
-// Imágenes del carrusel hero
 const IMAGENES_CASA = [
-  casa01,
-  casa02,
-  casa03,
-  casa04,
-  casa05,
-  casa06,
-  casa07,
-  casa08,
-  casa09,
+  casa01, casa02, casa03, casa04, casa05,
+  casa06, casa07, casa08, casa09,
 ];
 
-// Texto fijo del carrusel hero
-const DESCRIPCION_CARRUSEL =
+const DESCRIPCION =
   "La Casa del Docente es el anexo de servicios que ofrece SIDCA. Hospedaje, bar y cocina compartida, Salón de Conferencias y Sala de Computación. Más servicios para la docencia. ¡Sumate vos también a sus beneficios!";
 
-// Tipos de habitación (IDs usados en administración)
 const TIPOS_HABITACION = [
-  { id: "simple", nombre: "Habitación simple", descripcion: "Hasta 1 persona" },
-  { id: "doble", nombre: "Habitación doble", descripcion: "Hasta 2 personas" },
-  { id: "triple", nombre: "Habitación triple", descripcion: "Hasta 3 personas" },
-  {
-    id: "cuadruple",
-    nombre: "Habitación cuádruple",
-    descripcion: "Hasta 4 personas",
-  },
-  {
-    id: "departamento",
-    nombre: "Departamento",
-    descripcion: "Ideal para grupo familiar",
-  },
+  { id: "simple",       nombre: "Habitación simple",    descripcion: "Hasta 1 persona",       icono: "🛏️", color: "#065f46" },
+  { id: "doble",        nombre: "Habitación doble",     descripcion: "Hasta 2 personas",      icono: "🛏️", color: "#1d4ed8" },
+  { id: "triple",       nombre: "Habitación triple",    descripcion: "Hasta 3 personas",      icono: "🛏️", color: "#92400e" },
+  { id: "cuadruple",    nombre: "Habitación cuádruple", descripcion: "Hasta 4 personas",      icono: "🛏️", color: "#6d28d9" },
+  { id: "departamento", nombre: "Departamento",         descripcion: "Ideal para grupo familiar", icono: "🏠", color: "#0e7490" },
 ];
 
 const ReservaCasaDocente = () => {
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [habitaciones, setHabitaciones]     = useState([]);
+  const [loadingHabitaciones, setLoading]   = useState(true);
+  const [errorHabitaciones, setError]       = useState(null);
+  const [photoIndexByType, setPhotoIndex]   = useState({});
 
-  // Habitaciones públicas (sidcareservas)
-  const [habitaciones, setHabitaciones] = useState([]);
-  const [loadingHabitaciones, setLoadingHabitaciones] = useState(true);
-  const [errorHabitaciones, setErrorHabitaciones] = useState(null);
-
-  // Índice de foto por tipo de habitación (mini–carrusel por tarjeta)
-  const [photoIndexByType, setPhotoIndexByType] = useState({});
-
-  // Estado de los modales
-  const [isReservaModalOpen, setIsReservaModalOpen] = useState(false);
+  const [isReservaModalOpen, setReservaOpen]    = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
-  const [isConsultaModalOpen, setIsConsultaModalOpen] = useState(false);
+  const [isConsultaModalOpen, setConsultaOpen]  = useState(false);
 
-  /* ======================
-   * Efectos
-   * ====================== */
+  const [galeriaOpen, setGaleriaOpen]   = useState(false);
+  const [galeriaIndex, setGaleriaIndex] = useState(0);
+  const [galleryOffset, setGalleryOffset] = useState(0);
 
-  // Carrusel automático hero
   useEffect(() => {
-    if (IMAGENES_CASA.length === 0) return;
-
-    const intervalId = setInterval(
-      () => setActiveSlide((prev) => (prev + 1) % IMAGENES_CASA.length),
-      5000
-    );
-
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Cargar habitaciones desde Firestore (sidcareservas)
-  useEffect(() => {
-    const cargarHabitaciones = async () => {
+    const cargar = async () => {
       try {
-        setLoadingHabitaciones(true);
-        setErrorHabitaciones(null);
-
+        setLoading(true);
+        setError(null);
         const colRef = collection(dbReservas, "habitacionesCasaDocente");
-        const qHab = query(colRef, orderBy("tipo", "asc"));
-        const snapshot = await getDocs(qHab);
-
-        const data = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-        }));
-
-        setHabitaciones(data);
-      } catch (error) {
-        console.error(
-          "[ReservaCasaDocente] Error al cargar habitaciones públicas:",
-          error
-        );
-        setErrorHabitaciones(
-          "Ocurrió un problema al cargar las habitaciones. Intentalo nuevamente más tarde."
-        );
+        const snap   = await getDocs(query(colRef, orderBy("tipo", "asc")));
+        setHabitaciones(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error("[ReservaCasaDocente]", err);
+        setError("No se pudieron cargar las habitaciones. Intentalo nuevamente.");
       } finally {
-        setLoadingHabitaciones(false);
+        setLoading(false);
       }
     };
-
-    cargarHabitaciones();
+    cargar();
   }, []);
 
-  /* ======================
-   * Helpers
-   * ====================== */
+  const getItemsPorTipo = (tipoId) => habitaciones.filter((h) => h.tipo === tipoId);
 
-  const goToSlide = (index) => setActiveSlide(index);
-  const currentImage = IMAGENES_CASA[activeSlide];
-
-  const getHabitacionesPorTipo = (tipoId) =>
-    habitaciones.filter((h) => h.tipo === tipoId);
-
-  const handleChangePhoto = (tipoId, direction, totalImages) => {
-    if (totalImages <= 1) return;
-    setPhotoIndexByType((prev) => {
-      const current = prev[tipoId] ?? 0;
-      let next = current + direction;
-      if (next < 0) next = totalImages - 1;
-      if (next >= totalImages) next = 0;
+  const handleChangePhoto = (tipoId, dir, total) => {
+    if (total <= 1) return;
+    setPhotoIndex((prev) => {
+      const cur  = prev[tipoId] ?? 0;
+      let   next = cur + dir;
+      if (next < 0)     next = total - 1;
+      if (next >= total) next = 0;
       return { ...prev, [tipoId]: next };
     });
   };
 
- // Abrir / cerrar modal de reserva
-const handleReservarHabitacion = (tipoId) => {
-  setTipoSeleccionado(tipoId);
-  setIsReservaModalOpen(true);
-};
+  const handleReservar    = (tipoId) => { setTipoSeleccionado(tipoId); setReservaOpen(true); };
+  const cerrarReserva     = () => setReservaOpen(false);
+  const abrirConsulta     = () => setConsultaOpen(true);
+  const cerrarConsulta    = () => setConsultaOpen(false);
 
-const cerrarModalReserva = () => {
-  setIsReservaModalOpen(false);
-};
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setGalleryOffset((prev) => (prev + 1) % IMAGENES_CASA.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
 
-// Abrir / cerrar modal de consulta
-const abrirConsultaModal = () => {
-  setIsConsultaModalOpen(true);
-};
-
-const cerrarConsultaModal = () => {
-  setIsConsultaModalOpen(false);
-};
-
-
-  /* ======================
-   * Render
-   * ====================== */
+  const abrirGaleria      = (i = 0) => { setGaleriaIndex(i); setGaleriaOpen(true); };
+  const cerrarGaleria     = ()      => setGaleriaOpen(false);
+  const galeriaAnterior   = ()      => setGaleriaIndex((i) => (i - 1 + IMAGENES_CASA.length) % IMAGENES_CASA.length);
+  const galeriaSiguiente  = ()      => setGaleriaIndex((i) => (i + 1) % IMAGENES_CASA.length);
 
   return (
     <div className={styles.page}>
-      {/* TÍTULO + BANNER */}
-      <section className={styles.heroSection}>
-        <h1 className={styles.heroTitle}>BIENVENIDOS A CASA DEL DOCENTE</h1>
 
-        <div className={styles.hero}>
-          <img
-            src={banner}
-            alt="Portada Casa del Docente"
-            className={styles.heroImage}
-          />
-          <div className={styles.heroOverlay} />
+      {/* ══ HERO split ══ */}
+      <section className={styles.heroSection} style={{ backgroundImage: `url(${banner})` }}>
+
+        <div className={styles.heroLeft}>
+          <span className={styles.heroBadge}>SiDCa · Servicios para el docente</span>
+          <h1 className={styles.heroTitle}>Casa del Docente</h1>
+          <p className={styles.heroDesc}>{DESCRIPCION}</p>
+          <div className={styles.heroButtons}>
+            <button
+              type="button"
+              className={styles.heroBtnPrimary}
+              onClick={() =>
+                document.getElementById("habitaciones-section")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Hacer una reserva
+            </button>
+          </div>
+        </div>
+
+        {/* Galería 2×2 auto-rotante */}
+        <div className={styles.heroGallery}>
+          {[0, 1, 2, 3].map((i) => {
+            const imgIdx = (i + galleryOffset) % IMAGENES_CASA.length;
+            return (
+              <div
+                key={i}
+                className={styles.heroGalleryCell}
+                onClick={() => abrirGaleria(imgIdx)}
+              >
+                <img src={IMAGENES_CASA[imgIdx]} alt={`Casa del Docente ${imgIdx + 1}`} />
+                {i === 3 && (
+                  <div className={styles.heroGalleryMore}>
+                    +{IMAGENES_CASA.length - 4} fotos
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* CARROUSEL: texto fijo + imagen que cambia */}
-      <section className={styles.carouselSection}>
-        <div className={styles.carouselInner}>
-          <div className={styles.carouselText}>
-            <h2 className={styles.carouselTitle}>Casa del Docente</h2>
-            <p className={styles.carouselDescription}>
-              {DESCRIPCION_CARRUSEL}
-            </p>
-          </div>
+      {/* ══ BANDA AMARILLA ══ */}
+      <div className={styles.bandaAmarilla}>
+        <p className={styles.bandaTitle}>Elegí tu habitación</p>
+        <p className={styles.bandaSubtitle}>
+          {TIPOS_HABITACION.length} tipos disponibles · valores orientativos
+        </p>
+      </div>
 
-          <div className={styles.carouselImageWrapper}>
-            <img
-              src={currentImage}
-              alt="Vista de la Casa del Docente"
-              className={styles.carouselImage}
-            />
-          </div>
-        </div>
+      {/* ══ CARDS HORIZONTALES ══ */}
+      <section className={styles.roomSection} id="habitaciones-section">
 
-        <div className={styles.carouselControls}>
-          <div className={styles.carouselDots}>
-            {IMAGENES_CASA.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => goToSlide(index)}
-                className={`${styles.carouselDot} ${
-                  index === activeSlide ? styles.carouselDotActive : ""
-                }`}
-                aria-label={`Ver imagen ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+        {loadingHabitaciones && (
+          <p className={styles.roomStatusText}>Cargando habitaciones...</p>
+        )}
 
-      {/* SECCIÓN: Tipos de habitación con datos desde Firebase */}
-      <section className={styles.roomStylesSection}>
-        <div className={styles.roomStylesInner}>
-          <h2 className={styles.roomStylesTitle}>ELEGÍ TU ESTILO DE HABITACIÓN</h2>
-          <p className={styles.roomStylesSubtitle}>
-            Las siguientes opciones se encuentran disponibles en la Casa del
-            Docente. Los valores son orientativos y pueden actualizarse.
+        {!loadingHabitaciones && errorHabitaciones && (
+          <p className={styles.roomStatusTextError}>{errorHabitaciones}</p>
+        )}
+
+        {!loadingHabitaciones && !errorHabitaciones && habitaciones.length === 0 && (
+          <p className={styles.roomStatusText}>
+            Próximamente publicaremos las habitaciones disponibles.
           </p>
+        )}
 
-          {/* GRID de habitaciones */}
-          <div className={styles.roomStylesGrid}>
-            {loadingHabitaciones && (
-              <p className={styles.roomStatusText}>
-                Cargando habitaciones disponibles...
-              </p>
-            )}
+        {!loadingHabitaciones &&
+          !errorHabitaciones &&
+          habitaciones.length > 0 &&
+          TIPOS_HABITACION.map((tipo) => {
+            const items = getItemsPorTipo(tipo.id);
+            if (items.length === 0) return null;
 
-            {!loadingHabitaciones && errorHabitaciones && (
-              <p className={styles.roomStatusTextError}>
-                {errorHabitaciones}
-              </p>
-            )}
+            const images      = items.flatMap((h) => Array.isArray(h.imagenes) ? h.imagenes : []).filter(Boolean);
+            const totalImages = images.length;
+            const activeIdx   = (photoIndexByType[tipo.id] ?? 0) % Math.max(totalImages, 1);
+            const coverImage  = totalImages > 0 ? images[activeIdx] : null;
 
-            {!loadingHabitaciones &&
-              !errorHabitaciones &&
-              habitaciones.length === 0 && (
-                <p className={styles.roomStatusText}>
-                  Próximamente publicaremos las habitaciones disponibles.
-                </p>
-              )}
+            const precios     = items.map((h) => Number(h.precio) || 0).filter((v) => v > 0);
+            const precioDesde = precios.length > 0 ? Math.min(...precios) : null;
+            const camasMax    = Math.max(...items.map((h) => Number(h.camas)  || 0), 0);
+            const banosMax    = Math.max(...items.map((h) => Number(h.banos)  || 0), 0);
+            const cochera     = items.some((h) => h.estacionamiento);
+            const ubicacion   = items.find((h) => h.ubicacion)?.ubicacion || null;
 
-            {!loadingHabitaciones &&
-              !errorHabitaciones &&
-              habitaciones.length > 0 &&
-              TIPOS_HABITACION.map((tipo) => {
-                const items = getHabitacionesPorTipo(tipo.id);
-                if (items.length === 0) return null;
+            return (
+              <article key={tipo.id} className={styles.roomCard}>
 
-                const images = items
-                  .flatMap((h) =>
-                    Array.isArray(h.imagenes) ? h.imagenes : []
-                  )
-                  .filter(Boolean);
+                {/* Barra de color izquierda */}
+                <div
+                  className={styles.roomCardBar}
+                  style={{ background: tipo.color }}
+                />
 
-                const totalImages = images.length;
-                const activeIndex =
-                  photoIndexByType[tipo.id] && totalImages > 0
-                    ? photoIndexByType[tipo.id] % totalImages
-                    : 0;
-
-                const coverImage =
-                  totalImages > 0 ? images[activeIndex] : null;
-
-                const precios = items
-                  .map((h) => Number(h.precio) || 0)
-                  .filter((v) => v > 0);
-                const camasMax = Math.max(
-                  ...items.map((h) => Number(h.camas) || 0),
-                  0
-                );
-                const banosMax = Math.max(
-                  ...items.map((h) => Number(h.banos) || 0),
-                  0
-                );
-                const tieneEstacionamiento = items.some(
-                  (h) => h.estacionamiento
-                );
-
-                const precioDesde =
-                  precios.length > 0 ? Math.min(...precios) : null;
-
-                return (
-                  <article key={tipo.id} className={styles.roomCard}>
-                    {/* Foto + flechas izquierda / derecha */}
-                    {coverImage && (
-                      <div className={styles.roomCardImageWrapper}>
-                        <img
-                          src={coverImage}
-                          alt={`Imagen de ${tipo.nombre}`}
-                          className={styles.roomCardImage}
-                        />
-
-                        {totalImages > 1 && (
-                          <div className={styles.roomCardImageControls}>
-                            <button
-                              type="button"
-                              className={styles.roomCardArrow}
-                              onClick={() =>
-                                handleChangePhoto(
-                                  tipo.id,
-                                  -1,
-                                  totalImages
-                                )
-                              }
-                              aria-label="Foto anterior"
-                            >
-                              ‹
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.roomCardArrow}
-                              onClick={() =>
-                                handleChangePhoto(
-                                  tipo.id,
-                                  1,
-                                  totalImages
-                                )
-                              }
-                              aria-label="Foto siguiente"
-                            >
-                              ›
-                            </button>
-                          </div>
-                        )}
+                {/* Foto / fallback */}
+                {coverImage ? (
+                  <div className={styles.roomCardImageWrapper}>
+                    <img
+                      src={coverImage}
+                      alt={tipo.nombre}
+                      className={styles.roomCardImage}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        const fb = e.currentTarget.parentElement?.querySelector(`.${styles.roomCardFallback}`);
+                        if (fb) fb.style.display = "flex";
+                      }}
+                    />
+                    <div
+                      className={`${styles.roomCardFallback} ${styles[tipo.id]}`}
+                      style={{ display: "none", position: "absolute", inset: 0 }}
+                    >
+                      <span className={styles.roomCardFallbackIcon}>{tipo.icono}</span>
+                      <span className={styles.roomCardFallbackLabel}>{tipo.nombre}</span>
+                    </div>
+                    {totalImages > 1 && (
+                      <div className={styles.roomCardImageControls}>
+                        <button
+                          type="button"
+                          className={styles.roomCardArrow}
+                          onClick={() => handleChangePhoto(tipo.id, -1, totalImages)}
+                          aria-label="Foto anterior"
+                        >‹</button>
+                        <button
+                          type="button"
+                          className={styles.roomCardArrow}
+                          onClick={() => handleChangePhoto(tipo.id,  1, totalImages)}
+                          aria-label="Foto siguiente"
+                        >›</button>
                       </div>
                     )}
+                  </div>
+                ) : (
+                  <div className={`${styles.roomCardFallback} ${styles[tipo.id]}`}>
+                    <span className={styles.roomCardFallbackIcon}>{tipo.icono}</span>
+                    <span className={styles.roomCardFallbackLabel}>{tipo.nombre}</span>
+                  </div>
+                )}
 
-                    {/* Título */}
+                {/* Info + precio + botón */}
+                <div className={styles.roomCardBody}>
+                  <div className={styles.roomCardInfo}>
                     <h3 className={styles.roomCardTitle}>{tipo.nombre}</h3>
-
-                    {/* Línea separadora + subtítulo */}
-                    <div className={styles.roomCardDivider} />
-                    <p className={styles.roomCardSubtitle}>Servicios incluidos</p>
-
-                    {/* Servicios con íconos */}
+                    <p className={styles.roomCardCapacity}>{tipo.descripcion}</p>
                     <div className={styles.roomCardServices}>
                       <div className={styles.serviceItem}>
                         <span className={styles.serviceIcon}>📶</span>
@@ -358,78 +252,111 @@ const cerrarConsultaModal = () => {
                         <span className={styles.serviceIcon}>📺</span>
                         <span className={styles.serviceLabel}>TV</span>
                       </div>
-                      <div className={styles.serviceItem}>
-                        <span className={styles.serviceIcon}>🚿</span>
-                        <span className={styles.serviceLabel}>
-                          {banosMax > 0 ? `${banosMax} baño(s)` : "Baño privado"}
-                        </span>
-                      </div>
+                      {banosMax > 0 && (
+                        <div className={styles.serviceItem}>
+                          <span className={styles.serviceIcon}>🚿</span>
+                          <span className={styles.serviceLabel}>{banosMax} baño(s)</span>
+                        </div>
+                      )}
+                      {camasMax > 0 && (
+                        <div className={styles.serviceItem}>
+                          <span className={styles.serviceIcon}>🛏️</span>
+                          <span className={styles.serviceLabel}>{camasMax} cama(s)</span>
+                        </div>
+                      )}
                       <div className={styles.serviceItem}>
                         <span className={styles.serviceIcon}>🚗</span>
                         <span className={styles.serviceLabel}>
-                          {tieneEstacionamiento ? "Cochera" : "Cochera opcional"}
-                        </span>
-                      </div>
-                      <div className={styles.serviceItem}>
-                        <span className={styles.serviceIcon}>🛏️</span>
-                        <span className={styles.serviceLabel}>
-                          {camasMax > 0
-                            ? `${camasMax} cama(s)`
-                            : "Camas confortables"}
+                          {cochera ? "Cochera incluida" : "Sin cochera"}
                         </span>
                       </div>
                       <div className={styles.serviceItem}>
                         <span className={styles.serviceIcon}>📍</span>
-                        <span className={styles.serviceLabel}>
-                          SFVC, Catamarca
-                        </span>
+                        {ubicacion ? (
+                          <a
+                            href={ubicacion}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.serviceLink}
+                          >
+                            Ver en mapa
+                          </a>
+                        ) : (
+                          <span className={styles.serviceLabel}>SFVC, Catamarca</span>
+                        )}
                       </div>
                     </div>
+                  </div>
 
-                    {precioDesde !== null && (
-                      <p className={styles.roomCardPrice}>
-                        Desde <span>${precioDesde}</span> por noche
-                      </p>
+                  <div className={styles.roomCardRight}>
+                    {precioDesde !== null ? (
+                      <>
+                        <p className={styles.roomCardPriceLabel}>Desde</p>
+                        <p className={styles.roomCardPrice}>
+                          ${precioDesde.toLocaleString("es-AR")}
+                        </p>
+                        <p className={styles.roomCardPriceNight}>por noche</p>
+                      </>
+                    ) : (
+                      <p className={styles.roomCardPriceLabel}>Consultar precio</p>
                     )}
-
-                    {/* Botón para abrir el almanaque */}
                     <button
                       type="button"
                       className={styles.roomCardReserveButton}
-                      onClick={() => handleReservarHabitacion(tipo.id)}
+                      onClick={() => handleReservar(tipo.id)}
                     >
-                      Reservar una habitación
+                      Reservar
                     </button>
-                  </article>
-                );
-              })}
-          </div>
-
-          {/* 🔽 Bloque de consulta de reserva, debajo del grid */}
-          <div className={styles.consultaReservaSection}>
-            <p className={styles.consultaReservaText}>
-              ¿Ya hiciste una reserva? Podés consultar el estado ingresando tu DNI.
-            </p>
-            <button
-              type="button"
-              className={`${styles.roomCardReserveButton} ${styles.consultaReservaButton}`}
-              onClick={abrirConsultaModal}
-            >
-              Consultar mi reserva
-            </button>
-          </div>
-        </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
       </section>
 
-      {/* 🔹 Modales separados en otro archivo */}
+      {/* ══ BLOQUE CONSULTAR ══ */}
+      <div className={styles.consultaSection}>
+        <p className={styles.consultaText}>
+          ¿Ya hiciste una reserva? Podés consultar el estado ingresando tu DNI.
+        </p>
+        <button
+          type="button"
+          className={styles.consultaBtn}
+          onClick={abrirConsulta}
+        >
+          Consultar mi reserva
+        </button>
+      </div>
+
+      {/* ══ GALERÍA OVERLAY ══ */}
+      {galeriaOpen && (
+        <div className={styles.galleryOverlay} onClick={cerrarGaleria}>
+          <button className={styles.galleryOverlayClose} onClick={cerrarGaleria} aria-label="Cerrar">×</button>
+          <img
+            src={IMAGENES_CASA[galeriaIndex]}
+            alt={`Casa del Docente ${galeriaIndex + 1}`}
+            className={styles.galleryOverlayImg}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className={styles.galleryOverlayControls} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.galleryOverlayArrow} onClick={galeriaAnterior}>‹</button>
+            <span className={styles.galleryOverlayCounter}>
+              {galeriaIndex + 1} / {IMAGENES_CASA.length}
+            </span>
+            <button className={styles.galleryOverlayArrow} onClick={galeriaSiguiente}>›</button>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODALES ══ */}
       <ReservaCasaDocenteModales
         isReservaModalOpen={isReservaModalOpen}
-  onCloseReserva={cerrarModalReserva}
-  tipoSeleccionado={tipoSeleccionado}
-  habitaciones={habitaciones}
-  isConsultaModalOpen={isConsultaModalOpen}
-  onCloseConsulta={cerrarConsultaModal}
-  TIPOS_HABITACION={TIPOS_HABITACION}
+        onCloseReserva={cerrarReserva}
+        tipoSeleccionado={tipoSeleccionado}
+        habitaciones={habitaciones}
+        isConsultaModalOpen={isConsultaModalOpen}
+        onCloseConsulta={cerrarConsulta}
+        TIPOS_HABITACION={TIPOS_HABITACION}
       />
     </div>
   );

@@ -62,10 +62,14 @@
   color: #071827;
   font-family: Arial, Helvetica, sans-serif;
   font-weight: 900;
-  line-height: 1.08;
+  line-height: 1.04;
   text-align: left;
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-wrap: balance;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Marca visible solo en la vista previa */
@@ -97,9 +101,14 @@
   top: 320px;
   left: 442px;
   width: 325px;
+  min-height: 26px;
+  max-height: 70px;
   font-size: 22px;
   letter-spacing: 0.2px;
 }
+
+.afiliado.textoLargo { font-size: 18px; line-height: 1.05; }
+.afiliado.textoMuyLargo { font-size: 15px; line-height: 1.02; }
 
 /* DNI: va después de "DNI N°". Sin prefijo. */
 .dni {
@@ -115,26 +124,41 @@
   top: 454px;
   left: 50px;
   width: 700px;
+  min-height: 26px;
+  max-height: 50px;
   font-size: 22px;
   letter-spacing: 0.6px;
 }
+
+.curso.textoLargo { font-size: 18px; line-height: 1.02; letter-spacing: 0.35px; }
+.curso.textoMuyLargo { font-size: 15px; line-height: 1; letter-spacing: 0.2px; }
 
 /* Resolución: va en la línea de "mediante" */
 .resolucion {
   top: 507px;
   left: 450px;
   width: 325px;
+  min-height: 22px;
+  max-height: 52px;
   font-size: 18px;
   letter-spacing: 0.3px;
 }
+
+.resolucion.textoLargo { font-size: 15px; line-height: 1.02; }
+.resolucion.textoMuyLargo { font-size: 13px; line-height: 1; }
 
 /* Días del curso: va después de "los días" */
 .diasCurso {
   top: 568px;
   left: 90px;
   width: 360px;
+  min-height: 24px;
+  max-height: 54px;
   font-size: 22px;
 }
+
+.diasCurso.textoLargo { font-size: 18px; line-height: 1.03; }
+.diasCurso.textoMuyLargo { font-size: 15px; line-height: 1; }
 
 
 /* Fecha de emisión: va después de "a los" */
@@ -142,8 +166,13 @@
   top: 665px;
   left: 44px;
   width: 455px;
+  min-height: 22px;
+  max-height: 48px;
   font-size: 18px;
 }
+
+.fechaEmision.textoLargo { font-size: 15px; line-height: 1.03; }
+.fechaEmision.textoMuyLargo { font-size: 13px; line-height: 1; }
 
 .footerActions {
   display: flex;

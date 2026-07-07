@@ -7,11 +7,9 @@ const ServicioAccionesTabla = ({
   eliminandoServicioId,
   onVer,
   onEditar,
-  onCambiarEstado,
   onCambiarVisibleEnApp,
   onEliminar,
 }) => {
-  const activo = servicio?.activo !== false;
   const visible = servicio?.visibleEnApp === true;
   const eliminando = eliminandoServicioId === servicio?.id;
 
@@ -34,19 +32,7 @@ const ServicioAccionesTabla = ({
       />
 
       <Button
-        icon={activo ? "pi pi-ban" : "pi pi-check"}
-        className={
-          activo
-            ? "p-button-rounded p-button-warning p-button-sm"
-            : "p-button-rounded p-button-success p-button-sm"
-        }
-        tooltip={activo ? "Desactivar servicio" : "Activar servicio"}
-        tooltipOptions={{ position: "top" }}
-        onClick={() => onCambiarEstado(servicio)}
-      />
-
-      <Button
-        icon={visible ? "pi pi-mobile" : "pi pi-mobile"}
+        icon={visible ? "pi pi-eye" : "pi pi-eye-slash"}
         className={
           visible
             ? "p-button-rounded p-button-success p-button-sm"

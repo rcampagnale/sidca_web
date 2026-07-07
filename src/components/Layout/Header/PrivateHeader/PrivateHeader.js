@@ -1,18 +1,91 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router";
 import { useSelector } from "react-redux";
 import { Button } from "primereact/button";
 import { confirmDialog } from "primereact/confirmdialog";
+import { doc, getDoc } from "firebase/firestore";
 import NavUser from "./nav/NavUser";
+import { db } from "../../../../firebase/firebase-config";
 import styles from "./privateHeader.module.scss";
 import logo from "../../../../assets/img/logo-01.png";
+import DelegadoPantallaQR from "../../../HabilitarBotones/qr/DelegadoPantallaQR";
+
+const normalizarDni = (valor) => String(valor || "").replace(/\D/g, "");
+
+const leerUsuarioSession = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const obtenerDniUsuario = (userRedux) => {
+  const userSession = leerUsuarioSession();
+  return normalizarDni(
+    userRedux?.dni ||
+      userRedux?.profile?.dni ||
+      userRedux?.user?.dni ||
+      userRedux?.documento ||
+      userSession?.dni ||
+      userSession?.documento ||
+      localStorage.getItem("sidca_user_dni")
+  );
+};
+
+const tienePermisoGestionDelegados = (delegado) =>
+  delegado?.habilitado === true &&
+  delegado?.herramientas?.expedienteSueldo?.habilitado === true &&
+  delegado?.herramientas?.expedienteSueldo?.permisos?.ver === true;
+
+const tienePermisoPantallaQR = (delegado) =>
+  delegado?.habilitado === true &&
+  delegado?.herramientas?.pantallaQr?.habilitado === true;
 
 const PrivateHeader = () => {
   const history = useHistory();
+  const user = useSelector((state) => state.user);
+  const pantallaQrRef = useRef(null);
 
   const [active, setActive] = useState(false);
+  const [mostrarGestionDelegados, setMostrarGestionDelegados] =
+    useState(false);
+  const [mostrarPantallaQR, setMostrarPantallaQR] = useState(false);
 
-  const user = useSelector((state) => state.user);
+  useEffect(() => {
+    let mounted = true;
+
+    const validarDelegado = async () => {
+      const dni = obtenerDniUsuario(user);
+
+      if (!dni) {
+        if (mounted) {
+          setMostrarGestionDelegados(false);
+          setMostrarPantallaQR(false);
+        }
+        return;
+      }
+
+      try {
+        const snap = await getDoc(doc(db, "delegadosAutorizados", dni));
+        if (mounted) {
+          const delegado = snap.exists() ? snap.data() : null;
+          setMostrarGestionDelegados(tienePermisoGestionDelegados(delegado));
+          setMostrarPantallaQR(tienePermisoPantallaQR(delegado));
+        }
+      } catch (err) {
+        console.error("[PrivateHeader] Gestion Delegados:", err);
+        if (mounted) setMostrarGestionDelegados(false);
+        if (mounted) setMostrarPantallaQR(false);
+      }
+    };
+
+    validarDelegado();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const confirm = () => {
     confirmDialog({
@@ -28,7 +101,7 @@ const PrivateHeader = () => {
   return (
     <>
       <a
-        href="#"
+        href="/home"
         onClick={(e) => {
           e.preventDefault();
           history.push("/home");
@@ -46,10 +119,21 @@ const PrivateHeader = () => {
           Capacitaciones
         </li>
 
-        {/* NUEVA OPCIÓN */}
         <li onClick={() => history.push("/oficina-gestion")}>
           Oficina de Gestión
         </li>
+
+        {mostrarGestionDelegados && (
+          <li onClick={() => history.push("/delegado/gestion-delegados")}>
+            Gestión Delegados
+          </li>
+        )}
+
+        {mostrarPantallaQR && (
+          <li onClick={() => pantallaQrRef.current?.abrirRegistro()}>
+            Pantalla QR
+          </li>
+        )}
 
         {/* {user.profue.cotizante && } */}
 
@@ -76,7 +160,17 @@ const PrivateHeader = () => {
         />
       </div>
 
-      {active && <NavUser active={active} setActive={setActive} user={user} />}
+      {active && (
+        <NavUser
+          active={active}
+          setActive={setActive}
+          mostrarGestionDelegados={mostrarGestionDelegados}
+          mostrarPantallaQR={mostrarPantallaQR}
+          onRegistrarPantallaQR={() => pantallaQrRef.current?.abrirRegistro()}
+        />
+      )}
+
+      {mostrarPantallaQR && <DelegadoPantallaQR ref={pantallaQrRef} />}
     </>
   );
 };

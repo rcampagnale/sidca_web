@@ -135,15 +135,16 @@ const PublicHeader = () => {
     </>
   );
 
-  const renderMenuPublico = () => (
-    <ul className={styles.headerNav}>
-      <li onClick={irComercio}>Comercio</li>
-
-      <li className={styles.separator}>|</li>
-
-      <li onClick={irAdmin}>Administración del Sitio</li>
-    </ul>
-  );
+  const renderMenuPublico = () => {
+    if (pathname === "/reserva-casa-docente") return null;
+    return (
+      <ul className={styles.headerNav}>
+        <li onClick={irComercio}>Comercio</li>
+        <li className={styles.separator}>|</li>
+        <li onClick={irAdmin}>Administración del Sitio</li>
+      </ul>
+    );
+  };
 
   const renderMenuComercio = () => (
     <ul className={styles.headerNav}>
@@ -163,15 +164,7 @@ const PublicHeader = () => {
 
   return (
     <header className={styles.header}>
-      <a
-        href="/"
-        onClick={(e) => {
-          e.preventDefault();
-          irInicio();
-        }}
-      >
-        <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
-      </a>
+      <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
 
       {esLoginComercio
         ? null

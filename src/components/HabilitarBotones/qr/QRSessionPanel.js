@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
 import {
   INTERVALO_QR_OPTIONS,
   TIPO_REGISTRO_OPTIONS,
@@ -17,6 +18,13 @@ const opcionesModalidad = [
   { label: "Presencial (QR)", value: "presencial" },
 ];
 
+const opcionesRequisitoPresencial = [
+  { label: "No requiere presencial", value: "ninguno" },
+  { label: "Al menos un encuentro presencial", value: "alguno" },
+  { label: "Todos los encuentros presenciales", value: "todos" },
+  { label: "Encuentros presenciales específicos", value: "especificos" },
+];
+
 const QRSessionPanel = ({
   asistenciaHabilitada,
   loadingAsistencia,
@@ -27,6 +35,12 @@ const QRSessionPanel = ({
   setSelectedCursoId,
   selectedModalidad,
   setSelectedModalidad,
+  requisitoPresencialVirtual,
+  setRequisitoPresencialVirtual,
+  encuentrosPresenciales,
+  encuentrosPresencialesSeleccionados,
+  setEncuentrosPresencialesSeleccionados,
+  loadingEncuentrosPresenciales,
   tipoRegistro,
   setTipoRegistro,
   autoRefreshSeconds,
@@ -89,6 +103,52 @@ const QRSessionPanel = ({
         )}
       </div>
 
+      {selectedModalidad === "virtual" && (
+        <div className={styles.formRowFull}>
+          <label>3) Requisito presencial</label>
+          <Dropdown
+            value={requisitoPresencialVirtual}
+            onChange={(e) => setRequisitoPresencialVirtual(e.value)}
+            options={opcionesRequisitoPresencial}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Elegí el requisito presencial"
+            disabled={
+              loadingEncuentrosPresenciales ||
+              (asistenciaHabilitada === "si" && !!asistenciaConfig?.habilitada)
+            }
+          />
+
+          {loadingEncuentrosPresenciales && (
+            <small className={styles.helpText}>
+              Buscando encuentros presenciales completos...
+            </small>
+          )}
+
+          {!loadingEncuentrosPresenciales && (
+            <small className={styles.helpText}>
+              Se encontraron {encuentrosPresenciales.length} encuentro(s)
+              presencial(es) completos para este curso.
+            </small>
+          )}
+
+          {requisitoPresencialVirtual === "especificos" && (
+            <MultiSelect
+              value={encuentrosPresencialesSeleccionados}
+              onChange={(e) =>
+                setEncuentrosPresencialesSeleccionados(e.value || [])
+              }
+              options={encuentrosPresenciales}
+              optionLabel="label"
+              optionValue="id"
+              placeholder="Seleccioná los encuentros requeridos"
+              display="chip"
+              disabled={loadingEncuentrosPresenciales}
+            />
+          )}
+        </div>
+      )}
+
       <div className={styles.formRowFull}>
         <div className={styles.dialogActions}>
           <Button
@@ -101,6 +161,12 @@ const QRSessionPanel = ({
               !selectedModalidad ||
               loadingAsistencia ||
               asistenciaHabilitada === "si"
+              || (selectedModalidad === "virtual" &&
+                requisitoPresencialVirtual !== "ninguno" &&
+                encuentrosPresenciales.length === 0)
+              || (selectedModalidad === "virtual" &&
+                requisitoPresencialVirtual === "especificos" &&
+                encuentrosPresencialesSeleccionados.length === 0)
             }
             loading={loadingAsistencia}
           />

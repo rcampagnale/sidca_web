@@ -9,6 +9,7 @@ import CursosDashboardSection from "../../../components/dashboard/CursosDashboar
 import RegistroAsistencia from "../../../components/dashboard/RegistroAsistencia";
 import DetalleInformacionAfiliado from "../../../components/dashboard/DetalleInformacionAfiliado";
 import PadronDashboardSection from "../../../components/dashboard/PadronDashboardSection";
+import DispositivosBloqueados from "../../../components/dashboard/DispositivosBloqueados";
 
 import styles from "./afiliadosDashboard.module.css";
 
@@ -105,6 +106,16 @@ const AfiliadosDashboard = () => {
         >
           Padrón
         </button>
+
+        <button
+          type="button"
+          className={`${styles.tabButton} ${
+            activeTab === "dispositivos" ? styles.tabButtonActive : ""
+          }`}
+          onClick={() => setActiveTab("dispositivos")}
+        >
+          Dispositivos bloqueados
+        </button>
       </div>
 
       <div className={styles.tabContent}>
@@ -137,6 +148,7 @@ const AfiliadosDashboard = () => {
         )}
 
         {activeTab === "padron" && <PadronDashboardSection />}
+        {activeTab === "dispositivos" && <DispositivosBloqueados />}
       </div>
     </div>
   );

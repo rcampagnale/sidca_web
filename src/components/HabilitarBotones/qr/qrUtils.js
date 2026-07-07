@@ -130,6 +130,9 @@ export async function deshabilitarYBorrarTodasLasSesiones(pantallasAutorizadas =
       cursoTitulo: deleteField(),
       modalidad: deleteField(),
       metodo: deleteField(),
+      requisitoPresencialVirtual: deleteField(),
+      encuentrosPresencialesRequeridos: deleteField(),
+      cantidadEncuentrosPresencialesRequeridos: deleteField(),
       qrSync: {
         habilitada: false,
         abrirQr: false,

@@ -16,7 +16,7 @@ const QRScreenRegisterDialog = ({
 }) => {
   return (
     <Dialog
-      header="Registrar esta computadora como pantalla QR"
+      header="Registrar este dispositivo como pantalla QR"
       visible={visible}
       style={{ width: 560, maxWidth: "95vw" }}
       modal
@@ -24,15 +24,15 @@ const QRScreenRegisterDialog = ({
     >
       <div className={styles.formGrid}>
         <div className={styles.formRowFull}>
-          <label>Nombre de esta computadora</label>
+          <label>Nombre de este dispositivo</label>
           <InputText
             value={nombrePantalla}
             onChange={(e) => setNombrePantalla(e.target.value)}
-            placeholder="Ej: Pantalla Salón, Proyector Principal, Notebook Secretaría"
+            placeholder="Ej: Celular delegado, Pantalla Salón, Notebook Secretaría"
           />
           <small className={styles.helpText}>
-            Solo las computadoras registradas y autorizadas abrirán el QR automáticamente.
-            Las computadoras de empleados seguirán trabajando normalmente.
+            Solo los dispositivos registrados y autorizados abrirán el QR automáticamente.
+            Los demás celulares y computadoras seguirán trabajando normalmente.
           </small>
         </div>
 

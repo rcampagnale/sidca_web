@@ -27,7 +27,7 @@
   justify-content: space-between;
   padding-right: 25px;
 }
- 
+
 .content {
   padding: 1em;
   max-width: 100vw;
@@ -37,6 +37,12 @@
   justify-content: flex-start;
   flex-direction: column;
   background-color: #fff;
+}
+
+.fullBleedContent {
+  padding: 0;
+  align-items: stretch;
+  min-height: 0;
 }
  
 .footer {

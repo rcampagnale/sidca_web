@@ -2,25 +2,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { ProgressSpinner } from "primereact/progressspinner";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
 import { Chart } from "primereact/chart";
 import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/AfiliadosDashboard/afiliadosDashboard.module.css";
+import asst from "./RegistroAsistencia.module.css";
 
-/* ========= Helpers ========= */
+/* ── Helpers ── */
 
-const getCursoFromDoc = (d) =>
-  d.curso || d.nombreCurso || d.tituloCurso || "";
-
-const getNivelFromDoc = (d) =>
-  d.nivelEducativo || d.nivel || d.nivel_educativo || "";
+const getCursoFromDoc = (d) => d.curso || d.nombreCurso || d.tituloCurso || "";
+const getNivelFromDoc = (d) => d.nivelEducativo || d.nivel || d.nivel_educativo || "";
 
 const getModalidadFromDoc = (d) => {
   if (d.modalidad) return d.modalidad;
-  if (typeof d.presencial === "boolean") {
-    return d.presencial ? "presencial" : "virtual";
-  }
+  if (typeof d.presencial === "boolean") return d.presencial ? "presencial" : "virtual";
   return "";
 };
 
@@ -37,24 +31,16 @@ const getFechaRawFromDoc = (d) =>
 
 const formatFechaLabel = (value) => {
   if (!value) return "";
-  if (typeof value === "string") {
-    return value.split(" ")[0]; // "14/11/2025 9:41" -> "14/11/2025"
-  }
-  if (value instanceof Date) {
-    return value.toLocaleDateString("es-AR");
-  }
-  if (value && typeof value.toDate === "function") {
-    return value.toDate().toLocaleDateString("es-AR");
-  }
+  if (typeof value === "string") return value.split(" ")[0];
+  if (value instanceof Date) return value.toLocaleDateString("es-AR");
+  if (value && typeof value.toDate === "function") return value.toDate().toLocaleDateString("es-AR");
   return "";
 };
 
 const getYearFromFecha = (value) => {
   if (!value) return null;
   if (value instanceof Date) return String(value.getFullYear());
-  if (value && typeof value.toDate === "function") {
-    return String(value.toDate().getFullYear());
-  }
+  if (value && typeof value.toDate === "function") return String(value.toDate().getFullYear());
   if (typeof value === "string") {
     const match = value.match(/(\d{4})/);
     return match ? match[1] : null;
@@ -62,12 +48,26 @@ const getYearFromFecha = (value) => {
   return null;
 };
 
-/* ========= Componente ========= */
+/* ── Constantes de color ── */
+const COLOR_PRESENCIAL = "#1976d2";
+const COLOR_VIRTUAL    = "#43a047";
+const COLOR_OTRO       = "#90a4ae";
+
+const modalidadColor = (m) => {
+  if (!m) return COLOR_OTRO;
+  const s = m.toLowerCase();
+  if (s.startsWith("presen")) return COLOR_PRESENCIAL;
+  if (s.startsWith("virt"))   return COLOR_VIRTUAL;
+  return COLOR_OTRO;
+};
+
+/* ── Componente ── */
 
 export default function RegistroAsistencia({ year }) {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
+  const [expandido, setExpandido] = useState(null); // nombre del curso expandido
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +75,6 @@ export default function RegistroAsistencia({ year }) {
     const fetchAsistencia = async () => {
       setLoading(true);
       setError("");
-
       try {
         const snap = await getDocs(collection(db, "asistencia"));
         if (cancelled) return;
@@ -85,269 +84,248 @@ export default function RegistroAsistencia({ year }) {
 
         snap.forEach((docSnap) => {
           const d = docSnap.data() || {};
-
           const curso = getCursoFromDoc(d);
           if (!curso) return;
 
-          const rawFecha = getFechaRawFromDoc(d);
+          const rawFecha  = getFechaRawFromDoc(d);
           const fechaYear = getYearFromFecha(rawFecha);
           if (yearFilter && fechaYear && fechaYear !== yearFilter) return;
 
           const fechaLabel = formatFechaLabel(rawFecha);
-          const nivel = getNivelFromDoc(d) || "—";
-          const modalidad = normalizeModalidad(getModalidadFromDoc(d));
+          const nivel      = getNivelFromDoc(d) || "—";
+          const modalidad  = normalizeModalidad(getModalidadFromDoc(d));
+          const key        = `${curso}||${nivel}||${fechaLabel}||${modalidad}`;
 
-          const key = `${curso}||${nivel}||${fechaLabel}||${modalidad}`;
-
-          const current =
-            grouped.get(key) || {
-              curso,
-              nivel,
-              fecha: fechaLabel || "—",
-              modalidad,
-              registros: 0,
-            };
-
+          const current = grouped.get(key) || {
+            curso,
+            nivel,
+            fecha: fechaLabel || "—",
+            modalidad,
+            registros: 0,
+          };
           current.registros += 1;
           grouped.set(key, current);
         });
 
         const rowsArray = Array.from(grouped.values()).sort((a, b) => {
           if (a.fecha !== b.fecha) return a.fecha < b.fecha ? 1 : -1;
-          return a.curso.localeCompare(b.curso, "es", {
-            sensitivity: "base",
-          });
+          return a.curso.localeCompare(b.curso, "es", { sensitivity: "base" });
         });
 
         if (!cancelled) setRows(rowsArray);
       } catch (err) {
-        console.error("[RegistroAsistencia] Error al cargar asistencia:", err);
-        if (!cancelled) {
-          setError("No se pudo cargar el registro de asistencia.");
-          setRows([]);
-        }
+        console.error("[RegistroAsistencia] Error:", err);
+        if (!cancelled) { setError("No se pudo cargar el registro de asistencia."); setRows([]); }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
     fetchAsistencia();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [year]);
 
-  /* ==== KPIs ==== */
-  const { totalRegistros, cursosConAsistencia, totalSesiones } = useMemo(() => {
-    if (!rows.length) {
-      return { totalRegistros: 0, cursosConAsistencia: 0, totalSesiones: 0 };
-    }
-    const totalRegistros = rows.reduce((acc, r) => acc + r.registros, 0);
-    const cursosSet = new Set(rows.map((r) => r.curso));
-    const cursosConAsistencia = cursosSet.size;
-    const totalSesiones = rows.length;
-    return { totalRegistros, cursosConAsistencia, totalSesiones };
-  }, [rows]);
-
-  /* ==== Gráfico barras: registros por curso ==== */
-  const barData = useMemo(() => {
-    if (!rows.length) return null;
-
-    const byCourse = new Map();
+  /* ── Cursos agrupados ── */
+  const cursoMap = useMemo(() => {
+    const map = new Map();
     rows.forEach((r) => {
-      byCourse.set(r.curso, (byCourse.get(r.curso) || 0) + r.registros);
+      if (!map.has(r.curso)) map.set(r.curso, []);
+      map.get(r.curso).push(r);
     });
-
-    return {
-      labels: Array.from(byCourse.keys()),
-      datasets: [
-        {
-          label: "Registros de asistencia",
-          data: Array.from(byCourse.values()),
-          backgroundColor: "#90caf9",
-        },
-      ],
-    };
+    // ordenar cursos por total registros desc
+    return new Map(
+      [...map.entries()].sort((a, b) => {
+        const totA = a[1].reduce((s, r) => s + r.registros, 0);
+        const totB = b[1].reduce((s, r) => s + r.registros, 0);
+        return totB - totA;
+      })
+    );
   }, [rows]);
 
-  const barOptions = useMemo(
-    () => ({
-      indexAxis: "y",
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: "#495057" } },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.parsed.x} registros de asistencia`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: "#495057" },
-          grid: { color: "#ebedef" },
-        },
-        y: {
-          ticks: {
-            color: "#495057",
-            callback: function (value) {
-              const label =
-                (this.getLabelForValue &&
-                  this.getLabelForValue(value)) ||
-                "";
-              if (typeof label !== "string") return label;
-              return label.length > 40
-                ? `${label.slice(0, 40)}…`
-                : label;
-            },
-          },
-          grid: { color: "#f1f3f5" },
-        },
-      },
-    }),
-    []
-  );
+  const cursoList = useMemo(() => [...cursoMap.keys()], [cursoMap]);
 
-  /* ==== Gráfico DONA: registros por modalidad ==== */
-  const donutModalData = useMemo(() => {
-    if (!rows.length) return null;
+  /* ── KPIs ── */
+  const { totalRegistros, cursosConAsistencia, totalSesiones } = useMemo(() => ({
+    totalRegistros:    rows.reduce((acc, r) => acc + r.registros, 0),
+    cursosConAsistencia: new Set(rows.map((r) => r.curso)).size,
+    totalSesiones:     rows.length,
+  }), [rows]);
 
-    const counts = rows.reduce((acc, r) => {
+  /* ── Donut: data según selección ── */
+  const donutSource = useMemo(() => {
+    if (expandido && cursoMap.has(expandido)) return cursoMap.get(expandido);
+    return rows;
+  }, [expandido, cursoMap, rows]);
+
+  const donutData = useMemo(() => {
+    if (!donutSource.length) return null;
+    const counts = {};
+    donutSource.forEach((r) => {
       const key = r.modalidad || "sin dato";
-      acc[key] = (acc[key] || 0) + r.registros;
-      return acc;
-    }, {});
-
+      counts[key] = (counts[key] || 0) + r.registros;
+    });
+    const labels = Object.keys(counts);
     return {
-      labels: Object.keys(counts),
-      datasets: [
-        {
-          data: Object.values(counts),
-          backgroundColor: ["#43a047", "#e53935", "#ffb300", "#546e7a"],
-        },
-      ],
+      labels,
+      datasets: [{
+        data: Object.values(counts),
+        backgroundColor: labels.map(modalidadColor),
+        borderWidth: 0,
+      }],
     };
-  }, [rows]);
+  }, [donutSource]);
 
-  const donutModalOptions = useMemo(
-    () => ({
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: { color: "#495057" },
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx) =>
-              `${ctx.label}: ${ctx.parsed} registros de asistencia`,
-          },
-        },
+  const donutOptions = useMemo(() => ({
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed}` },
       },
-      cutout: "65%",
-    }),
-    []
-  );
+    },
+    cutout: "68%",
+  }), []);
+
+  /* ── Stats de donut ── */
+  const donutStats = useMemo(() => {
+    if (!donutSource.length) return [];
+    const counts = {};
+    const total = donutSource.reduce((s, r) => s + r.registros, 0);
+    donutSource.forEach((r) => {
+      const key = r.modalidad || "sin dato";
+      counts[key] = (counts[key] || 0) + r.registros;
+    });
+    return Object.entries(counts).map(([label, val]) => ({
+      label,
+      val,
+      pct: total ? Math.round((val / total) * 100) : 0,
+      color: modalidadColor(label),
+    }));
+  }, [donutSource]);
+
+  const toggle = (curso) => setExpandido((prev) => (prev === curso ? null : curso));
 
   return (
-    <div className={styles.asistenciaRow}>
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>Registro de asistencia por curso</div>
-        <div className={styles.panelBody}>
-          {loading ? (
-            <div style={{ textAlign: "center", paddingTop: "1.5rem" }}>
-              <ProgressSpinner
-                style={{ width: "40px", height: "40px" }}
-                strokeWidth="4"
-              />
-            </div>
-          ) : error ? (
-            <p className={styles.errorText}>{error}</p>
-          ) : rows.length === 0 ? (
-            <p className={styles.mapEmpty}>
-              No hay registros de asistencia para mostrar en este período.
-            </p>
-          ) : (
-            <>
-              {/* KPIs */}
-              <div className={styles.asistenciaKpis}>
-                <div className={styles.asistenciaKpiCard}>
-                  <div className={styles.asistenciaKpiLabel}>
-                    Registros de asistencia
-                  </div>
-                  <div className={styles.asistenciaKpiValue}>
-                    {totalRegistros}
-                  </div>
-                </div>
-                <div className={styles.asistenciaKpiCard}>
-                  <div className={styles.asistenciaKpiLabel}>
-                    Cursos con asistencia
-                  </div>
-                  <div className={styles.asistenciaKpiValue}>
-                    {cursosConAsistencia}
-                  </div>
-                </div>
-                <div className={styles.asistenciaKpiCard}>
-                  <div className={styles.asistenciaKpiLabel}>
-                    Sesiones (curso / nivel / fecha / modalidad)
-                  </div>
-                  <div className={styles.asistenciaKpiValue}>
-                    {totalSesiones}
-                  </div>
-                </div>
-              </div>
+    <div className={asst.root}>
 
-              {/* Fila de gráficos: barras + dona */}
-              {barData && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-                    gap: "1rem",
-                    margin: "0.75rem 0",
-                  }}
-                >
-                  <div style={{ height: "280px" }}>
-                    <Chart
-                      type="bar"
-                      data={barData}
-                      options={barOptions}
-                    />
-                  </div>
+      {/* ── KPIs ── */}
+      <div className={asst.kpiRow}>
+        <div className={asst.kpiCard}>
+          <span className={asst.kpiVal}>{loading ? "—" : totalRegistros}</span>
+          <span className={asst.kpiLbl}>Registros totales</span>
+        </div>
+        <div className={`${asst.kpiCard} ${asst.kpiBlue}`}>
+          <span className={asst.kpiVal}>{loading ? "—" : cursosConAsistencia}</span>
+          <span className={asst.kpiLbl}>Cursos con asistencia</span>
+        </div>
+        <div className={`${asst.kpiCard} ${asst.kpiGreen}`}>
+          <span className={asst.kpiVal}>{loading ? "—" : totalSesiones}</span>
+          <span className={asst.kpiLbl}>Sesiones registradas</span>
+        </div>
+      </div>
 
-                  {donutModalData && (
-                    <div style={{ height: "280px" }}>
-                      <Chart
-                        type="doughnut"
-                        data={donutModalData}
-                        options={donutModalOptions}
-                      />
+      {loading ? (
+        <div className={asst.loadingBox}>
+          <ProgressSpinner style={{ width: "38px", height: "38px" }} strokeWidth="4" />
+          <span>Cargando asistencia...</span>
+        </div>
+      ) : error ? (
+        <p className={styles.errorText}>{error}</p>
+      ) : rows.length === 0 ? (
+        <p className={styles.mapEmpty}>No hay registros de asistencia para mostrar en este período.</p>
+      ) : (
+        <div className={asst.layout}>
+
+          {/* ── Acordeón de cursos ── */}
+          <div className={asst.acordeon}>
+            {cursoList.map((curso) => {
+              const sesiones = cursoMap.get(curso) || [];
+              const total    = sesiones.reduce((s, r) => s + r.registros, 0);
+              const abierto  = expandido === curso;
+
+              return (
+                <div key={curso} className={`${asst.cursoItem} ${abierto ? asst.cursoItemAbierto : ""}`}>
+                  <button
+                    className={asst.cursoHead}
+                    onClick={() => toggle(curso)}
+                    aria-expanded={abierto}
+                  >
+                    <span className={asst.cursoDot} style={{ background: abierto ? COLOR_PRESENCIAL : "#94a3b8" }} />
+                    <span className={asst.cursoNombre}>{curso}</span>
+                    <span className={asst.cursoTotal}>{total} reg.</span>
+                    <i className={`pi ${abierto ? "pi-chevron-up" : "pi-chevron-down"} ${asst.cursoChevron}`} />
+                  </button>
+
+                  {abierto && (
+                    <div className={asst.sesionesLista}>
+                      {sesiones
+                        .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
+                        .map((s, i) => (
+                          <div key={i} className={asst.sesionRow}>
+                            <span className={asst.sesionFecha}>{s.fecha}</span>
+                            <span
+                              className={asst.sesionChip}
+                              style={{
+                                background: s.modalidad.startsWith("presen") ? "#e3f2fd" : "#e8f5e9",
+                                color:      s.modalidad.startsWith("presen") ? "#1565c0" : "#2e7d32",
+                              }}
+                            >
+                              {s.modalidad}
+                            </span>
+                            <span className={asst.sesionNivel}>{s.nivel}</span>
+                            <span className={asst.sesionReg}>{s.registros}</span>
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
-              )}
+              );
+            })}
+          </div>
 
-              {/* Tabla detalle */}
-              <div className={styles.tableWrapper}>
-                <DataTable
-                  value={rows}
-                  size="small"
-                  stripedRows
-                  scrollable
-                  scrollHeight="260px"
-                >
-                  <Column field="curso" header="Curso" />
-                  <Column field="nivel" header="Nivel educativo" />
-                  <Column field="fecha" header="Fecha" />
-                  <Column field="modalidad" header="Modalidad" />
-                  <Column field="registros" header="Registros" />
-                </DataTable>
-              </div>
-            </>
-          )}
+          {/* ── Sidebar: donut + stats ── */}
+          <div className={asst.sidebar}>
+            <div className={asst.sidebarTitle}>
+              {expandido ? expandido : "Todos los cursos"}
+            </div>
+            <div className={asst.sidebarSub}>Distribución por modalidad</div>
+
+            {donutData ? (
+              <>
+                <div className={asst.donutWrapper}>
+                  <Chart
+                    type="doughnut"
+                    data={donutData}
+                    options={donutOptions}
+                    style={{ width: "110px", height: "110px" }}
+                  />
+                </div>
+                <div className={asst.statsList}>
+                  {donutStats.map((s) => (
+                    <div key={s.label} className={asst.statRow}>
+                      <span className={asst.statDot} style={{ background: s.color }} />
+                      <div className={asst.statInfo}>
+                        <span className={asst.statLabel}>{s.label}</span>
+                        <span className={asst.statNumbers}>
+                          <b>{s.pct}%</b> · {s.val}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {expandido && (
+                  <button className={asst.resetBtn} onClick={() => setExpandido(null)}>
+                    <i className="pi pi-times" /> Ver total general
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className={asst.sidebarEmpty}>Sin datos</p>
+            )}
+          </div>
+
         </div>
-      </div>
+      )}
     </div>
   );
 }
-

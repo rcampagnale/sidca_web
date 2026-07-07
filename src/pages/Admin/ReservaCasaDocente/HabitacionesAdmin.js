@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import styles from "./HabitacionesAdmin.module.css";
 
-import { dbReservas, storageReservas } from "../../../firebase/firebaseReservas";
+import { dbReservas } from "../../../firebase/firebaseReservas";
 import {
   collection,
   addDoc,
@@ -14,7 +14,25 @@ import {
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+const CLOUDINARY_CLOUD = "djoxsp29x";
+const CLOUDINARY_PRESET = "ml2p3pjq";
+
+const subirImagenCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_PRESET);
+  formData.append("folder", "sidca-reservas");
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+    { method: "POST", body: formData }
+  );
+
+  if (!res.ok) throw new Error(`Cloudinary error: ${res.status}`);
+  const data = await res.json();
+  return data.secure_url;
+};
 
 const TIPOS_HABITACION = [
   { id: "simple", nombre: "Habitación simple" },
@@ -239,17 +257,9 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
         await updateDoc(habitacionRef, baseUpdate);
 
         if (form.imagenes.length > 0) {
-          const urlsNuevas = [];
-
-          for (const file of form.imagenes) {
-            const storageRef = ref(
-              storageReservas,
-              `habitaciones/${habitacionEditando.id}/${Date.now()}-${file.name}`
-            );
-            await uploadBytes(storageRef, file);
-            const url = await getDownloadURL(storageRef);
-            urlsNuevas.push(url);
-          }
+          const urlsNuevas = await Promise.all(
+            form.imagenes.map((file) => subirImagenCloudinary(file))
+          );
 
           const imagenesActuales = Array.isArray(habitacionEditando.imagenes)
             ? habitacionEditando.imagenes
@@ -281,19 +291,10 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
         const colRef = collection(dbReservas, "habitacionesCasaDocente");
         const docRef = await addDoc(colRef, baseData);
 
-        const urls = [];
-
-        for (const file of form.imagenes) {
-          const storageRef = ref(
-            storageReservas,
-            `habitaciones/${docRef.id}/${Date.now()}-${file.name}`
+        if (form.imagenes.length > 0) {
+          const urls = await Promise.all(
+            form.imagenes.map((file) => subirImagenCloudinary(file))
           );
-          await uploadBytes(storageRef, file);
-          const url = await getDownloadURL(storageRef);
-          urls.push(url);
-        }
-
-        if (urls.length > 0) {
           await updateDoc(docRef, {
             imagenes: urls,
             updatedAt: serverTimestamp(),
@@ -660,7 +661,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
 
                 <div className={styles.fieldGroup}>
                   <label className={styles.label} htmlFor="estacionamiento">
-                    ¿Tiene estacionamiento?
+                    ¿Tiene cochera?
                   </label>
                   <select
                     id="estacionamiento"
@@ -789,7 +790,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                   <p className={styles.valueText}>{habitacionVer.ubicacion}</p>
                 </div>
                 <div className={styles.fieldGroup}>
-                  <span className={styles.label}>Estacionamiento</span>
+                  <span className={styles.label}>Cochera</span>
                   <p className={styles.valueText}>
                     {habitacionVer.estacionamiento ? "Sí" : "No"}
                   </p>

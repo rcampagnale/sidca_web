@@ -29,6 +29,7 @@ const NavUser = ({ active, setActive }) => {
         { label: "Usuarios", path: "/admin/usuarios" },
         { label: "Habilitar Botones", path: "/admin/botones" },
         { label: "Oficina de Gestión", path: "/admin/oficina-gestion" },
+        { label: "Gestión Delegados", path: "/admin/gestion-delegados" },
         { label: "Asesoramiento", path: "/admin/asesoramiento" },
         { label: "Novedades", path: "/admin/novedades" },
       ],

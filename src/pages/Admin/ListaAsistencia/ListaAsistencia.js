@@ -782,22 +782,6 @@ async function findAsistenciaDoc(dni, curso, fecha) {
   return qs.empty ? null : qs.docs[0];
 }
 
-async function findAsistenciaDocsByDniCurso(dni, curso) {
-  const col = collection(db, 'asistencia');
-
-  let qs = await getDocs(query(col, where('dni', '==', dni), where('curso', '==', curso)));
-
-  if (!qs.empty) return qs.docs || [];
-
-  qs = await getDocs(query(col, where('dni', '==', dni), where('cursoTitulo', '==', curso)));
-
-  if (!qs.empty) return qs.docs || [];
-
-  qs = await getDocs(query(col, where('dni', '==', dni), where('cursoNombre', '==', curso)));
-
-  return qs.docs || [];
-}
-
 /** ---------- Validación por DNI en usuarios / usuario / nuevoAfiliado ---------- */
 async function findPersonaDocByDni(collectionName, dni) {
   const colRef = collection(db, collectionName);
@@ -1105,6 +1089,7 @@ const ListaAsistencia = () => {
   const [visibleSelCurso, setVisibleSelCurso] = useState(false);
   const [cursoImport, setCursoImport] = useState('');
   const [modalidadImport, setModalidadImport] = useState('');
+  const [fechaImport, setFechaImport] = useState(null);
 
   const [visibleResultado, setVisibleResultado] = useState(false);
   const [resumenImport, setResumenImport] = useState({
@@ -1919,6 +1904,7 @@ const ListaAsistencia = () => {
     const pre = cursoAplicado || cursoSeleccionado || '';
     setCursoImport(pre);
     setModalidadImport('');
+    setFechaImport(parseToDate(filtroFecha));
     setVisibleSelCurso(true);
   };
 
@@ -1940,6 +1926,15 @@ const ListaAsistencia = () => {
         detail: 'Debes elegir Virtual o Presencial para completar las faltantes.',
       });
 
+      return;
+    }
+
+    if (!fechaImport) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Seleccioná la fecha',
+        detail: 'La fecha de la asistencia es obligatoria para importar.',
+      });
       return;
     }
 
@@ -1999,6 +1994,7 @@ const ListaAsistencia = () => {
 
       const byDni = new Map();
       const selectedMod = canonModalidad(modalidadImport);
+      const fechaSeleccionada = dateToDMY(fechaImport);
 
       for (const arr of filas) {
         const rowObj = {};
@@ -2010,9 +2006,10 @@ const ListaAsistencia = () => {
 
         const norm = normalizeRowAsistencia(rowObj);
         norm.curso = cursoImport;
+        norm.fecha = fechaSeleccionada;
 
         const excelMod = canonModalidad(norm.modalidad);
-        const finalMod = excelMod || selectedMod;
+        const finalMod = selectedMod || excelMod;
 
         if (finalMod) norm.modalidad = finalMod;
 
@@ -2050,6 +2047,19 @@ const ListaAsistencia = () => {
       const step = Math.max(1, Math.floor(total / 100));
       let processed = 0;
 
+      const documentosCursoPorDni = new Map();
+      rows.forEach((row) => {
+        if (!matchCursoRow(row, cursoImport)) return;
+        const dniRow = toDniDigits(row.dni);
+        if (!dniRow || !row.id) return;
+        const items = documentosCursoPorDni.get(dniRow) || [];
+        items.push({
+          ref: doc(db, 'asistencia', row.id),
+          data: () => row,
+        });
+        documentosCursoPorDni.set(dniRow, items);
+      });
+
       const ALLOW_KEYS = ['nombre', 'apellido', 'email', 'departamento', 'nivelEducativo', 'modalidad'];
 
       for (let i = 0; i < entries.length; i += 1) {
@@ -2072,7 +2082,58 @@ const ListaAsistencia = () => {
           if (EMPTY(rest.apellido) && persona.apellido) rest.apellido = persona.apellido;
         }
 
-        const docs = await findAsistenciaDocsByDniCurso(dni, cursoImport);
+        const docsCurso = documentosCursoPorDni.get(dni) || [];
+        const modalidadFinal = canonModalidad(rest.modalidad || selectedMod);
+        const docs = docsCurso.filter((documento) => {
+          const dataDoc = documento.data() || {};
+          const fechaDoc = dateToDMY(parseToDate(dataDoc.fecha));
+          const modalidadDoc = canonModalidad(
+            dataDoc.modalidad || dataDoc.modalidadDb ||
+              (dataDoc.presencial === true ? 'Presencial' : 'Virtual')
+          );
+          return fechaDoc === fecha && modalidadDoc === modalidadFinal;
+        });
+
+        if (!docs.length && modalidadFinal === 'Virtual') {
+          const cursoOption = getCursoOption('', cursoImport);
+          const ahora = new Date();
+          await addDoc(collection(db, 'asistencia'), {
+            fecha,
+            curso: cursoImport,
+            cursoNombre: cursoImport,
+            cursoTitulo: cursoImport,
+            cursoId: cursoOption?.id || null,
+            modalidad: 'virtual',
+            modalidadDb: 'virtual',
+            presencial: false,
+            nombre: rest.nombre || '',
+            apellido: rest.apellido || '',
+            dni,
+            departamento: rest.departamento || '',
+            nivelEducativo: rest.nivelEducativo || '',
+            email: rest.email || '',
+            estado: 'Presente',
+            estadoAsistencia: 'validada',
+            estadoPresencial: 'virtual',
+            asistenciaValidada: true,
+            asistenciaValida: true,
+            presente: true,
+            ingreso: '',
+            salida: '',
+            ingresoFechaHora: '',
+            salidaFechaHora: '',
+            origen: 'importacion_excel_admin',
+            archivoImportado: file.name,
+            createdAt: ahora,
+            updatedAt: ahora,
+          });
+          creados += 1;
+          processed += 1;
+          if (processed % step === 0 || processed === total) {
+            setImportProgress(Math.round((processed / total) * 100));
+          }
+          continue;
+        }
 
         if (!docs.length) {
           noEncontrados += 1;
@@ -2100,6 +2161,24 @@ const ListaAsistencia = () => {
         for (const dSnap of docs) {
           const current = dSnap.data() || {};
           const patch = patchOnlyEmpty(current, rest, ALLOW_KEYS);
+
+          if (modalidadFinal === 'Virtual') {
+            Object.assign(patch, {
+              fecha,
+              modalidad: 'virtual',
+              modalidadDb: 'virtual',
+              presencial: false,
+              estado: 'Presente',
+              estadoAsistencia: 'validada',
+              estadoPresencial: 'virtual',
+              asistenciaValidada: true,
+              asistenciaValida: true,
+              presente: true,
+              origen: current.origen || 'importacion_excel_admin',
+              archivoImportado: file.name,
+              updatedAt: new Date(),
+            });
+          }
 
           if (Object.keys(patch).length) {
             await updateDoc(dSnap.ref, patch);
@@ -3283,7 +3362,7 @@ const ListaAsistencia = () => {
           </div>
 
           <div className={styles.formRowFull}>
-            <label>Modalidad a completar si falta</label>
+            <label>Modalidad de importación</label>
             <Dropdown
               value={modalidadImport}
               onChange={(e) => setModalidadImport(e.value)}
@@ -3293,6 +3372,22 @@ const ListaAsistencia = () => {
               disabled={isBusy}
             />
           </div>
+
+          <div className={styles.formRowFull}>
+            <label>Fecha de asistencia</label>
+            <Calendar
+              value={fechaImport}
+              onChange={(e) => setFechaImport(e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              placeholder="Seleccioná la fecha"
+              className="w-full"
+              disabled={isBusy}
+            />
+            <small style={{ opacity: 0.8 }}>
+              Esta fecha se aplicará a todos los registros del archivo.
+            </small>
+          </div>
         </div>
 
         <div className={styles.dialogActions}>
@@ -3301,7 +3396,7 @@ const ListaAsistencia = () => {
             icon="pi pi-check"
             severity="success"
             onClick={continuarSeleccionCurso}
-            disabled={!cursoImport || !String(cursoImport).trim() || !modalidadImport || isBusy}
+            disabled={!cursoImport || !String(cursoImport).trim() || !modalidadImport || !fechaImport || isBusy}
           />
           <Button
             label="Cancelar"
@@ -3416,9 +3511,11 @@ const ListaAsistencia = () => {
               <p>
                 Curso: <strong>{cursoImport}</strong>
                 <br />
-                Modalidad aplicada si faltaba: <strong>{modalidadImport}</strong>
+                Modalidad aplicada: <strong>{modalidadImport}</strong>
                 <br />
-                Creados: <strong>0</strong> · Actualizados:{' '}
+                Fecha aplicada: <strong>{dateToDMY(fechaImport)}</strong>
+                <br />
+                Creados: <strong>{resumenImport.creados}</strong> · Actualizados:{' '}
                 <strong>{resumenImport.actualizados}</strong> · Sin cambios:{' '}
                 <strong>{resumenImport.sinCambios}</strong> · No encontrados:{' '}
                 <strong>{resumenImport.noEncontrados}</strong>
@@ -3430,9 +3527,11 @@ const ListaAsistencia = () => {
               <p>
                 Curso: <strong>{cursoImport}</strong>
                 <br />
-                Modalidad aplicada si faltaba: <strong>{modalidadImport}</strong>
+                Modalidad aplicada: <strong>{modalidadImport}</strong>
                 <br />
-                Creados: <strong>0</strong> · Actualizados:{' '}
+                Fecha aplicada: <strong>{dateToDMY(fechaImport)}</strong>
+                <br />
+                Creados: <strong>{resumenImport.creados}</strong> · Actualizados:{' '}
                 <strong>{resumenImport.actualizados}</strong> · Sin cambios:{' '}
                 <strong>{resumenImport.sinCambios}</strong> · No encontrados:{' '}
                 <strong>{resumenImport.noEncontrados}</strong>

@@ -1,98 +1,222 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
-
-/* ====== Layout base ====== */
 .visibleContent {
-  min-height: 100dvh;
-  width: 100vw;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  font-family: "Roboto", sans-serif;
-  background: #fafafa;
+  padding: 0;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 8% 5%, rgba(243, 156, 18, 0.09), transparent 28rem),
+    #f4f6f5;
 }
 
 .container {
   width: 100%;
-  max-width: clamp(320px, 92vw, 560px);
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-  padding: clamp(20px, 5vw, 36px);
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
   background: #fff;
+  box-shadow: none;
+}
+
+.brandPanel {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  padding: clamp(2.5rem, 5vw, 4.5rem);
+  color: #fff;
+  background: linear-gradient(145deg, #202722, #0e1812);
+}
+
+.brandGlowTop,
+.brandGlowBottom {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.brandGlowTop {
+  width: 22rem;
+  height: 22rem;
+  top: -9rem;
+  right: -9rem;
+  background: rgba(243, 156, 18, 0.13);
+}
+
+.brandGlowBottom {
+  width: 19rem;
+  height: 19rem;
+  bottom: -10rem;
+  left: -9rem;
+  background: rgba(39, 174, 96, 0.12);
+}
+
+.brandContent {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 34rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
 }
 
-.imgContainer {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.img {
-  width: min(320px, 100%);
+.brandLogo {
+  width: min(18rem, 90%);
   height: auto;
+  filter: brightness(1.12);
 }
 
-/* ====== Form ====== */
+.brandCopy {
+  margin-top: clamp(2.25rem, 5vw, 4rem);
+}
+
+.eyebrow,
+.formEyebrow {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  color: #f7b84b;
+}
+
+.brandCopy h1 {
+  max-width: 30rem;
+  margin: 0.75rem 0;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.brandCopy p {
+  max-width: 31rem;
+  margin: 0;
+  color: #d5ddd8;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 2rem;
+}
+
+.benefits span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.6rem;
+  color: #e6ece8;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.72rem;
+}
+
+.benefits i {
+  color: #f7b84b;
+}
+
+.accessPanel {
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 5vw, 4rem);
+  background: #fff;
+}
+
 .formAdmin {
   width: 100%;
-  max-width: 420px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  max-width: 23rem;
 }
 
 .title {
-  margin: 4px 0 16px 0;
-  font-size: clamp(24px, 3vw, 32px);
-  color: #525252;
-  font-weight: bold;
+  margin: 0.45rem 0 0;
+  color: #202938;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.formEyebrow {
+  color: #a86809;
+}
+
+.formSubtitle {
+  margin: 0.55rem 0 1.6rem;
+  color: #697586;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .inputForm {
-  width: 100%;
+  width: 100% !important;
+  padding: 0.85rem 0.9rem 0.85rem 2.65rem !important;
+  border-radius: 0.65rem !important;
+  font-size: 0.9rem;
 }
 
 .inputSection {
-  margin-bottom: 0.8rem;
+  display: block;
+  width: 100%;
 }
 
-/* Mejor foco del InputText */
-:global(.p-inputtext) {
-  border-radius: 12px;
+.inputSection > i {
+  left: 0.95rem !important;
+  color: #8c96a4;
 }
-:global(.p-inputtext:focus) {
-  box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.2) !important; /* halo suave */
+
+.inputLabel {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #536070;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.inputForm:focus {
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.16) !important;
   border-color: #ffa000 !important;
 }
 
-/* ====== Botones ====== */
-/* contenedor con separación consistente */
-.buttonGroup {
+.messageArea {
   display: flex;
-  flex-direction: column;
-  gap: 12px; /* separación entre botones */
-  margin-top: 8px;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0;
+  text-align: center;
 }
 
-/* base para todos los botones */
 .btnBase {
   width: 100%;
   border: none !important;
   color: #fff !important;
   font-weight: 600;
-  border-radius: 12px !important;
-  padding: 0.9rem 1.2rem !important;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-  transition: transform 0.06s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  border-radius: 0.65rem !important;
+  padding: 0.85rem 1.1rem !important;
+  box-shadow: 0 7px 18px rgba(243, 156, 18, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .btnBase:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.16),
+    0 7px 18px rgba(243, 156, 18, 0.2);
 }
 
 .btnBase:hover {
@@ -100,27 +224,180 @@
   transform: translateY(-1px);
 }
 
-/* colores por botón */
 .btnIngresar {
-  background-color: #f39c12 !important; /* naranja */
+  background: linear-gradient(135deg, #f39c12, #ffac1f) !important;
 }
 
-.btnAfiliarse {
-  background-color: #27ae60 !important; /* verde */
+.secondaryActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.secondaryButton {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid #e1e6eb;
+  border-radius: 0.65rem;
+  color: #465363;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.secondaryButton:hover {
+  border-color: #b8d8c4;
+  background: #f7fbf8;
+  transform: translateY(-1px);
+}
+
+.secondaryButton > i {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border-radius: 0.55rem;
+  color: #247346;
+  background: #e7f7ed;
+}
+
+.secondaryButton span {
+  min-width: 0;
+}
+
+.secondaryButton strong,
+.secondaryButton small {
+  display: block;
+}
+
+.secondaryButton strong {
+  font-size: 0.7rem;
+}
+
+.secondaryButton small {
+  margin-top: 0.12rem;
+  color: #8a94a4;
+  font-size: 0.58rem;
+}
+
+.supportButton > i {
+  color: #179348;
+  background: #e7faed;
+}
+
+.whatsappLogo {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  object-fit: contain;
+  padding: 0.25rem;
+  border-radius: 0.55rem;
+  background: #e7faed;
+}
+
+.securityNote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  color: #8a94a4;
+  font-size: 0.65rem;
+}
+
+.securityNote i {
+  color: #287349;
+}
+
+.mobileLogo {
+  display: none;
 }
 
 .btnSoporte {
-  background-color: #25d366 !important; /* verde WhatsApp */
+  background-color: #25d366 !important;
 }
 
-/* Ícono de WhatsApp más grande/blanco a la derecha */
-.btnSoporte :global(.p-button-icon) {
-  font-size: 1.3rem;
-  color: #fff !important;
-  margin-left: 10px; /* separa texto e ícono */
+@media (max-width: 850px) {
+  .visibleContent {
+    padding: 0;
+  }
+
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .brandPanel {
+    min-height: 19rem;
+    padding: 2.2rem;
+  }
+
+  .brandContent {
+    max-width: 42rem;
+  }
+
+  .brandLogo {
+    width: 14rem;
+  }
+
+  .brandCopy {
+    margin-top: 1.7rem;
+  }
+
+  .brandCopy h1 {
+    font-size: 2.1rem;
+  }
+
+  .accessPanel {
+    padding: 2.4rem;
+  }
 }
 
-/* ====== Media queries (opcional fino) ====== */
-@media (max-width: 480px) {
-  .container { padding: 18px; }
+@media (max-width: 560px) {
+  .visibleContent {
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .container {
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+  }
+
+  .brandPanel {
+    display: none;
+  }
+
+  .accessPanel {
+    padding: 1.5rem 1.15rem;
+  }
+
+  .mobileLogo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .mobileLogo img {
+    width: min(13rem, 80%);
+    height: auto;
+  }
+
+  .formEyebrow,
+  .title,
+  .formSubtitle {
+    text-align: center;
+  }
+
+  .secondaryActions {
+    grid-template-columns: 1fr;
+  }
 }

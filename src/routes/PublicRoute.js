@@ -6,6 +6,7 @@ import Layout from '../components/Layout/Layout';
 const PublicRoute = ({ 
   component: Component, 
   allowAuthenticated = false,   // 🔹 NUEVO: controla si dejamos pasar usuarios logueados
+  fullBleed = false,
   ...rest 
 }) => {
 
@@ -29,7 +30,7 @@ const PublicRoute = ({
     <Route
       {...rest}
       render={props => (
-        <Layout type="Public">
+        <Layout type="Public" fullBleed={fullBleed}>
           <Component {...props} />
         </Layout>
       )}
