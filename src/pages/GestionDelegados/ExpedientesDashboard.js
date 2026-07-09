@@ -12,8 +12,18 @@ const PALETTE = [
 const coloresPara = (n) =>
   Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length]);
 
-const ESTADO_LABELS = { ALTA_DE_SERVICIO: "Alta de servicio", RECLAMO: "Reclamo" };
+const ESTADO_LABELS = {
+  ALTA_DE_SERVICIO: "Alta de servicio",
+  RECLAMO: "Reclamo",
+  DEUDA: "Deuda",
+  VARIOS: "Varios",
+  SOLICITUD: "Solicitud",
+};
 const ESTADO_SUELDO_LABELS = { ACTIVO: "Activo", INACTIVO: "Inactivo" };
+const CIRCUITO_ADMINISTRATIVO_LABELS = {
+  COMPLETO_PENDIENTE: "Completo / pendiente de resolución",
+  EXPEDIENTE_FINALIZADO: "Completo / Expediente finalizado",
+};
 
 const normalizarNivel = (value) => {
   const texto = String(value || "").trim();
@@ -24,6 +34,22 @@ const normalizarNivel = (value) => {
 
   if (clave === "SECUNDARIO" || clave === "SECUNDARIA") return "SECUNDARIA";
   return texto || "Sin definir";
+};
+
+const quitarAcentos = (valor) =>
+  String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const tieneCircuitoAdministrativoCompleto = (item) =>
+  quitarAcentos(String(item?.observacionActual || "").trim().replace(/\s+/g, " "))
+    .toUpperCase()
+    .includes("CIRCUITO ADMINISTRATIVO COMPLETO");
+
+const obtenerCircuitoAdministrativo = (item) => {
+  if (item?.finalizado) return "EXPEDIENTE_FINALIZADO";
+  if (tieneCircuitoAdministrativoCompleto(item)) return "COMPLETO_PENDIENTE";
+  return "";
 };
 
 const contarPor = (items, campo, labelMap) => {
@@ -63,6 +89,20 @@ const contarPorFinalizacion = (items) => {
   ]);
   items.forEach((item) => {
     const clave = item.finalizado ? "Finalizados" : "En trámite";
+    mapa.set(clave, mapa.get(clave) + 1);
+  });
+  return new Map([...mapa.entries()].filter(([, cantidad]) => cantidad > 0));
+};
+
+const contarPorCircuitoAdministrativo = (items) => {
+  const mapa = new Map([
+    [CIRCUITO_ADMINISTRATIVO_LABELS.COMPLETO_PENDIENTE, 0],
+    [CIRCUITO_ADMINISTRATIVO_LABELS.EXPEDIENTE_FINALIZADO, 0],
+  ]);
+  items.forEach((item) => {
+    const circuito = obtenerCircuitoAdministrativo(item);
+    if (!circuito) return;
+    const clave = CIRCUITO_ADMINISTRATIVO_LABELS[circuito];
     mapa.set(clave, mapa.get(clave) + 1);
   });
   return new Map([...mapa.entries()].filter(([, cantidad]) => cantidad > 0));
@@ -123,6 +163,10 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
   const porNivel = useMemo(() => contarPorNivel(expedientes), [expedientes]);
   const porFinalizacion = useMemo(
     () => contarPorFinalizacion(expedientes),
+    [expedientes]
+  );
+  const porCircuitoAdministrativo = useMemo(
+    () => contarPorCircuitoAdministrativo(expedientes),
     [expedientes]
   );
   const porMes = useMemo(() => contarPorMes(expedientes), [expedientes]);
@@ -194,9 +238,18 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
     },
     scales: {
       x: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.05)" } },
-      y: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      y: {
+        ticks: {
+          autoSkip: false,
+          font: { size: 10 },
+        },
+        grid: { display: false },
+      },
     },
   });
+
+  const alturaBarraHorizontal = (mapa) =>
+    Math.max(260, mapa.size * 34 + 60);
 
   const barDataMes = (mapa, color = "#ea580c") => ({
     labels: Array.from(mapa.keys()),
@@ -264,7 +317,10 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
       <div className={styles.dashboardCard}>
         <h4>Por dependencia</h4>
         <p className={styles.dashboardCardTotal}>{porDependencia.size} dependencia(s)</p>
-        <div className={styles.chartBox}>
+        <div
+          className={styles.chartBox}
+          style={{ height: alturaBarraHorizontal(porDependencia) }}
+        >
           <Chart
             key={`dependencia-${porDependencia.size}`}
             type="bar"
@@ -291,9 +347,30 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
       </div>
 
       <div className={styles.dashboardCard}>
+        <h4>Circuito administrativo</h4>
+        <p className={styles.dashboardCardTotal}>
+          {totalDe(porCircuitoAdministrativo)} expediente(s)
+        </p>
+        <div className={styles.chartBoxPie}>
+          <Chart
+            key={`circuito-administrativo-${porCircuitoAdministrativo.size}`}
+            type="doughnut"
+            data={pieData(porCircuitoAdministrativo)}
+            options={pieOptions(porCircuitoAdministrativo)}
+            width={PIE_SIZE}
+            height={PIE_SIZE}
+          />
+        </div>
+        <Leyenda mapa={porCircuitoAdministrativo} />
+      </div>
+
+      <div className={styles.dashboardCard}>
         <h4>Por departamento</h4>
         <p className={styles.dashboardCardTotal}>{porDepartamento.size} departamento(s)</p>
-        <div className={styles.chartBox}>
+        <div
+          className={styles.chartBox}
+          style={{ height: alturaBarraHorizontal(porDepartamento) }}
+        >
           <Chart
             key={`departamento-${porDepartamento.size}`}
             type="bar"
@@ -306,7 +383,10 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
       <div className={styles.dashboardCard}>
         <h4>Por nivel</h4>
         <p className={styles.dashboardCardTotal}>{porNivel.size} nivel(es)</p>
-        <div className={styles.chartBox}>
+        <div
+          className={styles.chartBox}
+          style={{ height: alturaBarraHorizontal(porNivel) }}
+        >
           <Chart
             key={`nivel-${porNivel.size}`}
             type="bar"

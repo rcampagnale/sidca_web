@@ -61,7 +61,6 @@ import { db } from "../../../firebase/firebase-config.js";
 // ✅ Redux thunks SOLO para update/delete (nuevoAfiliado)
 import {
   updateAfiliadoById,
-  deleteAfiliadoById,
 } from "../../../redux/reducers/afiliadoActualizado/slice.js";
 
 const PAGE_SIZE = 50;
@@ -99,6 +98,18 @@ const toDniKey = (dniRaw) =>
   String(dniRaw ?? "")
     .replace(/[^\d]/g, "")
     .trim();
+
+const getDniSearchVariants = (dniRaw) => {
+  const limpio = toDniKey(dniRaw);
+  const variantes = new Set();
+  if (limpio) variantes.add(limpio);
+  const numero = Number(limpio);
+  if (Number.isFinite(numero)) {
+    variantes.add(numero);
+    variantes.add(String(numero));
+  }
+  return Array.from(variantes);
+};
 
 const getTodayDateInput = () => {
   const d = new Date();
@@ -1086,45 +1097,47 @@ export default function AfiliadoActualizado() {
   };
 
   const ejecutarEliminarSimple = async (row) => {
-    if (row.origen === "nuevoAfiliado") {
-      const res = await dispatch(deleteAfiliadoById(row.id));
+    const dniKey = toDniKey(row?.dni);
+    if (!dniKey) throw new Error("No se pudo eliminar: DNI inválido.");
 
-      if (res?.meta?.requestStatus === "rejected") {
-        throw new Error(res?.payload || "No se pudo eliminar");
-      }
+    const [usuarios, nuevoAfiliado, usuariosDni] = await Promise.all([
+      buscarDocumentosPorDni("usuarios", dniKey, true),
+      buscarDocumentosPorDni("nuevoAfiliado", dniKey, true),
+      buscarDocumentosPorDni("usuarios_dni", dniKey, true),
+    ]);
 
-      setRowsNuevo((prev) => prev.filter((x) => x.id !== row.id));
-      return;
+    const docsAEliminar = new Map();
+    [...usuarios, ...nuevoAfiliado, ...usuariosDni].forEach((docSnap) => {
+      docsAEliminar.set(docSnap.ref.path, docSnap.ref);
+    });
+
+    if (row?.origen === "usuarios" && row?.id) {
+      docsAEliminar.set(`usuarios/${row.id}`, fsDoc(db, "usuarios", String(row.id)));
+    }
+    if (row?.origen === "nuevoAfiliado" && row?.id) {
+      docsAEliminar.set(`nuevoAfiliado/${row.id}`, fsDoc(db, "nuevoAfiliado", String(row.id)));
+    }
+    if (row?.idUsuario) {
+      docsAEliminar.set(`usuarios/${row.idUsuario}`, fsDoc(db, "usuarios", String(row.idUsuario)));
+    }
+    if (row?.idNuevo) {
+      docsAEliminar.set(`nuevoAfiliado/${row.idNuevo}`, fsDoc(db, "nuevoAfiliado", String(row.idNuevo)));
+    }
+    docsAEliminar.set(`usuarios_dni/${dniKey}`, fsDoc(db, "usuarios_dni", dniKey));
+
+    if (docsAEliminar.size === 0) {
+      throw new Error("No se encontraron documentos para eliminar en usuarios ni en nuevoAfiliado.");
     }
 
-    await fsDeleteDoc(fsDoc(db, "usuarios", String(row.id)));
+    await Promise.all(Array.from(docsAEliminar.values()).map((ref) => fsDeleteDoc(ref)));
 
-    setRowsUsuariosLocal((prev) => prev.filter((x) => x.id !== row.id));
-    setExtraUsuariosRows((prev) => prev.filter((x) => x.id !== row.id));
+    setRowsNuevo((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
+    setRowsUsuariosLocal((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
+    setExtraUsuariosRows((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
   };
 
   const ejecutarEliminarAmbos = async (row) => {
-    if (row.idNuevo) {
-      const res = await dispatch(deleteAfiliadoById(row.idNuevo));
-
-      if (res?.meta?.requestStatus === "rejected") {
-        throw new Error(res?.payload || "No se pudo eliminar en nuevoAfiliado");
-      }
-
-      setRowsNuevo((prev) => prev.filter((x) => x.id !== row.idNuevo));
-    }
-
-    if (row.idUsuario) {
-      await fsDeleteDoc(fsDoc(db, "usuarios", String(row.idUsuario)));
-
-      setRowsUsuariosLocal((prev) =>
-        prev.filter((x) => x.id !== row.idUsuario)
-      );
-
-      setExtraUsuariosRows((prev) =>
-        prev.filter((x) => x.id !== row.idUsuario)
-      );
-    }
+    await ejecutarEliminarSimple(row);
   };
 
   const confirmarBajaYEliminar = async () => {
@@ -1174,24 +1187,26 @@ export default function AfiliadoActualizado() {
     };
     const agregarQuery = (snap) =>
       snap.docs.forEach((documento) => encontrados.set(documento.ref.path, documento));
+    const variantes = getDniSearchVariants(dni);
 
     if (incluirDirecto) {
-      try {
-        agregar(await fsGetDoc(fsDoc(db, collectionName, dni)));
-      } catch {
-        // La búsqueda por campo DNI continúa aunque el ID directo no exista.
+      for (const valor of variantes) {
+        try {
+          agregar(await fsGetDoc(fsDoc(db, collectionName, String(valor))));
+        } catch {
+          // La búsqueda por campo DNI continúa aunque el ID directo no exista.
+        }
       }
     }
 
-    const valores = [dni];
-    const dniNumero = Number(dni);
-    if (Number.isFinite(dniNumero)) valores.push(dniNumero);
-
-    for (const valor of valores) {
-      const snap = await fsGetDocs(
-        fsQuery(fsCollection(db, collectionName), where("dni", "==", valor))
-      );
-      agregarQuery(snap);
+    const camposDni = ["dni", "DNI", "documento", "Documento", "nroDocumento", "numeroDocumento"];
+    for (const campo of camposDni) {
+      for (const valor of variantes) {
+        const snap = await fsGetDocs(
+          fsQuery(fsCollection(db, collectionName), where(campo, "==", valor))
+        );
+        agregarQuery(snap);
+      }
     }
 
     return Array.from(encontrados.values());
@@ -1207,13 +1222,14 @@ export default function AfiliadoActualizado() {
     }
 
     try {
-      const [usuarios, nuevoAfiliado, asistencias] = await Promise.all([
+      const [usuarios, nuevoAfiliado, usuariosDni, asistencias] = await Promise.all([
         buscarDocumentosPorDni("usuarios", fila.dni, true),
         buscarDocumentosPorDni("nuevoAfiliado", fila.dni, true),
+        buscarDocumentosPorDni("usuarios_dni", fila.dni, true),
         buscarDocumentosPorDni("asistencia", fila.dni, false),
       ]);
       const referencia = usuarios[0]?.data?.() || nuevoAfiliado[0]?.data?.() || {};
-      const total = usuarios.length + nuevoAfiliado.length + asistencias.length;
+      const total = usuarios.length + nuevoAfiliado.length + usuariosDni.length + asistencias.length;
 
       return {
         ...fila,
@@ -1224,9 +1240,11 @@ export default function AfiliadoActualizado() {
           "Sin nombre",
         pathsUsuarios: usuarios.map((item) => item.ref.path),
         pathsNuevoAfiliado: nuevoAfiliado.map((item) => item.ref.path),
+        pathsUsuariosDni: usuariosDni.map((item) => item.ref.path),
         pathsAsistencia: asistencias.map((item) => item.ref.path),
         cantidadUsuarios: usuarios.length,
         cantidadNuevoAfiliado: nuevoAfiliado.length,
+        cantidadUsuariosDni: usuariosDni.length,
         cantidadAsistencias: asistencias.length,
         valido: total > 0,
         error: total > 0 ? "" : "Sin coincidencias en las colecciones",
@@ -1332,11 +1350,24 @@ export default function AfiliadoActualizado() {
 
     for (const fila of filasValidas) {
       try {
-        const paths = [
-          ...fila.pathsUsuarios,
-          ...fila.pathsNuevoAfiliado,
-          ...fila.pathsAsistencia,
-        ];
+        const [usuariosActuales, nuevoActuales, usuariosDniActuales, asistenciasActuales] = await Promise.all([
+          buscarDocumentosPorDni("usuarios", fila.dni, true),
+          buscarDocumentosPorDni("nuevoAfiliado", fila.dni, true),
+          buscarDocumentosPorDni("usuarios_dni", fila.dni, true),
+          buscarDocumentosPorDni("asistencia", fila.dni, false),
+        ]);
+        const paths = Array.from(
+          new Set([
+            ...fila.pathsUsuarios,
+            ...fila.pathsNuevoAfiliado,
+            ...(fila.pathsUsuariosDni || []),
+            ...fila.pathsAsistencia,
+            ...usuariosActuales.map((item) => item.ref.path),
+            ...nuevoActuales.map((item) => item.ref.path),
+            ...usuariosDniActuales.map((item) => item.ref.path),
+            ...asistenciasActuales.map((item) => item.ref.path),
+          ])
+        );
         const operaciones = [
           { tipo: "counter" },
           ...paths.map((path) => ({ tipo: "delete", path })),
@@ -2654,7 +2685,8 @@ export default function AfiliadoActualizado() {
             <strong>Acción irreversible.</strong> Se guardará el mes y año de baja
             en <strong>nuevoAfiliado_counters</strong> y luego se eliminarán las
             coincidencias encontradas en <strong>usuarios</strong>,{" "}
-            <strong>nuevoAfiliado</strong> y <strong>asistencia</strong>. Las filas
+            <strong>nuevoAfiliado</strong>, <strong>usuarios_dni</strong> y{" "}
+            <strong>asistencia</strong>. Las filas
             inválidas no serán procesadas.
           </div>
 
@@ -2688,6 +2720,11 @@ export default function AfiliadoActualizado() {
               field="cantidadNuevoAfiliado"
               header="Nuevo afiliado"
               style={{ width: 120 }}
+            />
+            <Column
+              field="cantidadUsuariosDni"
+              header="usuarios_dni"
+              style={{ width: 115 }}
             />
             <Column
               field="cantidadAsistencias"

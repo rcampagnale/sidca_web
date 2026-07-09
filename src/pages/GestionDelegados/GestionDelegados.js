@@ -31,16 +31,38 @@ import { db } from "../../firebase/firebase-config";
 import styles from "./GestionDelegados.module.css";
 import ExpedientesDashboard from "./ExpedientesDashboard";
 
-const ESTADOS = ["ALTA_DE_SERVICIO", "RECLAMO"];
+const ESTADOS = ["ALTA_DE_SERVICIO", "RECLAMO", "DEUDA", "VARIOS", "SOLICITUD"];
 const ESTADOS_SUELDO = ["ACTIVO", "INACTIVO"];
+const OBSERVACION_ESTADO_SUELDO_ACTIVO =
+  "CIRCUITO ADMINISTRATIVO COMPLETO, PENDIENTE DE RESOLUCIÓN";
+const MESES_HABER = [
+  { label: "Enero", value: "enero" },
+  { label: "Febrero", value: "febrero" },
+  { label: "Marzo", value: "marzo" },
+  { label: "Abril", value: "abril" },
+  { label: "Mayo", value: "mayo" },
+  { label: "Junio", value: "junio" },
+  { label: "Julio", value: "julio" },
+  { label: "Agosto", value: "agosto" },
+  { label: "Septiembre", value: "septiembre" },
+  { label: "Octubre", value: "octubre" },
+  { label: "Noviembre", value: "noviembre" },
+  { label: "Diciembre", value: "diciembre" },
+];
 const DEPENDENCIAS_GRUPOS = [
   {
-    label: "Nivel Inicial",
-    items: ["Nivel Inicial"],
+    label: "Direcciones de Educación",
+    items: [
+      "Dirección de Educación Inicial",
+      "Dirección de Educación Primaria",
+      "Dirección de Educación Secundaria",
+      "Dirección de Educación Rural",
+      "Dirección de Educación Superior",
+    ],
   },
   {
-    label: "Nivel Primario",
-    items: ["Nivel Primario", "Primaria EDJA"],
+    label: "Educación de Jóvenes y Adultos",
+    items: ["Primaria EDJA", "Secundaria EDJA"],
   },
   {
     label: "Nivel Secundario",
@@ -65,14 +87,86 @@ const DEPENDENCIAS_GRUPOS = [
   },
   {
     label: "Administración",
-    items: ["LEGAL Y TECNICA"],
+    items: [
+      "LEGAL Y TECNICA",
+      "JURIDICO",
+      "SUMARIO",
+      "Dirección de Educación Inicial",
+      "Dirección de Educación Primaria",
+      "Dirección de Educación Secundaria",
+      "Dirección de Educación Rural",
+      "Liquidación de haberes",
+      "Dirección de Modalidades",
+      "Sede Belén",
+      "Sede Tinogasta",
+    ],
   },
 ];
 
-const DEPENDENCIA_OPCIONES = DEPENDENCIAS_GRUPOS.map((grupo) => ({
-  label: grupo.label,
-  items: grupo.items.map((item) => ({ label: item, value: item })),
-}));
+// Se conserva como referencia histórica de agrupación, pero los dropdowns usan
+// DEPENDENCIA_OPCIONES_UNIFICADAS para evitar duplicados y nombres incompletos.
+// eslint-disable-next-line no-unused-vars
+const DEPENDENCIA_OPCIONES = DEPENDENCIAS_GRUPOS
+  .filter((grupo) => !/^Nivel\s+/i.test(grupo.label))
+  .map((grupo) => ({
+    label: grupo.label,
+    items: grupo.items
+      .filter(
+        (item) =>
+          grupo.label !== "AdministraciÃ³n" ||
+          !/^DirecciÃ³n de EducaciÃ³n/i.test(item)
+      )
+      .map((item) => ({ label: item, value: item })),
+  }))
+  .filter((grupo) => grupo.items.length > 0);
+
+const DEPENDENCIA_OPCIONES_UNIFICADAS = [
+  {
+    label: "Direcciones de Educación",
+    items: [
+      "Dirección de Educación Inicial",
+      "Dirección de Educación Primaria",
+      "Dirección de Educación Secundaria",
+      "Dirección de Educación Rural",
+      "Dirección de Educación Superior",
+    ].map((item) => ({ label: item, value: item })),
+  },
+  {
+    label: "Educación de Jóvenes y Adultos",
+    items: ["Primaria EDJA", "Secundaria EDJA"].map((item) => ({
+      label: item,
+      value: item,
+    })),
+  },
+  {
+    label: "Educación Técnico Profesional",
+    items: ["Técnica", "Agrotécnica", "Formación Profesional"].map((item) => ({
+      label: item,
+      value: item,
+    })),
+  },
+  {
+    label: "Otras Modalidades",
+    items: [
+      "Educación Especial",
+      "Educación Artística",
+      "Educación Domiciliaria y Hospitalaria",
+      "Educación en Contexto de Privación de la Libertad",
+    ].map((item) => ({ label: item, value: item })),
+  },
+  {
+    label: "Administración",
+    items: [
+      "LEGAL Y TECNICA",
+      "JURIDICO",
+      "SUMARIO",
+      "Liquidación de haberes",
+      "Dirección de Modalidades",
+      "Sede Belén",
+      "Sede Tinogasta",
+    ].map((item) => ({ label: item, value: item })),
+  },
+];
 
 const PERMISO_LABELS_RESUMEN = {
   ver: "Ver",
@@ -96,11 +190,17 @@ const TIPO_MOVIMIENTO_LABELS = {
 const estadoLabels = {
   ALTA_DE_SERVICIO: "Alta de servicio",
   RECLAMO: "Reclamo",
+  DEUDA: "Deuda",
+  VARIOS: "Varios",
+  SOLICITUD: "Solicitud",
 };
 
 const estadoSeverity = {
   ALTA_DE_SERVICIO: "success",
   RECLAMO: "warning",
+  DEUDA: "danger",
+  VARIOS: "info",
+  SOLICITUD: "info",
 };
 
 const estadoSueldoLabels = {
@@ -111,6 +211,11 @@ const estadoSueldoLabels = {
 const estadoSueldoSeverity = {
   ACTIVO: "success",
   INACTIVO: "danger",
+};
+
+const CIRCUITO_ADMINISTRATIVO_FILTROS = {
+  COMPLETO_PENDIENTE: "Completo / pendiente de resolución",
+  EXPEDIENTE_FINALIZADO: "Completo / Expediente finalizado",
 };
 
 const permisosAdmin = {
@@ -143,6 +248,22 @@ const quitarAcentos = (valor) =>
     .replace(/[\u0300-\u036f]/g, "");
 const normalizarClave = (valor) =>
   quitarAcentos(valor).toLowerCase().replace(/[^a-z0-9]/g, "");
+const nombreHojaExcel = (valor, fallback = "Resultado filtrado") => {
+  const nombre = limpiarTexto(valor)
+    .replace(/[\\/?*[\]:]/g, " ")
+    .slice(0, 31)
+    .trim();
+  return nombre || fallback;
+};
+const tieneCircuitoAdministrativoCompleto = (item) =>
+  quitarAcentos(limpiarTexto(item?.observacionActual))
+    .toUpperCase()
+    .includes("CIRCUITO ADMINISTRATIVO COMPLETO");
+const obtenerCircuitoAdministrativo = (item) => {
+  if (item?.finalizado) return "EXPEDIENTE_FINALIZADO";
+  if (tieneCircuitoAdministrativoCompleto(item)) return "COMPLETO_PENDIENTE";
+  return "";
+};
 
 const normalizarNivelFiltro = (valor) => {
   const texto = limpiarTexto(valor);
@@ -298,6 +419,9 @@ const buscarPersonaApp = async (dni) => {
 const normalizarEstado = (valor) => {
   const texto = quitarAcentos(limpiarTexto(valor)).toUpperCase();
   if (/RECLAMO/.test(texto)) return "RECLAMO";
+  if (/DEUDA/.test(texto)) return "DEUDA";
+  if (/VARIOS?/.test(texto)) return "VARIOS";
+  if (/SOLICITUD|PEDIDO/.test(texto)) return "SOLICITUD";
   if (/ALTA|SERVICIO/.test(texto)) return "ALTA_DE_SERVICIO";
   if (ESTADOS.includes(texto)) return texto;
   return "ALTA_DE_SERVICIO";
@@ -315,16 +439,45 @@ const normalizarDependencia = (valor) => {
   if (!texto) return "";
 
   if (/LEGAL/.test(texto)) return "LEGAL Y TECNICA";
+  if (/JURIDIC/.test(texto)) return "JURIDICO";
+  if (/SUMARIO/.test(texto)) return "SUMARIO";
+  if (/INICIAL/.test(texto)) return "Dirección de Educación Inicial";
+  if (/PRIMAR/.test(texto)) {
+    if (/EDJA/.test(texto)) return "Primaria EDJA";
+    return "Dirección de Educación Primaria";
+  }
+  if (/SECUNDAR/.test(texto)) {
+    if (/RURAL/.test(texto)) return "Dirección de Educación Rural";
+    if (/EDJA/.test(texto)) return "Secundaria EDJA";
+    return "Dirección de Educación Secundaria";
+  }
+  if (/SUPERIOR/.test(texto)) return "Dirección de Educación Superior";
+  if (/DIR|DIRECCION/.test(texto) && /EDUC/.test(texto) && /INICIAL/.test(texto)) {
+    return "Dirección de Educación Inicial";
+  }
+  if (/DIR|DIRECCION/.test(texto) && /EDUC/.test(texto) && /PRIM/.test(texto)) {
+    return "Dirección de Educación Primaria";
+  }
+  if (/DIR|DIRECCION/.test(texto) && /EDUC/.test(texto) && /RURAL/.test(texto)) {
+    return "Dirección de Educación Rural";
+  }
+  if (/DIR|DIRECCION/.test(texto) && /EDUC/.test(texto) && /SEC/.test(texto)) {
+    return "Dirección de Educación Secundaria";
+  }
+  if (/LIQUIDACION|HABERES/.test(texto)) return "Liquidación de haberes";
+  if (/DIRECCION.*MODALIDAD|MODALIDADES/.test(texto)) return "Dirección de Modalidades";
+  if (/SEDE.*BELEN|BELEN/.test(texto)) return "Sede Belén";
+  if (/SEDE.*TINOGASTA|TINOGASTA/.test(texto)) return "Sede Tinogasta";
 
-  if (/INICIAL/.test(texto)) return "Nivel Inicial";
+  if (/INICIAL/.test(texto)) return "DirecciÃ³n de EducaciÃ³n Inicial";
 
   if (/PRIMAR/.test(texto)) {
     if (/EDJA/.test(texto)) return "Primaria EDJA";
-    return "Nivel Primario";
+    return "DirecciÃ³n de EducaciÃ³n Primaria";
   }
 
   if (/SECUNDAR/.test(texto)) {
-    if (/RURAL/.test(texto)) return "Secundaria Rural";
+    if (/RURAL/.test(texto)) return "DirecciÃ³n de EducaciÃ³n Rural";
     if (/EDJA/.test(texto)) return "Secundaria EDJA";
     return "Secundaria Común";
   }
@@ -338,7 +491,7 @@ const normalizarDependencia = (valor) => {
   if (/DOMICILIARI|HOSPITALARI/.test(texto)) return "Educación Domiciliaria y Hospitalaria";
   if (/PRIVACION|CONTEXTO/.test(texto)) return "Educación en Contexto de Privación de la Libertad";
 
-  return texto;
+  return limpiarTexto(valor);
 };
 
 const parseFechaExcel = (valor) => {
@@ -381,6 +534,30 @@ const mesTexto = (periodo) => {
     month: "long",
     year: "numeric",
   }).format(new Date(anio, mes - 1, 1));
+};
+
+const obtenerMesLabel = (value) =>
+  MESES_HABER.find((mes) => mes.value === value)?.label.toLowerCase() || value || "";
+
+const obtenerMesCobroSiguiente = (value) => {
+  const index = MESES_HABER.findIndex((mes) => mes.value === value);
+  if (index < 0) return "";
+  return MESES_HABER[(index + 1) % MESES_HABER.length].value;
+};
+
+const construirMensajeFinalizacion = ({ afiliado, haberMes, cobroMes }) => {
+  const nombre = afiliado || "Docente";
+  const haber = obtenerMesLabel(haberMes);
+  const cobro = obtenerMesLabel(cobroMes);
+  const detalleCobro =
+    haber && cobro
+      ? ` y vas a cobrar el haber de ${haber} a cobrar en ${cobro}`
+      : "";
+
+  return (
+    `Estimado Docente ${nombre}, su expediente se encuentra finalizado${detalleCobro}. ` +
+    "Desde el Sindicato Docente quedamos a disposición para acompañarte en lo que necesites. Saludos cordiales."
+  );
 };
 
 const mapaColumnas = {
@@ -472,6 +649,8 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const [visibleNoRegistrados, setVisibleNoRegistrados] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroEstadoSueldo, setFiltroEstadoSueldo] = useState("");
+  const [filtroCircuitoAdministrativo, setFiltroCircuitoAdministrativo] = useState("");
   const [filtroDimension, setFiltroDimension] = useState("");
   const [filtroValor, setFiltroValor] = useState("");
   const [afiliadoSeleccionadoDni, setAfiliadoSeleccionadoDni] = useState(null);
@@ -479,9 +658,11 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const [visibleDetalle, setVisibleDetalle] = useState(false);
   const [visibleObs, setVisibleObs] = useState(false);
   const [visibleEstado, setVisibleEstado] = useState(false);
+  const [visibleFinalizar, setVisibleFinalizar] = useState(false);
   const [visibleHistorial, setVisibleHistorial] = useState(false);
   const [observacion, setObservacion] = useState("");
   const [formEdicion, setFormEdicion] = useState({});
+  const [mesHaberFinalizar, setMesHaberFinalizar] = useState("");
   const [historial, setHistorial] = useState([]);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
 
@@ -493,15 +674,23 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [finalizandoExpediente, setFinalizandoExpediente] = useState(false);
   const [mostrarHerramientas, setMostrarHerramientas] = useState(false);
+  const [mostrarFiltrosMobile, setMostrarFiltrosMobile] = useState(false);
   const [visibleDuplicados, setVisibleDuplicados] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [visibleExportar, setVisibleExportar] = useState(false);
-  const [dependenciasExport, setDependenciasExport] = useState([]);
-  const [estadosSueldoExport, setEstadosSueldoExport] = useState([]);
-  const [textoExport, setTextoExport] = useState("");
-  const [estadoExport, setEstadoExport] = useState("");
-  const [dimensionExport, setDimensionExport] = useState("");
-  const [valorExport, setValorExport] = useState("");
+  const dependenciasExport = [];
+  const estadosSueldoExport = [];
+  const textoExport = "";
+  const estadoExport = "";
+  const dimensionExport = "";
+  const valorExport = "";
+  const opcionesValorExport = [];
+  const setDependenciasExport = () => {};
+  const setEstadosSueldoExport = () => {};
+  const setTextoExport = () => {};
+  const setEstadoExport = () => {};
+  const setDimensionExport = () => {};
+  const setValorExport = () => {};
 
   const dniUsuario = useMemo(() => obtenerDniUsuario(userRedux), [userRedux]);
   const usuarioMovimiento = useMemo(() => {
@@ -534,7 +723,18 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       const snap = await getDocs(
         query(collectionGroup(db, "expedientes"), orderBy("apellidoNombre", "asc"))
       );
-      setExpedientes(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
+      setExpedientes(
+        snap.docs.map((item) => {
+          const data = item.data();
+          return {
+            id: item.id,
+            ...data,
+            dependencia:
+              normalizarDependencia(data.dependencia) ||
+              limpiarTexto(data.dependencia),
+          };
+        })
+      );
     } catch (err) {
       console.error("[GestionDelegados] cargar expedientes:", err);
       toast.current?.show({
@@ -617,12 +817,25 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     return expedientes.filter((item) => {
       if (filtroEstado && item.estado !== filtroEstado) return false;
       if (
+        filtroEstadoSueldo &&
+        (item.estadoSueldo || "SIN_DEFINIR") !== filtroEstadoSueldo
+      ) return false;
+      if (
+        filtroCircuitoAdministrativo &&
+        obtenerCircuitoAdministrativo(item) !== filtroCircuitoAdministrativo
+      ) return false;
+      if (
         filtroValor && filtroDimension === "estadoSueldo" &&
         (item.estadoSueldo || "SIN_DEFINIR") !== filtroValor
       ) return false;
       if (
         filtroValor && filtroDimension === "finalizacion" &&
         (item.finalizado ? "FINALIZADO" : "EN_TRAMITE") !== filtroValor
+      ) return false;
+      if (
+        filtroValor &&
+        filtroDimension === "circuitoAdministrativo" &&
+        obtenerCircuitoAdministrativo(item) !== filtroValor
       ) return false;
       if (filtroValor && filtroDimension === "dependencia" && item.dependencia !== filtroValor) return false;
       if (filtroValor && filtroDimension === "departamento" && item.departamento !== filtroValor) return false;
@@ -656,14 +869,15 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   }, [
     expedientes,
     filtroDimension,
+    filtroCircuitoAdministrativo,
     filtroEstado,
+    filtroEstadoSueldo,
     filtroTexto,
     filtroValor,
   ]);
 
   const opcionesFiltroDimension = [
     { label: "Sin filtro adicional", value: "" },
-    { label: "Estado de sueldo", value: "estadoSueldo" },
     { label: "Estado del trámite", value: "finalizacion" },
     { label: "Por dependencia", value: "dependencia" },
     { label: "Por departamento", value: "departamento" },
@@ -684,6 +898,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         valores.add(item.estadoSueldo || "SIN_DEFINIR");
       } else if (filtroDimension === "finalizacion") {
         valores.add(item.finalizado ? "FINALIZADO" : "EN_TRAMITE");
+      } else if (filtroDimension === "circuitoAdministrativo") {
+        const circuito = obtenerCircuitoAdministrativo(item);
+        if (circuito) valores.add(circuito);
       } else if (filtroDimension === "dependencia" && item.dependencia) {
         valores.add(item.dependencia);
       } else if (filtroDimension === "departamento" && item.departamento) {
@@ -702,7 +919,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       }
     });
 
-    return Array.from(valores)
+    const opciones = Array.from(valores)
       .sort()
       .map((value) => ({
         value,
@@ -711,6 +928,8 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             ? value === "SIN_DEFINIR"
               ? "Sin definir"
               : estadoSueldoLabels[value] || value
+            : filtroDimension === "circuitoAdministrativo"
+            ? CIRCUITO_ADMINISTRATIVO_FILTROS[value] || value
             : filtroDimension === "finalizacion"
             ? value === "FINALIZADO"
               ? "Finalizados"
@@ -720,54 +939,15 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             ? mesTexto(value)
             : value,
       }));
+
+    return [{ label: "Todos", value: "" }, ...opciones];
   }, [expedientes, filtroDimension]);
-
-  const opcionesValorExport = useMemo(() => {
-    if (!dimensionExport) return [];
-    const valores = new Set();
-    expedientes.forEach((item) => {
-      if (dimensionExport === "estadoSueldo") {
-        valores.add(item.estadoSueldo || "SIN_DEFINIR");
-      } else if (dimensionExport === "finalizacion") {
-        valores.add(item.finalizado ? "FINALIZADO" : "EN_TRAMITE");
-      } else if (dimensionExport === "dependencia" && item.dependencia) {
-        valores.add(item.dependencia);
-      } else if (dimensionExport === "departamento" && item.departamento) {
-        valores.add(item.departamento);
-      } else if (dimensionExport === "nivel") {
-        valores.add(normalizarNivelFiltro(item.nivel));
-      } else if (dimensionExport === "fechaInicio") {
-        const periodo = String(item.fechaInicio || "").slice(0, 7);
-        if (periodo.length === 7) valores.add(periodo);
-      } else if (
-        dimensionExport === "fechaSueldoActivo" &&
-        item.estadoSueldo === "ACTIVO"
-      ) {
-        const periodo = String(item.fechaInicio || "").slice(0, 7);
-        if (periodo.length === 7) valores.add(periodo);
-      }
-    });
-
-    return Array.from(valores).sort().map((value) => ({
-      value,
-      label:
-        dimensionExport === "estadoSueldo"
-          ? value === "SIN_DEFINIR"
-            ? "Sin definir"
-            : estadoSueldoLabels[value] || value
-          : dimensionExport === "finalizacion"
-          ? value === "FINALIZADO"
-            ? "Finalizados"
-            : "En trámite"
-          : dimensionExport === "fechaInicio" || dimensionExport === "fechaSueldoActivo"
-          ? mesTexto(value)
-          : value,
-    }));
-  }, [dimensionExport, expedientes]);
 
   const reiniciarPagina = async () => {
     setFiltroTexto("");
     setFiltroEstado("");
+    setFiltroEstadoSueldo("");
+    setFiltroCircuitoAdministrativo("");
     setFiltroDimension("");
     setFiltroValor("");
     setAfiliadoSeleccionadoDni("");
@@ -796,6 +976,20 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         value: v,
       }));
   }, [expedientes]);
+
+  const circuitosAdministrativosDisponibles = useMemo(
+    () => [
+      {
+        label: CIRCUITO_ADMINISTRATIVO_FILTROS.COMPLETO_PENDIENTE,
+        value: "COMPLETO_PENDIENTE",
+      },
+      {
+        label: CIRCUITO_ADMINISTRATIVO_FILTROS.EXPEDIENTE_FINALIZADO,
+        value: "EXPEDIENTE_FINALIZADO",
+      },
+    ],
+    []
+  );
 
   const afiliadosFiltrados = useMemo(() => {
     const mapa = new Map();
@@ -826,12 +1020,16 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   }, [afiliadosFiltrados, afiliadoSeleccionadoDni]);
 
   const resumen = useMemo(() => {
-    const base = {
-      total: expedientes.length,
-      ALTA_DE_SERVICIO: 0,
-      RECLAMO: 0,
-      noRegistrados: 0,
-    };
+    const base = ESTADOS.reduce(
+      (acc, estado) => {
+        acc[estado] = 0;
+        return acc;
+      },
+      {
+        total: expedientes.length,
+        noRegistrados: 0,
+      }
+    );
     expedientes.forEach((item) => {
       base[item.estado] = Number(base[item.estado] || 0) + 1;
       if (!item.registradoApp) base.noRegistrados += 1;
@@ -905,6 +1103,8 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       let filaActual = 0;
       const errores = [];
       const noRegistrados = [];
+      let ultimoDniValido = "";
+      let ultimoApellidoNombreValido = "";
 
       for (let i = header.index + 1; i < filas.length; i += 1) {
         const fila = filas[i] || [];
@@ -912,7 +1112,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         filaActual += 1;
         setProgresoImport({ actual: filaActual, total: filasValidas.length });
         const valor = (campo) => fila[header.indices[campo]] ?? "";
-        const dni = normalizarDni(valor("dni"));
+        const dniExcel = normalizarDni(valor("dni"));
+        const expediente = limpiarTexto(valor("expediente"));
+        const dni = dniExcel || (expediente ? ultimoDniValido : "");
 
         // Fila sin DNI: no hay forma de validar contra la colección, se omite.
         if (!dni) {
@@ -920,8 +1122,16 @@ const GestionDelegados = ({ modo = "delegado" }) => {
           continue;
         }
 
-        const apellidoNombreExcel = limpiarTexto(valor("apellidoNombre"));
-        const expediente = limpiarTexto(valor("expediente"));
+        const apellidoNombreExcel =
+          limpiarTexto(valor("apellidoNombre")) || ultimoApellidoNombreValido;
+
+        // Algunos Excel agrupan varios expedientes bajo un mismo afiliado y dejan
+        // DNI/nombre vacíos en las filas siguientes. Si la fila trae expediente,
+        // se toma el último DNI válido anterior para no perder esos registros.
+        if (dniExcel) {
+          ultimoDniValido = dniExcel;
+          ultimoApellidoNombreValido = apellidoNombreExcel;
+        }
 
         // Sin N° de expediente no hay forma estable de identificar el registro
         // entre distintas importaciones (la fila puede moverse y generar duplicados
@@ -1067,6 +1277,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       estadoSueldo: item.estadoSueldo || "",
       observacionActual: item.observacionActual || "",
     });
+    setMesHaberFinalizar(item.haberFinalizacionMes || "");
     setVisibleEstado(true);
   };
 
@@ -1107,18 +1318,43 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     await cargarExpedientes();
   };
 
+  const abrirFinalizarExpediente = () => {
+    if (!seleccionado || seleccionado.finalizado || finalizandoExpediente) return;
+    setMesHaberFinalizar(seleccionado.haberFinalizacionMes || "");
+    setVisibleFinalizar(true);
+  };
+
   const finalizarExpediente = async () => {
     if (!seleccionado || !permisos.cambiarEstado || seleccionado.finalizado) return;
-    const confirmar = window.confirm(
-      `¿Confirmás que el trámite de ${seleccionado.apellidoNombre || "este afiliado"} ya finalizó?\n\n` +
-        "El expediente quedará cerrado y la fecha se registrará en el historial."
-    );
-    if (!confirmar) return;
+    const haberFinalizacionMes = mesHaberFinalizar || "";
+    const cobroFinalizacionMes = obtenerMesCobroSiguiente(haberFinalizacionMes);
 
+    if (!haberFinalizacionMes) {
+      window.alert("Seleccioná el mes de haber antes de finalizar el expediente.");
+      return;
+    }
+
+    const mensajeFinalizacion = construirMensajeFinalizacion({
+      afiliado: seleccionado.apellidoNombre,
+      haberMes: haberFinalizacionMes,
+      cobroMes: cobroFinalizacionMes,
+    });
     setFinalizandoExpediente(true);
     try {
+      const payloadEdicion = {
+        departamento: limpiarTexto(formEdicion.departamento),
+        nivel: limpiarTexto(formEdicion.nivel),
+        dependencia: formEdicion.dependencia || "",
+        estado: formEdicion.estado || "ALTA_DE_SERVICIO",
+        estadoSueldo: formEdicion.estadoSueldo || "",
+      };
       await updateDoc(refExpediente(seleccionado.dni, seleccionado.id), {
+        ...payloadEdicion,
+        observacionActual: mensajeFinalizacion,
         finalizado: true,
+        mensajeFinalizacion,
+        haberFinalizacionMes,
+        cobroFinalizacionMes,
         fechaFinalizacion: serverTimestamp(),
         finalizadoPor: usuarioMovimiento,
         updatedAt: serverTimestamp(),
@@ -1127,19 +1363,20 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       await registrarMovimiento({
         expediente: seleccionado,
         tipo: "finalizacion_expediente",
-        observacion: "Trámite finalizado.",
+        observacion: mensajeFinalizacion,
         estadoAnterior: seleccionado.estado,
-        estadoNuevo: seleccionado.estado,
+        estadoNuevo: payloadEdicion.estado,
         dependenciaAnterior: seleccionado.dependencia,
-        dependenciaNueva: seleccionado.dependencia,
+        dependenciaNueva: payloadEdicion.dependencia,
         estadoSueldoAnterior: seleccionado.estadoSueldo,
-        estadoSueldoNuevo: seleccionado.estadoSueldo,
+        estadoSueldoNuevo: payloadEdicion.estadoSueldo,
       });
       toast.current?.show({
         severity: "success",
         summary: "Expediente finalizado",
         detail: `Se finalizó el trámite de ${seleccionado.apellidoNombre || "el afiliado"}.`,
       });
+      setVisibleFinalizar(false);
       setVisibleEstado(false);
       await cargarExpedientes();
     } catch (err) {
@@ -1310,77 +1547,12 @@ const GestionDelegados = ({ modo = "delegado" }) => {
 
   const abrirExportar = () => {
     if (!permisos.exportarExcel) return;
-    setDependenciasExport([]);
-    setEstadosSueldoExport([]);
-    setTextoExport(filtroTexto);
-    setEstadoExport(filtroEstado);
-    setDimensionExport(filtroDimension);
-    setValorExport(filtroValor);
     setVisibleExportar(true);
   };
 
-  const exportarExcel = (
-    dependenciasSeleccionadas = [],
-    estadosSueldoSeleccionados = [],
-    filtrosExportacion = {}
-  ) => {
+  const exportarExcel = () => {
     if (!permisos.exportarExcel) return;
-    const datosBase = expedientes.filter((item) => {
-      const texto = limpiarTexto(filtrosExportacion.textoFiltro).toLowerCase();
-      const dniFiltro = normalizarDni(filtrosExportacion.textoFiltro);
-      if (filtrosExportacion.estado && item.estado !== filtrosExportacion.estado) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "estadoSueldo" &&
-        (item.estadoSueldo || "SIN_DEFINIR") !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "finalizacion" &&
-        (item.finalizado ? "FINALIZADO" : "EN_TRAMITE") !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "dependencia" &&
-        item.dependencia !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "departamento" &&
-        item.departamento !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "nivel" &&
-        normalizarNivelFiltro(item.nivel) !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "fechaInicio" &&
-        String(item.fechaInicio || "").slice(0, 7) !== filtrosExportacion.valor
-      ) return false;
-      if (
-        filtrosExportacion.valor && filtrosExportacion.dimension === "fechaSueldoActivo" &&
-        (item.estadoSueldo !== "ACTIVO" ||
-          String(item.fechaInicio || "").slice(0, 7) !== filtrosExportacion.valor)
-      ) return false;
-      if (texto || dniFiltro) {
-        const contenido = `${item.apellidoNombre || ""} ${item.apellido || ""} ${
-          item.nombre || ""
-        } ${item.expediente || ""} ${item.dependencia || ""} ${
-          item.departamento || ""
-        } ${item.nivel || ""}`.toLowerCase();
-        const dni = normalizarDni(item.dni);
-        if (!((dniFiltro && dni.includes(dniFiltro)) || (texto && contenido.includes(texto)))) {
-          return false;
-        }
-      }
-      if (
-        dependenciasSeleccionadas.length > 0 &&
-        !dependenciasSeleccionadas.includes(item.dependencia)
-      ) {
-        return false;
-      }
-      if (estadosSueldoSeleccionados.length > 0) {
-        const valor = item.estadoSueldo || "SIN_DEFINIR";
-        if (!estadosSueldoSeleccionados.includes(valor)) return false;
-      }
-      return true;
-    });
+    const datosBase = expedientesFiltrados;
 
     if (datosBase.length === 0) {
       toast.current?.show({
@@ -1401,6 +1573,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       Dependencia: item.dependencia || "",
       Estado: estadoLabels[item.estado] || item.estado || "",
       "Estado de sueldo": estadoSueldoLabels[item.estadoSueldo] || item.estadoSueldo || "",
+      "Circuito administrativo":
+        CIRCUITO_ADMINISTRATIVO_FILTROS[obtenerCircuitoAdministrativo(item)] ||
+        "",
       "Trámite finalizado": item.finalizado ? "Sí" : "No",
       "Fecha finalización": item.finalizado ? fechaHoraTexto(item.fechaFinalizacion) : "",
       "Observación": item.observacionActual || "",
@@ -1411,32 +1586,69 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     const wb = XLSX.utils.book_new();
     const addSheet = (name, rows) =>
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), name);
+    const resumenEstados = ESTADOS.map((estado) => {
+      const label = estadoLabels[estado] || estado;
+      return {
+        Indicador: label,
+        Valor: filasBase.filter((r) => r.Estado === label).length,
+      };
+    });
+    const dimensionActiva =
+      opcionesFiltroDimension.find((opt) => opt.value === filtroDimension)?.label ||
+      "Sin filtro adicional";
+    const valorActivo =
+      opcionesFiltroValor.find((opt) => opt.value === filtroValor)?.label ||
+      (filtroValor || "Todos");
     addSheet("Resumen", [
       { Indicador: "Total exportado", Valor: datosBase.length },
+      { Indicador: "Búsqueda", Valor: filtroTexto || "Sin búsqueda" },
+      { Indicador: "Estado", Valor: filtroEstado ? estadoLabels[filtroEstado] || filtroEstado : "Todos" },
       {
-        Indicador: "Dependencias incluidas",
-        Valor: dependenciasSeleccionadas.length > 0 ? dependenciasSeleccionadas.join(", ") : "Todas",
+        Indicador: "Estado de sueldo",
+        Valor: filtroEstadoSueldo
+          ? filtroEstadoSueldo === "SIN_DEFINIR"
+            ? "Sin definir"
+            : estadoSueldoLabels[filtroEstadoSueldo] || filtroEstadoSueldo
+          : "Todos",
       },
       {
-        Indicador: "Estados de sueldo incluidos",
-        Valor:
-          estadosSueldoSeleccionados.length > 0
-            ? estadosSueldoSeleccionados
-                .map((v) => (v === "SIN_DEFINIR" ? "Sin definir" : estadoSueldoLabels[v] || v))
-                .join(", ")
-            : "Todos",
+        Indicador: "Circuito administrativo",
+        Valor: filtroCircuitoAdministrativo
+          ? CIRCUITO_ADMINISTRATIVO_FILTROS[filtroCircuitoAdministrativo] ||
+            filtroCircuitoAdministrativo
+          : "Todos",
       },
-      { Indicador: "Alta de servicio", Valor: filasBase.filter((r) => r.Estado === "Alta de servicio").length },
-      { Indicador: "Reclamo", Valor: filasBase.filter((r) => r.Estado === "Reclamo").length },
+      { Indicador: "Filtro adicional", Valor: dimensionActiva },
+      { Indicador: "Valor del filtro", Valor: filtroDimension ? valorActivo : "Todos" },
+      ...resumenEstados,
+      {
+        Indicador: CIRCUITO_ADMINISTRATIVO_FILTROS.COMPLETO_PENDIENTE,
+        Valor: filasBase.filter(
+          (r) =>
+            r["Circuito administrativo"] ===
+            CIRCUITO_ADMINISTRATIVO_FILTROS.COMPLETO_PENDIENTE
+        ).length,
+      },
+      {
+        Indicador: CIRCUITO_ADMINISTRATIVO_FILTROS.EXPEDIENTE_FINALIZADO,
+        Valor: filasBase.filter(
+          (r) =>
+            r["Circuito administrativo"] ===
+            CIRCUITO_ADMINISTRATIVO_FILTROS.EXPEDIENTE_FINALIZADO
+        ).length,
+      },
       { Indicador: "No registrados en app", Valor: filasBase.filter((r) => r["Registrado en app"] === "No").length },
     ]);
-    addSheet("Expedientes", filasBase);
-    addSheet("Alta de servicio", filasBase.filter((r) => r.Estado === "Alta de servicio"));
-    addSheet("Reclamo", filasBase.filter((r) => r.Estado === "Reclamo"));
-    addSheet(
-      "No registrados en app",
-      filasBase.filter((r) => r["Registrado en app"] === "No")
-    );
+    const filtroPrincipalHoja =
+      filtroCircuitoAdministrativo
+        ? CIRCUITO_ADMINISTRATIVO_FILTROS[filtroCircuitoAdministrativo]
+        : filtroEstadoSueldo
+        ? estadoSueldoLabels[filtroEstadoSueldo] || filtroEstadoSueldo
+        : filtroDimension && valorActivo !== "Todos"
+        ? valorActivo
+        : "Resultado filtrado";
+    const nombreHojaResultado = nombreHojaExcel(`Filtro ${filtroPrincipalHoja}`);
+    addSheet(nombreHojaResultado, filasBase);
     const ahora = new Date();
     const fechaArchivo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}_${String(ahora.getHours()).padStart(2, "0")}${String(ahora.getMinutes()).padStart(2, "0")}`;
     XLSX.writeFile(wb, `expedientes_sueldo_${fechaArchivo}.xlsx`);
@@ -1461,6 +1673,21 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     ) : (
       "-"
     );
+
+  const mesCobroFinalizar = obtenerMesCobroSiguiente(mesHaberFinalizar);
+  const mensajePreviewFinalizacion = mesHaberFinalizar
+    ? construirMensajeFinalizacion({
+        afiliado: seleccionado?.apellidoNombre,
+        haberMes: mesHaberFinalizar,
+        cobroMes: mesCobroFinalizar,
+      })
+    : "";
+  const dimensionFiltroActual =
+    opcionesFiltroDimension.find((opt) => opt.value === filtroDimension)?.label ||
+    "Sin filtro adicional";
+  const valorFiltroActual =
+    opcionesFiltroValor.find((opt) => opt.value === filtroValor)?.label ||
+    (filtroValor || "Todos");
 
   if (loading) {
     return (
@@ -1616,6 +1843,18 @@ const GestionDelegados = ({ modo = "delegado" }) => {
               placeholder="Buscar por DNI, nombre, expediente o dependencia"
             />
           </span>
+          <Button
+            label={mostrarFiltrosMobile ? "Ocultar filtros" : "Filtros"}
+            icon={mostrarFiltrosMobile ? "pi pi-chevron-up" : "pi pi-sliders-h"}
+            className={`${styles.filterToggleMobile} p-button-outlined`}
+            onClick={() => setMostrarFiltrosMobile((prev) => !prev)}
+            type="button"
+          />
+          <div
+            className={`${styles.filterControls} ${
+              mostrarFiltrosMobile ? styles.filterControlsOpen : ""
+            }`}
+          >
           <Dropdown
             value={filtroEstado}
             options={[
@@ -1627,6 +1866,26 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             ]}
             onChange={(e) => setFiltroEstado(e.value)}
             placeholder="Estado"
+          />
+          <Dropdown
+            value={filtroEstadoSueldo}
+            options={[
+              { label: "Todos los sueldos", value: "" },
+              ...estadosSueldoDisponibles,
+            ]}
+            onChange={(e) => setFiltroEstadoSueldo(e.value)}
+            placeholder="Estado de sueldo"
+            showClear
+          />
+          <Dropdown
+            value={filtroCircuitoAdministrativo}
+            options={[
+              { label: "Todos los circuitos", value: "" },
+              ...circuitosAdministrativosDisponibles,
+            ]}
+            onChange={(e) => setFiltroCircuitoAdministrativo(e.value)}
+            placeholder="Circuito administrativo"
+            showClear
           />
           <Dropdown
             value={filtroDimension}
@@ -1653,35 +1912,51 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             onClick={reiniciarPagina}
             loading={loadingExpedientes}
           />
+          </div>
         </div>
 
         {loadingExpedientes && <p className={styles.emptyText}>Cargando expedientes...</p>}
 
         {!loadingExpedientes && (
-          <div className={styles.masterDetailWrap}>
-            <div className={styles.afiliadosList}>
-              {afiliadosFiltrados.length === 0 && (
-                <p className={styles.emptyText}>No hay afiliados para mostrar.</p>
-              )}
-              {afiliadosFiltrados.map((afiliado) => (
-                <button
-                  key={afiliado.dni}
-                  type="button"
-                  className={`${styles.afiliadoItem} ${
-                    afiliadoActivo?.dni === afiliado.dni ? styles.afiliadoItemActivo : ""
-                  }`}
-                  onClick={() => setAfiliadoSeleccionadoDni(afiliado.dni)}
-                >
-                  <span className={styles.afiliadoNombre}>
-                    {afiliado.apellidoNombre || "Sin nombre"}
-                  </span>
-                  <span className={styles.afiliadoDni}>DNI {afiliado.dni || "-"}</span>
-                  <span className={styles.afiliadoCount}>{afiliado.expedientes.length}</span>
-                </button>
-              ))}
+          <>
+            <div className={styles.mobileResultSummary}>
+              <span>
+                <strong>{afiliadosFiltrados.length}</strong> afiliado(s)
+              </span>
+              <span>
+                <strong>{expedientesFiltrados.length}</strong> expediente(s)
+              </span>
+              <span>
+                {afiliadoActivo
+                  ? `Seleccionado: ${afiliadoActivo.apellidoNombre || afiliadoActivo.dni}`
+                  : "Seleccioná un afiliado para ver el detalle"}
+              </span>
             </div>
 
-            <div className={styles.expedientesPanel}>
+            <div className={styles.masterDetailWrap}>
+              <div className={styles.afiliadosList}>
+                {afiliadosFiltrados.length === 0 && (
+                  <p className={styles.emptyText}>No hay afiliados para mostrar.</p>
+                )}
+                {afiliadosFiltrados.map((afiliado) => (
+                  <button
+                    key={afiliado.dni}
+                    type="button"
+                    className={`${styles.afiliadoItem} ${
+                      afiliadoActivo?.dni === afiliado.dni ? styles.afiliadoItemActivo : ""
+                    }`}
+                    onClick={() => setAfiliadoSeleccionadoDni(afiliado.dni)}
+                  >
+                    <span className={styles.afiliadoNombre}>
+                      {afiliado.apellidoNombre || "Sin nombre"}
+                    </span>
+                    <span className={styles.afiliadoDni}>DNI {afiliado.dni || "-"}</span>
+                    <span className={styles.afiliadoCount}>{afiliado.expedientes.length}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.expedientesPanel}>
               {!afiliadoActivo && (
                 <>
                   <p className={styles.dashboardHint}>
@@ -1735,8 +2010,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                   </div>
                 </>
               )}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </section>
 
@@ -1769,6 +2045,82 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       <Dialog
         header="Exportar Excel"
         visible={visibleExportar}
+        style={{ width: 520, maxWidth: "95vw" }}
+        modal
+        onHide={() => setVisibleExportar(false)}
+      >
+        <div className={styles.exportForm}>
+          <span className={styles.exportLabel}>Vista filtrada actual</span>
+          <div className={styles.exportSummaryBox}>
+            <div>
+              <span>Registros a exportar</span>
+              <strong>{expedientesFiltrados.length}</strong>
+            </div>
+            <div>
+              <span>Búsqueda</span>
+              <strong>{filtroTexto || "Sin búsqueda"}</strong>
+            </div>
+            <div>
+              <span>Estado</span>
+              <strong>{filtroEstado ? estadoLabels[filtroEstado] || filtroEstado : "Todos"}</strong>
+            </div>
+            <div>
+              <span>Estado de sueldo</span>
+              <strong>
+                {filtroEstadoSueldo
+                  ? filtroEstadoSueldo === "SIN_DEFINIR"
+                    ? "Sin definir"
+                    : estadoSueldoLabels[filtroEstadoSueldo] || filtroEstadoSueldo
+                  : "Todos"}
+              </strong>
+            </div>
+            <div>
+              <span>Circuito administrativo</span>
+              <strong>
+                {filtroCircuitoAdministrativo
+                  ? CIRCUITO_ADMINISTRATIVO_FILTROS[filtroCircuitoAdministrativo] ||
+                    filtroCircuitoAdministrativo
+                  : "Todos"}
+              </strong>
+            </div>
+            <div>
+              <span>Filtro adicional</span>
+              <strong>{dimensionFiltroActual}</strong>
+            </div>
+            <div>
+              <span>Valor</span>
+              <strong>{filtroDimension ? valorFiltroActual : "Todos"}</strong>
+            </div>
+          </div>
+          <p className={styles.helpTextExport}>
+            El Excel se descargará exactamente con los expedientes que estás viendo en
+            los gráficos y en el listado filtrado.
+          </p>
+        </div>
+        <div className={styles.dialogActions}>
+          <Button
+            label="Exportar vista filtrada"
+            icon="pi pi-file-excel"
+            className="p-button-success"
+            loading={exportando}
+            disabled={expedientesFiltrados.length === 0}
+            onClick={async () => {
+              setExportando(true);
+              await new Promise((r) => setTimeout(r, 0));
+              try {
+                exportarExcel();
+                setVisibleExportar(false);
+              } finally {
+                setExportando(false);
+              }
+            }}
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Exportar Excel"
+        visible={false}
         style={{ width: 540, maxWidth: "95vw" }}
         modal
         onHide={() => setVisibleExportar(false)}
@@ -2110,7 +2462,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                 <span>Dependencia</span>
                 <Dropdown
                   value={formNuevo.dependencia || ""}
-                  options={DEPENDENCIA_OPCIONES}
+                  options={DEPENDENCIA_OPCIONES_UNIFICADAS}
                   optionLabel="label"
                   optionGroupLabel="label"
                   optionGroupChildren="items"
@@ -2343,7 +2695,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             <span>Dependencia</span>
             <Dropdown
               value={formEdicion.dependencia || ""}
-              options={DEPENDENCIA_OPCIONES}
+              options={DEPENDENCIA_OPCIONES_UNIFICADAS}
               optionLabel="label"
               optionGroupLabel="label"
               optionGroupChildren="items"
@@ -2378,7 +2730,15 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                 value: estado,
               }))}
               onChange={(e) =>
-                setFormEdicion((prev) => ({ ...prev, estadoSueldo: e.value }))
+                setFormEdicion((prev) => ({
+                  ...prev,
+                  estadoSueldo: e.value,
+                  ...(e.value === "ACTIVO"
+                    ? {
+                        observacionActual: OBSERVACION_ESTADO_SUELDO_ACTIVO,
+                      }
+                    : {}),
+                }))
               }
               placeholder="Seleccionar estado de sueldo"
             />
@@ -2405,11 +2765,61 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             label={seleccionado?.finalizado ? "Expediente finalizado" : "Finalizar expediente"}
             icon={seleccionado?.finalizado ? "pi pi-check-circle" : "pi pi-flag-fill"}
             className="p-button-success p-button-outlined"
-            onClick={finalizarExpediente}
+            onClick={abrirFinalizarExpediente}
             loading={finalizandoExpediente}
             disabled={seleccionado?.finalizado || finalizandoExpediente}
           />
           <Button label="Guardar cambios" icon="pi pi-save" onClick={guardarEstado} />
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Finalizar expediente"
+        visible={visibleFinalizar}
+        style={{ width: 560, maxWidth: "95vw" }}
+        modal
+        onHide={() => setVisibleFinalizar(false)}
+      >
+        <div className={styles.stateDialog}>
+          <p className={styles.emptyText}>
+            Seleccioná el mes de haber. El mes a cobrar se calcula automáticamente como
+            el mes siguiente.
+          </p>
+          <label>
+            <span>Mes de haber</span>
+            <Dropdown
+              value={mesHaberFinalizar || ""}
+              options={MESES_HABER}
+              onChange={(e) => setMesHaberFinalizar(e.value)}
+              placeholder="Seleccionar mes de haber"
+              className={styles.fullInput}
+            />
+          </label>
+          {mesHaberFinalizar && (
+            <div className={styles.infoBox}>
+              <span>
+                Haber de {obtenerMesLabel(mesHaberFinalizar)} · se cobra en{" "}
+                {obtenerMesLabel(mesCobroFinalizar)}
+              </span>
+              <p>{mensajePreviewFinalizacion}</p>
+            </div>
+          )}
+        </div>
+        <div className={styles.dialogActions}>
+          <Button
+            label="Cancelar"
+            className="p-button-text"
+            onClick={() => setVisibleFinalizar(false)}
+            disabled={finalizandoExpediente}
+          />
+          <Button
+            label="Confirmar finalización"
+            icon="pi pi-check-circle"
+            className="p-button-success"
+            onClick={finalizarExpediente}
+            loading={finalizandoExpediente}
+            disabled={!mesHaberFinalizar || finalizandoExpediente}
+          />
         </div>
       </Dialog>
 
