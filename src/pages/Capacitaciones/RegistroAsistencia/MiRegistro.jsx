@@ -90,6 +90,21 @@ const normalizarFechaYMD = (value) => {
   return !Number.isNaN(d.getTime()) ? dateToYMD(d) : "";
 };
 
+const formatearFechaRequisito = (value) => {
+  const valorFecha =
+    value?.fecha ||
+    value?.fechaYMD ||
+    value?.date ||
+    value?.label?.replace(/encuentro\s+presencial/gi, "").trim() ||
+    value;
+
+  const ymd = normalizarFechaYMD(valorFecha);
+  if (!ymd) return "";
+
+  const [yyyy, mm, dd] = ymd.split("-");
+  return `${dd}/${mm}/${yyyy}`;
+};
+
 const cap = (value) => {
   if (!value) return "";
   const txt = String(value).trim();
@@ -699,6 +714,15 @@ const normalizarTipoRegistroQR = (value, asistenciaExistente = null) => {
   return "completa";
 };
 
+const etiquetaTipoRegistroQR = (value) => {
+  const tipo = normalizarTipoRegistroQR(value);
+
+  if (tipo === "salida") return "Salida";
+  if (tipo === "ingreso") return "Ingreso";
+
+  return "";
+};
+
 const DEVICE_STORAGE_KEY = "sidca_asistencia_device_id";
 
 const normalizarDni = (valor) => String(valor || "").replace(/\D/g, "");
@@ -844,6 +868,7 @@ export default function MiRegistro() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [modalidad, setModalidad] = useState("virtual");
+  const [tipoRegistroCfg, setTipoRegistroCfg] = useState("ingreso");
   const [requisitoPresencialVirtual, setRequisitoPresencialVirtual] =
     useState("ninguno");
   const [encuentrosPresencialesRequeridos, setEncuentrosPresencialesRequeridos] =
@@ -877,6 +902,26 @@ export default function MiRegistro() {
 
   const hoy = useMemo(() => new Date(), []);
   const fechaDisplay = toDisplay(hoy);
+  const fechasRequisitoPresencial = useMemo(
+    () =>
+      encuentrosPresencialesRequeridos
+        .map(formatearFechaRequisito)
+        .filter(Boolean),
+    [encuentrosPresencialesRequeridos]
+  );
+  const leyendaRequisitoPresencial = useMemo(() => {
+    if (modalidad !== "virtual" || !fechasRequisitoPresencial.length) {
+      return "";
+    }
+
+    if (fechasRequisitoPresencial.length === 1) {
+      return `Requiere asistencia al encuentro presencial del ${fechasRequisitoPresencial[0]}`;
+    }
+
+    return `Requiere asistencia a los encuentros presenciales del ${fechasRequisitoPresencial.join(
+      ", "
+    )}`;
+  }, [fechasRequisitoPresencial, modalidad]);
 
   const buscarDocumentosAfiliado = async (dniValue) => {
     const refs = [];
@@ -1351,6 +1396,7 @@ export default function MiRegistro() {
           setSelectedCourse(data?.cursoTitulo || data?.curso || "");
           setSelectedCourseId(data?.cursoId || "");
           setModalidad(data?.modalidad || "virtual");
+          setTipoRegistroCfg(normalizarTipoRegistroQR(data?.tipoRegistro || "ingreso"));
           setRequisitoPresencialVirtual(
             data?.requisitoPresencialVirtual || "ninguno"
           );
@@ -1366,6 +1412,7 @@ export default function MiRegistro() {
           setSelectedCourse("");
           setSelectedCourseId("");
           setModalidad("virtual");
+          setTipoRegistroCfg("ingreso");
           setRequisitoPresencialVirtual("ninguno");
           setEncuentrosPresencialesRequeridos([]);
           setMetodo(undefined);
@@ -1378,6 +1425,7 @@ export default function MiRegistro() {
         setSelectedCourse("");
         setSelectedCourseId("");
         setModalidad("virtual");
+        setTipoRegistroCfg("ingreso");
         setRequisitoPresencialVirtual("ninguno");
         setEncuentrosPresencialesRequeridos([]);
         setMetodo(undefined);
@@ -2031,10 +2079,21 @@ export default function MiRegistro() {
                 <span className={`${styles.chip} ${styles.chipMode}`}>
                   Modalidad: {cap(modalidad)}
                 </span>
+
+                {modalidad === "presencial" && etiquetaTipoRegistroQR(tipoRegistroCfg) && (
+                  <span className={`${styles.chip} ${styles.chipMode}`}>
+                    Registro: {etiquetaTipoRegistroQR(tipoRegistroCfg)}
+                  </span>
+                )}
               </div>
 
               <div className={styles.date}>
                 <small>Fecha: {fechaDisplay}</small>
+                {leyendaRequisitoPresencial && (
+                  <small className={styles.requisitoPresencial}>
+                    {leyendaRequisitoPresencial}
+                  </small>
+                )}
               </div>
             </div>
           </div>

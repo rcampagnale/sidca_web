@@ -13,6 +13,7 @@ const QRScreenRegisterDialog = ({
   setNombrePantalla,
   deviceId,
   onGuardar,
+  nombreAutomatico = false,
 }) => {
   return (
     <Dialog
@@ -24,15 +25,25 @@ const QRScreenRegisterDialog = ({
     >
       <div className={styles.formGrid}>
         <div className={styles.formRowFull}>
-          <label>Nombre de este dispositivo</label>
+          <label>
+            {nombreAutomatico
+              ? "Nombre asignado automáticamente"
+              : "Nombre de este dispositivo"}
+          </label>
           <InputText
             value={nombrePantalla}
-            onChange={(e) => setNombrePantalla(e.target.value)}
-            placeholder="Ej: Celular delegado, Pantalla Salón, Notebook Secretaría"
+            onChange={(e) => setNombrePantalla?.(e.target.value)}
+            placeholder={
+              nombreAutomatico
+                ? "Se usará el nombre del delegado logueado"
+                : "Ej: Celular delegado, Pantalla Salón, Notebook Secretaría"
+            }
+            readOnly={nombreAutomatico}
           />
           <small className={styles.helpText}>
-            Solo los dispositivos registrados y autorizados abrirán el QR automáticamente.
-            Los demás celulares y computadoras seguirán trabajando normalmente.
+            {nombreAutomatico
+              ? "Este dispositivo quedará registrado como pantalla QR a nombre del delegado logueado."
+              : "Solo los dispositivos registrados y autorizados abrirán el QR automáticamente. Los demás celulares y computadoras seguirán trabajando normalmente."}
           </small>
         </div>
 

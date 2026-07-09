@@ -51,6 +51,7 @@ const PrivateHeader = () => {
   const [mostrarGestionDelegados, setMostrarGestionDelegados] =
     useState(false);
   const [mostrarPantallaQR, setMostrarPantallaQR] = useState(false);
+  const [delegadoAutorizado, setDelegadoAutorizado] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -62,6 +63,7 @@ const PrivateHeader = () => {
         if (mounted) {
           setMostrarGestionDelegados(false);
           setMostrarPantallaQR(false);
+          setDelegadoAutorizado(null);
         }
         return;
       }
@@ -70,6 +72,7 @@ const PrivateHeader = () => {
         const snap = await getDoc(doc(db, "delegadosAutorizados", dni));
         if (mounted) {
           const delegado = snap.exists() ? snap.data() : null;
+          setDelegadoAutorizado(delegado);
           setMostrarGestionDelegados(tienePermisoGestionDelegados(delegado));
           setMostrarPantallaQR(tienePermisoPantallaQR(delegado));
         }
@@ -77,6 +80,7 @@ const PrivateHeader = () => {
         console.error("[PrivateHeader] Gestion Delegados:", err);
         if (mounted) setMostrarGestionDelegados(false);
         if (mounted) setMostrarPantallaQR(false);
+        if (mounted) setDelegadoAutorizado(null);
       }
     };
 
@@ -170,7 +174,13 @@ const PrivateHeader = () => {
         />
       )}
 
-      {mostrarPantallaQR && <DelegadoPantallaQR ref={pantallaQrRef} />}
+      {mostrarPantallaQR && (
+        <DelegadoPantallaQR
+          ref={pantallaQrRef}
+          delegado={delegadoAutorizado}
+          usuarioSesion={user}
+        />
+      )}
     </>
   );
 };

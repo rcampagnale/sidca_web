@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -10,10 +11,37 @@ import { useQRSync } from "./useQRSync";
 import QRDisplayDialog from "./QRDisplayDialog";
 import QRScreenRegisterDialog from "./QRScreenRegisterDialog";
 
-const DelegadoPantallaQR = forwardRef((_, ref) => {
+const limpiarTexto = (valor) => String(valor || "").trim();
+
+const construirNombreDelegado = (delegado, usuarioSesion) => {
+  const candidatos = [
+    delegado?.apellidoNombre,
+    delegado?.nombreCompleto,
+    delegado?.displayName,
+    [delegado?.apellido, delegado?.nombre].filter(Boolean).join(", "),
+    [delegado?.apellidos, delegado?.nombres].filter(Boolean).join(", "),
+    usuarioSesion?.apellidoNombre,
+    usuarioSesion?.nombreCompleto,
+    usuarioSesion?.displayName,
+    [usuarioSesion?.apellido, usuarioSesion?.nombre].filter(Boolean).join(", "),
+    [usuarioSesion?.profile?.apellido, usuarioSesion?.profile?.nombre]
+      .filter(Boolean)
+      .join(", "),
+    usuarioSesion?.user?.displayName,
+  ];
+
+  return limpiarTexto(candidatos.find((valor) => limpiarTexto(valor))) || "";
+};
+
+const DelegadoPantallaQR = forwardRef(({ delegado, usuarioSesion }, ref) => {
   const toast = useRef(null);
   const [visibleRegistro, setVisibleRegistro] = useState(false);
   const [nombrePantalla, setNombrePantalla] = useState("");
+
+  const nombreDelegado = useMemo(
+    () => construirNombreDelegado(delegado, usuarioSesion),
+    [delegado, usuarioSesion]
+  );
 
   const {
     deviceId,
@@ -34,11 +62,11 @@ const DelegadoPantallaQR = forwardRef((_, ref) => {
     ref,
     () => ({
       abrirRegistro: () => {
-        setNombrePantalla(deviceName || "");
+        setNombrePantalla(nombreDelegado || deviceName || "");
         setVisibleRegistro(true);
       },
     }),
-    [deviceName]
+    [deviceName, nombreDelegado]
   );
 
   const guardarPantalla = async () => {
@@ -66,6 +94,7 @@ const DelegadoPantallaQR = forwardRef((_, ref) => {
         setNombrePantalla={setNombrePantalla}
         deviceId={deviceId}
         onGuardar={guardarPantalla}
+        nombreAutomatico
       />
 
       <QRDisplayDialog

@@ -48,6 +48,17 @@
   margin-top: 6px;
 }
 
+.date small {
+  display: block;
+}
+
+.requisitoPresencial {
+  margin-top: 4px;
+  color: #92400e;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .actions {
   display: flex;
   align-items: center;
