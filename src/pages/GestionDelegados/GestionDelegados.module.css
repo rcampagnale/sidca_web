@@ -326,6 +326,18 @@
   color: #94a3b8;
 }
 
+.telefonoEditButton {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  padding: 0 !important;
+  color: #b77900 !important;
+}
+
+.telefonoEditButton:hover {
+  background: #fff7ed !important;
+  color: #92400e !important;
+}
+
 .dashboardHint {
   color: #64748b;
   font-size: 0.85rem;

@@ -357,14 +357,60 @@ const normalizarPersona = (snap, origen) => {
     email: limpiarTexto(obtenerCampo(data, ["email", "correo", "mail", "Email", "Correo", "Mail"])),
     telefono: limpiarTexto(
       obtenerCampo(data, [
-        "telefono", "Telefono", "tel", "Tel",
-        "celular", "Celular", "whatsapp", "Whatsapp",
+        "celular",
+        "Celular",
+        "telefono",
+        "Telefono",
+        "tel",
+        "Tel",
+        "telefonoContacto",
+        "TelefonoContacto",
+        "whatsapp",
+        "Whatsapp",
       ])
     ),
     departamento: limpiarTexto(
       obtenerCampo(data, ["departamento", "Departamento", "depto", "Depto"])
     ),
     nivel: limpiarTexto(obtenerCampo(data, ["nivel", "Nivel"])),
+    afiliacion: limpiarTexto(
+      obtenerCampo(data, ["afiliacion", "Afiliacion", "afiliación", "Afiliación"])
+    ),
+    titulo: limpiarTexto(
+      obtenerCampo(data, [
+        "titulo",
+        "Titulo",
+        "título",
+        "Título",
+        "tituloGrado",
+        "titulo_de_grado",
+      ])
+    ),
+    descuento: limpiarTexto(obtenerCampo(data, ["descuento", "Descuento"])),
+    establecimiento: limpiarTexto(
+      obtenerCampo(data, [
+        "establecimiento",
+        "Establecimiento",
+        "establecimientos",
+        "Establecimientos",
+      ])
+    ),
+    mesa: limpiarTexto(
+      obtenerCampo(data, ["mesa", "Mesa", "mesaN", "mesaNumero", "mesa_n"])
+    ),
+    lugarVotacion: limpiarTexto(
+      obtenerCampo(data, [
+        "lugarVotacion",
+        "LugarVotacion",
+        "lugar_votacion",
+        "lugar de votacion",
+        "lugar de votación",
+      ])
+    ),
+    observaciones: limpiarTexto(
+      obtenerCampo(data, ["observaciones", "Observaciones", "observacion", "Observacion"])
+    ),
+    adherente: obtenerCampo(data, ["adherente", "Adherente"]),
     origen,
   };
 };
@@ -401,7 +447,17 @@ const buscarPersonaApp = async (dni) => {
     buscarPersonaEnColeccion("usuarios", dni),
     buscarPersonaEnColeccion("nuevoAfiliado", dni),
   ]);
-  const persona = nuevoAfiliado || usuarios;
+  const persona =
+    usuarios && nuevoAfiliado
+      ? {
+          ...nuevoAfiliado,
+          ...usuarios,
+          telefono: usuarios.telefono || nuevoAfiliado.telefono || "",
+          email: usuarios.email || nuevoAfiliado.email || "",
+          departamento: usuarios.departamento || nuevoAfiliado.departamento || "",
+          origen: "usuarios",
+        }
+      : usuarios || nuevoAfiliado;
   return {
     persona,
     registradoApp: !!persona,
@@ -413,6 +469,39 @@ const buscarPersonaApp = async (dni) => {
         : usuarios
         ? "usuarios"
         : "no_registrado",
+  };
+};
+
+const completarExpedienteConPersona = (expediente, personaApp, origenApp) => {
+  if (!personaApp) return expediente;
+
+  return {
+    ...expediente,
+    apellido: personaApp.apellido || expediente.apellido || "",
+    nombre: personaApp.nombre || expediente.nombre || "",
+    apellidoNombre:
+      personaApp.apellidoNombre || expediente.apellidoNombre || "",
+    telefono: personaApp.telefono || expediente.telefono || "",
+    email: personaApp.email || expediente.email || "",
+    departamento: personaApp.departamento || expediente.departamento || "",
+    nivel: personaApp.nivel || expediente.nivel || "",
+    afiliacion: personaApp.afiliacion || expediente.afiliacion || "",
+    titulo: personaApp.titulo || expediente.titulo || "",
+    descuento: personaApp.descuento || expediente.descuento || "",
+    establecimiento:
+      personaApp.establecimiento || expediente.establecimiento || "",
+    mesa: personaApp.mesa || expediente.mesa || "",
+    lugarVotacion: personaApp.lugarVotacion || expediente.lugarVotacion || "",
+    observacionesPersonales:
+      personaApp.observaciones || expediente.observacionesPersonales || "",
+    adherente:
+      personaApp.adherente !== undefined && personaApp.adherente !== null
+        ? personaApp.adherente
+        : expediente.adherente,
+    registradoApp: true,
+    origenApp: origenApp || personaApp.origen || expediente.origenApp || "",
+    datosPersonalesOrigen:
+      origenApp || personaApp.origen || expediente.datosPersonalesOrigen || "",
   };
 };
 
@@ -539,24 +628,96 @@ const mesTexto = (periodo) => {
 const obtenerMesLabel = (value) =>
   MESES_HABER.find((mes) => mes.value === value)?.label.toLowerCase() || value || "";
 
+const WHATSAPP_SINDICATO = "+54 9 383 423-0813";
+
+const normalizarTelefonoWhatsapp = (value) => {
+  let digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+
+  if (digits.startsWith("54")) {
+    if (!digits.startsWith("549") && digits.length >= 12) {
+      digits = `549${digits.slice(2)}`;
+    }
+    return digits;
+  }
+
+  if (digits.length === 10) return `549${digits}`;
+  if (digits.length === 11 && digits.startsWith("15")) return `549${digits.slice(2)}`;
+
+  return digits;
+};
+
+const abrirWhatsapp = ({ telefono, mensaje }) => {
+  const phone = normalizarTelefonoWhatsapp(telefono);
+  if (!phone || !mensaje) return false;
+
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+};
+
 const obtenerMesCobroSiguiente = (value) => {
   const index = MESES_HABER.findIndex((mes) => mes.value === value);
   if (index < 0) return "";
   return MESES_HABER[(index + 1) % MESES_HABER.length].value;
 };
 
-const construirMensajeFinalizacion = ({ afiliado, haberMes, cobroMes }) => {
+const ESTADOS_CIERRE_CON_OBSERVACION = ["SOLICITUD", "RECLAMO", "VARIOS"];
+
+const construirMensajeFinalizacion = ({
+  afiliado,
+  expediente,
+  haberMes,
+  cobroMes,
+  estado,
+  observacion,
+}) => {
+  if (ESTADOS_CIERRE_CON_OBSERVACION.includes(estado)) {
+    return construirMensajeCierreConObservacion({
+      afiliado,
+      expediente,
+      observacion,
+    });
+  }
+
+  return construirMensajeCierreExpediente({ afiliado, expediente, haberMes, cobroMes });
+};
+
+const construirMensajeCierreConObservacion = ({ afiliado, expediente, observacion }) => {
   const nombre = afiliado || "Docente";
-  const haber = obtenerMesLabel(haberMes);
-  const cobro = obtenerMesLabel(cobroMes);
-  const detalleCobro =
-    haber && cobro
-      ? ` y vas a cobrar el haber de ${haber} a cobrar en ${cobro}`
-      : "";
+  const estadoTexto = "Finalizado";
+  const expedienteTexto = limpiarTexto(expediente)
+    ? ` N° ${limpiarTexto(expediente)}`
+    : "";
+  const observacionTexto = limpiarTexto(observacion) || "Sin observación cargada.";
 
   return (
-    `Estimado Docente ${nombre}, su expediente se encuentra finalizado${detalleCobro}. ` +
-    "Desde el Sindicato Docente quedamos a disposición para acompañarte en lo que necesites. Saludos cordiales."
+    `Estimado/a docente ${nombre}:\n\n` +
+    `Le informamos que su expediente${expedienteTexto} se encuentra actualmente en estado ${estadoTexto}.\n\n` +
+    "Observación:\n" +
+    `${observacionTexto}\n\n` +
+    "Desde el Sindicato de Docentes de Catamarca quedamos a disposición para acompañarlo/a ante cualquier consulta o novedad.\n\n" +
+    "Saludos cordiales."
+  );
+};
+
+const construirMensajeCierreExpediente = ({ afiliado, expediente, haberMes, cobroMes }) => {
+  const nombre = afiliado || "Docente";
+  const expedienteTexto = limpiarTexto(expediente)
+    ? ` N° ${limpiarTexto(expediente)}`
+    : "";
+  const haber = obtenerMesLabel(haberMes) || "julio";
+  const cobro = obtenerMesLabel(cobroMes) || "agosto";
+
+  return (
+    `Estimado/a docente ${nombre}, le informamos que su expediente${expedienteTexto} se encuentra finalizado ` +
+    `y que percibirá el haber correspondiente al mes de ${haber}, a cobrar en ${cobro}.\n\n` +
+    "Desde el Sindicato de Docentes de Catamarca quedamos a disposición para acompañarlo/a ante cualquier consulta.\n\n" +
+    "Saludos cordiales."
   );
 };
 
@@ -660,6 +821,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const [visibleEstado, setVisibleEstado] = useState(false);
   const [visibleFinalizar, setVisibleFinalizar] = useState(false);
   const [visibleHistorial, setVisibleHistorial] = useState(false);
+  const [visibleEditarTelefono, setVisibleEditarTelefono] = useState(false);
+  const [telefonoEdicion, setTelefonoEdicion] = useState("");
+  const [guardandoTelefono, setGuardandoTelefono] = useState(false);
   const [observacion, setObservacion] = useState("");
   const [formEdicion, setFormEdicion] = useState({});
   const [mesHaberFinalizar, setMesHaberFinalizar] = useState("");
@@ -723,18 +887,35 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       const snap = await getDocs(
         query(collectionGroup(db, "expedientes"), orderBy("apellidoNombre", "asc"))
       );
-      setExpedientes(
-        snap.docs.map((item) => {
+      const personaCache = new Map();
+      const expedientesBase = await Promise.all(
+        snap.docs.map(async (item) => {
           const data = item.data();
-          return {
+          const dni = normalizarDni(data.dni || item.ref.parent.parent?.id || "");
+
+          if (dni && !personaCache.has(dni)) {
+            personaCache.set(dni, buscarPersonaApp(dni));
+          }
+
+          const resultadoPersona = dni ? await personaCache.get(dni) : null;
+          const expediente = {
             id: item.id,
             ...data,
+            dni: dni || data.dni || "",
             dependencia:
               normalizarDependencia(data.dependencia) ||
               limpiarTexto(data.dependencia),
           };
+
+          return completarExpedienteConPersona(
+            expediente,
+            resultadoPersona?.persona,
+            resultadoPersona?.origenApp
+          );
         })
       );
+
+      setExpedientes(expedientesBase);
     } catch (err) {
       console.error("[GestionDelegados] cargar expedientes:", err);
       toast.current?.show({
@@ -1000,11 +1181,37 @@ const GestionDelegados = ({ modo = "delegado" }) => {
           dni: item.dni,
           apellidoNombre: item.apellidoNombre,
           telefono: item.telefono || "",
+          email: item.email || "",
+          departamento: item.departamento || "",
+          afiliacion: item.afiliacion || "",
+          titulo: item.titulo || "",
+          descuento: item.descuento || "",
+          establecimiento: item.establecimiento || "",
+          mesa: item.mesa || "",
+          lugarVotacion: item.lugarVotacion || "",
+          observacionesPersonales: item.observacionesPersonales || "",
+          adherente: item.adherente,
+          origenApp: item.origenApp || "",
           expedientes: [],
         });
       }
       const grupo = mapa.get(key);
       if (!grupo.telefono && item.telefono) grupo.telefono = item.telefono;
+      if (!grupo.email && item.email) grupo.email = item.email;
+      if (!grupo.departamento && item.departamento) grupo.departamento = item.departamento;
+      if (!grupo.afiliacion && item.afiliacion) grupo.afiliacion = item.afiliacion;
+      if (!grupo.titulo && item.titulo) grupo.titulo = item.titulo;
+      if (!grupo.descuento && item.descuento) grupo.descuento = item.descuento;
+      if (!grupo.establecimiento && item.establecimiento) grupo.establecimiento = item.establecimiento;
+      if (!grupo.mesa && item.mesa) grupo.mesa = item.mesa;
+      if (!grupo.lugarVotacion && item.lugarVotacion) grupo.lugarVotacion = item.lugarVotacion;
+      if (!grupo.observacionesPersonales && item.observacionesPersonales) {
+        grupo.observacionesPersonales = item.observacionesPersonales;
+      }
+      if (grupo.adherente === undefined && item.adherente !== undefined) {
+        grupo.adherente = item.adherente;
+      }
+      if (!grupo.origenApp && item.origenApp) grupo.origenApp = item.origenApp;
       grupo.expedientes.push(item);
     });
     return Array.from(mapa.values()).sort((a, b) =>
@@ -1318,6 +1525,76 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     await cargarExpedientes();
   };
 
+  const abrirEditarTelefono = () => {
+    if (!afiliadoActivo) return;
+    setTelefonoEdicion(afiliadoActivo.telefono || "");
+    setVisibleEditarTelefono(true);
+  };
+
+  const guardarTelefonoAfiliado = async () => {
+    if (!afiliadoActivo?.dni || guardandoTelefono) return;
+
+    const telefonoLimpio = limpiarTexto(telefonoEdicion);
+    if (!telefonoLimpio) {
+      window.alert("Ingresá un número de celular.");
+      return;
+    }
+
+    setGuardandoTelefono(true);
+    try {
+      await Promise.all(
+        (afiliadoActivo.expedientes || []).map((exp) =>
+          updateDoc(refExpediente(afiliadoActivo.dni, exp.id), {
+            telefono: telefonoLimpio,
+            celularEditadoManual: true,
+            updatedAt: serverTimestamp(),
+            updatedBy: usuarioMovimiento,
+          })
+        )
+      );
+
+      setExpedientes((actuales) =>
+        actuales.map((exp) =>
+          exp.dni === afiliadoActivo.dni
+            ? {
+                ...exp,
+                telefono: telefonoLimpio,
+                celularEditadoManual: true,
+              }
+            : exp
+        )
+      );
+
+      if (seleccionado?.dni === afiliadoActivo.dni) {
+        setSeleccionado((actual) =>
+          actual
+            ? {
+                ...actual,
+                telefono: telefonoLimpio,
+                celularEditadoManual: true,
+              }
+            : actual
+        );
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Celular actualizado",
+        detail: `Se guardó el celular ${telefonoLimpio} para ${afiliadoActivo.apellidoNombre || "el afiliado"}.`,
+      });
+      setVisibleEditarTelefono(false);
+    } catch (err) {
+      console.error("[GestionDelegados] guardar telefono:", err);
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo guardar",
+        detail: "El celular no fue actualizado. Intentá nuevamente.",
+      });
+    } finally {
+      setGuardandoTelefono(false);
+    }
+  };
+
   const abrirFinalizarExpediente = () => {
     if (!seleccionado || seleccionado.finalizado || finalizandoExpediente) return;
     setMesHaberFinalizar(seleccionado.haberFinalizacionMes || "");
@@ -1328,17 +1605,25 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     if (!seleccionado || !permisos.cambiarEstado || seleccionado.finalizado) return;
     const haberFinalizacionMes = mesHaberFinalizar || "";
     const cobroFinalizacionMes = obtenerMesCobroSiguiente(haberFinalizacionMes);
+    const estadoFinalizacion = formEdicion.estado || seleccionado.estado;
+    const requiereMesHaber =
+      !ESTADOS_CIERRE_CON_OBSERVACION.includes(estadoFinalizacion);
 
-    if (!haberFinalizacionMes) {
+    if (requiereMesHaber && !haberFinalizacionMes) {
       window.alert("Seleccioná el mes de haber antes de finalizar el expediente.");
       return;
     }
 
     const mensajeFinalizacion = construirMensajeFinalizacion({
       afiliado: seleccionado.apellidoNombre,
+      expediente: seleccionado.expediente,
       haberMes: haberFinalizacionMes,
       cobroMes: cobroFinalizacionMes,
+      estado: estadoFinalizacion,
+      observacion:
+        formEdicion.observacionActual || seleccionado.observacionActual || "",
     });
+    const telefonoDestino = seleccionado.telefono || afiliadoActivo?.telefono || "";
     setFinalizandoExpediente(true);
     try {
       const payloadEdicion = {
@@ -1353,6 +1638,8 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         observacionActual: mensajeFinalizacion,
         finalizado: true,
         mensajeFinalizacion,
+        whatsappEmisor: WHATSAPP_SINDICATO,
+        whatsappDestino: normalizarTelefonoWhatsapp(telefonoDestino),
         haberFinalizacionMes,
         cobroFinalizacionMes,
         fechaFinalizacion: serverTimestamp(),
@@ -1371,11 +1658,22 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         estadoSueldoAnterior: seleccionado.estadoSueldo,
         estadoSueldoNuevo: payloadEdicion.estadoSueldo,
       });
+      const whatsappAbierto = abrirWhatsapp({
+        telefono: telefonoDestino,
+        mensaje: mensajeFinalizacion,
+      });
       toast.current?.show({
-        severity: "success",
+        severity: whatsappAbierto ? "success" : "warn",
         summary: "Expediente finalizado",
         detail: `Se finalizó el trámite de ${seleccionado.apellidoNombre || "el afiliado"}.`,
       });
+      if (!whatsappAbierto) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "WhatsApp no enviado",
+          detail: "No se encontró un teléfono válido del afiliado para abrir el mensaje.",
+        });
+      }
       setVisibleFinalizar(false);
       setVisibleEstado(false);
       await cargarExpedientes();
@@ -1675,11 +1973,20 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     );
 
   const mesCobroFinalizar = obtenerMesCobroSiguiente(mesHaberFinalizar);
-  const mensajePreviewFinalizacion = mesHaberFinalizar
+  const estadoFinalizacionPreview = formEdicion.estado || seleccionado?.estado;
+  const requiereMesHaberPreview =
+    !ESTADOS_CIERRE_CON_OBSERVACION.includes(estadoFinalizacionPreview);
+  const puedePrevisualizarFinalizacion =
+    !!seleccionado && (!requiereMesHaberPreview || !!mesHaberFinalizar);
+  const mensajePreviewFinalizacion = puedePrevisualizarFinalizacion
     ? construirMensajeFinalizacion({
         afiliado: seleccionado?.apellidoNombre,
+        expediente: seleccionado?.expediente,
         haberMes: mesHaberFinalizar,
         cobroMes: mesCobroFinalizar,
+        estado: estadoFinalizacionPreview,
+        observacion:
+          formEdicion.observacionActual || seleccionado?.observacionActual || "",
       })
     : "";
   const dimensionFiltroActual =
@@ -1979,6 +2286,17 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                       <i className="pi pi-phone" />{" "}
                       {afiliadoActivo.telefono || "Sin teléfono registrado"}
                     </span>
+                    <Button
+                      type="button"
+                      icon="pi pi-pencil"
+                      className={`p-button-text p-button-sm ${styles.telefonoEditButton}`}
+                      tooltip={
+                        afiliadoActivo.telefono
+                          ? "Editar celular"
+                          : "Agregar celular"
+                      }
+                      onClick={abrirEditarTelefono}
+                    />
                   </div>
                   <div className={styles.expedienteRowList}>
                     {afiliadoActivo.expedientes.map((exp) => (
@@ -2664,6 +2982,50 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       </Dialog>
 
       <Dialog
+        header={afiliadoActivo?.telefono ? "Editar celular" : "Agregar celular"}
+        visible={visibleEditarTelefono}
+        style={{ width: 460, maxWidth: "95vw" }}
+        modal
+        onHide={() => setVisibleEditarTelefono(false)}
+      >
+        <div className={styles.stateDialog}>
+          <p className={styles.emptyText}>
+            {afiliadoActivo?.apellidoNombre || "Afiliado"} · DNI{" "}
+            {afiliadoActivo?.dni || "-"}
+          </p>
+          <label>
+            <span>Celular</span>
+            <InputText
+              value={telefonoEdicion}
+              onChange={(e) => setTelefonoEdicion(e.target.value)}
+              className={styles.fullInput}
+              placeholder="Ej: 3834123456"
+              inputMode="tel"
+            />
+          </label>
+          <small className={styles.helpTextExport}>
+            Se guardará en los expedientes de este afiliado para poder usarlo en
+            los avisos por WhatsApp.
+          </small>
+        </div>
+        <div className={styles.dialogActions}>
+          <Button
+            label="Cancelar"
+            className="p-button-text"
+            onClick={() => setVisibleEditarTelefono(false)}
+            disabled={guardandoTelefono}
+          />
+          <Button
+            label="Guardar celular"
+            icon="pi pi-save"
+            className="p-button-success"
+            onClick={guardarTelefonoAfiliado}
+            loading={guardandoTelefono}
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
         header="Editar expediente"
         visible={visibleEstado}
         style={{ width: 620, maxWidth: "95vw" }}
@@ -2782,25 +3144,30 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       >
         <div className={styles.stateDialog}>
           <p className={styles.emptyText}>
-            Seleccioná el mes de haber. El mes a cobrar se calcula automáticamente como
-            el mes siguiente.
+            {requiereMesHaberPreview
+              ? "Seleccioná el mes de haber. El mes a cobrar se calcula automáticamente como el mes siguiente."
+              : "Para este estado se enviará el mensaje con la observación cargada en el expediente."}
           </p>
-          <label>
-            <span>Mes de haber</span>
-            <Dropdown
-              value={mesHaberFinalizar || ""}
-              options={MESES_HABER}
-              onChange={(e) => setMesHaberFinalizar(e.value)}
-              placeholder="Seleccionar mes de haber"
-              className={styles.fullInput}
-            />
-          </label>
-          {mesHaberFinalizar && (
+          {requiereMesHaberPreview && (
+            <label>
+              <span>Mes de haber</span>
+              <Dropdown
+                value={mesHaberFinalizar || ""}
+                options={MESES_HABER}
+                onChange={(e) => setMesHaberFinalizar(e.value)}
+                placeholder="Seleccionar mes de haber"
+                className={styles.fullInput}
+              />
+            </label>
+          )}
+          {mensajePreviewFinalizacion && (
             <div className={styles.infoBox}>
-              <span>
-                Haber de {obtenerMesLabel(mesHaberFinalizar)} · se cobra en{" "}
-                {obtenerMesLabel(mesCobroFinalizar)}
-              </span>
+              {requiereMesHaberPreview && (
+                <span>
+                  Haber de {obtenerMesLabel(mesHaberFinalizar)} · se cobra en{" "}
+                  {obtenerMesLabel(mesCobroFinalizar)}
+                </span>
+              )}
               <p>{mensajePreviewFinalizacion}</p>
             </div>
           )}
@@ -2813,12 +3180,15 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             disabled={finalizandoExpediente}
           />
           <Button
-            label="Confirmar finalización"
-            icon="pi pi-check-circle"
+            label="Confirmar cierre y enviar msj"
+            icon="pi pi-send"
             className="p-button-success"
             onClick={finalizarExpediente}
             loading={finalizandoExpediente}
-            disabled={!mesHaberFinalizar || finalizandoExpediente}
+            disabled={
+              (requiereMesHaberPreview && !mesHaberFinalizar) ||
+              finalizandoExpediente
+            }
           />
         </div>
       </Dialog>
