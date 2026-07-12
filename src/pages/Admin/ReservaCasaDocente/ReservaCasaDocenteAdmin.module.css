@@ -382,6 +382,80 @@
   font-weight: 600;
   box-shadow: 0 -1px 0 0 #ffffff, 0 -2px 0 0 #2563eb;
 }
+
+.appConfigSection {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.appConfigCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.appConfigKicker {
+  margin: 0 0 0.25rem;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.appConfigText {
+  margin: 0.35rem 0 0.9rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.appConfigActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.appConfigStatus {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.appConfigStatusOn {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.appConfigStatusOff {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.appConfigMessage {
+  margin: 0.8rem 0 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .appConfigCard {
+    grid-template-columns: 1fr;
+  }
+
+  .appConfigActions {
+    align-items: stretch;
+  }
+}
 /* ===== Autofill padrón (ReservarHabitacionAdmin) ===== */
 
 .autofillHelp {

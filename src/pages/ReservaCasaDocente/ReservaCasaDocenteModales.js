@@ -867,9 +867,13 @@ const ReservaCasaDocenteModales = ({
                     <div className={styles.reservaAutofillInput}>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Ingresá tu DNI"
                         value={dniBusqueda}
-                        onChange={(e) => setDniBusqueda(e.target.value)}
+                        onChange={(e) =>
+                          setDniBusqueda(e.target.value.replace(/\D/g, ""))
+                        }
                       />
                     </div>
                     <button
@@ -921,6 +925,8 @@ const ReservaCasaDocenteModales = ({
                       <input
                         id="resDni"
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         className={styles.reservaInput}
                         value={formDni}
                         readOnly
@@ -1091,9 +1097,13 @@ const ReservaCasaDocenteModales = ({
                 <div className={styles.reservaAutofillInput}>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="Ingresá tu DNI"
                     value={dniConsulta}
-                    onChange={(e) => setDniConsulta(e.target.value)}
+                    onChange={(e) =>
+                      setDniConsulta(e.target.value.replace(/\D/g, ""))
+                    }
                   />
                 </div>
                 <button

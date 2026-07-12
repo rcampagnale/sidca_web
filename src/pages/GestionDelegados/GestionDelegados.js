@@ -481,7 +481,9 @@ const completarExpedienteConPersona = (expediente, personaApp, origenApp) => {
     nombre: personaApp.nombre || expediente.nombre || "",
     apellidoNombre:
       personaApp.apellidoNombre || expediente.apellidoNombre || "",
-    telefono: personaApp.telefono || expediente.telefono || "",
+    telefono: expediente.celularEditadoManual
+      ? expediente.telefono || personaApp.telefono || ""
+      : personaApp.telefono || expediente.telefono || "",
     email: personaApp.email || expediente.email || "",
     departamento: personaApp.departamento || expediente.departamento || "",
     nivel: personaApp.nivel || expediente.nivel || "",
@@ -1551,6 +1553,34 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             updatedBy: usuarioMovimiento,
           })
         )
+      );
+
+      const [usuarioApp, nuevoAfiliadoApp] = await Promise.all([
+        buscarPersonaEnColeccion("usuarios", afiliadoActivo.dni),
+        buscarPersonaEnColeccion("nuevoAfiliado", afiliadoActivo.dni),
+      ]);
+
+      await Promise.all(
+        [
+          usuarioApp
+            ? updateDoc(doc(db, "usuarios", usuarioApp.id), {
+                telefono: telefonoLimpio,
+                celular: telefonoLimpio,
+                celularEditadoManual: true,
+                updatedAt: serverTimestamp(),
+                updatedBy: usuarioMovimiento,
+              })
+            : null,
+          nuevoAfiliadoApp
+            ? updateDoc(doc(db, "nuevoAfiliado", nuevoAfiliadoApp.id), {
+                telefono: telefonoLimpio,
+                celular: telefonoLimpio,
+                celularEditadoManual: true,
+                updatedAt: serverTimestamp(),
+                updatedBy: usuarioMovimiento,
+              })
+            : null,
+        ].filter(Boolean)
       );
 
       setExpedientes((actuales) =>

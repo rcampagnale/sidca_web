@@ -6,6 +6,7 @@ import BloqueoFecha from "./bloqueofecha";
 import ReservarHabitacionAdmin from "./ReservarHabitacionAdmin";
 import OcupacionAdmin from "./OcupacionAdmin";
 
+import { db } from "../../../firebase/firebase-config";
 import { dbReservas } from "../../../firebase/firebaseReservas";
 import {
   collection,
@@ -13,6 +14,8 @@ import {
   query,
   orderBy,
   doc,
+  setDoc,
+  serverTimestamp,
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
@@ -23,6 +26,114 @@ const ESTADOS = [
   { value: "confirmada", label: "Confirmada" },
   { value: "rechazada", label: "Rechazada" },
 ];
+
+const CasaDocenteHabilitarApp = () => {
+  const [reservaHabilitada, setReservaHabilitada] = useState(false);
+  const [cargandoConfig, setCargandoConfig] = useState(true);
+  const [guardandoConfig, setGuardandoConfig] = useState(false);
+  const [mensajeConfig, setMensajeConfig] = useState("");
+
+  useEffect(() => {
+    const ref = doc(db, "cod", "casaDocente");
+
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.exists() ? snap.data() : {};
+        setReservaHabilitada(data.reservaHabilitada === true);
+        setCargandoConfig(false);
+      },
+      (error) => {
+        console.error("[CasaDocenteHabilitarApp] Error leyendo cod/casaDocente:", error);
+        setCargandoConfig(false);
+        setMensajeConfig("No se pudo leer la configuración de la app.");
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const guardarReservaHabilitada = async (nuevoValor) => {
+    setGuardandoConfig(true);
+    setMensajeConfig("");
+
+    try {
+      await setDoc(
+        doc(db, "cod", "casaDocente"),
+        {
+          reservaHabilitada: nuevoValor,
+          actualizadoEn: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setMensajeConfig(
+        nuevoValor
+          ? "Reservas habilitadas en la app."
+          : "Reservas temporalmente deshabilitadas en la app."
+      );
+    } catch (error) {
+      console.error("[CasaDocenteHabilitarApp] Error guardando configuración:", error);
+      setMensajeConfig("No se pudo guardar la configuración. Intentá nuevamente.");
+    } finally {
+      setGuardandoConfig(false);
+    }
+  };
+
+  return (
+    <section className={styles.appConfigSection}>
+      <div className={styles.appConfigCard}>
+        <div>
+          <p className={styles.appConfigKicker}>Habilitar app</p>
+          <h2 className={styles.tableTitle}>Botón “Hace tu reserva”</h2>
+          <p className={styles.appConfigText}>
+            Controla en tiempo real si el botón de reserva de la Casa del Docente
+            queda disponible para los afiliados.
+          </p>
+        </div>
+
+        <div className={styles.appConfigActions}>
+          <span
+            className={`${styles.appConfigStatus} ${
+              reservaHabilitada ? styles.appConfigStatusOn : styles.appConfigStatusOff
+            }`}
+          >
+            {cargandoConfig
+              ? "Leyendo configuración..."
+              : reservaHabilitada
+              ? "Reserva habilitada"
+              : "Reserva deshabilitada"}
+          </span>
+          <button
+            type="button"
+            className={
+              reservaHabilitada ? styles.dangerButton : styles.primaryButton
+            }
+            onClick={() => guardarReservaHabilitada(!reservaHabilitada)}
+            disabled={cargandoConfig || guardandoConfig}
+          >
+            {guardandoConfig
+              ? "Guardando..."
+              : reservaHabilitada
+              ? "Deshabilitar reservas"
+              : "Habilitar reservas"}
+          </button>
+          <a
+            className={styles.linkButton}
+            href="https://sidcagremio.com/reserva-casa-docente"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver página pública
+          </a>
+        </div>
+      </div>
+
+      {mensajeConfig && (
+        <p className={styles.appConfigMessage}>{mensajeConfig}</p>
+      )}
+    </section>
+  );
+};
 
 /* =====================================
  * HELPERS DE FECHA / PRECIOS
@@ -577,6 +688,15 @@ const ReservaCasaDocenteAdmin = () => {
         >
           Ocupación
         </button>
+        <button
+          type="button"
+          className={`${styles.tabButton} ${
+            activeTab === "habilitarApp" ? styles.tabButtonActive : ""
+          }`}
+          onClick={() => setActiveTab("habilitarApp")}
+        >
+          Habilitar app
+        </button>
       </div>
 
       {/* ========= TAB 1: RESERVAS ========= */}
@@ -1012,6 +1132,9 @@ const ReservaCasaDocenteAdmin = () => {
           reservas={reservas}
         />
       )}
+
+      {/* ========= TAB 6: HABILITAR APP ========= */}
+      {activeTab === "habilitarApp" && <CasaDocenteHabilitarApp />}
     </div>
   );
 };

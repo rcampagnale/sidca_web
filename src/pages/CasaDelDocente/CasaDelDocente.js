@@ -1,9 +1,11 @@
 // src/pages/CasaDelDocente.js
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import styles from './styles.module.css';
 import { Button } from 'primereact/button';
 import { useHistory } from 'react-router';
 import { Carousel } from 'primereact/carousel';
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase/firebase-config";
 
 // Importar imágenes desde assets/casa
 import casa from '../../assets/casa/casa.jpg';
@@ -13,6 +15,28 @@ import casa3 from '../../assets/casa/casa3.jpg';
 
 const CasaDelDocente = () => {
   const history = useHistory();
+  const [reservaHabilitada, setReservaHabilitada] = useState(false);
+  const [cargandoConfigReserva, setCargandoConfigReserva] = useState(true);
+
+  useEffect(() => {
+    const ref = doc(db, "cod", "casaDocente");
+
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.exists() ? snap.data() : {};
+        setReservaHabilitada(data.reservaHabilitada === true);
+        setCargandoConfigReserva(false);
+      },
+      (error) => {
+        console.error("[CasaDelDocente] Error leyendo cod/casaDocente:", error);
+        setReservaHabilitada(false);
+        setCargandoConfigReserva(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const images = [
     { id: 0, src: casa,  alt: 'Casa del Docente - portada' },
@@ -54,18 +78,49 @@ const CasaDelDocente = () => {
       />
 
       <div className={styles.titleReserva}>Hace tu reserva</div>
-      <a
-        className={styles.whatsappBtn}
-        href="https://wa.me/5493834250139"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button
-          icon="pi pi-phone"
-          label="Reservar"
-          className="p-button-raised p-button-success"
-        />
-      </a>
+      {reservaHabilitada ? (
+        <a
+          className={styles.whatsappBtn}
+          href="https://sidcagremio.com/reserva-casa-docente"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            icon="pi pi-calendar-plus"
+            label="Reservar"
+            className="p-button-raised p-button-success"
+          />
+        </a>
+      ) : (
+        <div className={styles.reservaDisabledBox}>
+          <Button
+            icon="pi pi-lock"
+            label={
+              cargandoConfigReserva
+                ? "Consultando disponibilidad..."
+                : "Reservas temporalmente deshabilitadas"
+            }
+            className="p-button-raised p-button-secondary"
+            disabled
+          />
+          <small>Podés comunicarte por WhatsApp como alternativa.</small>
+        </div>
+      )}
+
+      <div className={styles.btn}>
+        <a
+          className={styles.whatsappBtn}
+          href="https://wa.me/5493834250139"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            icon="pi pi-whatsapp"
+            label="Consultar por WhatsApp"
+            className="p-button-raised p-button-success"
+          />
+        </a>
+      </div>
 
       {/* Nuevo botón Ver ubicación */}
       <div className={styles.btn}>
