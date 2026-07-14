@@ -316,6 +316,74 @@ const DispositivosBloqueados = () => {
         ]} />
         <Dropdown value={cursoFiltro} onChange={(e) => setCursoFiltro(e.value)} options={opcionesCurso} filter={opcionesCurso.length > 8} />
       </div>
+      {!loading && !error && filas.length > 0 && (
+        <div className={styles.mobileList}>
+          {filas.map((item) => {
+            const bloqueado = item.tipo === "bloqueado";
+            return (
+              <article className={`${styles.deviceCard} ${bloqueado ? styles.deviceCardBlocked : ""}`} key={`mobile-${item.id}`}>
+                <div className={styles.deviceCardHeader}>
+                  <div>
+                    <strong>{item.nombre || nombrePersona(item)}</strong>
+                    <span>DNI {item.dni || "-"}</span>
+                  </div>
+                  <Tag value={bloqueado ? "Bloqueado" : "Vinculado"} severity={bloqueado ? "danger" : "success"} />
+                </div>
+
+                <div className={styles.deviceCardGrid}>
+                  <div>
+                    <small>Curso</small>
+                    <span>{item.cursoTitulo || "Sin curso asociado"}</span>
+                    {item.sessionId && <em>QR/Sesión: {item.sessionId}</em>}
+                  </div>
+                  <div>
+                    <small>Dispositivo</small>
+                    <span>{item.modelo}</span>
+                    <em>{item.deviceId || item.dispositivoAsistenciaId || "ID no informado"}</em>
+                  </div>
+                  <div>
+                    <small>Fecha</small>
+                    <span>{fechaHora(item.fecha)}</span>
+                  </div>
+                  <div>
+                    <small>Intentos</small>
+                    <span>{bloqueado ? `${item.intentosCurso || 1} en curso · ${item.intentosTotal || 1} total` : "Sin bloqueos"}</span>
+                  </div>
+                </div>
+
+                <div className={styles.deviceCardDetail}>
+                  {bloqueado ? (
+                    <>
+                      <strong>{motivoLabel(item.motivo)}</strong>
+                      {item.titularNombre && (
+                        <span>
+                          Autorizado para {item.titularNombre}
+                          {item.titularDni ? ` · DNI ${item.titularDni}` : ""}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className={styles.muted}>Sin inconvenientes registrados</span>
+                  )}
+                </div>
+
+                {bloqueado && (
+                  <div className={styles.deviceCardAction}>
+                    {item.reinicio ? (
+                      <>
+                        <Tag value="Reiniciado" severity="info" />
+                        <span>{fechaHora(item.reinicio.creadoEn)}</span>
+                      </>
+                    ) : (
+                      <Button label="Reiniciar dispositivo" icon="pi pi-refresh" className="p-button-sm p-button-warning p-button-outlined" loading={reiniciando === item.id} disabled={Boolean(reiniciando)} onClick={() => reiniciarDispositivo(item)} />
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
       {loading ? <div className={styles.message}><ProgressSpinner /><span>Cargando dispositivos...</span></div> : error ? <div className={styles.error}>{error}</div> : filas.length === 0 ? <div className={styles.message}>No hay dispositivos que coincidan con el filtro.</div> : (
         <div className={styles.tableWrap}><table><thead><tr><th>Estado</th><th>Afiliado</th><th>Curso</th><th>Dispositivo</th><th>Fecha</th><th>Detalle del bloqueo</th><th>Acción</th></tr></thead><tbody>
           {filas.map((item) => <tr key={item.id}>

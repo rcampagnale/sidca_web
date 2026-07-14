@@ -632,3 +632,194 @@
   border: 1px solid #dee2e6;
 }
 
+@media (max-width: 900px) {
+  .wrapper {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 1rem;
+    box-sizing: border-box;
+  }
+
+  .headerRow {
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .headerRow > div {
+    min-width: 0;
+  }
+
+  .title {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .primaryButton {
+    min-height: 2.35rem;
+  }
+
+  .listadoSection,
+  .tableWrapper {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tableWrapper {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .habitacionesTable,
+  .habitacionesTable thead,
+  .habitacionesTable tbody,
+  .habitacionesTable th,
+  .habitacionesTable td,
+  .habitacionesTable tr {
+    display: block;
+  }
+
+  .habitacionesTable thead {
+    display: none;
+  }
+
+  .habitacionesTable tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .habitacionesTable tbody tr {
+    width: 100%;
+    max-width: 100%;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .habitacionesTable td {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    word-break: break-word;
+    box-sizing: border-box;
+  }
+
+  .habitacionesTable td:last-child {
+    border-bottom: 0;
+  }
+
+  .habitacionesTable td::before {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .habitacionesTable td:nth-child(1)::before {
+    content: "Tipo";
+  }
+
+  .habitacionesTable td:nth-child(2)::before {
+    content: "Camas";
+  }
+
+  .habitacionesTable td:nth-child(3)::before {
+    content: "Baños";
+  }
+
+  .habitacionesTable td:nth-child(4)::before {
+    content: "Precio af.";
+  }
+
+  .habitacionesTable td:nth-child(5)::before {
+    content: "Precio no af.";
+  }
+
+  .habitacionesTable td:nth-child(6)::before {
+    content: "Precio final";
+  }
+
+  .habitacionesTable td:nth-child(7)::before {
+    content: "Ubicación";
+  }
+
+  .habitacionesTable td:nth-child(8)::before {
+    content: "Cochera";
+  }
+
+  .habitacionesTable td:nth-child(9)::before {
+    content: "Acciones";
+  }
+
+  .actionCell {
+    white-space: normal;
+  }
+
+  .actionButtons {
+    flex-wrap: wrap;
+  }
+
+  .smallButton {
+    flex: 1 1 6rem;
+    justify-content: center;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 95%;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerRow {
+    flex-direction: column;
+  }
+
+  .primaryButton {
+    width: 100%;
+  }
+
+  .habitacionesTable td {
+    grid-template-columns: 98px minmax(0, 1fr);
+    gap: 0.45rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .habitacionesTable td::before {
+    font-size: 0.68rem;
+  }
+
+  .modalOverlay {
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .modalFooter {
+    flex-direction: column;
+  }
+
+  .modalFooter button {
+    width: 100%;
+  }
+}
+

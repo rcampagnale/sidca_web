@@ -121,9 +121,8 @@ const AdminHeader = () => {
           className="p-button-rounded p-button-warning p-button-text"
           onClick={() => setActive(!active)}
         />
+        {active && <NavUser active={active} setActive={setActive} />}
       </div>
-
-      {active && <NavUser active={active} setActive={setActive} />}
     </>
   );
 };

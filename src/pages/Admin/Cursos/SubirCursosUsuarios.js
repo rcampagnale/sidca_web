@@ -40,16 +40,21 @@ const SubirCursosUsuarios = ({ curso, noSubidos }) => {
     }, [noSubidos])
 
     return (
-        <>
-            <h3 className={styles.title}>Subir Usuarios de: {curso.titulo}</h3>
+        <section className={styles.uploadUsersPanel}>
+            <div className={styles.uploadUsersHeader}>
+                <span className={styles.uploadUsersEyebrow}>Carga de usuarios</span>
+                <h3 className={styles.uploadUsersTitle}>Subir usuarios</h3>
+                <p className={styles.uploadUsersCourse}>{curso.titulo}</p>
+            </div>
+
             <FileUpload
                 maxFileSize={1000000}
                 mode='advanced'
                 label="Subir"
                 chooseLabel="Excel"
                 uploadLabel='Subir'
-                cancelLabel='Cacelar'
-                className="mr-2 inline-block"
+                cancelLabel='Cancelar'
+                className={styles.uploadUsersFile}
                 multiple={false}
                 customUpload
                 onSelect={handleSelectExcel}
@@ -65,22 +70,27 @@ const SubirCursosUsuarios = ({ curso, noSubidos }) => {
             {
                 //TODO ver como hacer para que se muestren los noSubidos
                 noSubidosFinal?.length > 0 ?
-                <table>
-                    <th><tr>DNI no subidos</tr></th>
+                <table className={styles.notUploadedTable}>
+                    <thead>
+                        <tr>
+                            <th>DNI no subidos</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <td>
-                            {
-                                noSubidosFinal?.map(nosubido => (
-                                    <tr>
-                                        {nosubido}
-                                    </tr>
-                                ))}
-                        </td>
+                        {noSubidosFinal?.map(nosubido => (
+                            <tr key={nosubido}>
+                                <td>{nosubido}</td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
-                : excelTable.rows && <OutTable data={excelTable.rows} columns={excelTable.cols} tableClassName="ExcelTable2007" tableHeaderRowClass="heading" />
+                : excelTable.rows && (
+                    <div className={styles.excelPreviewWrap}>
+                        <OutTable data={excelTable.rows} columns={excelTable.cols} tableClassName="ExcelTable2007" tableHeaderRowClass="heading" />
+                    </div>
+                )
             }
-        </>
+        </section>
     )
 }
 

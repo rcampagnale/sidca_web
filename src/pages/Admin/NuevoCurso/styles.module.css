@@ -1,9 +1,10 @@
 .visibleContent {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px 12px;
 }
 
 .container {
@@ -11,14 +12,16 @@
   flex-flow: column wrap;
   align-items: center;
   justify-content: center;
-  width: 30vw;
-  height: 90%;
+  width: min(560px, 92vw);
+  min-height: 90%;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   padding: 20px;
+  border-radius: 12px;
+  background: #fff;
 }
 
 .formAdmin {
-  width: 80%;
+  width: 100%;
   text-align: center;
   padding-bottom: 20px;
 }
@@ -36,6 +39,7 @@
 }
 
 .inputSection {
+  display: block;
   margin-bottom: 1.6rem;
 }
 
@@ -45,8 +49,10 @@
 
 .img {
   width: 100%;
-  height: 100%;
+  max-height: 260px;
   object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
 }
 
 .buttonsRow {
@@ -54,4 +60,73 @@
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .visibleContent {
+    align-items: flex-start;
+    padding: 14px 10px 28px;
+  }
+
+  .container {
+    width: 100%;
+    min-height: auto;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .title {
+    margin: 4px 0 22px;
+    font-size: 1.65rem;
+    line-height: 1.05;
+    text-align: left;
+  }
+
+  .inputSection {
+    margin-bottom: 1.35rem;
+  }
+
+  .inputForm,
+  .inputForm :global(.p-dropdown),
+  .inputForm :global(.p-inputtext) {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .formAdmin :global(.p-inputtext),
+  .formAdmin :global(.p-inputtextarea),
+  .formAdmin :global(.p-dropdown) {
+    width: 100%;
+    max-width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .formAdmin :global(.p-dropdown-label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .formAdmin :global(.p-fileupload),
+  .formAdmin :global(.p-fileupload-buttonbar),
+  .formAdmin :global(.p-fileupload-content) {
+    width: 100%;
+  }
+
+  .formAdmin :global(.p-fileupload-choose) {
+    width: 100%;
+    justify-content: center;
+    border-radius: 0.65rem;
+  }
+
+  .buttonsRow {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .submitButton {
+    width: 100%;
+    justify-content: center;
+    border-radius: 0.65rem;
+  }
 }

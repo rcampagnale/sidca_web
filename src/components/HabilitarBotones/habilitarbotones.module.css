@@ -50,6 +50,12 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+.asistenciaDialog :global(.p-dropdown-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ==============================
    LOADING
    ============================== */
@@ -229,11 +235,139 @@
   white-space: nowrap;
 }
 
+.delegadosTableCard :global(.p-datatable .p-datatable-tbody > tr > td) {
+  vertical-align: top;
+}
+
+.delegadosMobileList {
+  display: none;
+}
+
+.delegadosMobileEmpty {
+  margin: 0;
+  padding: 1rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.delegadoMobileCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  padding: 0.9rem;
+}
+
+.delegadoMobileHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.delegadoMobileHeader h5 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.delegadoMobileHeader p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.delegadoMobileMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  padding: 0.7rem 0;
+}
+
+.delegadoMobileMeta span,
+.delegadoMobilePermisos {
+  min-width: 0;
+  color: #334155;
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
+.delegadoMobileMeta b,
+.delegadoMobilePermisos > b {
+  display: block;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.15rem;
+}
+
+.delegadoMobileBadges,
+.delegadoMobilePermisos div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.delegadoMobilePermisos {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.delegadoMobilePermisos small {
+  color: #94a3b8;
+}
+
+.delegadoMobileActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.delegadoMobileActions :global(.p-button) {
+  justify-content: center;
+  width: 100%;
+}
+
 /* ==============================
    RESPONSIVE
    ============================== */
 
 @media (max-width: 780px) {
+  .asistenciaDialog {
+    width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    margin: 0 auto;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .asistenciaDialog :global(.p-dialog-header) {
+    padding: 1rem 1.15rem 0.75rem;
+  }
+
+  .asistenciaDialog :global(.p-dialog-title) {
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .asistenciaDialog :global(.p-dialog-content) {
+    padding: 0 1.15rem 1rem;
+    max-height: calc(100dvh - 110px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .asistenciaDialog :global(.p-dropdown-label) {
+    font-size: 0.85rem;
+  }
+
   .habilitar_funciones {
     padding: 14px;
     gap: 1.3rem;
@@ -255,6 +389,75 @@
   .delegadosFormGrid,
   .permisosGrid {
     grid-template-columns: 1fr;
+  }
+
+  .delegadosTableCard {
+    padding: 0.9rem;
+  }
+
+  .delegadosMobileList {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .delegadosTableCard :global(.p-datatable) {
+    display: none;
+  }
+
+  .delegadosTableCard :global(.p-datatable-wrapper) {
+    overflow: visible;
+  }
+
+  .delegadosTableCard :global(.p-datatable .p-datatable-thead) {
+    display: none;
+  }
+
+  .delegadosTableCard :global(.p-datatable .p-datatable-tbody > tr) {
+    display: block;
+    padding: 0.85rem;
+    margin-bottom: 0.85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  }
+
+  .delegadosTableCard :global(.p-datatable .p-datatable-tbody > tr > td) {
+    display: grid !important;
+    grid-template-columns: minmax(92px, 35%) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.5rem;
+    width: 100% !important;
+    padding: 0.45rem 0 !important;
+    border: 0 !important;
+    text-align: left !important;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .delegadosTableCard :global(.p-column-title) {
+    display: block !important;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .permisosTags {
+    max-width: none;
+  }
+
+  .tableActions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    white-space: normal;
+  }
+
+  .tableActions :global(.p-button.p-button-sm) {
+    width: 2.35rem;
+    height: 2.35rem;
   }
 
   .dniSearchRow {

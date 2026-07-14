@@ -5,6 +5,7 @@ import HabitacionesAdmin from "./HabitacionesAdmin";
 import BloqueoFecha from "./bloqueofecha";
 import ReservarHabitacionAdmin from "./ReservarHabitacionAdmin";
 import OcupacionAdmin from "./OcupacionAdmin";
+import * as XLSX from "xlsx";
 
 import { db } from "../../../firebase/firebase-config";
 import { dbReservas } from "../../../firebase/firebaseReservas";
@@ -27,7 +28,25 @@ const ESTADOS = [
   { value: "rechazada", label: "Rechazada" },
 ];
 
-const CasaDocenteHabilitarApp = () => {
+const getEstadoLabel = (estado) =>
+  ESTADOS.find((item) => item.value === estado)?.label || estado || "-";
+
+const getNombreEstiloExport = (tipo) => {
+  const mapa = {
+    simple: "Simple",
+    doble: "Doble",
+    triple: "Triple",
+    cuadruple: "Cuádruple",
+    departamento: "Departamento",
+  };
+  return mapa[tipo] || tipo || "-";
+};
+
+const CasaDocenteHabilitarApp = ({
+  reservas = [],
+  habitaciones = [],
+  habitacionesPorId = {},
+}) => {
   const [reservaHabilitada, setReservaHabilitada] = useState(false);
   const [cargandoConfig, setCargandoConfig] = useState(true);
   const [guardandoConfig, setGuardandoConfig] = useState(false);
@@ -79,15 +98,107 @@ const CasaDocenteHabilitarApp = () => {
     }
   };
 
+  const getHabitacionExport = (reserva) => {
+    if (!reserva) return null;
+    if (reserva.idHabitacion && habitacionesPorId[reserva.idHabitacion]) {
+      return habitacionesPorId[reserva.idHabitacion];
+    }
+    if (reserva.tipo) {
+      return habitaciones.find((h) => h.tipo === reserva.tipo) || null;
+    }
+    return null;
+  };
+
+  const descargarReservasExcel = () => {
+    if (!reservas.length) {
+      setMensajeConfig("No hay reservas cargadas para descargar.");
+      return;
+    }
+
+    const filas = reservas.map((reserva) => {
+      const habitacion = getHabitacionExport(reserva);
+      const {
+        precioAfNoche,
+        precioNoAfNoche,
+        precioFinalNoche,
+        noches,
+        totalReserva,
+        gastosVarios,
+        totalGeneral,
+        diasExtra,
+        cantNoAfiliados,
+      } = calcularPreciosReservaAdmin(reserva, habitacion);
+
+      return {
+        "Habitación": reserva.nombreHabitacion || reserva.idHabitacion || "-",
+        "Estilo": getNombreEstiloExport(reserva.tipo),
+        "Afiliado": reserva.apellidoNombre || "",
+        "DNI": reserva.dni || "",
+        "Email": reserva.email || "",
+        "Celular": reserva.celular || "",
+        "Ingreso": formatearFecha(reserva.fechaIngreso),
+        "Egreso": formatearFecha(reserva.fechaEgreso),
+        "Noches": noches || 0,
+        "Personas": reserva.cantidadPersonas || "",
+        "No afiliados": cantNoAfiliados || 0,
+        "Precio afiliado noche": precioAfNoche || 0,
+        "Precio no afiliado noche": precioNoAfNoche || 0,
+        "Precio final noche": precioFinalNoche || 0,
+        "Subtotal estadía": totalReserva || 0,
+        "Días extra": diasExtra || 0,
+        "Gastos varios": gastosVarios || 0,
+        "Total general": totalGeneral || 0,
+        "Estado": getEstadoLabel(reserva.estado),
+        "Fecha solicitud": formatearFecha(reserva.fechaCreacion),
+        "Notas / motivo": reserva.notasAdmin || reserva.motivo || "",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(filas);
+    worksheet["!cols"] = [
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 28 },
+      { wch: 12 },
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 22 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 35 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reservas");
+
+    const fechaArchivo = new Date()
+      .toISOString()
+      .slice(0, 16)
+      .replace(/[-:T]/g, "");
+    XLSX.writeFile(workbook, `reservas_casa_docente_${fechaArchivo}.xlsx`);
+  };
+
   return (
     <section className={styles.appConfigSection}>
       <div className={styles.appConfigCard}>
         <div>
-          <p className={styles.appConfigKicker}>Habilitar app</p>
+          <p className={styles.appConfigKicker}>Configuración y exportación</p>
           <h2 className={styles.tableTitle}>Botón “Hace tu reserva”</h2>
           <p className={styles.appConfigText}>
             Controla en tiempo real si el botón de reserva de la Casa del Docente
-            queda disponible para los afiliados.
+            queda disponible para los afiliados y descarga el listado completo de
+            reservas cargadas.
           </p>
         </div>
 
@@ -116,6 +227,13 @@ const CasaDocenteHabilitarApp = () => {
               : reservaHabilitada
               ? "Deshabilitar reservas"
               : "Habilitar reservas"}
+          </button>
+          <button
+            type="button"
+            className={styles.exportButton}
+            onClick={descargarReservasExcel}
+          >
+            Descargar reservas Excel
           </button>
           <a
             className={styles.linkButton}
@@ -157,6 +275,36 @@ const toDate = (valor) => {
 
   const d = new Date(str);
   return isNaN(d.getTime()) ? null : d;
+};
+
+const toTimestampOrden = (valor) => {
+  if (!valor) return 0;
+
+  if (typeof valor === "object" && valor.toDate) {
+    return valor.toDate().getTime();
+  }
+
+  if (valor instanceof Date) {
+    return valor.getTime();
+  }
+
+  if (typeof valor === "number") {
+    return valor;
+  }
+
+  const str = String(valor);
+  const fechaCompleta = new Date(str);
+  if (!isNaN(fechaCompleta.getTime())) {
+    return fechaCompleta.getTime();
+  }
+
+  const soloFecha = str.split("T")[0];
+  const [yyyy, mm, dd] = soloFecha.split("-");
+  if (yyyy && mm && dd) {
+    return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
+  }
+
+  return 0;
 };
 
 // 🔹 Calcula cantidad de noches entre ingreso y egreso
@@ -238,6 +386,9 @@ const calcularPreciosReservaAdmin = (reserva, habitacion) => {
 
   const noches = calcularNoches(reserva?.fechaIngreso, reserva?.fechaEgreso);
   const totalReserva = precioFinalNoche * (noches || 1);
+  const gastosVarios = Number(reserva?.gastosVarios || 0);
+  const totalGeneral = totalReserva + gastosVarios;
+  const diasExtra = Number(reserva?.diasExtra || (reserva?.diaExtraAplicado ? 1 : 0));
 
   return {
     precioAfNoche,
@@ -245,6 +396,9 @@ const calcularPreciosReservaAdmin = (reserva, habitacion) => {
     precioFinalNoche,
     noches,
     totalReserva,
+    gastosVarios,
+    totalGeneral,
+    diasExtra,
     cantNoAfiliados,
   };
 };
@@ -298,11 +452,13 @@ const ReservaCasaDocenteAdmin = () => {
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroDesde, setFiltroDesde] = useState("");
   const [filtroHasta, setFiltroHasta] = useState("");
+  const [mostrarFiltrosMobile, setMostrarFiltrosMobile] = useState(false);
 
   // Modal reservas
   const [selectedReserva, setSelectedReserva] = useState(null);
   const [modalEstado, setModalEstado] = useState("pendiente");
   const [modalNotas, setModalNotas] = useState("");
+  const [modalGastosVarios, setModalGastosVarios] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   /* =====================================
@@ -405,15 +561,12 @@ const ReservaCasaDocenteAdmin = () => {
 
     // 2) Ordenamos por fecha de creación: más reciente → más vieja
     return filtradas.slice().sort((a, b) => {
-      const getTs = (r) => {
-        if (r.fechaCreacion) {
-          const d = toDate(r.fechaCreacion);
-          if (d) return d.getTime();
-        }
-        // fallback: fechaIngreso
-        const d = toDate(r.fechaIngreso);
-        return d ? d.getTime() : 0;
-      };
+      const getTs = (r) =>
+        toTimestampOrden(r.fechaCreacion) ||
+        toTimestampOrden(r.updatedAt) ||
+        toTimestampOrden(r.fechaActualizacion) ||
+        toTimestampOrden(r.fechaIngreso) ||
+        0;
       return getTs(b) - getTs(a);
     });
   }, [reservas, filtroDni, filtroEstado, filtroDesde, filtroHasta]);
@@ -436,12 +589,18 @@ const ReservaCasaDocenteAdmin = () => {
     setSelectedReserva(reserva);
     setModalEstado(reserva.estado);
     setModalNotas(reserva.notasAdmin || "");
+    setModalGastosVarios(
+      reserva.gastosVarios !== undefined && reserva.gastosVarios !== null
+        ? String(reserva.gastosVarios)
+        : ""
+    );
     setIsModalOpen(true);
   };
 
   const cerrarModal = () => {
     setIsModalOpen(false);
     setSelectedReserva(null);
+    setModalGastosVarios("");
   };
 
   // 👉 helpers para WhatsApp
@@ -470,11 +629,12 @@ const ReservaCasaDocenteAdmin = () => {
     return mapa[tipo] || tipo || "-";
   };
 
-  // Emojis para WhatsApp (Unicode seguro)
-  const EMOJI_CLIPBOARD = "\uD83D\uDCCB"; // 📋
-  const EMOJI_MONEY = "\uD83D\uDCB0"; // 💰
-  const EMOJI_CLOCK = "\uD83D\uDD52"; // 🕒
-  const EMOJI_WARNING = "\u26A0\uFE0F"; // ⚠️
+  // Emojis para WhatsApp
+  const EMOJI_HOME = "🏠";
+  const EMOJI_DETAILS = "📌";
+  const EMOJI_MONEY = "💵";
+  const EMOJI_CLOCK = "⏰";
+  const EMOJI_WARNING = "⚠️";
 
   const buildWhatsappMessage = (reserva, nuevoEstado, notasAdmin) => {
     const estadoLabel =
@@ -490,8 +650,8 @@ const ReservaCasaDocenteAdmin = () => {
 
     // Encabezado + detalles
     let mensaje =
-      `Hola ${nombre}, desde SIDCA te informamos que tu reserva en la Casa del Docente fue *${estadoLabel}*.\n\n` +
-      `${EMOJI_CLIPBOARD} Detalles de la reserva:\n` +
+      `${EMOJI_HOME} Hola ${nombre}, desde SIDCA te informamos que tu reserva en la Casa del Docente fue *${estadoLabel}*.\n\n` +
+      `${EMOJI_DETAILS} Detalles de la reserva:\n` +
       `* Habitación: ${habitacion} (${estilo})\n` +
       `* Fechas: ${fechas}\n` +
       `* Personas: ${personas}\n`;
@@ -499,7 +659,7 @@ const ReservaCasaDocenteAdmin = () => {
     // Importe + horarios + importante SOLO si está confirmada
     if (nuevoEstado === "confirmada") {
       const hab = getHabitacionDeReserva(reserva);
-      const { precioFinalNoche, noches, totalReserva } =
+      const { precioFinalNoche, noches, totalReserva, gastosVarios, totalGeneral, diasExtra } =
         calcularPreciosReservaAdmin(reserva, hab);
 
       mensaje += `\n${EMOJI_MONEY} Importe de la estadía:\n`;
@@ -509,8 +669,17 @@ const ReservaCasaDocenteAdmin = () => {
       if (noches) {
         mensaje += `* Noches: ${noches}\n`;
       }
+      if (diasExtra) {
+        mensaje += `* Días extra: ${diasExtra}\n`;
+      }
       if (totalReserva) {
-        mensaje += `* Total: $${totalReserva}\n`;
+        mensaje += `* Subtotal estadía: $${totalReserva}\n`;
+      }
+      if (gastosVarios) {
+        mensaje += `* Gastos varios: $${gastosVarios}\n`;
+      }
+      if (totalGeneral) {
+        mensaje += `* Total general: $${totalGeneral}\n`;
       }
 
       mensaje +=
@@ -555,6 +724,9 @@ const ReservaCasaDocenteAdmin = () => {
 
     const estadoAnterior = selectedReserva.estado;
     const nuevoEstado = modalEstado;
+    const gastosVarios = Math.max(Number(modalGastosVarios) || 0, 0);
+    const hab = getHabitacionDeReserva(selectedReserva);
+    const { totalReserva } = calcularPreciosReservaAdmin(selectedReserva, hab);
 
     try {
       const reservaRef = doc(
@@ -566,6 +738,8 @@ const ReservaCasaDocenteAdmin = () => {
       await updateDoc(reservaRef, {
         estado: nuevoEstado,
         notasAdmin: modalNotas,
+        gastosVarios,
+        totalGeneral: totalReserva + gastosVarios,
       });
 
       // 🔔 Si cambió el estado a CONFIRMADA o RECHAZADA, disparamos WhatsApp
@@ -573,11 +747,18 @@ const ReservaCasaDocenteAdmin = () => {
         estadoAnterior !== nuevoEstado &&
         (nuevoEstado === "confirmada" || nuevoEstado === "rechazada")
       ) {
-        const celularNormalizado = normalizarCelular(selectedReserva.celular);
+        const reservaActualizada = {
+          ...selectedReserva,
+          estado: nuevoEstado,
+          notasAdmin: modalNotas,
+          gastosVarios,
+          totalGeneral: totalReserva + gastosVarios,
+        };
+        const celularNormalizado = normalizarCelular(reservaActualizada.celular);
 
         if (celularNormalizado) {
           const mensaje = buildWhatsappMessage(
-            selectedReserva,
+            reservaActualizada,
             nuevoEstado,
             modalNotas
           );
@@ -623,6 +804,29 @@ const ReservaCasaDocenteAdmin = () => {
     if (estado === "rechazada") className += " " + styles.badgeRechazada;
     return (
       <span className={className}>{String(estado || "").toUpperCase()}</span>
+    );
+  };
+
+  const renderEstadoReserva = (reserva) => {
+    const gastosVarios = Number(reserva?.gastosVarios || 0);
+    const diasExtra = Number(reserva?.diasExtra || (reserva?.diaExtraAplicado ? 1 : 0));
+    const tieneGastosPendientes =
+      reserva?.estado === "confirmada" && gastosVarios > 0;
+
+    return (
+      <div className={styles.estadoStack}>
+        {renderEstadoBadge(reserva?.estado)}
+        {diasExtra > 0 && (
+          <span className={`${styles.badge} ${styles.badgeDiaExtra}`}>
+            +{diasExtra} día{diasExtra !== 1 ? "s" : ""} extra
+          </span>
+        )}
+        {tieneGastosPendientes && (
+          <span className={`${styles.badge} ${styles.badgeGastos}`}>
+            Gastos pendientes
+          </span>
+        )}
+      </div>
     );
   };
 
@@ -695,7 +899,7 @@ const ReservaCasaDocenteAdmin = () => {
           }`}
           onClick={() => setActiveTab("habilitarApp")}
         >
-          Habilitar app
+          App y exportación
         </button>
       </div>
 
@@ -703,7 +907,19 @@ const ReservaCasaDocenteAdmin = () => {
       {activeTab === "reservas" && (
         <>
           {/* Filtros */}
-          <section className={styles.filters}>
+          <button
+            type="button"
+            className={styles.mobileFiltersToggle}
+            onClick={() => setMostrarFiltrosMobile((actual) => !actual)}
+          >
+            {mostrarFiltrosMobile ? "Ocultar filtros" : "Filtros / acciones"}
+          </button>
+
+          <section
+            className={`${styles.filters} ${styles.filtersCollapsible} ${
+              mostrarFiltrosMobile ? styles.filtersCollapsibleOpen : ""
+            }`}
+          >
             <div className={styles.filterGroup}>
               <label className={styles.label} htmlFor="filtroDni">
                 DNI
@@ -789,7 +1005,7 @@ const ReservaCasaDocenteAdmin = () => {
                   No se encontraron reservas con los filtros seleccionados.
                 </p>
               ) : (
-                <table className={styles.table}>
+                <table className={`${styles.table} ${styles.reservasTable}`}>
                   <thead>
                     <tr>
                       <th>Habitación</th>
@@ -812,12 +1028,12 @@ const ReservaCasaDocenteAdmin = () => {
                       const {
                         precioAfNoche,
                         precioNoAfNoche,
-                        totalReserva,
+                        totalGeneral,
                       } = calcularPreciosReservaAdmin(r, hab);
 
                       const precioAf = formatCurrency(precioAfNoche);
                       const precioNoAf = formatCurrency(precioNoAfNoche);
-                      const precioFinal = formatCurrency(totalReserva);
+                      const precioFinal = formatCurrency(totalGeneral);
 
                       return (
                         <tr key={r.id}>
@@ -831,7 +1047,7 @@ const ReservaCasaDocenteAdmin = () => {
                           <td>{precioAf}</td>
                           <td>{precioNoAf}</td>
                           <td>{precioFinal}</td>
-                          <td>{renderEstadoBadge(r.estado)}</td>
+                          <td>{renderEstadoReserva(r)}</td>
                           <td>
                             <button
                               type="button"
@@ -877,6 +1093,9 @@ const ReservaCasaDocenteAdmin = () => {
                       precioFinalNoche,
                       noches,
                       totalReserva,
+                      gastosVarios,
+                      totalGeneral,
+                      diasExtra,
                       cantNoAfiliados,
                     } = calcularPreciosReservaAdmin(selectedReserva, hab);
 
@@ -1019,6 +1238,12 @@ const ReservaCasaDocenteAdmin = () => {
                             </p>
                           </div>
                           <div>
+                            <p className={styles.modalLabel}>Días extra</p>
+                            <p className={styles.modalValue}>
+                              {diasExtra ? `${diasExtra} día${diasExtra !== 1 ? "s" : ""}` : "-"}
+                            </p>
+                          </div>
+                          <div>
                             <p className={styles.modalLabel}>
                               Precio final (noche)
                             </p>
@@ -1032,6 +1257,18 @@ const ReservaCasaDocenteAdmin = () => {
                             </p>
                             <p className={styles.modalValue}>
                               {formatCurrency(totalReserva)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={styles.modalLabel}>Gastos varios</p>
+                            <p className={styles.modalValue}>
+                              {gastosVarios ? formatCurrency(gastosVarios) : "-"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={styles.modalLabel}>Total general</p>
+                            <p className={styles.modalValue}>
+                              {formatCurrency(totalGeneral)}
                             </p>
                           </div>
                           <div>
@@ -1069,6 +1306,21 @@ const ReservaCasaDocenteAdmin = () => {
                       <option value="confirmada">Confirmada</option>
                       <option value="rechazada">Rechazada</option>
                     </select>
+                  </div>
+
+                  <div className={styles.modalFieldGroup}>
+                    <label className={styles.label} htmlFor="modalGastosVarios">
+                      Gastos varios / consumos pendientes
+                    </label>
+                    <input
+                      id="modalGastosVarios"
+                      type="number"
+                      min="0"
+                      className={styles.input}
+                      value={modalGastosVarios}
+                      onChange={(e) => setModalGastosVarios(e.target.value)}
+                      placeholder="Ej: 5000"
+                    />
                   </div>
 
                   <div className={styles.modalFieldGroup}>
@@ -1133,8 +1385,14 @@ const ReservaCasaDocenteAdmin = () => {
         />
       )}
 
-      {/* ========= TAB 6: HABILITAR APP ========= */}
-      {activeTab === "habilitarApp" && <CasaDocenteHabilitarApp />}
+      {/* ========= TAB 6: APP Y EXPORTACIÓN ========= */}
+      {activeTab === "habilitarApp" && (
+        <CasaDocenteHabilitarApp
+          reservas={reservas}
+          habitaciones={habitaciones}
+          habitacionesPorId={habitacionesPorId}
+        />
+      )}
     </div>
   );
 };

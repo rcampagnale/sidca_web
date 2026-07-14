@@ -417,7 +417,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
               Todavía no cargaste habitaciones.
             </p>
           ) : (
-            <table className={styles.table}>
+            <table className={`${styles.table} ${styles.habitacionesTable}`}>
               <thead>
                 <tr>
                   <th>Tipo</th>

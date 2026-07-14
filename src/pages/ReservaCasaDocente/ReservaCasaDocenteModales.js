@@ -97,7 +97,6 @@ const ReservaCasaDocenteModales = ({
   const [errorFechas, setErrorFechas] = useState("");
   const [disponibilidadOk, setDisponibilidadOk] = useState(false);
   const [habitacionAsignable, setHabitacionAsignable] = useState(null);
-  const [cantidadNoAfiliados, setCantidadNoAfiliados] = useState(0);
 
   const [formNombre, setFormNombre] = useState("");
   const [formDni, setFormDni] = useState("");
@@ -138,7 +137,6 @@ const ReservaCasaDocenteModales = ({
       setErrorFechas("");
       setDisponibilidadOk(false);
       setHabitacionAsignable(null);
-      setCantidadNoAfiliados(0);
 
       setFormNombre("");
       setFormDni("");
@@ -166,7 +164,6 @@ const ReservaCasaDocenteModales = ({
     setDisponibilidadOk(false);
     setMensajeDisponibilidad("");
     setHabitacionAsignable(null);
-    setCantidadNoAfiliados(0);
   }, [fechaIngreso, fechaEgreso, isReservaModalOpen]);
 
   // Al abrir el modal de consulta, reseteamos búsqueda
@@ -291,7 +288,6 @@ const ReservaCasaDocenteModales = ({
     setMensajeDisponibilidad("");
     setDisponibilidadOk(false);
     setHabitacionAsignable(null);
-    setCantidadNoAfiliados(0);
 
     if (!fechaIngreso || !fechaEgreso) {
       setErrorFechas("Por favor seleccioná fecha de ingreso y egreso.");
@@ -382,8 +378,8 @@ const ReservaCasaDocenteModales = ({
         const rIng = r.fechaIngreso;
         const rEgr = r.fechaEgreso;
         const estado = (r.estado || "pendiente").toLowerCase();
-        if (estado === "cancelada") return;
-        if (rEgr >= solIng && rIng <= solEgr) {
+        if (estado === "cancelada" || estado === "rechazada") return;
+        if (rEgr > solIng && rIng < solEgr) {
           reservasSuperpuestas += 1;
         }
       });
@@ -392,7 +388,6 @@ const ReservaCasaDocenteModales = ({
         const disponibles = habitacionesTipo.length - reservasSuperpuestas;
         setDisponibilidadOk(true);
         setHabitacionAsignable(habitacionesTipo[0]);
-        setCantidadNoAfiliados(0); // arrancamos sin no afiliados
         setMensajeDisponibilidad(
           `Hay disponibilidad para las fechas seleccionadas. Habitaciones libres estimadas: ${disponibles}.`
         );
@@ -468,18 +463,11 @@ const ReservaCasaDocenteModales = ({
     try {
       setSendingReserva(true);
 
-      // 🔢 Limitar no afiliados al máximo permitido
-      const maxNoAfiliados = getMaxNoAfiliados(
+      // 🔢 Calcular automáticamente: 1 afiliado + resto no afiliados según camas
+      const cantNoAfiliados = getMaxNoAfiliados(
         habitacionAsignable,
         tipoSeleccionado
       );
-      const cantNoAfiliados =
-        tipoSeleccionado === "simple"
-          ? 0
-          : Math.min(
-              Math.max(Number(cantidadNoAfiliados) || 0, 0),
-              maxNoAfiliados
-            );
 
       const { precioAfiliado, precioNoAfiliado, precioFinal } =
         calcularPreciosReserva(
@@ -537,7 +525,7 @@ const ReservaCasaDocenteModales = ({
 
         const preciosExtra =
           precioAfiliado || precioNoAfiliado || precioFinal
-            ? `\n\nDetalle de precios:\n` +
+            ? `\n\n💵 Detalle de precios:\n` +
               `• Precio afiliado por noche: $${precioAfiliado || 0}\n` +
               (tipoSeleccionado !== "simple"
                 ? `• Precio no afiliado por noche: $${precioNoAfiliado || 0}\n` +
@@ -549,9 +537,10 @@ const ReservaCasaDocenteModales = ({
             : "";
 
         const mensajeWhatsapp =
+          `🏠 Solicitud de reserva - Casa del Docente SIDCA\n\n` +
           `Su reserva se encuentra en estado "pedido". ` +
           `Aguarde por su confirmación.\n\n` +
-          `Datos de la reserva:\n` +
+          `📌 Datos de la reserva:\n` +
           `• Tipo: ${tipoNombre}\n` +
           `• Fechas: ${fechaIngreso} al ${fechaEgreso}\n` +
           `• Apellido y nombre: ${formNombre.trim()}\n` +
@@ -729,26 +718,11 @@ const ReservaCasaDocenteModales = ({
                         } = calcularPreciosReserva(
                           habitacionAsignable,
                           tipoSeleccionado,
-                          tipoSeleccionado === "simple"
-                            ? 0
-                            : cantidadNoAfiliados
+                          maxNoAf
                         );
 
-                        const cantNoAfValidos =
-                          tipoSeleccionado === "simple"
-                            ? 0
-                            : Math.min(
-                                Math.max(
-                                  Number(cantidadNoAfiliados) || 0,
-                                  0
-                                ),
-                                maxNoAf
-                              );
-
-                        const totalPersonas =
-                          tipoSeleccionado === "simple"
-                            ? 1
-                            : 1 + cantNoAfValidos;
+                        const cantNoAfValidos = maxNoAf;
+                        const totalPersonas = 1 + cantNoAfValidos;
 
                         const noches = calcularNoches(
                           fechaIngreso,
@@ -760,43 +734,18 @@ const ReservaCasaDocenteModales = ({
                         return (
                           <>
                             {tipoSeleccionado !== "simple" && (
-                              <div className={styles.reservaFieldGroup}>
-                                <label
-                                  className={styles.reservaLabel}
-                                  htmlFor="noAfiliados"
-                                >
-                                  Cantidad de acompañantes no afiliados
-                                </label>
-                                <input
-                                  id="noAfiliados"
-                                  type="number"
-                                  min="0"
-                                  max={maxNoAf}
-                                  className={styles.reservaInput}
-                                  value={cantidadNoAfiliados}
-                                  onChange={(e) => {
-                                    const raw = e.target.value;
-                                    let n = parseInt(raw, 10);
-                                    if (isNaN(n) || n < 0) n = 0;
-                                    if (maxNoAf > 0) {
-                                      n = Math.min(n, maxNoAf);
-                                    } else {
-                                      n = 0;
-                                    }
-                                    setCantidadNoAfiliados(n);
-                                  }}
-                                  placeholder={
-                                    maxNoAf > 0
-                                      ? `Máximo ${maxNoAf} no afiliado(s) para esta habitación`
-                                      : "Esta habitación es solo para afiliado"
-                                  }
-                                />
-                                {maxNoAf > 0 && (
-                                  <p className={styles.reservaAutofillStatus}>
-                                    Recordá: en una habitación doble suele ser
-                                    1 no afiliado; en una triple, 2; etc.
-                                  </p>
-                                )}
+                              <div className={styles.reservaAceptacionBox}>
+                                <p className={styles.reservaAceptacionLegend}>
+                                  Personas calculadas automáticamente
+                                </p>
+                                <p className={styles.reservaResultadoText}>
+                                  Esta habitación se calcula para{" "}
+                                  <strong>
+                                    1 afiliado + {cantNoAfValidos} no afiliado
+                                    {cantNoAfValidos !== 1 ? "s" : ""}
+                                  </strong>
+                                  .
+                                </p>
                               </div>
                             )}
 
@@ -1128,6 +1077,15 @@ const ReservaCasaDocenteModales = ({
                     const tipoNombre =
                       getTipoById(reserva.tipo)?.nombre || reserva.tipo;
                     const estadoLabel = normalizarEstado(reserva.estado);
+                    const motivoRechazo =
+                      reserva.notasAdmin ||
+                      reserva.motivo ||
+                      reserva.observacion ||
+                      reserva.comentarioAdmin ||
+                      "";
+                    const estaRechazada =
+                      String(reserva.estado || "").toLowerCase() ===
+                      "rechazada";
 
                     return (
                       <div
@@ -1147,6 +1105,11 @@ const ReservaCasaDocenteModales = ({
                             {estadoLabel}
                           </span>
                         </p>
+                        {estaRechazada && motivoRechazo.trim() && (
+                          <p className={styles.consultaResultadoText}>
+                            Motivo: {motivoRechazo.trim()}
+                          </p>
+                        )}
                       </div>
                     );
                   })}

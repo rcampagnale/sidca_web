@@ -1,23 +1,28 @@
 // src/pages/Admin/components/AdminHeader/nav/NavUser.js
 
-import React, { useState } from "react";
-import { Sidebar } from "primereact/sidebar";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
 import styles from "./styles.module.css";
 import { confirmDialog } from "primereact/confirmdialog";
 
 const NavUser = ({ active, setActive }) => {
   const history = useHistory();
+  const menuRef = useRef(null);
+  const [menuTop, setMenuTop] = useState(60);
 
   const confirm = () => {
-    confirmDialog({
+    setActive(false);
+
+    window.setTimeout(() => {
+      confirmDialog({
       message: "¿Está seguro de que quiere cerrar sesión?",
       header: "Cerrar Sesión",
       icon: "pi pi-exclamation-triangle",
       accept: () => history.push("/admin/logout"),
       acceptLabel: "Si",
-      rejectLabel: "No",
-    });
+        rejectLabel: "No",
+      });
+    }, 0);
   };
 
   // 🔹 Mismo esquema de grupos que el header de escritorio
@@ -75,13 +80,62 @@ const NavUser = ({ active, setActive }) => {
     setActive(false); // cierra el sidebar al navegar
   };
 
+  useEffect(() => {
+    if (!active) return undefined;
+
+    const updateMenuPosition = () => {
+      const trigger = menuRef.current?.parentElement;
+      const header = trigger?.parentElement;
+      const rect =
+        header?.getBoundingClientRect() || trigger?.getBoundingClientRect();
+      const top = rect ? rect.bottom : 60;
+
+      setMenuTop(Math.max(0, Math.round(top)));
+    };
+
+    const handleOutsideClick = (event) => {
+      if (menuRef.current && menuRef.current.contains(event.target)) {
+        return;
+      }
+
+      setActive(false);
+    };
+
+    const handlePageScroll = () => {
+      setActive(false);
+    };
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", handlePageScroll, { passive: true });
+
+    const timer = window.setTimeout(() => {
+      document.addEventListener("mousedown", handleOutsideClick, true);
+      document.addEventListener("touchstart", handleOutsideClick, true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", handlePageScroll);
+      document.removeEventListener("mousedown", handleOutsideClick, true);
+      document.removeEventListener("touchstart", handleOutsideClick, true);
+    };
+  }, [active, setActive]);
+
   return (
-    <Sidebar
-      className={"p-sidebar-top"}
-      style={{ backgroundColor: "#3b3b3b", minHeight: "60vh" }}
-      visible={active}
-      onHide={() => setActive(false)}
+    <div
+      className={styles.mobileSidebar}
+      ref={menuRef}
+      style={{ "--admin-mobile-menu-top": `${menuTop}px` }}
     >
+      <div className={styles.menuHeader}>
+        <div>
+          <p className={styles.menuKicker}>Panel administrativo</p>
+          <h2 className={styles.menuTitle}>Menú principal</h2>
+        </div>
+      </div>
+
       <ul className={styles.navUl}>
         {NAV_SECTIONS.map((section) => {
           const isOpen = openSection === section.title;
@@ -121,10 +175,11 @@ const NavUser = ({ active, setActive }) => {
         })}
 
         <li className={styles.logOut} onClick={confirm}>
-          Cerrar sesión
+          <i className="pi pi-sign-out" />
+          <span>Cerrar sesión</span>
         </li>
       </ul>
-    </Sidebar>
+    </div>
   );
 };
 

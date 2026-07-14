@@ -3,25 +3,68 @@
 .navUl {
   list-style: none;
   margin: 0;
-  padding: 8px 0 16px;
-  background-color: #3b3b3b;
+  padding: 0 14px 18px;
+  background: transparent;
   font-family: "Roboto", sans-serif;
+}
+
+.mobileSidebar {
+  position: fixed;
+  top: var(--admin-mobile-menu-top, 60px);
+  right: 0;
+  width: min(78vw, 310px);
+  max-height: calc(100vh - 86px);
+  background: linear-gradient(180deg, #111111 0%, #1c1c1c 48%, #242424 100%);
+  color: #ffffff;
+  border-radius: 0 0 0 18px;
+  border-top: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+  box-shadow: -14px 18px 45px rgba(0, 0, 0, 0.38);
+  z-index: 2200;
+}
+
+.menuHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 16px 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.menuKicker {
+  margin: 0 0 0.25rem;
+  color: #f59e0b;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menuTitle {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.08rem;
+  font-weight: 800;
 }
 
 /* Cada grupo (Gestión, Afiliados, Cursos, Casa Docente) */
 .section {
   width: 100%;
+  margin-top: 8px;
 }
 
 /* Header de cada sección (botón desplegable) */
 .sectionHeader {
   width: 100%;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #555555;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   color: #f5f5f5;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -32,27 +75,35 @@
 }
 
 .sectionHeader:hover {
-  background-color: #444444;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(245, 158, 11, 0.5);
 }
 
 .sectionIcon {
   font-size: 0.9rem;
+  color: #fbbf24;
 }
 
 /* Submenú de opciones */
 .submenu {
   list-style: none;
-  margin: 0;
-  padding: 4px 0 8px;
-  background-color: #3f3f3f;
+  margin: 8px 0 0;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
 }
 
 .submenuItem {
-  padding: 10px 32px;
+  min-height: 38px;
+  padding: 9px 12px;
   color: #ffffff;
   font-size: 0.9rem;
-  border-bottom: 1px solid #555555;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .submenuItem:last-child {
@@ -60,20 +111,39 @@
 }
 
 .submenuItem:hover {
-  background-color: #4b4b4b;
-  color: #e0e0e0;
+  background: rgba(245, 158, 11, 0.14);
+  color: #ffffff;
 }
 
 /* Cerrar sesión */
 .logOut {
-  margin-top: 18px;
-  padding: 12px 20px;
-  color: #ff5252;
+  margin: 14px 0 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: #fecaca;
   font-weight: 600;
-  border-top: 1px solid #555555;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.08);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .logOut:hover {
-  background-color: #4b2b2b;
+  background: rgba(239, 68, 68, 0.16);
+}
+
+@media (min-width: 768px) {
+  .mobileSidebar {
+    width: 320px;
+  }
+}
+
+@media (max-width: 420px) {
+  .mobileSidebar {
+    right: 0;
+    width: min(80vw, 300px);
+  }
 }

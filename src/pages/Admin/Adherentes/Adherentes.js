@@ -9,7 +9,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Tag } from "primereact/tag";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Toolbar } from "primereact/toolbar";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { ProgressBar } from "primereact/progressbar";
 import exportFromJSON from "export-from-json";
@@ -244,6 +243,7 @@ export default function Adherente() {
   // Filtro Estado
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [estadoAplicado, setEstadoAplicado] = useState(null);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
   // Paginación
   const [first, setFirst] = useState(0);
@@ -347,6 +347,9 @@ export default function Adherente() {
   const dataFiltrada = useMemo(() => {
     const s = normalizeText(busqueda).trim();
     let base = [...rows];
+    if (deptoAplicado) {
+      base = base.filter((r) => toCanonicalDepartamento(r.departamento) === deptoAplicado);
+    }
     if (estadoAplicado !== null) base = base.filter((r) => estadoUI(r) === estadoAplicado);
     if (!s) return base;
 
@@ -358,7 +361,17 @@ export default function Adherente() {
       );
       return txt.includes(s);
     });
-  }, [rows, busqueda, estadoAplicado]);
+  }, [rows, busqueda, deptoAplicado, estadoAplicado]);
+
+  const resumenVista = useMemo(() => {
+    const habilitados = dataFiltrada.filter((r) => estadoUI(r)).length;
+    return {
+      total: rows.length,
+      filtrados: dataFiltrada.length,
+      habilitados,
+      noHabilitados: dataFiltrada.length - habilitados,
+    };
+  }, [rows.length, dataFiltrada]);
 
   // ===== Exportar Excel =====
   const handleExportExcel = () => {
@@ -760,6 +773,33 @@ export default function Adherente() {
     <Tag value={estadoUI(row) ? "Habilitado" : "No habilitado"} severity={estadoUI(row) ? "success" : "danger"} rounded />
   );
 
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setDeptoSeleccionado(null);
+    setDeptoAplicado(null);
+    setEstadoSeleccionado(null);
+    setEstadoAplicado(null);
+    setFirst(0);
+  };
+
+  const aplicarFiltros = () => {
+    setDeptoAplicado(deptoSeleccionado || null);
+    setEstadoAplicado(typeof estadoSeleccionado === "boolean" ? estadoSeleccionado : null);
+    setFirst(0);
+  };
+
+  const handleDepartamentoFiltro = (value) => {
+    setDeptoSeleccionado(value);
+    setDeptoAplicado(value || null);
+    setFirst(0);
+  };
+
+  const handleEstadoFiltro = (value) => {
+    setEstadoSeleccionado(value);
+    setEstadoAplicado(typeof value === "boolean" ? value : null);
+    setFirst(0);
+  };
+
   const leftToolbar = (
     <div className={styles.toolbarLeft}>
       <Button label="Nuevo" icon="pi pi-plus" severity="success" onClick={abrirNuevo} />
@@ -771,30 +811,35 @@ export default function Adherente() {
 
   const rightToolbar = (
     <div className={styles.toolbarRight}>
-      <span className="p-input-icon-left">
+      <span className={`p-input-icon-left ${styles.searchBox}`}>
         <i className="pi pi-search" />
         <InputText value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar (apellido, nombre, DNI, email, ...)" />
       </span>
-      <Dropdown value={deptoSeleccionado} onChange={(e) => setDeptoSeleccionado(e.value)} options={DEPARTAMENTOS} placeholder="Departamento" className={styles.filterItem} showClear />
-      <Dropdown value={estadoSeleccionado} onChange={(e) => setEstadoSeleccionado(e.value)} options={[{ label: "Habilitado", value: true }, { label: "No habilitado", value: false }]} placeholder="Estado" className={styles.filterItem} showClear />
-      <Button label="Aplicar filtros" icon="pi pi-filter" onClick={() => { setDeptoAplicado(deptoSeleccionado || null); setEstadoAplicado(typeof estadoSeleccionado === "boolean" ? estadoSeleccionado : null); setFirst(0); }} />
-      <Button text label="Limpiar" onClick={() => { setBusqueda(""); setDeptoSeleccionado(null); setDeptoAplicado(null); setEstadoSeleccionado(null); setEstadoAplicado(null); setFirst(0); }} />
+      <Dropdown value={deptoSeleccionado} onChange={(e) => handleDepartamentoFiltro(e.value)} options={DEPARTAMENTOS} placeholder="Departamento" className={styles.filterItem} showClear />
+      <Dropdown value={estadoSeleccionado} onChange={(e) => handleEstadoFiltro(e.value)} options={[{ label: "Habilitado", value: true }, { label: "No habilitado", value: false }]} placeholder="Estado" className={styles.filterItem} showClear />
+      <Button label="Aplicar filtros" icon="pi pi-filter" onClick={aplicarFiltros} />
+      <Button text label="Limpiar" onClick={limpiarFiltros} />
     </div>
   );
 
   const columns = [
-    <Column key="apellido" field="apellido" header="Apellido" sortable />,
-    <Column key="nombre" field="nombre" header="Nombre" sortable />,
-    <Column key="dni" field="dni" header="DNI" sortable />,
-    <Column key="departamento" field="departamento" header="Departamento" body={(r) => toCanonicalDepartamento(r.departamento)} sortable />,
+    <Column key="apellido" field="apellido" header="Apellido" sortable style={{ minWidth: 130 }} />,
+    <Column key="nombre" field="nombre" header="Nombre" sortable style={{ minWidth: 150 }} />,
+    <Column key="dni" field="dni" header="DNI" sortable style={{ minWidth: 95 }} />,
+    <Column key="departamento" field="departamento" header="Departamento" body={(r) => toCanonicalDepartamento(r.departamento)} sortable style={{ minWidth: 140 }} />,
     <Column key="establecimientos" field="establecimientos" header="Establecimiento" body={(r)=> r.establecimientos || r.establecimiento || "—"} />,
-    <Column key="celular" field="celular" header="Celular" />,
-    <Column key="email" field="email" header="Email" />,
-    <Column key="motivo" field="motivo" header="Motivo" />,
-    <Column key="estado" header="Estado" body={estadoBodyTemplate} sortable />,
+    <Column key="celular" field="celular" header="Celular" style={{ minWidth: 110 }} />,
+    <Column key="email" field="email" header="Email" style={{ minWidth: 160 }} />,
+    <Column key="motivo" field="motivo" header="Motivo" style={{ minWidth: 130 }} />,
+    <Column key="estado" header="Estado" body={estadoBodyTemplate} sortable style={{ minWidth: 125 }} />,
     <Column key="observaciones" field="observaciones" header="Observaciones" className={styles.observacionesCol || ""} />,
-    <Column key="acciones" header="Acciones" body={accionesTemplate} exportable={false} />,
+    <Column key="acciones" header="Acciones" body={accionesTemplate} exportable={false} style={{ width: 190, minWidth: 190 }} />,
   ].filter(Boolean);
+
+  const pageSize = 10;
+  const mobileRows = importing ? [] : dataFiltrada.slice(first, first + pageSize);
+  const currentPage = dataFiltrada.length ? Math.floor(first / pageSize) + 1 : 0;
+  const totalPages = dataFiltrada.length ? Math.ceil(dataFiltrada.length / pageSize) : 0;
 
   return (
     <div className={styles.container}>
@@ -808,14 +853,99 @@ export default function Adherente() {
         </p>
       </div>
 
-      <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
+      <button
+        type="button"
+        className={styles.mobileToolsToggle}
+        onClick={() => setMobileToolsOpen((v) => !v)}
+      >
+        <i className={`pi ${mobileToolsOpen ? "pi-chevron-up" : "pi-sliders-h"}`} />
+        {mobileToolsOpen ? "Ocultar filtros / acciones" : "Filtros / acciones"}
+      </button>
 
-      <DataTable value={importing ? [] : dataFiltrada} loading={loading || importing} paginator first={first} onPage={(e) => setFirst(e.first)} rows={10} rowsPerPageOptions={[10, 20, 50]} stripedRows showGridlines emptyMessage={importing ? "Importando registros..." : "Sin registros"} className={styles.table} dataKey="id">
-        {columns}
-      </DataTable>
+      <div className={`${styles.toolbarPanel} ${mobileToolsOpen ? styles.toolbarPanelOpen : ""}`}>
+        <div className={styles.toolbarActions}>{leftToolbar}</div>
+        <div className={styles.toolbarFilters}>{rightToolbar}</div>
+      </div>
+
+      <div className={styles.quickStats}>
+        <span><strong>{resumenVista.filtrados}</strong> mostrando</span>
+        <span><strong>{resumenVista.total}</strong> total</span>
+        <span className={styles.statOk}><strong>{resumenVista.habilitados}</strong> habilitados</span>
+        <span className={styles.statDanger}><strong>{resumenVista.noHabilitados}</strong> no habilitados</span>
+      </div>
+
+      <div className={styles.desktopTableWrap}>
+        <DataTable value={importing ? [] : dataFiltrada} loading={loading || importing} paginator first={first} onPage={(e) => setFirst(e.first)} rows={20} rowsPerPageOptions={[10, 20, 50, 100]} stripedRows showGridlines emptyMessage={importing ? "Importando registros..." : "Sin registros"} className={styles.table} dataKey="id">
+          {columns}
+        </DataTable>
+      </div>
+
+      <div className={styles.mobileCards}>
+        <div className={styles.mobileSummary}>
+          <span>{dataFiltrada.length} adherente(s)</span>
+          <span>{estadoAplicado === null ? "Todos los estados" : estadoAplicado ? "Habilitados" : "No habilitados"}</span>
+        </div>
+
+        {loading || importing ? (
+          <div className={styles.mobileEmpty}>{importing ? "Importando registros..." : "Cargando..."}</div>
+        ) : mobileRows.length === 0 ? (
+          <div className={styles.mobileEmpty}>Sin registros</div>
+        ) : (
+          mobileRows.map((row) => {
+            const habilitado = estadoUI(row);
+            return (
+              <article key={row.id} className={styles.adherentCard}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <h3>{`${row.apellido || "—"}, ${row.nombre || "—"}`}</h3>
+                    <p>DNI {row.dni || "—"}</p>
+                  </div>
+                  <Tag value={habilitado ? "Habilitado" : "No habilitado"} severity={habilitado ? "success" : "danger"} rounded />
+                </div>
+
+                <div className={styles.cardBadges}>
+                  <span>{afiliacionLabel(row.nroAfiliacion)}</span>
+                  <span>Adherente</span>
+                </div>
+
+                <div className={styles.cardInfoGrid}>
+                  <div><strong>Departamento</strong><span>{toCanonicalDepartamento(row.departamento) || "—"}</span></div>
+                  <div><strong>Establecimiento</strong><span>{row.establecimientos || row.establecimiento || "—"}</span></div>
+                  <div><strong>Celular</strong><span>{row.celular || "—"}</span></div>
+                  <div><strong>Email</strong><span>{row.email || "—"}</span></div>
+                  <div><strong>Motivo</strong><span>{row.motivo || "—"}</span></div>
+                </div>
+
+                {row.observaciones ? (
+                  <div className={styles.cardObservation}>
+                    <strong>Observaciones</strong>
+                    <span>{row.observaciones}</span>
+                  </div>
+                ) : null}
+
+                <div className={styles.mobileCardActions}>
+                  <Button label="Ver" icon="pi pi-eye" size="small" onClick={() => abrirVer(row)} />
+                  <Button label="Editar" icon="pi pi-pencil" size="small" severity="warning" onClick={() => abrirEditar(row)} />
+                  <Button label="Cotizante" icon="pi pi-user-edit" size="small" severity="info" onClick={() => abrirCotizante(row)} />
+                  <Button label={habilitado ? "Deshabilitar" : "Habilitar"} icon={habilitado ? "pi pi-ban" : "pi pi-check"} size="small" severity={habilitado ? "warning" : "success"} onClick={() => toggleEstadoNuevoAfiliado(row)} />
+                  <Button label="Eliminar" icon="pi pi-trash" size="small" severity="danger" onClick={() => confirmarBorrado(row)} />
+                </div>
+              </article>
+            );
+          })
+        )}
+
+        {dataFiltrada.length > pageSize ? (
+          <div className={styles.mobilePager}>
+            <Button label="Anterior" icon="pi pi-chevron-left" outlined disabled={first === 0} onClick={() => setFirst(Math.max(0, first - pageSize))} />
+            <span>{currentPage} de {totalPages}</span>
+            <Button label="Siguiente" icon="pi pi-chevron-right" iconPos="right" outlined disabled={first + pageSize >= dataFiltrada.length} onClick={() => setFirst(first + pageSize)} />
+          </div>
+        ) : null}
+      </div>
 
       {/* Modal Ver */}
-      <Dialog header="Detalle de Adherente" visible={visibleVer} style={{ width: 640 }} modal onHide={() => setVisibleVer(false)}>
+      <Dialog header="Detalle de Adherente" visible={visibleVer} style={{ width: "min(640px, 94vw)" }} modal onHide={() => setVisibleVer(false)}>
         <div className={styles.viewGrid}>
           <div><strong>Apellido y Nombre:</strong> {rowVer ? `${rowVer.apellido || "—"}, ${rowVer?.nombre || "—"}` : "—"}</div>
           <div><strong>DNI:</strong> {rowVer?.dni || "—"}</div>
@@ -834,7 +964,7 @@ export default function Adherente() {
       </Dialog>
 
       {/* Modal alta/edición */}
-      <Dialog header={editandoId ? "Editar adherente" : "Nuevo adherente"} visible={visibleDialog} style={{ width: 760 }} modal onHide={() => setVisibleDialog(false)}>
+      <Dialog header={editandoId ? "Editar adherente" : "Nuevo adherente"} visible={visibleDialog} style={{ width: "min(760px, 94vw)" }} modal onHide={() => setVisibleDialog(false)}>
         <div className={styles.formGrid}>
           <div className={styles.formRow}><label>Apellido</label><InputText autoFocus value={form.apellido} onChange={(e) => setForm((f) => ({ ...f, apellido: e.target.value }))} /></div>
           <div className={styles.formRow}><label>Nombre</label><InputText value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} /></div>

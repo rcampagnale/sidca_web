@@ -1,0 +1,30 @@
+.afiliados-filters-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.afiliados-source-filter {
+  min-width: 240px;
+}
+
+@media (max-width: 768px) {
+  .afiliados-filters-bar {
+    grid-template-columns: 1fr;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+  }
+
+  .afiliados-source-filter {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .afiliados-filters-bar .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

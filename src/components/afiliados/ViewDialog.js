@@ -3,6 +3,7 @@ import React, { memo } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { toSiNo } from "./utils/shared.js";
+import "./AfiliadoDialogs.css";
 
 /**
  * Props:
@@ -15,13 +16,7 @@ import { toSiNo } from "./utils/shared.js";
 function ViewDialog({ visible, data, onClose }) {
   const Row = ({ label, value }) =>
     value ? (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "220px 1fr",
-          gap: 8,
-        }}
-      >
+      <div className="afiliado-detail-row">
         <b>{label}:</b>
         <span>{value}</span>
       </div>
@@ -32,18 +27,20 @@ function ViewDialog({ visible, data, onClose }) {
       header="Detalle del afiliado"
       visible={visible}
       style={{ width: "min(560px, 96vw)" }}
+      className="afiliado-dialog afiliado-detail-dialog"
+      contentClassName="afiliado-dialog-content"
       onHide={onClose}
       modal
       draggable={false}
       resizable={false}
       footer={
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div className="afiliado-dialog-footer">
           <Button label="Cerrar" icon="pi pi-check" onClick={onClose} />
         </div>
       }
     >
       {data ? (
-        <div style={{ display: "grid", gap: 10, padding: 6 }}>
+        <div className="afiliado-detail-grid">
           <Row
             label="Apellido y Nombre"
             value={`${data.apellido ?? ""}, ${data.nombre ?? ""}`}

@@ -52,6 +52,27 @@
   flex-wrap: wrap;
 }
 
+.mobileFriendlyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.mobileFriendlyTitle {
+  margin: 0;
+}
+
+.mobileFriendlyActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 /* =========================
    Toolbar (buscador)
    ========================= */
@@ -203,4 +224,59 @@
 
 :global(.p-datatable .p-datatable-tbody > tr.sidca-reafiliacion-row:hover) {
   background: #ffedd5;
+}
+
+@media (max-width: 768px) {
+  .mobileFriendlyHeader {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .mobileFriendlyTitle {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .mobileFriendlyActions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .mobileFriendlyActions :global(.p-tag) {
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.66rem;
+    padding: 0.32rem 0.35rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .mobileFriendlyActions :global(.p-fileupload),
+  .mobileFriendlyActions :global(.p-fileupload-choose),
+  .mobileFriendlyActions :global(.p-button) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobileFriendlyActions :global(.p-fileupload),
+  .mobileFriendlyActions > :global(.p-button-success) {
+    grid-column: 1 / -1;
+  }
+
+  .mobileFriendlyActions :global(.p-button) {
+    justify-content: center;
+    font-size: 0.74rem;
+    line-height: 1.15;
+    white-space: normal;
+    padding: 0.55rem 0.4rem;
+  }
+
+  .mobileFriendlyActions :global(.p-button-label) {
+    white-space: normal;
+  }
 }

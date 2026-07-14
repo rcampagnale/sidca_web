@@ -257,7 +257,7 @@ const ReservarHabitacionAdmin = () => {
       const rEgr = r.fechaEgreso;
       const estado = (r.estado || "pendiente").toLowerCase();
       if (estado === "cancelada") return;
-      if (rEgr >= solIng && rIng <= solEgr) {
+      if (rEgr > solIng && rIng < solEgr) {
         reservasSuperpuestas += 1;
       }
     });

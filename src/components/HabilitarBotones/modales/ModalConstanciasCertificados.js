@@ -599,6 +599,62 @@ const ModalConstanciasCertificados = ({ visible, onHide }) => {
             </div>
           </div>
 
+          <div className={styles.mobileCursosList}>
+            {loadingRegistros && (
+              <p className={styles.mobileEmpty}>Cargando cursos habilitados...</p>
+            )}
+            {!loadingRegistros && registrosConCurso.length === 0 && (
+              <p className={styles.mobileEmpty}>No hay cursos habilitados.</p>
+            )}
+            {!loadingRegistros &&
+              registrosConCurso.map((row) => (
+                <article key={row.id || row.cursoId} className={styles.mobileCursoCard}>
+                  <div className={styles.mobileCursoHeader}>
+                    <div>
+                      <h4>{row.cursoNombreFinal || "Curso sin nombre"}</h4>
+                      <p>{row.resolucion || "Sin resolución cargada"}</p>
+                    </div>
+                    {estadoBody(row)}
+                  </div>
+
+                  <div className={styles.mobileCursoMeta}>
+                    <span>
+                      <b>Días</b>
+                      {row.diasCurso || "-"}
+                    </span>
+                    <span>
+                      <b>Fecha emisión</b>
+                      {row.fechaEmision || "-"}
+                    </span>
+                  </div>
+
+                  <div className={styles.mobileCursoFechas}>
+                    <b>Fechas constancia</b>
+                    {fechasBody(row)}
+                  </div>
+
+                  <div className={styles.mobileCursoActions}>
+                    <Button
+                      label="Editar"
+                      icon="pi pi-pencil"
+                      severity="warning"
+                      size="small"
+                      onClick={() => editarRegistro(row)}
+                      disabled={saving}
+                    />
+                    <Button
+                      label="Eliminar"
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      onClick={() => eliminarRegistro(row)}
+                      disabled={saving}
+                    />
+                  </div>
+                </article>
+              ))}
+          </div>
+
           <DataTable
             value={registrosConCurso}
             loading={loadingRegistros}

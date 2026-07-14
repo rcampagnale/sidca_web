@@ -192,6 +192,8 @@ a {
   .hamburger {
     display: block;
     margin-left: 15px;
+    margin-right: 0;
+    position: relative;
   }
 
   .visibleContent {

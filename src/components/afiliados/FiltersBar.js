@@ -3,6 +3,7 @@ import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
+import "./FiltersBar.css";
 
 const SOURCE_OPTIONS = [
   { label: "Ambos", value: "ambos" },
@@ -22,14 +23,7 @@ export default function FiltersBar({
   onSourceChange,
 }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 240px auto auto",
-        gap: 8,
-        alignItems: "center",
-      }}
-    >
+    <div className="afiliados-filters-bar">
       <span className="p-input-icon-left" style={{ width: "100%" }}>
         <i className="pi pi-search" />
         <InputText
@@ -48,7 +42,7 @@ export default function FiltersBar({
         options={SOURCE_OPTIONS}
         onChange={(e) => onSourceChange(e.value)}
         disabled={disabled}
-        style={{ minWidth: 240 }}
+        className="afiliados-source-filter"
       />
 
       <Button

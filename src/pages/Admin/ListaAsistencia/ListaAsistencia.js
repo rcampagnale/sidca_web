@@ -1108,6 +1108,7 @@ const ListaAsistencia = () => {
   const [estadoPresencialExport, setEstadoPresencialExport] = useState('*');
   const [exporting, setExporting] = useState(false);
   const [exportMode, setExportMode] = useState('asistencia'); // asistencia | moodle
+  const [mostrarAccionesMovil, setMostrarAccionesMovil] = useState(false);
 
   const isBusy = importing;
 
@@ -2757,6 +2758,7 @@ const ListaAsistencia = () => {
         options={cursosOptions}
         placeholder="Curso"
         className={styles.filterItem}
+        panelClassName={styles.mobileFilterDropdownPanel}
         showClear
         filter
         disabled={isBusy}
@@ -2768,6 +2770,7 @@ const ListaAsistencia = () => {
         options={MODALIDAD_OPTIONS_FILTER}
         placeholder="Modalidad"
         className={styles.filterItem}
+        panelClassName={styles.mobileFilterDropdownPanel}
         disabled={isBusy}
       />
 
@@ -2844,7 +2847,21 @@ const ListaAsistencia = () => {
         </p>
       </div>
 
-      <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
+      <Button
+        label={mostrarAccionesMovil ? 'Ocultar filtros / acciones' : 'Filtros / acciones'}
+        icon={mostrarAccionesMovil ? 'pi pi-chevron-up' : 'pi pi-sliders-h'}
+        outlined
+        className={styles.mobileActionsButton}
+        onClick={() => setMostrarAccionesMovil((prev) => !prev)}
+      />
+
+      <div
+        className={`${styles.toolbarPanel} ${
+          mostrarAccionesMovil ? styles.toolbarPanelOpen : ''
+        }`}
+      >
+        <Toolbar className={styles.toolbar} left={leftToolbar} right={rightToolbar} />
+      </div>
 
       <div className={styles.emailSummary}>
         <span className={styles.emailSummaryItem}>
@@ -3054,6 +3071,7 @@ const ListaAsistencia = () => {
         header={editandoId ? 'Editar registro' : 'Nuevo registro'}
         visible={visibleDialog}
         style={{ width: 720, maxWidth: '95vw' }}
+        className={styles.mobileRegistroDialog}
         modal
         onHide={() => setVisibleDialog(false)}
       >
@@ -3083,6 +3101,7 @@ const ListaAsistencia = () => {
               }
               options={MODALIDAD_OPTIONS}
               placeholder="Seleccionar"
+              panelClassName={styles.mobileFilterDropdownPanel}
               showClear
             />
           </div>
@@ -3107,6 +3126,7 @@ const ListaAsistencia = () => {
               filter
               showClear
               className="w-full"
+              panelClassName={styles.mobileFilterDropdownPanel}
             />
             <small className={styles.helpText}>
               Seleccioná el curso desde la colección <strong>cursos</strong>. Esto guarda el <strong>cursoId</strong> real para habilitar la constancia.

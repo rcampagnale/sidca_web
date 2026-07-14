@@ -1,0 +1,138 @@
+.afiliados-mobile-list {
+  display: none;
+}
+
+.afiliados-mobile-empty {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #64748b;
+  text-align: center;
+}
+
+.afiliado-mobile-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.afiliado-mobile-card--reafiliacion {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  box-shadow: inset 4px 0 0 #f59e0b, 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.afiliado-mobile-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.afiliado-mobile-card__identity {
+  min-width: 0;
+}
+
+.afiliado-mobile-card__identity h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.98rem;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.afiliado-mobile-card__identity p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.afiliado-mobile-card__action {
+  flex: 0 0 auto;
+}
+
+.afiliado-mobile-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.afiliado-mobile-card__badges > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.afiliado-mobile-card__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.afiliado-mobile-card__meta span {
+  min-width: 0;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.afiliado-mobile-card__meta b {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.afiliados-pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .afiliados-table-wrapper {
+    display: none;
+  }
+
+  .afiliados-mobile-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .afiliados-pagination {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  .afiliados-pagination .p-button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .afiliado-mobile-card__header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .afiliado-mobile-card__action {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .afiliado-mobile-card__badges .p-tag {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+  }
+}

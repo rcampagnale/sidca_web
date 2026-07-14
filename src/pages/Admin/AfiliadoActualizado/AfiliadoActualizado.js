@@ -22,6 +22,7 @@ import { ExcelRenderer } from "react-excel-renderer";
 import "../../../assets/styles/excel/excel-2007.css";
 import exportFromJSON from "export-from-json";
 import { departamentos } from "../../../constants/departamentos.js";
+import styles from "./styles.module.css";
 
 // ✅ Componentes + hook + utils
 import {
@@ -304,6 +305,21 @@ const getAdminLabel = () => {
   } catch {
     return "admin_web";
   }
+};
+
+const getDniDigits = (value) => String(value ?? "").replace(/\D/g, "");
+
+const isDniSearch = (value) => /^\d{6,}$/.test(getDniDigits(value));
+
+const matchesSearchQuery = (row, rawQuery) => {
+  const text = String(rawQuery || "").trim();
+  if (!text) return true;
+
+  if (isDniSearch(text)) {
+    return getDniDigits(row?.dni) === getDniDigits(text);
+  }
+
+  return row?.haystack?.includes(norm(text));
 };
 
 /** Mapeo de documentos a filas */
@@ -993,9 +1009,8 @@ export default function AfiliadoActualizado() {
 
   // 4) Filtro texto
   const filteredRows = useMemo(() => {
-    const qn = norm(query);
-    if (!qn) return combinedRows;
-    return combinedRows.filter((r) => r.haystack.includes(qn));
+    if (!String(query || "").trim()) return combinedRows;
+    return combinedRows.filter((r) => matchesSearchQuery(r, query));
   }, [combinedRows, query]);
 
   useEffect(() => {
@@ -1780,9 +1795,9 @@ export default function AfiliadoActualizado() {
         return toTimestamp(sb) - toTimestamp(sa);
       });
 
-      const qn = norm(query);
-      const dataset = qn
-        ? sorted.filter((r) => r.haystack.includes(qn))
+      const hasQuery = !!String(query || "").trim();
+      const dataset = hasQuery
+        ? sorted.filter((r) => matchesSearchQuery(r, query))
         : sorted;
 
       setExportMsg("Generando Excel…");
@@ -1811,7 +1826,7 @@ export default function AfiliadoActualizado() {
         "Dispositivo reiniciado en": d.dispositivoReiniciadoEn || "",
       }));
 
-      const fileName = qn
+      const fileName = hasQuery
         ? "afiliados_usuarios_resultado_unificado"
         : "afiliados_usuarios_base_unificada";
 
@@ -2398,25 +2413,10 @@ export default function AfiliadoActualizado() {
       <Menu model={menuModel} popup ref={actionMenuRef} id="row_actions_menu" />
 
       {/* Header + contadores + export + importar Excel */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Afiliado Actualizado</h3>
+      <div className={styles.mobileFriendlyHeader}>
+        <h3 className={styles.mobileFriendlyTitle}>Afiliado Actualizado</h3>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className={styles.mobileFriendlyActions}>
           <span className="p-tag p-tag-info">nuevoAfiliado: {countNuevo}</span>
 
           <span className="p-tag p-tag-secondary">

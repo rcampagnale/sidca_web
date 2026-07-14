@@ -16,9 +16,226 @@
 .tableWrap td { padding: .75rem; border-top: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
 .tableWrap td strong, .tableWrap td small { display: block; }
 .tableWrap td small { margin-top: .2rem; color: #64748b; }
+.mobileList { display: none; }
 .muted { color: #64748b; }
 .message { min-height: 180px; display: flex; align-items: center; justify-content: center; gap: .75rem; color: #64748b; }
 .message :global(.p-progress-spinner) { width: 38px; height: 38px; }
 .error { padding: 1rem; border-radius: 10px; background: #fff1f2; color: #b91c1c; }
 @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .header { flex-direction: column; } .kpis { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .root {
+    padding: .85rem;
+    border-radius: 12px;
+    overflow-x: hidden;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .header h2 {
+    font-size: 1.05rem;
+  }
+
+  .header p {
+    font-size: .86rem;
+    line-height: 1.3;
+  }
+
+  .header :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .kpis {
+    grid-template-columns: 1fr 1fr;
+    gap: .55rem;
+  }
+
+  .kpis article {
+    padding: .65rem .7rem;
+    border-radius: 10px;
+  }
+
+  .kpis span {
+    font-size: .68rem;
+    line-height: 1.15;
+  }
+
+  .kpis strong {
+    font-size: 1.25rem;
+  }
+
+  .filters {
+    gap: .55rem;
+    margin-bottom: .8rem;
+  }
+
+  .filters :global(.p-input-icon-left),
+  .filters :global(.p-inputtext),
+  .filters :global(.p-dropdown) {
+    width: 100%;
+  }
+
+  .tableWrap {
+    display: none;
+  }
+
+  .mobileList {
+    display: grid;
+    gap: .75rem;
+  }
+
+  .deviceCard {
+    border: 1px solid #dbe4ef;
+    border-left: 4px solid #22c55e;
+    border-radius: 14px;
+    background: #fff;
+    padding: .8rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+    overflow: hidden;
+  }
+
+  .deviceCardBlocked {
+    border-left-color: #ef4444;
+    background: linear-gradient(90deg, rgba(254, 242, 242, .82), #fff 34%);
+  }
+
+  .deviceCardHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .6rem;
+    border-bottom: 1px solid #eef2f7;
+    padding-bottom: .65rem;
+  }
+
+  .deviceCardHeader strong,
+  .deviceCardHeader span {
+    display: block;
+  }
+
+  .deviceCardHeader strong {
+    color: #172033;
+    font-size: .95rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .deviceCardHeader span {
+    color: #64748b;
+    font-size: .78rem;
+    margin-top: .15rem;
+  }
+
+  .deviceCardHeader :global(.p-tag) {
+    border-radius: 999px;
+    padding: .28rem .55rem;
+    font-size: .68rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+    box-shadow: none;
+  }
+
+  .deviceCardHeader :global(.p-tag-danger) {
+    background: #fff1f2 !important;
+    border-color: #fecdd3;
+    color: #7f1d1d !important;
+  }
+
+  .deviceCardHeader :global(.p-tag-success) {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0;
+    color: #14532d !important;
+  }
+
+  .deviceCardHeader :global(.p-tag-danger .p-tag-value),
+  .deviceCardHeader :global(.p-tag-success .p-tag-value) {
+    color: inherit !important;
+  }
+
+  .deviceCardGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .5rem;
+    margin-top: .65rem;
+  }
+
+  .deviceCardGrid div,
+  .deviceCardDetail {
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    padding: .55rem;
+  }
+
+  .deviceCardGrid small {
+    display: block;
+    color: #64748b;
+    font-size: .66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: .18rem;
+  }
+
+  .deviceCardGrid span,
+  .deviceCardGrid em,
+  .deviceCardDetail span,
+  .deviceCardDetail small {
+    display: block;
+    color: #334155;
+    font-size: .82rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .deviceCardGrid em {
+    margin-top: .18rem;
+    color: #64748b;
+    font-style: normal;
+  }
+
+  .deviceCardDetail {
+    margin-top: .5rem;
+  }
+
+  .deviceCardDetail strong {
+    display: block;
+    color: #172033;
+    font-size: .84rem;
+    line-height: 1.25;
+    margin-bottom: .2rem;
+  }
+
+  .deviceCardAction {
+    display: grid;
+    gap: .4rem;
+    margin-top: .65rem;
+  }
+
+  .deviceCardAction :global(.p-tag) {
+    width: 100%;
+    justify-content: center;
+    border-radius: 10px;
+    background: #eff6ff !important;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a !important;
+    font-weight: 800;
+  }
+
+  .deviceCardAction :global(.p-tag .p-tag-value) {
+    color: inherit !important;
+  }
+
+  .deviceCardAction :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .deviceCardAction span {
+    color: #64748b;
+    font-size: .78rem;
+  }
+}

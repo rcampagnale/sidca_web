@@ -4,6 +4,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
+import "./AfiliadosTable.css";
 
 function AfiliadosTable({
   data = [],
@@ -78,9 +79,57 @@ function AfiliadosTable({
     [onActionClick]
   );
 
+  const mobileCard = useCallback(
+    (row, index) => {
+      const reafiliacion = esReafiliacion(row);
+      const nombreCompleto = [row.apellido, row.nombre].filter(Boolean).join(", ");
+
+      return (
+        <article
+          key={`${row.origen || "origen"}-${row.id || row.dni || index}`}
+          className={`afiliado-mobile-card ${
+            reafiliacion ? "afiliado-mobile-card--reafiliacion" : ""
+          }`}
+        >
+          <div className="afiliado-mobile-card__header">
+            <div className="afiliado-mobile-card__identity">
+              <h4>{nombreCompleto || "Afiliado sin nombre"}</h4>
+              <p>DNI {row.dni || "—"}</p>
+            </div>
+
+            <Button
+              icon="pi pi-ellipsis-v"
+              label="Acciones"
+              className="p-button-warning p-button-sm afiliado-mobile-card__action"
+              onClick={(e) => onActionClick(e, row)}
+            />
+          </div>
+
+          <div className="afiliado-mobile-card__badges">
+            {origenTemplate(row)}
+            {afiliacionTemplate(row)}
+            {adherenteTemplate(row)}
+          </div>
+
+          <div className="afiliado-mobile-card__meta">
+            <span>
+              <b>Fecha</b>
+              {row.fecha || "—"}
+            </span>
+            <span>
+              <b>Hora</b>
+              {row.hora || "—"}
+            </span>
+          </div>
+        </article>
+      );
+    },
+    [adherenteTemplate, afiliacionTemplate, onActionClick, origenTemplate]
+  );
+
   return (
     <>
-      <div className="table-wrapper">
+      <div className="table-wrapper afiliados-table-wrapper">
         <DataTable
           value={data}
           loading={loading || isPending}
@@ -105,7 +154,17 @@ function AfiliadosTable({
         </DataTable>
       </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+      <div className="afiliados-mobile-list">
+        {isPending ? (
+          <div className="afiliados-mobile-empty">Buscando afiliados...</div>
+        ) : data.length === 0 ? (
+          <div className="afiliados-mobile-empty">No records found</div>
+        ) : (
+          data.map(mobileCard)
+        )}
+      </div>
+
+      <div className="afiliados-pagination">
         <Button
           label="Anterior"
           icon="pi pi-chevron-left"

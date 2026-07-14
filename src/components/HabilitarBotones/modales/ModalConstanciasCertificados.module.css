@@ -96,6 +96,93 @@
   flex-wrap: wrap;
 }
 
+.mobileCursosList {
+  display: none;
+}
+
+.mobileEmpty {
+  margin: 0;
+  padding: 1rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.mobileCursoCard {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.mobileCursoHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mobileCursoHeader h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.95rem;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.mobileCursoHeader p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.mobileCursoMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.mobileCursoMeta span,
+.mobileCursoFechas {
+  min-width: 0;
+  color: #334155;
+  font-size: 0.84rem;
+  line-height: 1.25;
+}
+
+.mobileCursoMeta b,
+.mobileCursoFechas > b {
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mobileCursoFechas {
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.mobileCursoActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.mobileCursoActions :global(.p-button) {
+  width: 100%;
+  justify-content: center;
+}
+
 .badgeSi,
 .badgeNo {
   display: inline-flex;
@@ -257,6 +344,20 @@
 }
 
 @media (max-width: 900px) {
+  .dialog {
+    width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .dialogContent {
+    padding: 1rem !important;
+    max-height: calc(100dvh - 110px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .headerPanel,
   .cardHeader,
   .formHeader {
@@ -275,6 +376,24 @@
 
   .formRowFull {
     grid-column: auto;
+  }
+
+  .headerPanel p b {
+    display: none;
+  }
+
+  .card,
+  .formCard {
+    padding: 0.9rem;
+  }
+
+  .mobileCursosList {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .table {
+    display: none;
   }
 
   .fechaSelector {

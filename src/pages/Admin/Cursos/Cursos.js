@@ -68,6 +68,22 @@ const esInscripcionAbierta = (estado) => {
   return normalizarTexto(estado) === "inscripcion_abierta";
 };
 
+const DESCRIPTION_ICONS =
+  /^(📅|👨‍🏫|👩‍🏫|🧑‍🏫|👥|⏰|🕘|💻|📍|🌐|✅|ℹ️|📌|🏫|📚|🎓|📝)\s*/u;
+
+const splitDescriptionItems = (description) => {
+  const text = String(description || "").trim();
+
+  if (!text) return [];
+
+  return text
+    .split(
+      /(?=📅|👨‍🏫|👩‍🏫|🧑‍🏫|👥|⏰|🕘|💻|📍|🌐|✅|ℹ️|📌|🏫|📚|🎓|📝)/u
+    )
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const Cursos = () => {
   const dispatch = useDispatch();
   const history = useHistory();
@@ -443,21 +459,126 @@ const Cursos = () => {
           <SubirCursosUsuarios curso={cursoSelect} noSubidos={noSubidos} />
         ) : cursos && cursos.length > 0 ? (
           <>
-            <DataTable
-              value={cursos}
-              responsiveLayout="scroll"
-              loading={processing}
-              dataKey="id"
-              tableStyle={{ tableLayout: "fixed", width: "100%" }}
-              className={`p-datatable-sm ${styles.prettyTable}`}
-              rowClassName={(curso) =>
-                esInscripcionAbierta(curso.estado)
-                  ? styles.rowOpen
-                  : styles.rowFinished
-              }
-            >
-              {dynamicColumns}
-            </DataTable>
+            <div className={styles.mobileCoursesList}>
+              {cursos.map((curso) => {
+                const abierta = esInscripcionAbierta(curso.estado);
+                const linkValido = isValidLink(curso.link);
+
+                return (
+                  <article
+                    key={curso.id}
+                    className={`${styles.mobileCourseCard} ${
+                      abierta ? styles.mobileCourseOpen : ""
+                    }`}
+                  >
+                    <div className={styles.mobileCourseHeader}>
+                      <div className={styles.mobileCourseTitleBlock}>
+                        <span className={styles.mobileCourseLabel}>Curso</span>
+                        <h4>{curso.titulo || "Sin título"}</h4>
+                      </div>
+
+                      <span
+                        className={
+                          abierta ? styles.statusOpen : styles.statusFinished
+                        }
+                      >
+                        {estadoLegible(curso.estado)}
+                      </span>
+                    </div>
+
+                    {curso.descripcion && (
+                      <div className={styles.mobileCourseDescription}>
+                        {splitDescriptionItems(curso.descripcion).map(
+                          (item, index) => {
+                            const match = item.match(DESCRIPTION_ICONS);
+                            const icon = match?.[1] || "";
+                            const text = icon
+                              ? item.replace(DESCRIPTION_ICONS, "").trim()
+                              : item;
+
+                            return (
+                              <div
+                                key={`${curso.id}-descripcion-${index}`}
+                                className={
+                                  icon
+                                    ? styles.mobileCourseDescriptionItem
+                                    : styles.mobileCourseDescriptionPlain
+                                }
+                              >
+                                {icon && (
+                                  <span
+                                    className={styles.mobileCourseDescriptionIcon}
+                                  >
+                                    {icon}
+                                  </span>
+                                )}
+                                <span>{text}</span>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+
+                    <div className={styles.mobileCourseMeta}>
+                      <div>
+                        <span>Categoría</span>
+                        <strong>{categoriaLegible(curso.categoria)}</strong>
+                      </div>
+
+                      <div>
+                        <span>Link</span>
+                        {linkValido ? (
+                          <a
+                            href={curso.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Abrir enlace
+                          </a>
+                        ) : (
+                          <strong>Sin link</strong>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.mobileCourseActions}>
+                      <Button
+                        label="Editar"
+                        icon="pi pi-pencil"
+                        className="p-button-sm p-button-warning"
+                        onClick={() => handleEdit(curso.id)}
+                      />
+
+                      <Button
+                        label="Cargar usuarios"
+                        icon="pi pi-file"
+                        className="p-button-sm p-button-help"
+                        onClick={() => confirmUpload(curso)}
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className={styles.desktopCoursesTable}>
+              <DataTable
+                value={cursos}
+                responsiveLayout="scroll"
+                loading={processing}
+                dataKey="id"
+                tableStyle={{ tableLayout: "fixed", width: "100%" }}
+                className={`p-datatable-sm ${styles.prettyTable}`}
+                rowClassName={(curso) =>
+                  esInscripcionAbierta(curso.estado)
+                    ? styles.rowOpen
+                    : styles.rowFinished
+                }
+              >
+                {dynamicColumns}
+              </DataTable>
+            </div>
 
             <Paginator template={template2} />
           </>

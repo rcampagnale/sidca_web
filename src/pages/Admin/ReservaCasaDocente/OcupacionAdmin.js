@@ -122,9 +122,13 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
     try {
       setGuardando(reserva.id);
       const ref = doc(dbReservas, "reservasCasaDocente", reserva.id);
+      const diasExtraActuales = Number(reserva.diasExtra || 0);
+      const importeDiasExtraActual = Number(reserva.importeDiasExtra || 0);
       const updates = {
         fechaEgreso: dateToStr(nuevaFecha),
         diaExtraAplicado: true,
+        diasExtra: diasExtraActuales + 1,
+        importeDiasExtra: importeDiasExtraActual + precioPorNoche,
       };
       if (precioPorNoche) {
         const totalAnterior = Number(reserva.totalReserva ?? reserva.precioFinalTotal ?? 0);
@@ -313,6 +317,40 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className={styles.mobileMonthList}>
+            {habitaciones.map((hab) => (
+              <div key={hab.id} className={styles.mobileRoomCard}>
+                <div className={styles.mobileRoomHeader}>
+                  <span className={styles.mobileRoomName}>
+                    {hab.nombre || hab.tipo}
+                  </span>
+                </div>
+                <div className={styles.mobileDaysGrid}>
+                  {Array.from({ length: dias }, (_, i) => i + 1).map((d) => {
+                    const fecha = new Date(yr, mo, d);
+                    const { estado } = getEstadoHab(reservas, hab.id, fecha);
+                    const esHoy = yr === hoy.getFullYear() && mo === hoy.getMonth() && d === hoy.getDate();
+                    const esSel = diaSelec && diaSelec.getTime() === fecha.getTime();
+
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`${styles.mobileDayCell} ${styles[`mobileDay_${estado}`]} ${
+                          esHoy ? styles.mobileDayHoy : ""
+                        } ${esSel ? styles.mobileDaySel : ""}`}
+                        onClick={() => selDia(d)}
+                        title={`${hab.nombre || hab.tipo} · ${estado}`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className={styles.leyenda}>

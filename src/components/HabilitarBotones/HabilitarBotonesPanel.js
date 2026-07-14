@@ -1850,12 +1850,108 @@ const HabilitarBotonesPanel = () => {
               />
             </div>
 
+            <div className={styles.delegadosMobileList}>
+              {loadingDelegados && (
+                <p className={styles.delegadosMobileEmpty}>Cargando delegados...</p>
+              )}
+              {!loadingDelegados && delegadosAutorizados.length === 0 && (
+                <p className={styles.delegadosMobileEmpty}>
+                  No hay delegados autorizados.
+                </p>
+              )}
+              {!loadingDelegados &&
+                delegadosAutorizados.map((row) => {
+                  const permisos = row.herramientas?.expedienteSueldo?.permisos || {};
+                  const permisosActivos = Object.entries(permisos)
+                    .filter(([, activo]) => activo)
+                    .map(([permiso]) => permiso);
+                  const expedienteActivo =
+                    row.herramientas?.expedienteSueldo?.habilitado;
+
+                  return (
+                    <article key={row.id || row.dni} className={styles.delegadoMobileCard}>
+                      <div className={styles.delegadoMobileHeader}>
+                        <div>
+                          <h5>{row.apellidoNombre || "Sin nombre"}</h5>
+                          <p>DNI {row.dni || "-"}</p>
+                        </div>
+                        <Button
+                          icon="pi pi-pencil"
+                          className="p-button-rounded p-button-text p-button-sm"
+                          aria-label="Editar delegado"
+                          onClick={() => editarDelegado(row)}
+                        />
+                      </div>
+
+                      <div className={styles.delegadoMobileMeta}>
+                        <span>
+                          <b>Departamento</b>
+                          {row.departamento || "-"}
+                        </span>
+                        <span>
+                          <b>Actualizado</b>
+                          {formatearFecha(row.updatedAt)}
+                        </span>
+                      </div>
+
+                      <div className={styles.delegadoMobileBadges}>
+                        <Tag
+                          value={row.registradoApp ? row.origenApp || "usuarios" : "No app"}
+                          severity={row.registradoApp ? "success" : "warning"}
+                        />
+                        <Tag
+                          value={row.habilitado ? "Habilitado" : "Deshabilitado"}
+                          severity={row.habilitado ? "success" : "danger"}
+                        />
+                        <Tag
+                          value={expedienteActivo ? "Expediente activo" : "Expediente inactivo"}
+                          severity={expedienteActivo ? "success" : "warning"}
+                        />
+                      </div>
+
+                      <div className={styles.delegadoMobilePermisos}>
+                        <b>Permisos</b>
+                        {permisosActivos.length > 0 ? (
+                          <div>
+                            {permisosActivos.map((permiso) => (
+                              <Tag
+                                key={permiso}
+                                value={PERMISO_LABELS[permiso] || permiso}
+                                severity={permiso === "eliminar" ? "danger" : "info"}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <small>Sin permisos activos</small>
+                        )}
+                      </div>
+
+                      <div className={styles.delegadoMobileActions}>
+                        <Button
+                          label={row.habilitado ? "Deshabilitar" : "Habilitar"}
+                          icon={row.habilitado ? "pi pi-ban" : "pi pi-check"}
+                          className="p-button-sm p-button-outlined"
+                          onClick={() => toggleDelegadoHabilitado(row)}
+                        />
+                        <Button
+                          label="Eliminar"
+                          icon="pi pi-trash"
+                          className="p-button-sm p-button-outlined p-button-danger"
+                          onClick={() => eliminarDelegadoAutorizado(row)}
+                        />
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
+
             <DataTable
               value={delegadosAutorizados}
               loading={loadingDelegados}
               paginator
               rows={8}
-              responsiveLayout="scroll"
+              responsiveLayout="stack"
+              breakpoint="780px"
               emptyMessage="No hay delegados autorizados."
             >
               <Column field="dni" header="DNI" sortable />
@@ -1959,6 +2055,7 @@ const HabilitarBotonesPanel = () => {
         header="Configurar Asistencia"
         visible={visibleDialogAsistencia}
         style={{ width: 720, maxWidth: "95vw" }}
+        className={styles.asistenciaDialog}
         modal
         onHide={() => setVisibleDialogAsistencia(false)}
       >

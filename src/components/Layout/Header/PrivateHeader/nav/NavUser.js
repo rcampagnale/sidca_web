@@ -1,5 +1,4 @@
-import React from "react";
-import { Sidebar } from "primereact/sidebar";
+import React, { useEffect, useRef } from "react";
 import { useHistory } from "react-router";
 import styles from "./navUser.module.scss";
 import { confirmDialog } from "primereact/confirmdialog";
@@ -12,16 +11,21 @@ const NavUser = ({
   onRegistrarPantallaQR,
 }) => {
   const history = useHistory();
+  const menuRef = useRef(null);
 
   const confirm = () => {
-    confirmDialog({
-      message: "¿Está seguro de que quiere cerrar sesión?",
-      header: "Cerrar Sesión",
-      icon: "pi pi-exclamation-triangle",
-      accept: () => history.push("/logout"),
-      acceptLabel: "Si",
-      rejectLabel: "No",
-    });
+    setActive(false);
+
+    window.setTimeout(() => {
+      confirmDialog({
+        message: "¿Está seguro de que quiere cerrar sesión?",
+        header: "Cerrar Sesión",
+        icon: "pi pi-exclamation-triangle",
+        accept: () => history.push("/logout"),
+        acceptLabel: "Si",
+        rejectLabel: "No",
+      });
+    }, 0);
   };
 
   const navigateTo = (path) => {
@@ -29,13 +33,37 @@ const NavUser = ({
     history.push(path);
   };
 
+  useEffect(() => {
+    if (!active) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (menuRef.current && menuRef.current.contains(event.target)) {
+        return;
+      }
+
+      setActive(false);
+    };
+
+    const handlePageScroll = () => {
+      setActive(false);
+    };
+
+    const timer = window.setTimeout(() => {
+      document.addEventListener("mousedown", handleOutsideClick, true);
+      document.addEventListener("touchstart", handleOutsideClick, true);
+      window.addEventListener("scroll", handlePageScroll, { passive: true });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("mousedown", handleOutsideClick, true);
+      document.removeEventListener("touchstart", handleOutsideClick, true);
+      window.removeEventListener("scroll", handlePageScroll);
+    };
+  }, [active, setActive]);
+
   return (
-    <Sidebar
-      className={"p-sidebar-top"}
-      style={{ backgroundColor: "#3b3b3b", minHeight: "60vh" }}
-      visible={active}
-      onHide={() => setActive(false)}
-    >
+    <div className={styles.mobileMenuPanel} ref={menuRef}>
       <ul className={styles.navUl}>
         <li onClick={() => navigateTo("/home")}>Inicio</li>
 
@@ -70,19 +98,11 @@ const NavUser = ({
 
         <li onClick={() => navigateTo("/contacto")}>Contacto</li>
 
-        {/* {user.profue.cotizante && } */}
-
-        <li
-          className={styles.logOut}
-          onClick={() => {
-            setActive(false);
-            confirm();
-          }}
-        >
+        <li className={styles.logOut} onClick={confirm}>
           Cerrar sesión
         </li>
       </ul>
-    </Sidebar>
+    </div>
   );
 };
 

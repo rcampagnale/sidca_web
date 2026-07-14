@@ -144,6 +144,10 @@
 .celda_vence   { background: #EF9F27; }
 .celdaSel { outline: 2px solid #374151; outline-offset: 1px; }
 
+.mobileMonthList {
+  display: none;
+}
+
 /* ── Leyenda ── */
 .leyenda {
   display: flex;
@@ -256,6 +260,129 @@
 .btnAccion:disabled { opacity: .5; cursor: not-allowed; }
 .btnLiberar  { background: #eaf3de; color: #3b6d11; border-color: #c0dd97; }
 .btnDiaExtra { background: #faeeda; color: #854f0b; border-color: #fac775; }
+
+@media (max-width: 640px) {
+  .wrap {
+    gap: 10px;
+    padding: 0.85rem 0;
+  }
+
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tabBtn {
+    width: 100%;
+    padding: 8px 10px;
+  }
+
+  .navMes {
+    width: 100%;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+
+  .mesLabel {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .gridWrap {
+    display: none;
+  }
+
+  .mobileMonthList {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .mobileRoomCard {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.75rem;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  .mobileRoomHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.55rem;
+  }
+
+  .mobileRoomName {
+    color: #111827;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .mobileDaysGrid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.28rem;
+  }
+
+  .mobileDayCell {
+    min-width: 0;
+    min-height: 1.85rem;
+    border: 0;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .mobileDay_libre {
+    background: #97C459;
+  }
+
+  .mobileDay_ocupada {
+    background: #E24B4A;
+  }
+
+  .mobileDay_vence {
+    background: #EF9F27;
+  }
+
+  .mobileDayHoy {
+    box-shadow: inset 0 0 0 2px #2563eb;
+  }
+
+  .mobileDaySel {
+    outline: 2px solid #111827;
+    outline-offset: 1px;
+  }
+
+  .leyenda {
+    gap: 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .detalleHeader {
+    padding: 0.75rem;
+  }
+
+  .detalleTitulo {
+    font-size: 0.86rem;
+  }
+
+  .metricas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 /* ── Responsive ── */
 @media (max-width: 600px) {

@@ -7,6 +7,7 @@ import { InputSwitch } from "primereact/inputswitch";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { normalizeDescuentoInput } from "./utils/shared.js";
+import "./AfiliadoDialogs.css";
 
 export default function EditAfiliadoDialog({
   visible,
@@ -84,7 +85,7 @@ export default function EditAfiliadoDialog({
   );
 
   const footer = (
-    <div className="p-d-flex p-ai-center p-jc-end" style={{ gap: 8 }}>
+    <div className="afiliado-dialog-footer">
       <Button
         label="Cancelar"
         className="p-button-text"
@@ -133,10 +134,12 @@ export default function EditAfiliadoDialog({
       visible={visible}
       modal
       style={{ width: "760px", maxWidth: "95vw" }}
+      className="afiliado-dialog afiliado-edit-dialog"
+      contentClassName="afiliado-dialog-content"
       onHide={onCancel}
       footer={footer}
     >
-      <div className="p-fluid p-formgrid p-grid" style={{ rowGap: 10 }}>
+      <div className="p-fluid p-formgrid p-grid afiliado-edit-grid">
         <div className="p-field p-col-12 p-md-6">
           <label>Nombre</label>
           <InputText

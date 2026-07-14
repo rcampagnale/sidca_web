@@ -73,6 +73,7 @@ const QRSessionPanel = ({
           optionLabel="label"
           optionValue="value"
           placeholder={loadingCursos ? "Cargando cursos..." : "Seleccioná un curso"}
+          panelClassName={styles.mobileDropdownPanel}
           loading={loadingCursos}
           filter
           showClear
@@ -89,6 +90,7 @@ const QRSessionPanel = ({
           optionLabel="label"
           optionValue="value"
           placeholder="Elegí la modalidad"
+          panelClassName={styles.mobileDropdownPanel}
           disabled={asistenciaHabilitada === "si" && !!sesionActual?.id}
         />
 
@@ -113,6 +115,7 @@ const QRSessionPanel = ({
             optionLabel="label"
             optionValue="value"
             placeholder="Elegí el requisito presencial"
+            panelClassName={styles.mobileDropdownPanel}
             disabled={
               loadingEncuentrosPresenciales ||
               (asistenciaHabilitada === "si" && !!asistenciaConfig?.habilitada)
@@ -142,6 +145,7 @@ const QRSessionPanel = ({
               optionLabel="label"
               optionValue="id"
               placeholder="Seleccioná los encuentros requeridos"
+              panelClassName={styles.mobileDropdownPanel}
               display="chip"
               disabled={loadingEncuentrosPresenciales}
             />
