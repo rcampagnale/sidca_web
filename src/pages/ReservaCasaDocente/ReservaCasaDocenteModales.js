@@ -1,5 +1,5 @@
 // src/pages/ReservaCasaDocente/ReservaCasaDocenteModales.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styles from "./ReservaCasaDocente.module.css";
 
 // Firebase reservas (sidcareservas)
@@ -14,21 +14,26 @@ import {
   where,
   addDoc,
 } from "firebase/firestore";
+import {
+  SEXO_OPCIONES,
+  labelSexo,
+  evaluarDisponibilidadHabitacion,
+} from "../../utils/habitacionesCasaDocente";
 
 /* ======================
  * Helpers generales
  * ====================== */
 
-// 🔹 Máximo de no afiliados por habitación (en base a camas)
-const getMaxNoAfiliados = (habitacion, tipo) => {
-  if (!habitacion) return 0;
-  if (tipo === "simple") return 0;
-  const camas = Number(habitacion.camas) || 1;
-  return Math.max(camas - 1, 0); // 1 afiliado + resto no afiliados
-};
+// El precio "plano" (sin recargo por acompañante) ya no depende del tipo fijo
+// "simple" (ese enum dejó de ser obligatorio) sino de que la habitación tenga
+// una sola cama.
+const esHabitacionDeUnaCama = (habitacion) =>
+  (Number(habitacion?.camas) || 1) <= 1;
 
-// 🔹 Cálculo de precios por reserva (POR NOCHE: 1 afiliado + no afiliados)
-const calcularPreciosReserva = (habitacion, tipo, cantidadNoAfiliados) => {
+// 🔹 Cálculo de precios por reserva (POR NOCHE), a partir de la cantidad de
+// personas que el huésped eligió pagar (1 afiliado + el resto no afiliados).
+// Si reserva la habitación completa, cantidadPersonas = camas de la habitación.
+const calcularPreciosReserva = (habitacion, cantidadPersonas) => {
   const precioAfiliado = Number(habitacion?.precio) || 0;
   const precioNoAfiliado = Number(habitacion?.precioNoAfiliado) || 0;
 
@@ -36,13 +41,15 @@ const calcularPreciosReserva = (habitacion, tipo, cantidadNoAfiliados) => {
     return { precioAfiliado, precioNoAfiliado, precioFinal: 0 };
   }
 
-  if (tipo === "simple") {
+  const cantNoAfiliados = Math.max((Number(cantidadPersonas) || 1) - 1, 0);
+
+  if (esHabitacionDeUnaCama(habitacion) || cantNoAfiliados === 0) {
     return { precioAfiliado, precioNoAfiliado, precioFinal: precioAfiliado };
   }
 
-  const cant = Math.max(Number(cantidadNoAfiliados) || 0, 0);
   const precioFinal =
-    precioAfiliado + (precioNoAfiliado > 0 ? cant * precioNoAfiliado : 0);
+    precioAfiliado +
+    (precioNoAfiliado > 0 ? cantNoAfiliados * precioNoAfiliado : 0);
 
   return { precioAfiliado, precioNoAfiliado, precioFinal };
 };
@@ -87,6 +94,24 @@ const ReservaCasaDocenteModales = ({
   const getTipoById = (tipoId) =>
     TIPOS_HABITACION.find((t) => t.id === tipoId);
 
+  // La habitación real seleccionada (con su cantidad de camas), no la
+  // categoría. Ya no hay "pool" de varias unidades por tipo.
+  const habitacionInfo =
+    (habitaciones || []).find((h) => h.tipo === tipoSeleccionado) || null;
+  const camasHabitacion = Math.max(Number(habitacionInfo?.camas) || 1, 1);
+  const permiteCompartir = camasHabitacion > 1;
+
+  // Para cerrar el modal solo automáticamente tras confirmar la reserva
+  // (dejar el resto del formulario visible detrás genera confusión).
+  const cierreAutomaticoRef = useRef(null);
+  useEffect(() => {
+    return () => {
+      if (cierreAutomaticoRef.current) {
+        clearTimeout(cierreAutomaticoRef.current);
+      }
+    };
+  }, []);
+
   /* ======================
    * Estado: modal de reserva
    * ====================== */
@@ -97,6 +122,14 @@ const ReservaCasaDocenteModales = ({
   const [errorFechas, setErrorFechas] = useState("");
   const [disponibilidadOk, setDisponibilidadOk] = useState(false);
   const [habitacionAsignable, setHabitacionAsignable] = useState(null);
+
+  // Modo de reserva: "completa" (exclusiva, para tu grupo) o "compartida"
+  // (pagás solo tus lugares y podés convivir con otros huéspedes del mismo
+  // sexo). Si la habitación tiene una sola cama, siempre es "completa".
+  const [modoReserva, setModoReserva] = useState("completa");
+  const [sexoSeleccionado, setSexoSeleccionado] = useState("");
+  const [cantidadPersonasSeleccionada, setCantidadPersonasSeleccionada] =
+    useState(1);
 
   const [formNombre, setFormNombre] = useState("");
   const [formDni, setFormDni] = useState("");
@@ -155,16 +188,44 @@ const ReservaCasaDocenteModales = ({
       setEmailBloqueado(false);
       setCelularBloqueado(false);
       setAceptaDescuento(false);
+
+      setModoReserva("completa");
+      setSexoSeleccionado("");
+      setCantidadPersonasSeleccionada(1);
     }
   }, [isReservaModalOpen, tipoSeleccionado]);
 
-  // Si cambian las fechas, reseteamos disponibilidad
+  // Habitación completa = paga y ocupa todas las camas. Al elegir "completa"
+  // (o con una habitación de 1 cama) fijamos la cantidad automática.
+  // Al compartir, el máximo seleccionable es camas-1 (el dropdown solo
+  // ofrece esas opciones); si el valor previo quedó fuera de ese rango
+  // (ej. veníamos de "completa" con el máximo de camas), lo reseteamos a 1.
+  useEffect(() => {
+    if (modoReserva === "completa" || !permiteCompartir) {
+      setCantidadPersonasSeleccionada(camasHabitacion);
+    } else if (
+      cantidadPersonasSeleccionada < 1 ||
+      cantidadPersonasSeleccionada >= camasHabitacion
+    ) {
+      setCantidadPersonasSeleccionada(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoReserva, camasHabitacion, permiteCompartir]);
+
+  // Si cambian las fechas o el modo/cantidad/sexo, reseteamos disponibilidad
   useEffect(() => {
     if (!isReservaModalOpen) return;
     setDisponibilidadOk(false);
     setMensajeDisponibilidad("");
     setHabitacionAsignable(null);
-  }, [fechaIngreso, fechaEgreso, isReservaModalOpen]);
+  }, [
+    fechaIngreso,
+    fechaEgreso,
+    isReservaModalOpen,
+    modoReserva,
+    sexoSeleccionado,
+    cantidadPersonasSeleccionada,
+  ]);
 
   // Al abrir el modal de consulta, reseteamos búsqueda
   useEffect(() => {
@@ -301,19 +362,13 @@ const ReservaCasaDocenteModales = ({
       return;
     }
 
-    if (!tipoSeleccionado) {
-      setErrorFechas("Ocurrió un problema con el tipo de habitación.");
+    if (!tipoSeleccionado || !habitacionInfo) {
+      setErrorFechas("Ocurrió un problema con la habitación seleccionada.");
       return;
     }
 
-    const habitacionesTipo = habitaciones.filter(
-      (h) => h.tipo === tipoSeleccionado && h.activa !== false
-    );
-
-    if (habitacionesTipo.length === 0) {
-      setMensajeDisponibilidad(
-        "Por el momento no hay habitaciones de este tipo habilitadas."
-      );
+    if (modoReserva === "compartida" && !sexoSeleccionado) {
+      setErrorFechas("Indicá el sexo del grupo que se hospeda para compartir la habitación.");
       return;
     }
 
@@ -348,7 +403,7 @@ const ReservaCasaDocenteModales = ({
             ? ` Motivo: ${bloqueoEncontrado.motivo}.`
             : "";
           setMensajeDisponibilidad(
-            "Las fechas seleccionadas se encuentran bloqueadas para este tipo de habitación. Por favor elegí otro rango de fechas." +
+            "Las fechas seleccionadas se encuentran bloqueadas para esta habitación. Por favor elegí otro rango de fechas." +
               motivoTxt
           );
           setDisponibilidadOk(false);
@@ -365,38 +420,39 @@ const ReservaCasaDocenteModales = ({
       }
 
       /* ==================================
-       * 2) CHEQUEAR RESERVAS YA EXISTENTES
+       * 2) CHEQUEAR RESERVAS YA EXISTENTES (a nivel de plaza)
        * ================================== */
       const colReservas = collection(dbReservas, "reservasCasaDocente");
       const qRes = query(colReservas, where("tipo", "==", tipoSeleccionado));
       const snapshot = await getDocs(qRes);
       const reservas = snapshot.docs.map((d) => d.data());
 
-      let reservasSuperpuestas = 0;
-
-      reservas.forEach((r) => {
-        const rIng = r.fechaIngreso;
-        const rEgr = r.fechaEgreso;
+      const reservasSuperpuestas = reservas.filter((r) => {
         const estado = (r.estado || "pendiente").toLowerCase();
-        if (estado === "cancelada" || estado === "rechazada") return;
-        if (rEgr > solIng && rIng < solEgr) {
-          reservasSuperpuestas += 1;
-        }
+        if (estado === "cancelada" || estado === "rechazada") return false;
+        return r.fechaEgreso > solIng && r.fechaIngreso < solEgr;
       });
 
-      if (reservasSuperpuestas < habitacionesTipo.length) {
-        const disponibles = habitacionesTipo.length - reservasSuperpuestas;
+      const resultado = evaluarDisponibilidadHabitacion({
+        habitacion: habitacionInfo,
+        reservasSuperpuestas,
+        modoReserva,
+        sexo: sexoSeleccionado,
+        cantidadPersonas: cantidadPersonasSeleccionada,
+      });
+
+      if (resultado.disponible) {
         setDisponibilidadOk(true);
-        setHabitacionAsignable(habitacionesTipo[0]);
+        setHabitacionAsignable(habitacionInfo);
         setMensajeDisponibilidad(
-          `Hay disponibilidad para las fechas seleccionadas. Habitaciones libres estimadas: ${disponibles}.`
+          modoReserva === "completa"
+            ? "Hay disponibilidad para las fechas seleccionadas."
+            : `Hay disponibilidad para las fechas seleccionadas. Lugares libres en la habitación: ${resultado.cuposLibres}.`
         );
       } else {
         setDisponibilidadOk(false);
         setHabitacionAsignable(null);
-        setMensajeDisponibilidad(
-          "No se encontraron habitaciones disponibles de este tipo para las fechas seleccionadas."
-        );
+        setMensajeDisponibilidad(resultado.motivo);
       }
     } catch (error) {
       console.error(
@@ -460,21 +516,22 @@ const ReservaCasaDocenteModales = ({
       return;
     }
 
+    if (modoReserva === "compartida" && !sexoSeleccionado) {
+      setFormError("Indicá el sexo del grupo que se hospeda.");
+      return;
+    }
+
     try {
       setSendingReserva(true);
 
-      // 🔢 Calcular automáticamente: 1 afiliado + resto no afiliados según camas
-      const cantNoAfiliados = getMaxNoAfiliados(
-        habitacionAsignable,
-        tipoSeleccionado
+      const cantidadPersonas = Math.max(
+        Number(cantidadPersonasSeleccionada) || 1,
+        1
       );
+      const cantNoAfiliados = Math.max(cantidadPersonas - 1, 0);
 
       const { precioAfiliado, precioNoAfiliado, precioFinal } =
-        calcularPreciosReserva(
-          habitacionAsignable,
-          tipoSeleccionado,
-          cantNoAfiliados
-        );
+        calcularPreciosReserva(habitacionAsignable, cantidadPersonas);
 
       const noches = calcularNoches(fechaIngreso, fechaEgreso);
       const precioTotalEstadia =
@@ -488,7 +545,9 @@ const ReservaCasaDocenteModales = ({
         fechaIngreso,
         fechaEgreso,
         noches,
-        cantidadPersonas: 1 + cantNoAfiliados,
+        modoReserva,
+        sexo: modoReserva === "compartida" ? sexoSeleccionado : "",
+        cantidadPersonas,
         cantidadNoAfiliados: cantNoAfiliados,
         precioAfiliado,
         precioNoAfiliado,
@@ -512,12 +571,23 @@ const ReservaCasaDocenteModales = ({
         "Tu solicitud de reserva fue registrada correctamente. El equipo de SIDCA confirmará la reserva por los canales de contacto habituales."
       );
 
+      // Cerramos el modal solo tras un momento: dejarlo abierto con el
+      // formulario y el mensaje de éxito superpuestos genera confusión.
+      cierreAutomaticoRef.current = setTimeout(() => {
+        onCloseReserva?.();
+      }, 2500);
+
       // 📲 Abrir WhatsApp con mensaje
       try {
-        // 54 (AR) + 3834012228
-        const phoneWithCountry = "543834012228";
+        // 54 (AR) 9 + 3834 25-0139
+        const phoneWithCountry = "5493834250139";
         const tipoNombre =
           getTipoById(tipoSeleccionado)?.nombre || "habitación";
+
+        const modoTexto =
+          modoReserva === "compartida"
+            ? `Compartida (${labelSexo(sexoSeleccionado)})`
+            : "Completa";
 
         const comentarioExtra = formComentario.trim()
           ? `\n• Comentario: ${formComentario.trim()}`
@@ -527,7 +597,7 @@ const ReservaCasaDocenteModales = ({
           precioAfiliado || precioNoAfiliado || precioFinal
             ? `\n\n💵 Detalle de precios:\n` +
               `• Precio afiliado por noche: $${precioAfiliado || 0}\n` +
-              (tipoSeleccionado !== "simple"
+              (!esHabitacionDeUnaCama(habitacionAsignable)
                 ? `• Precio no afiliado por noche: $${precioNoAfiliado || 0}\n` +
                   `• Cant. no afiliados: ${cantNoAfiliados}\n`
                 : "") +
@@ -541,7 +611,8 @@ const ReservaCasaDocenteModales = ({
           `Su reserva se encuentra en estado "pedido". ` +
           `Aguarde por su confirmación.\n\n` +
           `📌 Datos de la reserva:\n` +
-          `• Tipo: ${tipoNombre}\n` +
+          `• Habitación: ${tipoNombre}\n` +
+          `• Modalidad: ${modoTexto}\n` +
           `• Fechas: ${fechaIngreso} al ${fechaEgreso}\n` +
           `• Apellido y nombre: ${formNombre.trim()}\n` +
           `• DNI: ${formDni.trim()}\n` +
@@ -690,6 +761,99 @@ const ReservaCasaDocenteModales = ({
                 </div>
               </div>
 
+              {/* Modalidad: habitación completa o compartida */}
+              {permiteCompartir && (
+                <div className={styles.reservaAceptacionBox}>
+                  <p className={styles.reservaAceptacionLegend}>
+                    ¿Cómo querés reservar esta habitación?
+                  </p>
+                  <div className={styles.reservaCheckboxRow}>
+                    <label className={styles.reservaCheckboxLabel}>
+                      <input
+                        type="radio"
+                        name="modoReserva"
+                        checked={modoReserva === "completa"}
+                        onChange={() => setModoReserva("completa")}
+                      />
+                      Habitación completa (para tu grupo, hasta{" "}
+                      {camasHabitacion} personas)
+                    </label>
+                  </div>
+                  <div className={styles.reservaCheckboxRow}>
+                    <label className={styles.reservaCheckboxLabel}>
+                      <input
+                        type="radio"
+                        name="modoReserva"
+                        checked={modoReserva === "compartida"}
+                        onChange={() => setModoReserva("compartida")}
+                      />
+                      Compartir habitación (pagás solo por tus lugares)
+                    </label>
+                  </div>
+
+                  {modoReserva === "compartida" && (
+                    <div className={styles.reservaModalGrid}>
+                      <div className={styles.reservaFieldGroup}>
+                        <label
+                          className={styles.reservaLabel}
+                          htmlFor="cantidadPersonasCompartida"
+                        >
+                          Cantidad de personas que reservás
+                        </label>
+                        <select
+                          id="cantidadPersonasCompartida"
+                          className={styles.reservaInput}
+                          value={cantidadPersonasSeleccionada}
+                          onChange={(e) =>
+                            setCantidadPersonasSeleccionada(
+                              Number(e.target.value)
+                            )
+                          }
+                        >
+                          {Array.from(
+                            { length: camasHabitacion - 1 },
+                            (_, i) => i + 1
+                          ).map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className={styles.reservaFieldGroup}>
+                        <label
+                          className={styles.reservaLabel}
+                          htmlFor="sexoCompartida"
+                        >
+                          Sexo del grupo que se hospeda
+                        </label>
+                        <select
+                          id="sexoCompartida"
+                          className={styles.reservaInput}
+                          value={sexoSeleccionado}
+                          onChange={(e) => setSexoSeleccionado(e.target.value)}
+                        >
+                          <option value="">Seleccioná...</option>
+                          {SEXO_OPCIONES.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {modoReserva === "compartida" && (
+                    <p className={styles.reservaAutofillHelp}>
+                      Para compartir habitación, todos los huéspedes en las
+                      mismas fechas deben ser del mismo sexo.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {errorFechas && (
                 <p className={styles.reservaErrorText}>{errorFechas}</p>
               )}
@@ -707,9 +871,13 @@ const ReservaCasaDocenteModales = ({
                   {habitacionAsignable && (
                     <>
                       {(() => {
-                        const maxNoAf = getMaxNoAfiliados(
-                          habitacionAsignable,
-                          tipoSeleccionado
+                        const totalPersonas = Math.max(
+                          Number(cantidadPersonasSeleccionada) || 1,
+                          1
+                        );
+                        const cantNoAfValidos = Math.max(
+                          totalPersonas - 1,
+                          0
                         );
                         const {
                           precioAfiliado,
@@ -717,12 +885,8 @@ const ReservaCasaDocenteModales = ({
                           precioFinal,
                         } = calcularPreciosReserva(
                           habitacionAsignable,
-                          tipoSeleccionado,
-                          maxNoAf
+                          totalPersonas
                         );
-
-                        const cantNoAfValidos = maxNoAf;
-                        const totalPersonas = 1 + cantNoAfValidos;
 
                         const noches = calcularNoches(
                           fechaIngreso,
@@ -733,25 +897,19 @@ const ReservaCasaDocenteModales = ({
 
                         return (
                           <>
-                            {tipoSeleccionado !== "simple" && (
-                              <div className={styles.reservaAceptacionBox}>
-                                <p className={styles.reservaAceptacionLegend}>
-                                  Personas calculadas automáticamente
-                                </p>
-                                <p className={styles.reservaResultadoText}>
-                                  Esta habitación se calcula para{" "}
-                                  <strong>
-                                    1 afiliado + {cantNoAfValidos} no afiliado
-                                    {cantNoAfValidos !== 1 ? "s" : ""}
-                                  </strong>
-                                  .
-                                </p>
-                              </div>
-                            )}
-
                             <div className={styles.reservaAceptacionBox}>
                               <p className={styles.reservaAceptacionLegend}>
                                 Detalle de precios
+                              </p>
+                              <p className={styles.reservaResultadoText}>
+                                Modalidad:{" "}
+                                <strong>
+                                  {modoReserva === "compartida"
+                                    ? `Compartida (${labelSexo(
+                                        sexoSeleccionado
+                                      )})`
+                                    : "Habitación completa"}
+                                </strong>
                               </p>
                               <p className={styles.reservaResultadoText}>
                                 Precio afiliado (por noche):{" "}
@@ -759,16 +917,16 @@ const ReservaCasaDocenteModales = ({
                                   ? `$${precioAfiliado}`
                                   : "A definir"}
                               </p>
-                              {tipoSeleccionado !== "simple" && (
-                                <p className={styles.reservaResultadoText}>
-                                  Precio no afiliado (por noche):{" "}
-                                  {precioNoAfiliado
-                                    ? `$${precioNoAfiliado}`
-                                    : "A definir"}
-                                  {maxNoAf > 0 &&
-                                    `  (hasta ${maxNoAf} no afiliado/s)`}
-                                </p>
-                              )}
+                              {!esHabitacionDeUnaCama(habitacionAsignable) &&
+                                cantNoAfValidos > 0 && (
+                                  <p className={styles.reservaResultadoText}>
+                                    Precio no afiliado (por noche):{" "}
+                                    {precioNoAfiliado
+                                      ? `$${precioNoAfiliado}`
+                                      : "A definir"}
+                                    {`  (${cantNoAfValidos} no afiliado/s)`}
+                                  </p>
+                                )}
                               <p className={styles.reservaResultadoText}>
                                 Precio final por noche para{" "}
                                 <strong>

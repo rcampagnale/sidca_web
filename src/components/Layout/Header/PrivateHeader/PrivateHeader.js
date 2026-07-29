@@ -9,6 +9,7 @@ import { db } from "../../../../firebase/firebase-config";
 import styles from "./privateHeader.module.scss";
 import logo from "../../../../assets/img/logo-01.png";
 import DelegadoPantallaQR from "../../../HabilitarBotones/qr/DelegadoPantallaQR";
+import { FEATURE_FLAGS } from "../../../../config/featureFlags";
 
 const normalizarDni = (valor) => String(valor || "").replace(/\D/g, "");
 
@@ -130,6 +131,14 @@ const PrivateHeader = () => {
         {mostrarGestionDelegados && (
           <li onClick={() => history.push("/delegado/gestion-delegados")}>
             Gestión Delegados
+          </li>
+        )}
+
+        {/* Oculto hasta terminar la integración de pagos (ver featureFlags).
+            La ruta /gestion-pagos sigue activa para poder seguir probándola. */}
+        {FEATURE_FLAGS.gestionPagosUsuario && (
+          <li onClick={() => history.push("/gestion-pagos")}>
+            Gestión de Pagos
           </li>
         )}
 

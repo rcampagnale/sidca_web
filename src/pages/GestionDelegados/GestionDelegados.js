@@ -168,6 +168,30 @@ const DEPENDENCIA_OPCIONES_UNIFICADAS = [
   },
 ];
 
+// El nivel educativo del docente sale de las mismas dependencias, salvo el grupo
+// "Administración" (que son oficinas, no niveles). Las "Direcciones de Educación"
+// se muestran con el nombre del nivel al que pertenece el docente:
+// "Dirección de Educación Inicial" -> "Nivel Inicial".
+const DIRECCION_A_NIVEL = {
+  "Dirección de Educación Inicial": "Nivel Inicial",
+  "Dirección de Educación Primaria": "Nivel Primario",
+  "Dirección de Educación Secundaria": "Nivel Secundario",
+  "Dirección de Educación Rural": "Nivel Rural",
+  "Dirección de Educación Superior": "Nivel Superior",
+};
+
+const NIVEL_OPCIONES = DEPENDENCIA_OPCIONES_UNIFICADAS
+  .filter((grupo) => grupo.label !== "Administración")
+  .map((grupo) => ({
+    label:
+      grupo.label === "Direcciones de Educación" ? "Niveles" : grupo.label,
+    items: grupo.items.map((item) => {
+      const nivel = DIRECCION_A_NIVEL[item.value] || item.value;
+      return { label: nivel, value: nivel };
+    }),
+  }))
+  .filter((grupo) => grupo.items.length > 0);
+
 const PERMISO_LABELS_RESUMEN = {
   ver: "Ver",
   agregarObservaciones: "Observaciones",
@@ -265,12 +289,38 @@ const obtenerCircuitoAdministrativo = (item) => {
   return "";
 };
 
-const normalizarNivelFiltro = (valor) => {
+// Reduce un nivel a una "raíz" comparable, para poder relacionar los valores
+// históricos con la opción equivalente: "SECUNDARIO", "Secundaria",
+// "Dirección de Educación Secundaria" y "Nivel Secundario" caen todos en
+// "SECUNDARI". Ignora prefijos, acentos, símbolos y el género (o/a final).
+const raizNivel = (valor) =>
+  quitarAcentos(limpiarTexto(valor))
+    .toUpperCase()
+    .replace(/^DIRECCION DE EDUCACION\s+/, "")
+    .replace(/^NIVEL\s+/, "")
+    .replace(/^EDUCACION\s+/, "")
+    .replace(/[^A-Z0-9]/g, "")
+    .replace(/[OA]$/, "");
+
+const NIVEL_POR_RAIZ = NIVEL_OPCIONES.reduce((mapa, grupo) => {
+  grupo.items.forEach((item) => {
+    const raiz = raizNivel(item.value);
+    if (raiz && !mapa.has(raiz)) mapa.set(raiz, item.value);
+  });
+  return mapa;
+}, new Map());
+
+// Devuelve el nivel canónico equivalente, o el valor original si no hay match.
+const normalizarNivelEducativo = (valor) => {
   const texto = limpiarTexto(valor);
-  const clave = quitarAcentos(texto).toUpperCase();
-  if (clave === "SECUNDARIO" || clave === "SECUNDARIA") return "SECUNDARIA";
-  return texto || "Sin definir";
+  if (!texto) return "";
+  return NIVEL_POR_RAIZ.get(raizNivel(texto)) || texto;
 };
+
+// El filtro "Por nivel" agrupa por el nivel canónico, así variantes históricas
+// como "SECUNDARIO" y "Nivel Secundario" no aparecen como dos opciones.
+const normalizarNivelFiltro = (valor) =>
+  normalizarNivelEducativo(valor) || "Sin definir";
 
 const leerUsuarioSession = () => {
   try {
@@ -1480,7 +1530,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     setSeleccionado(item);
     setFormEdicion({
       departamento: item.departamento || "",
-      nivel: item.nivel || "",
+      // Relaciona el valor guardado con la opción equivalente del dropdown
+      // (ej. "SECUNDARIO" -> "Nivel Secundario").
+      nivel: normalizarNivelEducativo(item.nivel),
       dependencia: item.dependencia || "",
       estado: item.estado || "ALTA_DE_SERVICIO",
       estadoSueldo: item.estadoSueldo || "",
@@ -1752,6 +1804,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       expediente: "",
       fechaInicio: "",
       dependencia: "",
+      nivel: "",
       estado: "ALTA_DE_SERVICIO",
       estadoSueldo: "",
       observacionActual: "",
@@ -1779,6 +1832,12 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         return;
       }
       setPersonaNuevo({ ...persona, origenApp });
+      // Precargamos el nivel que ya tenga el afiliado; queda editable por si
+      // este expediente corresponde a otro nivel.
+      const nivelPersona = normalizarNivelEducativo(persona?.nivel);
+      if (nivelPersona) {
+        setFormNuevo((prev) => ({ ...prev, nivel: prev.nivel || nivelPersona }));
+      }
     } catch (err) {
       console.error("[GestionDelegados] validar dni:", err);
       setErrorDniNuevo("No se pudo validar el DNI. Intentalo nuevamente.");
@@ -1819,7 +1878,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         fechaInicio: formNuevo.fechaInicio || "",
         dependencia: formNuevo.dependencia || "",
         departamento: personaNuevo.departamento || "",
-        nivel: personaNuevo.nivel || "",
+        nivel: limpiarTexto(formNuevo.nivel) || personaNuevo.nivel || "",
         estado,
         estadoSueldo: formNuevo.estadoSueldo || "",
         registradoApp: true,
@@ -2823,6 +2882,23 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                 />
               </label>
               <label>
+                <span>Nivel educativo</span>
+                <Dropdown
+                  value={formNuevo.nivel || ""}
+                  options={NIVEL_OPCIONES}
+                  optionLabel="label"
+                  optionGroupLabel="label"
+                  optionGroupChildren="items"
+                  onChange={(e) =>
+                    setFormNuevo((prev) => ({ ...prev, nivel: e.value }))
+                  }
+                  placeholder="Seleccionar nivel educativo"
+                  filter
+                  showClear
+                  className={styles.fullInput}
+                />
+              </label>
+              <label>
                 <span>Estado</span>
                 <Dropdown
                   value={formNuevo.estado || ""}
@@ -2924,7 +3000,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                 ["Fecha inicio", seleccionado.fechaInicio],
                 ["Dependencia", seleccionado.dependencia],
                 ["Departamento", seleccionado.departamento],
-                ["Nivel", seleccionado.nivel],
+                ["Nivel", normalizarNivelEducativo(seleccionado.nivel)],
                 [
                   "Fecha de finalización",
                   seleccionado.finalizado
@@ -3074,12 +3150,19 @@ const GestionDelegados = ({ modo = "delegado" }) => {
             />
           </label>
           <label>
-            <span>Nivel</span>
-            <InputText
+            <span>Nivel educativo</span>
+            <Dropdown
               value={formEdicion.nivel || ""}
+              options={NIVEL_OPCIONES}
+              optionLabel="label"
+              optionGroupLabel="label"
+              optionGroupChildren="items"
               onChange={(e) =>
-                setFormEdicion((prev) => ({ ...prev, nivel: e.target.value }))
+                setFormEdicion((prev) => ({ ...prev, nivel: e.value }))
               }
+              placeholder="Seleccionar nivel educativo"
+              filter
+              showClear
               className={styles.fullInput}
             />
           </label>

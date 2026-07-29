@@ -1,5 +1,5 @@
 // src/pages/Admin/ReservaCasaDocente/bloqueofecha.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styles from "./ReservaCasaDocenteAdmin.module.css";
 
 import { dbReservas } from "../../../firebase/firebaseReservas";
@@ -12,25 +12,30 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-
-const TIPO_BLOQUEO_OPCIONES = [
-  { value: "todos", label: "Todas las habitaciones" },
-  { value: "simple", label: "Habitación simple" },
-  { value: "doble", label: "Habitación doble" },
-  { value: "triple", label: "Habitación triple" },
-  { value: "cuadruple", label: "Habitación cuádruple" },
-  { value: "departamento", label: "Departamento" },
-];
+import {
+  opcionesPorHabitacion,
+  nombrePorTipo,
+} from "../../../utils/habitacionesCasaDocente";
 
 const BloqueoFecha = () => {
   const [bloqueos, setBloqueos] = useState([]);
   const [cargandoBloqueos, setCargandoBloqueos] = useState(true);
+  const [habitaciones, setHabitaciones] = useState([]);
 
   const [bloqueoDesde, setBloqueoDesde] = useState("");
   const [bloqueoHasta, setBloqueoHasta] = useState("");
   const [bloqueoTipo, setBloqueoTipo] = useState("todos");
   const [bloqueoMotivo, setBloqueoMotivo] = useState("");
   const [guardandoBloqueo, setGuardandoBloqueo] = useState(false);
+
+  // Ya no hay una lista fija de tipos: se arma con las habitaciones cargadas.
+  const TIPO_BLOQUEO_OPCIONES = useMemo(
+    () => [
+      { value: "todos", label: "Todas las habitaciones" },
+      ...opcionesPorHabitacion(habitaciones),
+    ],
+    [habitaciones]
+  );
 
   // Cargar bloqueos desde Firestore en tiempo real
   useEffect(() => {
@@ -56,6 +61,23 @@ const BloqueoFecha = () => {
       }
     );
 
+    return () => unsubscribe();
+  }, []);
+
+  // Cargar habitaciones (solo para armar el selector de tipo/alcance)
+  useEffect(() => {
+    const colRef = collection(dbReservas, "habitacionesCasaDocente");
+    const unsubscribe = onSnapshot(
+      colRef,
+      (snapshot) => {
+        setHabitaciones(
+          snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        );
+      },
+      (error) => {
+        console.error("[BloqueoFecha] Error al cargar habitaciones:", error);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -196,7 +218,7 @@ const BloqueoFecha = () => {
       <p className={styles.subtitle}>
         Los bloqueos registrados se tendrán en cuenta al momento de realizar
         reservas desde la web pública. Podés bloquear todas las habitaciones, o
-        solo un tipo concreto (simple, doble, etc.).
+        solo una habitación concreta.
       </p>
 
       {/* Lista de bloqueos */}
@@ -221,8 +243,9 @@ const BloqueoFecha = () => {
             <tbody>
               {bloqueos.map((b) => {
                 const tipoLabel =
-                  TIPO_BLOQUEO_OPCIONES.find((t) => t.value === b.tipo)?.label ||
-                  b.tipo;
+                  b.tipo === "todos"
+                    ? "Todas las habitaciones"
+                    : nombrePorTipo(b.tipo, habitaciones);
 
                 return (
                   <tr key={b.id}>

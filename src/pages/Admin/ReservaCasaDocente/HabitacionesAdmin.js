@@ -14,6 +14,11 @@ import {
   doc,
   deleteDoc,
 } from "firebase/firestore";
+import {
+  nombreDeHabitacion,
+  slugifyNombreHabitacion,
+  compararNombresHabitacion,
+} from "../../../utils/habitacionesCasaDocente";
 
 const CLOUDINARY_CLOUD = "djoxsp29x";
 const CLOUDINARY_PRESET = "ml2p3pjq";
@@ -34,26 +39,17 @@ const subirImagenCloudinary = async (file) => {
   return data.secure_url;
 };
 
-const TIPOS_HABITACION = [
-  { id: "simple", nombre: "Habitación simple" },
-  { id: "doble", nombre: "Habitación doble" },
-  { id: "triple", nombre: "Habitación triple" },
-  { id: "cuadruple", nombre: "Habitación cuádruple" },
-  { id: "departamento", nombre: "Departamento" },
-];
-
 // 🔹 Calcula el precio final por noche
 const calcularPrecioFinal = (habitacion) => {
   if (!habitacion) return 0;
 
-  const tipo = habitacion.tipo;
   const precioAfiliado = Number(habitacion.precio) || 0;
   const precioNoAfiliado = Number(habitacion.precioNoAfiliado) || 0;
   const camas = Number(habitacion.camas) || 1;
 
   if (!precioAfiliado) return 0;
 
-  if (tipo === "simple") {
+  if (camas <= 1) {
     return precioAfiliado;
   }
 
@@ -81,7 +77,6 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
 
   const [form, setForm] = useState({
     nombre: "",
-    tipo: TIPOS_HABITACION[0].id,
     banos: 0,
     pequenaDescripcion: "",
     camas: "",
@@ -107,6 +102,11 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
           id: docSnap.id,
           ...docSnap.data(),
         }));
+        // Orden numérico por nombre (Habitación 2, 3, 4...), no por fecha de
+        // carga ni por el "tipo" interno.
+        data.sort((a, b) =>
+          compararNombresHabitacion(nombreDeHabitacion(a), nombreDeHabitacion(b))
+        );
         setHabitaciones(data);
         setCargando(false);
       },
@@ -129,7 +129,6 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
     setHabitacionEditando(null);
     setForm({
       nombre: "",
-      tipo: TIPOS_HABITACION[0].id,
       banos: 0,
       pequenaDescripcion: "",
       camas: "",
@@ -149,8 +148,9 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
     setIsEditMode(true);
     setHabitacionEditando(habitacion);
     setForm({
-      nombre: habitacion.nombre || "",
-      tipo: habitacion.tipo || TIPOS_HABITACION[0].id,
+      // Precarga con el nombre real, o el legado (ej. "Habitación 2") si la
+      // habitación es vieja y nunca tuvo "nombre" cargado.
+      nombre: nombreDeHabitacion(habitacion),
       banos: habitacion.banos ?? 0,
       pequenaDescripcion: habitacion.pequenaDescripcion || "",
       camas: habitacion.camas ?? "",
@@ -200,6 +200,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
 
   const validar = () => {
     const newErrors = {};
+    if (!form.nombre.trim())
+      newErrors.nombre = "El nombre de la habitación es obligatorio.";
     if (!form.camas) newErrors.camas = "La cantidad de camas es obligatoria.";
     if (!form.descripcion.trim())
       newErrors.descripcion = "La descripción es obligatoria.";
@@ -240,9 +242,10 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
           habitacionEditando.id
         );
 
+        const nombreTrim = form.nombre.trim();
         const baseUpdate = {
-          nombre: form.nombre || null,
-          tipo: form.tipo,
+          nombre: nombreTrim,
+          tipo: slugifyNombreHabitacion(nombreTrim),
           banos: Number(form.banos) || 0,
           pequenaDescripcion: form.pequenaDescripcion || "",
           camas: Number(form.camas) || 0,
@@ -272,9 +275,10 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
         }
       } else {
         // ----- CREAR -----
+        const nombreTrimNuevo = form.nombre.trim();
         const baseData = {
-          nombre: form.nombre || null,
-          tipo: form.tipo,
+          nombre: nombreTrimNuevo,
+          tipo: slugifyNombreHabitacion(nombreTrimNuevo),
           banos: Number(form.banos) || 0,
           pequenaDescripcion: form.pequenaDescripcion || "",
           camas: Number(form.camas) || 0,
@@ -316,11 +320,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
   // ============= ELIMINAR =============
   const handleEliminar = async (habitacion) => {
     const confirmar = window.confirm(
-      `¿Eliminar la habitación "${
-        habitacion.nombre ||
-        TIPOS_HABITACION.find((t) => t.id === habitacion.tipo)?.nombre ||
-        habitacion.id
-      }"? Esta acción no se puede deshacer.`
+      `¿Eliminar la habitación "${nombreDeHabitacion(habitacion)}"? Esta acción no se puede deshacer.`
     );
     if (!confirmar) return;
 
@@ -341,13 +341,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
 
   // ============= DUPLICAR =============
   const handleDuplicar = async (habitacion) => {
-    const tipoNombre =
-      habitacion.nombre ||
-      TIPOS_HABITACION.find((t) => t.id === habitacion.tipo)?.nombre ||
-      habitacion.id;
-
     const confirmar = window.confirm(
-      `¿Deseás duplicar la habitación "${tipoNombre}"? Esto creará una nueva habitación con los mismos datos e imágenes.`
+      `¿Deseás duplicar la habitación "${nombreDeHabitacion(habitacion)}"? Esto creará una nueva habitación con los mismos datos e imágenes.`
     );
     if (!confirmar) return;
 
@@ -380,9 +375,6 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
       );
     }
   };
-
-  const getTipoNombre = (tipoId) =>
-    TIPOS_HABITACION.find((t) => t.id === tipoId)?.nombre || tipoId;
 
   return (
     <div className={styles.wrapper}>
@@ -420,7 +412,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
             <table className={`${styles.table} ${styles.habitacionesTable}`}>
               <thead>
                 <tr>
-                  <th>Tipo</th>
+                  <th>Habitación</th>
                   <th>Camas</th>
                   <th>Baños</th>
                   <th>Precio afiliado</th>
@@ -436,7 +428,7 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                   const precioFinal = calcularPrecioFinal(h);
                   return (
                     <tr key={h.id}>
-                      <td>{getTipoNombre(h.tipo)}</td>
+                      <td>{nombreDeHabitacion(h)}</td>
                       <td>{h.camas}</td>
                       <td>{h.banos}</td>
                       <td>${h.precio}</td>
@@ -500,27 +492,9 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
             <form className={styles.modalBody} onSubmit={handleSubmit}>
               <div className={styles.modalGrid}>
                 <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="tipo">
-                    Tipo de habitación
-                  </label>
-                  <select
-                    id="tipo"
-                    name="tipo"
-                    className={styles.input}
-                    value={form.tipo}
-                    onChange={handleChange}
-                  >
-                    {TIPOS_HABITACION.map((tipo) => (
-                      <option key={tipo.id} value={tipo.id}>
-                        {tipo.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.fieldGroup}>
                   <label className={styles.label} htmlFor="nombre">
-                    Nombre / código interno (opcional)
+                    Nombre de la habitación
+                    <span className={styles.required}> *</span>
                   </label>
                   <input
                     id="nombre"
@@ -529,8 +503,11 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                     className={styles.input}
                     value={form.nombre}
                     onChange={handleChange}
-                    placeholder="Ej: Hab. 101, Dpto 2B"
+                    placeholder="Ej: Habitación 8, Dpto 2B"
                   />
+                  {errors.nombre && (
+                    <p className={styles.errorText}>{errors.nombre}</p>
+                  )}
                 </div>
 
                 <div className={styles.fieldGroup}>
@@ -746,17 +723,11 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
             <div className={styles.modalBody}>
               <div className={styles.modalGrid}>
                 <div className={styles.fieldGroup}>
-                  <span className={styles.label}>Tipo</span>
+                  <span className={styles.label}>Habitación</span>
                   <p className={styles.valueText}>
-                    {getTipoNombre(habitacionVer.tipo)}
+                    {nombreDeHabitacion(habitacionVer)}
                   </p>
                 </div>
-                {habitacionVer.nombre && (
-                  <div className={styles.fieldGroup}>
-                    <span className={styles.label}>Nombre / código</span>
-                    <p className={styles.valueText}>{habitacionVer.nombre}</p>
-                  </div>
-                )}
                 <div className={styles.fieldGroup}>
                   <span className={styles.label}>Camas</span>
                   <p className={styles.valueText}>{habitacionVer.camas}</p>

@@ -1,8 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import styles from "./OcupacionAdmin.module.css";
 
 import { dbReservas } from "../../../firebase/firebaseReservas";
-import { doc, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  nombreDeHabitacion,
+  labelSexo,
+} from "../../../utils/habitacionesCasaDocente";
 
 const MESES = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -31,21 +35,92 @@ const dateToStr = (d) => {
 
 const diasEnMes = (yr, mo) => new Date(yr, mo + 1, 0).getDate();
 
-const getEstadoHab = (reservas, habId, fecha) => {
-  const f = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-  for (const r of reservas) {
-    if (r.idHabitacion !== habId) continue;
-    if (r.estado === "rechazada") continue;
+// Reservas activas de una habitación en una fecha dada.
+// Match por idHabitacion; si la reserva es vieja y no lo tiene, cae al tipo.
+const reservasDeHabEnFecha = (reservas, hab, f) =>
+  (reservas || []).filter((r) => {
+    const est = String(r.estado || "pendiente").toLowerCase();
+    if (est === "rechazada" || est === "cancelada") return false;
+
+    const coincide = r.idHabitacion
+      ? r.idHabitacion === hab.id
+      : r.tipo === hab.tipo;
+    if (!coincide) return false;
+
     const ing = toDateOnly(r.fechaIngreso);
     const egr = toDateOnly(r.fechaEgreso);
-    if (!ing || !egr) continue;
-    if (f >= ing && f < egr) {
-      const ultimoDia = new Date(egr.getTime() - 86400000);
-      const esVence   = f.getTime() === ultimoDia.getTime();
-      return { estado: esVence ? "vence" : "ocupada", reserva: r };
-    }
-  }
-  return { estado: "libre", reserva: null };
+    if (!ing || !egr) return false;
+    return f >= ing && f < egr;
+  });
+
+// Bloqueo administrativo que aplica a esta habitación en esta fecha.
+// A diferencia de las reservas, el rango del bloqueo es inclusivo en ambos
+// extremos (así se carga desde la pestaña "Bloqueo de fechas").
+const bloqueoDeHabEnFecha = (bloqueos, hab, f) =>
+  (bloqueos || []).find((b) => {
+    if (b.tipo && b.tipo !== "todos" && b.tipo !== hab.tipo) return false;
+    const ing = toDateOnly(b.fechaIngreso);
+    const egr = toDateOnly(b.fechaEgreso);
+    if (!ing || !egr) return false;
+    return f >= ing && f <= egr;
+  }) || null;
+
+// Estado de una habitación en una fecha, a nivel de PLAZA (no habitación
+// entera): una habitación de 4 camas con 2 personas queda "parcial", no
+// "ocupada". Prioridad: bloqueo administrativo > vence > ocupada > parcial.
+const getEstadoHab = ({ reservas, bloqueos, hab, fecha }) => {
+  const f = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+
+  const bloqueo = bloqueoDeHabEnFecha(bloqueos, hab, f);
+  const activas = reservasDeHabEnFecha(reservas, hab, f);
+
+  const camas = Math.max(Number(hab?.camas) || 1, 1);
+  const personas = activas.reduce(
+    (acc, r) => acc + (Number(r.cantidadPersonas) || 1),
+    0
+  );
+  const cuposLibres = Math.max(camas - personas, 0);
+  const sexo = activas.find((r) => r.sexo)?.sexo || null;
+
+  // Las reservas viejas no tienen "modoReserva": se asumen completas.
+  const hayCompleta = activas.some(
+    (r) => (r.modoReserva || "completa") === "completa"
+  );
+  const llena = hayCompleta || personas >= camas;
+
+  const venceAlguna = activas.some((r) => {
+    const egr = toDateOnly(r.fechaEgreso);
+    if (!egr) return false;
+    const ultimoDia = new Date(egr.getTime() - 86400000);
+    return f.getTime() === ultimoDia.getTime();
+  });
+
+  let estado;
+  if (activas.length === 0) estado = bloqueo ? "bloqueada" : "libre";
+  else if (venceAlguna) estado = "vence";
+  else if (llena) estado = "ocupada";
+  else estado = "parcial";
+
+  return {
+    estado,
+    bloqueo,
+    reservas: activas,
+    // Se mantiene "reserva" (la primera) por compatibilidad con el detalle.
+    reserva: activas[0] || null,
+    camas,
+    personas,
+    cuposLibres,
+    sexo,
+    llena,
+  };
+};
+
+const ETIQUETA_ESTADO = {
+  libre: "Libre",
+  parcial: "Parcial",
+  ocupada: "Ocupada",
+  vence: "Vence hoy",
+  bloqueada: "Bloqueada",
 };
 
 const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
@@ -60,6 +135,20 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
   const [diaSelec, setDiaSelec] = useState(() => new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
   const [guardando, setGuardando] = useState(null);
   const [msg, setMsg]           = useState(null);
+  const [bloqueos, setBloqueos] = useState([]);
+
+  // Bloqueos cargados desde la pestaña "Bloqueo de fechas", para que la
+  // ocupación refleje también las fechas cerradas por administración.
+  useEffect(() => {
+    const colRef = collection(dbReservas, "bloqueosCasaDocente");
+    const unsubscribe = onSnapshot(
+      colRef,
+      (snap) => setBloqueos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (error) =>
+        console.error("[OcupacionAdmin] Error al cargar bloqueos:", error)
+    );
+    return () => unsubscribe();
+  }, []);
 
   const yr = mes.getFullYear();
   const mo = mes.getMonth();
@@ -145,39 +234,59 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
   };
 
   const vencenHoy = useMemo(() => {
-    return habitaciones.filter((h) => {
-      const { estado } = getEstadoHab(reservas, h.id, hoy);
-      return estado === "vence";
-    });
-  }, [habitaciones, reservas, hoy]);
+    return habitaciones.filter(
+      (h) =>
+        getEstadoHab({ reservas, bloqueos, hab: h, fecha: hoy }).estado ===
+        "vence"
+    );
+  }, [habitaciones, reservas, bloqueos, hoy]);
+
+  // Bloqueos vigentes hoy, para avisar arriba de la grilla.
+  const bloqueadasHoy = useMemo(() => {
+    return habitaciones
+      .map((h) => ({ hab: h, bloqueo: bloqueoDeHabEnFecha(bloqueos, h, hoy) }))
+      .filter((x) => x.bloqueo);
+  }, [habitaciones, bloqueos, hoy]);
 
   // Para el detalle del almanaque (mensual): usa el día clickeado
   const estadosDetalle = useMemo(() => {
     const refDia = diaSelec ?? hoy;
     return habitaciones.map((h) => ({
       hab: h,
-      ...getEstadoHab(reservas, h.id, refDia),
+      ...getEstadoHab({ reservas, bloqueos, hab: h, fecha: refDia }),
     }));
-  }, [habitaciones, reservas, diaSelec, hoy]);
+  }, [habitaciones, reservas, bloqueos, diaSelec, hoy]);
 
   // Para Vista del día: SIEMPRE usa hoy, nunca diaSelec
   const estadosHoy = useMemo(() => {
     return habitaciones.map((h) => ({
       hab: h,
-      ...getEstadoHab(reservas, h.id, hoy),
+      ...getEstadoHab({ reservas, bloqueos, hab: h, fecha: hoy }),
     }));
-  }, [habitaciones, reservas, hoy]);
+  }, [habitaciones, reservas, bloqueos, hoy]);
 
   const metricasHoy = useMemo(() => {
-    let libres = 0, ocupadas = 0, vence = 0;
+    const acc = {
+      libres: 0,
+      parciales: 0,
+      ocupadas: 0,
+      vence: 0,
+      bloqueadas: 0,
+      plazasTotales: 0,
+      plazasOcupadas: 0,
+    };
     habitaciones.forEach((h) => {
-      const { estado } = getEstadoHab(reservas, h.id, hoy);
-      if (estado === "libre") libres++;
-      else if (estado === "ocupada") ocupadas++;
-      else vence++;
+      const info = getEstadoHab({ reservas, bloqueos, hab: h, fecha: hoy });
+      if (info.estado === "libre") acc.libres++;
+      else if (info.estado === "parcial") acc.parciales++;
+      else if (info.estado === "ocupada") acc.ocupadas++;
+      else if (info.estado === "vence") acc.vence++;
+      else if (info.estado === "bloqueada") acc.bloqueadas++;
+      acc.plazasTotales += info.camas;
+      acc.plazasOcupadas += info.personas;
     });
-    return { libres, ocupadas, vence, total: habitaciones.length };
-  }, [habitaciones, reservas, hoy]);
+    return { ...acc, total: habitaciones.length };
+  }, [habitaciones, reservas, bloqueos, hoy]);
 
   const renderBotones = (estado, reserva, habNombre) => {
     if (!reserva) return null;
@@ -206,28 +315,94 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
     );
   };
 
-  const renderFilaDia = ({ hab, estado, reserva }) => {
-    const egr = reserva ? toDateOnly(reserva.fechaEgreso) : null;
-    const egresoStr = egr
-      ? `${egr.getDate().toString().padStart(2,"0")}/${(egr.getMonth()+1).toString().padStart(2,"0")}`
-      : null;
+  const fechaCorta = (valor) => {
+    const d = toDateOnly(valor);
+    if (!d) return null;
+    return `${String(d.getDate()).padStart(2, "0")}/${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}`;
+  };
+
+  const renderFilaDia = ({
+    hab,
+    estado,
+    reservas: reservasDia = [],
+    bloqueo,
+    camas,
+    personas,
+    cuposLibres,
+    sexo,
+  }) => {
+    const habNombre = nombreDeHabitacion(hab);
+
     return (
       <div key={hab.id} className={`${styles.filaHab} ${styles[estado]}`}>
         <span className={`${styles.dot} ${styles[`dot_${estado}`]}`} />
+
         <div className={styles.filaInfo}>
-          <span className={styles.filaHabNombre}>{hab.nombre || hab.tipo} · {hab.tipo}</span>
-          {reserva && (
-            <span className={styles.filaHuesped}>
-              {reserva.apellidoNombre}
-              {egresoStr ? ` · sale ${egresoStr}` : ""}
-              {reserva.precioFinal ? ` · $${Number(reserva.precioFinal).toLocaleString("es-AR")}/noche` : ""}
+          <span className={styles.filaHabNombre}>
+            {habNombre}
+            <span className={styles.filaPlazas}>
+              {personas}/{camas} plaza{camas !== 1 ? "s" : ""}
+            </span>
+            {sexo && (
+              <span className={styles.filaSexo}>{labelSexo(sexo)}</span>
+            )}
+          </span>
+
+          {bloqueo && (
+            <span className={styles.filaBloqueo}>
+              🔒 Bloqueada por administración
+              {bloqueo.motivo ? ` · ${bloqueo.motivo}` : ""}
+              {` · ${fechaCorta(bloqueo.fechaIngreso)} al ${fechaCorta(
+                bloqueo.fechaEgreso
+              )}`}
+            </span>
+          )}
+
+          {reservasDia.map((r) => (
+            <span key={r.id || r.dni} className={styles.filaHuesped}>
+              {r.apellidoNombre}
+              {` · ${Number(r.cantidadPersonas) || 1} pers.`}
+              {(r.modoReserva || "completa") === "compartida"
+                ? " · comparte"
+                : " · exclusiva"}
+              {fechaCorta(r.fechaEgreso) ? ` · sale ${fechaCorta(r.fechaEgreso)}` : ""}
+              {r.precioFinal
+                ? ` · $${Number(r.precioFinal).toLocaleString("es-AR")}/noche`
+                : ""}
+            </span>
+          ))}
+
+          {estado === "parcial" && (
+            <span className={styles.filaCupos}>
+              Quedan {cuposLibres} lugar{cuposLibres !== 1 ? "es" : ""} libre
+              {cuposLibres !== 1 ? "s" : ""}
+              {sexo ? ` (solo ${labelSexo(sexo).toLowerCase()})` : ""}
             </span>
           )}
         </div>
+
         <span className={`${styles.badge} ${styles[`badge_${estado}`]}`}>
-          {estado === "libre" ? "Libre" : estado === "ocupada" ? "Ocupada" : "Vence hoy"}
+          {ETIQUETA_ESTADO[estado] || estado}
         </span>
-        {renderBotones(estado, reserva, hab.nombre || hab.tipo)}
+
+        {/* Cada reserva tiene sus propias acciones (puede haber varias) */}
+        <div className={styles.accionesGrupo}>
+          {reservasDia.map((r) => {
+            const egr = toDateOnly(r.fechaEgreso);
+            const ultimoDia = egr ? new Date(egr.getTime() - 86400000) : null;
+            const esVenceEsta =
+              ultimoDia &&
+              ultimoDia.getTime() ===
+                new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).getTime();
+            return (
+              <div key={`acc-${r.id || r.dni}`}>
+                {renderBotones(esVenceEsta ? "vence" : "ocupada", r, habNombre)}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -269,9 +444,26 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
         <div className={styles.alertaVence}>
           <span className={styles.alertaIcon}>⚠</span>
           <span>
-            <strong>{vencenHoy.map(h => h.nombre || h.tipo).join(", ")}</strong>
+            <strong>{vencenHoy.map(nombreDeHabitacion).join(", ")}</strong>
             {vencenHoy.length === 1 ? " tiene" : " tienen"} check-out hoy antes de las 10:00 hs.
             {" "}Podés liberar o agregar un día extra desde la grilla.
+          </span>
+        </div>
+      )}
+
+      {/* Alerta bloqueos administrativos vigentes hoy */}
+      {bloqueadasHoy.length > 0 && (
+        <div className={styles.alertaBloqueo}>
+          <span className={styles.alertaIcon}>🔒</span>
+          <span>
+            <strong>
+              {bloqueadasHoy.map((x) => nombreDeHabitacion(x.hab)).join(", ")}
+            </strong>
+            {bloqueadasHoy.length === 1 ? " está" : " están"} bloqueada
+            {bloqueadasHoy.length === 1 ? "" : "s"} hoy por administración.
+            {bloqueadasHoy[0]?.bloqueo?.motivo
+              ? ` Motivo: ${bloqueadasHoy[0].bloqueo.motivo}.`
+              : ""}
           </span>
         </div>
       )}
@@ -297,18 +489,28 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
               <tbody>
                 {habitaciones.map((hab) => (
                   <tr key={hab.id}>
-                    <td className={styles.tdHabNombre}>{hab.nombre || hab.tipo}</td>
+                    <td className={styles.tdHabNombre}>{nombreDeHabitacion(hab)}</td>
                     {Array.from({ length: dias }, (_, i) => i + 1).map((d) => {
                       const fecha = new Date(yr, mo, d);
-                      const { estado } = getEstadoHab(reservas, hab.id, fecha);
+                      const info = getEstadoHab({ reservas, bloqueos, hab, fecha });
                       const esHoy2 = yr === hoy.getFullYear() && mo === hoy.getMonth() && d === hoy.getDate();
                       const esSel  = diaSelec && diaSelec.getTime() === fecha.getTime();
+                      const tooltip =
+                        `${nombreDeHabitacion(hab)} · ${ETIQUETA_ESTADO[info.estado] || info.estado}` +
+                        (info.estado === "bloqueada" && info.bloqueo?.motivo
+                          ? ` · ${info.bloqueo.motivo}`
+                          : "") +
+                        (info.reservas.length > 0
+                          ? ` · ${info.personas}/${info.camas} plazas${
+                              info.sexo ? ` · ${labelSexo(info.sexo)}` : ""
+                            }`
+                          : "");
                       return (
                         <td key={d} className={`${styles.tdDia} ${esHoy2 ? styles.tdHoy : ""}`}>
                           <span
-                            className={`${styles.celda} ${styles[`celda_${estado}`]} ${esSel ? styles.celdaSel : ""}`}
+                            className={`${styles.celda} ${styles[`celda_${info.estado}`]} ${esSel ? styles.celdaSel : ""}`}
                             onClick={() => selDia(d)}
-                            title={`${hab.nombre || hab.tipo} · ${estado}`}
+                            title={tooltip}
                           />
                         </td>
                       );
@@ -324,13 +526,13 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
               <div key={hab.id} className={styles.mobileRoomCard}>
                 <div className={styles.mobileRoomHeader}>
                   <span className={styles.mobileRoomName}>
-                    {hab.nombre || hab.tipo}
+                    {nombreDeHabitacion(hab)}
                   </span>
                 </div>
                 <div className={styles.mobileDaysGrid}>
                   {Array.from({ length: dias }, (_, i) => i + 1).map((d) => {
                     const fecha = new Date(yr, mo, d);
-                    const { estado } = getEstadoHab(reservas, hab.id, fecha);
+                    const info = getEstadoHab({ reservas, bloqueos, hab, fecha });
                     const esHoy = yr === hoy.getFullYear() && mo === hoy.getMonth() && d === hoy.getDate();
                     const esSel = diaSelec && diaSelec.getTime() === fecha.getTime();
 
@@ -338,11 +540,13 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
                       <button
                         key={d}
                         type="button"
-                        className={`${styles.mobileDayCell} ${styles[`mobileDay_${estado}`]} ${
+                        className={`${styles.mobileDayCell} ${styles[`mobileDay_${info.estado}`]} ${
                           esHoy ? styles.mobileDayHoy : ""
                         } ${esSel ? styles.mobileDaySel : ""}`}
                         onClick={() => selDia(d)}
-                        title={`${hab.nombre || hab.tipo} · ${estado}`}
+                        title={`${nombreDeHabitacion(hab)} · ${
+                          ETIQUETA_ESTADO[info.estado] || info.estado
+                        }`}
                       >
                         {d}
                       </button>
@@ -355,8 +559,10 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
 
           <div className={styles.leyenda}>
             <span><span className={`${styles.dot} ${styles.dot_libre}`} /> Libre</span>
+            <span><span className={`${styles.dot} ${styles.dot_parcial}`} /> Parcial (quedan lugares)</span>
             <span><span className={`${styles.dot} ${styles.dot_ocupada}`} /> Ocupada</span>
             <span><span className={`${styles.dot} ${styles.dot_vence}`} /> Vence ese día</span>
+            <span><span className={`${styles.dot} ${styles.dot_bloqueada}`} /> Bloqueada</span>
             <span className={styles.leyendaHint}>Clic en un día para ver detalle</span>
           </div>
 
@@ -383,12 +589,18 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
         <>
           <div className={styles.metricas}>
             <div className={styles.metCard}>
-              <span className={styles.metNum}>{metricasHoy.total}</span>
-              <span className={styles.metLabel}>Total</span>
+              <span className={styles.metNum}>
+                {metricasHoy.plazasOcupadas}/{metricasHoy.plazasTotales}
+              </span>
+              <span className={styles.metLabel}>Plazas ocupadas</span>
             </div>
             <div className={`${styles.metCard} ${styles.metLibre}`}>
               <span className={styles.metNum}>{metricasHoy.libres}</span>
               <span className={styles.metLabel}>Libres</span>
+            </div>
+            <div className={`${styles.metCard} ${styles.metParcial}`}>
+              <span className={styles.metNum}>{metricasHoy.parciales}</span>
+              <span className={styles.metLabel}>Parciales</span>
             </div>
             <div className={`${styles.metCard} ${styles.metOcup}`}>
               <span className={styles.metNum}>{metricasHoy.ocupadas}</span>
@@ -397,6 +609,10 @@ const OcupacionAdmin = ({ habitaciones = [], reservas = [] }) => {
             <div className={`${styles.metCard} ${styles.metVence}`}>
               <span className={styles.metNum}>{metricasHoy.vence}</span>
               <span className={styles.metLabel}>Vencen hoy</span>
+            </div>
+            <div className={`${styles.metCard} ${styles.metBloq}`}>
+              <span className={styles.metNum}>{metricasHoy.bloqueadas}</span>
+              <span className={styles.metLabel}>Bloqueadas</span>
             </div>
           </div>
 

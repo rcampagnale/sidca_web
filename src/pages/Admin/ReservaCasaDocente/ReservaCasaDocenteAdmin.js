@@ -20,6 +20,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import { labelSexo } from "../../../utils/habitacionesCasaDocente";
 
 const ESTADOS = [
   { value: "todos", label: "Todos los estados" },
@@ -30,17 +31,6 @@ const ESTADOS = [
 
 const getEstadoLabel = (estado) =>
   ESTADOS.find((item) => item.value === estado)?.label || estado || "-";
-
-const getNombreEstiloExport = (tipo) => {
-  const mapa = {
-    simple: "Simple",
-    doble: "Doble",
-    triple: "Triple",
-    cuadruple: "Cuádruple",
-    departamento: "Departamento",
-  };
-  return mapa[tipo] || tipo || "-";
-};
 
 const CasaDocenteHabilitarApp = ({
   reservas = [],
@@ -131,7 +121,6 @@ const CasaDocenteHabilitarApp = ({
 
       return {
         "Habitación": reserva.nombreHabitacion || reserva.idHabitacion || "-",
-        "Estilo": getNombreEstiloExport(reserva.tipo),
         "Afiliado": reserva.apellidoNombre || "",
         "DNI": reserva.dni || "",
         "Email": reserva.email || "",
@@ -337,7 +326,9 @@ const calcularPreciosReservaAdmin = (reserva, habitacion) => {
     };
   }
 
-  const tipo = reserva?.tipo || habitacion?.tipo || "simple";
+  // El recargo por acompañante ya no depende del tipo fijo "simple" (ese enum
+  // dejó de ser obligatorio), sino de si la habitación tiene una sola cama.
+  const unaCama = (Number(habitacion?.camas) || 1) <= 1;
 
   // Precios por noche, priorizando lo guardado en la reserva
   const precioAfNoche =
@@ -360,12 +351,12 @@ const calcularPreciosReservaAdmin = (reserva, habitacion) => {
   let cantNoAfiliados = 0;
   if (typeof reserva?.cantidadNoAfiliados === "number") {
     cantNoAfiliados = reserva.cantidadNoAfiliados;
-  } else if (tipo !== "simple") {
+  } else if (!unaCama) {
     const personas = Number(reserva?.cantidadPersonas) || 1;
     cantNoAfiliados = Math.max(personas - 1, 0); // 1 afiliado + resto no afiliados
   }
 
-  if (tipo === "simple") {
+  if (unaCama) {
     cantNoAfiliados = 0;
   }
 
@@ -375,7 +366,7 @@ const calcularPreciosReservaAdmin = (reserva, habitacion) => {
   );
 
   if (!precioFinalNoche && precioAfNoche) {
-    if (tipo === "simple") {
+    if (unaCama) {
       precioFinalNoche = precioAfNoche;
     } else {
       precioFinalNoche =
@@ -618,17 +609,6 @@ const ReservaCasaDocenteAdmin = () => {
     return reserva.nombreHabitacion || reserva.idHabitacion || "-";
   };
 
-  const getNombreEstilo = (tipo) => {
-    const mapa = {
-      simple: "Simple",
-      doble: "Doble",
-      triple: "Triple",
-      cuadruple: "Cuádruple",
-      departamento: "Departamento",
-    };
-    return mapa[tipo] || tipo || "-";
-  };
-
   // Emojis para WhatsApp
   const EMOJI_HOME = "🏠";
   const EMOJI_DETAILS = "📌";
@@ -642,7 +622,6 @@ const ReservaCasaDocenteAdmin = () => {
 
     const nombre = reserva.apellidoNombre || "docente";
     const habitacion = getNombreHabitacion(reserva);
-    const estilo = getNombreEstilo(reserva.tipo);
     const fechas = `${formatearFecha(
       reserva.fechaIngreso
     )} al ${formatearFecha(reserva.fechaEgreso)}`;
@@ -652,7 +631,7 @@ const ReservaCasaDocenteAdmin = () => {
     let mensaje =
       `${EMOJI_HOME} Hola ${nombre}, desde SIDCA te informamos que tu reserva en la Casa del Docente fue *${estadoLabel}*.\n\n` +
       `${EMOJI_DETAILS} Detalles de la reserva:\n` +
-      `* Habitación: ${habitacion} (${estilo})\n` +
+      `* Habitación: ${habitacion}\n` +
       `* Fechas: ${fechas}\n` +
       `* Personas: ${personas}\n`;
 
@@ -1009,7 +988,7 @@ const ReservaCasaDocenteAdmin = () => {
                   <thead>
                     <tr>
                       <th>Habitación</th>
-                      <th>Estilo</th>
+                      <th>Modalidad</th>
                       <th>Afiliado</th>
                       <th>DNI</th>
                       <th>Ingreso</th>
@@ -1038,7 +1017,11 @@ const ReservaCasaDocenteAdmin = () => {
                       return (
                         <tr key={r.id}>
                           <td>{getNombreHabitacion(r)}</td>
-                          <td>{getNombreEstilo(r.tipo)}</td>
+                          <td>
+                            {r.modoReserva === "compartida"
+                              ? `Compartida${r.sexo ? ` (${labelSexo(r.sexo)})` : ""}`
+                              : "Completa"}
+                          </td>
                           <td>{r.apellidoNombre}</td>
                           <td>{r.dni}</td>
                           <td>{formatearFecha(r.fechaIngreso)}</td>
@@ -1101,16 +1084,15 @@ const ReservaCasaDocenteAdmin = () => {
 
                     const personas =
                       Number(selectedReserva.cantidadPersonas) || 1;
-                    const tipo =
-                      selectedReserva.tipo || hab?.tipo || "simple";
+                    const unaCama = (Number(hab?.camas) || 1) <= 1;
 
                     const afiliados =
-                      tipo === "simple"
+                      unaCama
                         ? personas
                         : Math.max(personas - cantNoAfiliados, 1);
 
                     const detallePersonas =
-                      tipo === "simple"
+                      unaCama
                         ? `${personas} (afiliado${
                             personas > 1 ? "s" : ""
                           }, sin acompañantes)`
@@ -1121,7 +1103,7 @@ const ReservaCasaDocenteAdmin = () => {
                           }`;
 
                     let detalleNoche = "-";
-                    if (tipo === "simple" && precioAfNoche) {
+                    if (unaCama && precioAfNoche) {
                       detalleNoche = `Afiliado: ${formatCurrency(
                         precioAfNoche
                       )} por noche`;
@@ -1158,12 +1140,6 @@ const ReservaCasaDocenteAdmin = () => {
                             </p>
                           </div>
                           <div>
-                            <p className={styles.modalLabel}>Estilo</p>
-                            <p className={styles.modalValue}>
-                              {getNombreEstilo(selectedReserva.tipo)}
-                            </p>
-                          </div>
-                          <div>
                             <p className={styles.modalLabel}>DNI</p>
                             <p className={styles.modalValue}>
                               {selectedReserva.dni}
@@ -1197,6 +1173,18 @@ const ReservaCasaDocenteAdmin = () => {
                             <p className={styles.modalLabel}>Personas</p>
                             <p className={styles.modalValue}>
                               {detallePersonas}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={styles.modalLabel}>Modalidad</p>
+                            <p className={styles.modalValue}>
+                              {selectedReserva.modoReserva === "compartida"
+                                ? `Compartida${
+                                    selectedReserva.sexo
+                                      ? ` (${labelSexo(selectedReserva.sexo)})`
+                                      : ""
+                                  }`
+                                : "Completa"}
                             </p>
                           </div>
                           <div>

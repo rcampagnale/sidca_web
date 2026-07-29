@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styles from "./ReservaCasaDocente.module.css";
 
 import { dbReservas } from "../../firebase/firebaseReservas";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import {
+  nombreDeHabitacion,
+  compararNombresHabitacion,
+} from "../../utils/habitacionesCasaDocente";
 
 import banner from "../../assets/reserva-casa-docente/banner.jpg";
 import casa01 from "../../assets/reserva-casa-docente/casa01.jpg";
@@ -25,12 +29,12 @@ const IMAGENES_CASA = [
 const DESCRIPCION =
   "La Casa del Docente es el anexo de servicios que ofrece SIDCA. Hospedaje, bar y cocina compartida, Salón de Conferencias y Sala de Computación. Más servicios para la docencia. ¡Sumate vos también a sus beneficios!";
 
-const TIPOS_HABITACION = [
-  { id: "simple",       nombre: "Habitación simple",    descripcion: "Hasta 1 persona",       icono: "🛏️", color: "#065f46" },
-  { id: "doble",        nombre: "Habitación doble",     descripcion: "Hasta 2 personas",      icono: "🛏️", color: "#1d4ed8" },
-  { id: "triple",       nombre: "Habitación triple",    descripcion: "Hasta 3 personas",      icono: "🛏️", color: "#92400e" },
-  { id: "cuadruple",    nombre: "Habitación cuádruple", descripcion: "Hasta 4 personas",      icono: "🛏️", color: "#6d28d9" },
-  { id: "departamento", nombre: "Departamento",         descripcion: "Ideal para grupo familiar", icono: "🏠", color: "#0e7490" },
+// Paleta cíclica para la barra de color de cada tarjeta (ya no hay una lista
+// fija de "tipos" con color propio: cada habitación cargada por el admin
+// recibe un color de esta paleta según su posición).
+const PALETA_COLORES = [
+  "#065f46", "#1d4ed8", "#92400e", "#6d28d9",
+  "#0e7490", "#b45309", "#374151", "#be185d",
 ];
 
 const ReservaCasaDocente = () => {
@@ -46,6 +50,26 @@ const ReservaCasaDocente = () => {
   const [galeriaOpen, setGaleriaOpen]   = useState(false);
   const [galeriaIndex, setGaleriaIndex] = useState(0);
   const [galleryOffset, setGalleryOffset] = useState(0);
+
+  // Ya no hay una lista fija de "tipos" de habitación: se arma dinámicamente
+  // a partir de lo que el admin haya cargado en el panel de Habitaciones.
+  const TIPOS_HABITACION = useMemo(() => {
+    const vistos = new Map();
+    habitaciones.forEach((h) => {
+      if (!h?.tipo || vistos.has(h.tipo)) return;
+      vistos.set(h.tipo, h);
+    });
+    return Array.from(vistos.values())
+      .sort((a, b) =>
+        compararNombresHabitacion(nombreDeHabitacion(a), nombreDeHabitacion(b))
+      )
+      .map((h, index) => ({
+        id: h.tipo,
+        nombre: nombreDeHabitacion(h),
+        icono: "🛏️",
+        color: PALETA_COLORES[index % PALETA_COLORES.length],
+      }));
+  }, [habitaciones]);
 
   useEffect(() => {
     const cargar = async () => {
@@ -145,7 +169,7 @@ const ReservaCasaDocente = () => {
       <div className={styles.bandaAmarilla}>
         <p className={styles.bandaTitle}>Elegí tu habitación</p>
         <p className={styles.bandaSubtitle}>
-          {TIPOS_HABITACION.length} tipos disponibles · valores orientativos
+          {TIPOS_HABITACION.length} habitaciones disponibles · valores orientativos
         </p>
       </div>
 
@@ -242,7 +266,11 @@ const ReservaCasaDocente = () => {
                 <div className={styles.roomCardBody}>
                   <div className={styles.roomCardInfo}>
                     <h3 className={styles.roomCardTitle}>{tipo.nombre}</h3>
-                    <p className={styles.roomCardCapacity}>{tipo.descripcion}</p>
+                    <p className={styles.roomCardCapacity}>
+                      {camasMax > 0
+                        ? `Hasta ${camasMax} persona${camasMax !== 1 ? "s" : ""}`
+                        : "Consultar capacidad"}
+                    </p>
                     <div className={styles.roomCardServices}>
                       <div className={styles.serviceItem}>
                         <span className={styles.serviceIcon}>📶</span>

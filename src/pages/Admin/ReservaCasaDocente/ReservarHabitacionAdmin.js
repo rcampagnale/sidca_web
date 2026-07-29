@@ -1,5 +1,5 @@
 // src/pages/Admin/ReservaCasaDocente/ReservarHabitacionAdmin.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styles from "./ReservaCasaDocenteAdmin.module.css";
 
 import { dbReservas } from "../../../firebase/firebaseReservas";
@@ -12,15 +12,11 @@ import {
   where,
   addDoc,
 } from "firebase/firestore";
-
-// Tipos de habitación (mismos IDs que en la web pública)
-const TIPOS_HABITACION = [
-  { id: "simple", nombre: "Habitación simple" },
-  { id: "doble", nombre: "Habitación doble" },
-  { id: "triple", nombre: "Habitación triple" },
-  { id: "cuadruple", nombre: "Habitación cuádruple" },
-  { id: "departamento", nombre: "Departamento" },
-];
+import {
+  opcionesPorHabitacion,
+  evaluarDisponibilidadHabitacion,
+  SEXO_OPCIONES,
+} from "../../../utils/habitacionesCasaDocente";
 
 const ReservarHabitacionAdmin = () => {
   const [habitaciones, setHabitaciones] = useState([]);
@@ -31,6 +27,8 @@ const ReservarHabitacionAdmin = () => {
   const [fechaIngreso, setFechaIngreso] = useState("");
   const [fechaEgreso, setFechaEgreso] = useState("");
   const [cantidadPersonas, setCantidadPersonas] = useState(1);
+  const [modoReserva, setModoReserva] = useState("completa");
+  const [sexoSeleccionado, setSexoSeleccionado] = useState("");
 
   const [checkingDisponibilidad, setCheckingDisponibilidad] = useState(false);
   const [mensajeDisponibilidad, setMensajeDisponibilidad] = useState("");
@@ -91,15 +89,57 @@ const ReservarHabitacionAdmin = () => {
     cargarHabitaciones();
   }, []);
 
-  // Reset de disponibilidad cuando cambian fechas o tipo
+  // Reset de disponibilidad cuando cambian fechas, tipo, modo o sexo
   useEffect(() => {
     setDisponibilidadOk(false);
     setMensajeDisponibilidad("");
     setHabitacionAsignable(null);
-  }, [fechaIngreso, fechaEgreso, tipoSeleccionado]);
+  }, [
+    fechaIngreso,
+    fechaEgreso,
+    tipoSeleccionado,
+    modoReserva,
+    sexoSeleccionado,
+    cantidadPersonas,
+  ]);
 
-  const getTipoById = (tipoId) =>
-    TIPOS_HABITACION.find((t) => t.id === tipoId);
+  // Al cambiar de habitación, reseteamos modalidad/sexo
+  useEffect(() => {
+    setModoReserva("completa");
+    setSexoSeleccionado("");
+  }, [tipoSeleccionado]);
+
+  // Lista de habitaciones seleccionables, derivada de lo cargado en
+  // "Habitaciones" (ya no hay una lista fija de tipos).
+  const opcionesHabitacion = useMemo(
+    () => opcionesPorHabitacion(habitaciones.filter((h) => h.activa !== false)),
+    [habitaciones]
+  );
+
+  const habitacionSeleccionadaInfo =
+    habitaciones.find((h) => h.tipo === tipoSeleccionado) || null;
+  const camasHabitacion = Math.max(
+    Number(habitacionSeleccionadaInfo?.camas) || 1,
+    1
+  );
+  const permiteCompartir = camasHabitacion > 1;
+
+  // Habitación completa = ocupa todas las camas. Al elegir "completa" (o si
+  // la habitación es de 1 cama) fijamos la cantidad automáticamente. Al
+  // pasar a "compartida", si quedó el valor de "completa" (todas las camas),
+  // lo reseteamos a 1 para que el admin no reserve sin querer la habitación
+  // entera bajo la modalidad "compartida".
+  useEffect(() => {
+    if (modoReserva === "completa" || !permiteCompartir) {
+      setCantidadPersonas(camasHabitacion);
+    } else if (
+      Number(cantidadPersonas) < 1 ||
+      Number(cantidadPersonas) >= camasHabitacion
+    ) {
+      setCantidadPersonas(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoReserva, camasHabitacion, permiteCompartir]);
 
   /* ======================
    * Buscar afiliado por DNI
@@ -207,8 +247,8 @@ const ReservarHabitacionAdmin = () => {
   setDisponibilidadOk(false);
   setHabitacionAsignable(null);
 
-  if (!tipoSeleccionado) {
-    setErrorFechas("Seleccioná un tipo de habitación.");
+  if (!tipoSeleccionado || !habitacionSeleccionadaInfo) {
+    setErrorFechas("Seleccioná una habitación.");
     return;
   }
 
@@ -224,14 +264,8 @@ const ReservarHabitacionAdmin = () => {
     return;
   }
 
-  const habitacionesTipo = habitaciones.filter(
-    (h) => h.tipo === tipoSeleccionado && h.activa !== false
-  );
-
-  if (habitacionesTipo.length === 0) {
-    setMensajeDisponibilidad(
-      "No hay habitaciones de este tipo habilitadas."
-    );
+  if (modoReserva === "compartida" && !sexoSeleccionado) {
+    setErrorFechas("Indicá el sexo del grupo que se hospeda para compartir la habitación.");
     return;
   }
 
@@ -250,31 +284,32 @@ const ReservarHabitacionAdmin = () => {
     const snapshot = await getDocs(qRes);
     const reservas = snapshot.docs.map((d) => d.data());
 
-    let reservasSuperpuestas = 0;
-
-    reservas.forEach((r) => {
-      const rIng = r.fechaIngreso;
-      const rEgr = r.fechaEgreso;
+    const reservasSuperpuestas = reservas.filter((r) => {
       const estado = (r.estado || "pendiente").toLowerCase();
-      if (estado === "cancelada") return;
-      if (rEgr > solIng && rIng < solEgr) {
-        reservasSuperpuestas += 1;
-      }
+      if (estado === "cancelada" || estado === "rechazada") return false;
+      return r.fechaEgreso > solIng && r.fechaIngreso < solEgr;
     });
 
-    if (reservasSuperpuestas < habitacionesTipo.length) {
-      const disponibles = habitacionesTipo.length - reservasSuperpuestas;
+    const resultado = evaluarDisponibilidadHabitacion({
+      habitacion: habitacionSeleccionadaInfo,
+      reservasSuperpuestas,
+      modoReserva,
+      sexo: sexoSeleccionado,
+      cantidadPersonas,
+    });
+
+    if (resultado.disponible) {
       setDisponibilidadOk(true);
-      setHabitacionAsignable(habitacionesTipo[0]);
+      setHabitacionAsignable(habitacionSeleccionadaInfo);
       setMensajeDisponibilidad(
-        `Hay disponibilidad para las fechas seleccionadas. Habitaciones libres estimadas: ${disponibles}.`
+        modoReserva === "completa"
+          ? "Hay disponibilidad para las fechas seleccionadas."
+          : `Hay disponibilidad para las fechas seleccionadas. Lugares libres en la habitación: ${resultado.cuposLibres}.`
       );
     } else {
       setDisponibilidadOk(false);
       setHabitacionAsignable(null);
-      setMensajeDisponibilidad(
-        "No se encontraron habitaciones disponibles de este tipo para las fechas seleccionadas."
-      );
+      setMensajeDisponibilidad(resultado.motivo);
     }
   } catch (error) {
     console.error(
@@ -337,6 +372,11 @@ const ReservarHabitacionAdmin = () => {
       return;
     }
 
+    if (modoReserva === "compartida" && !sexoSeleccionado) {
+      setFormError("Indicá el sexo del grupo que se hospeda.");
+      return;
+    }
+
     try {
       setSendingReserva(true);
 
@@ -347,6 +387,8 @@ const ReservarHabitacionAdmin = () => {
         nombreHabitacion: habitacionAsignable.nombre || "",
         fechaIngreso,
         fechaEgreso,
+        modoReserva,
+        sexo: modoReserva === "compartida" ? sexoSeleccionado : "",
         cantidadPersonas: Number(cantidadPersonas) || 1,
         apellidoNombre: formNombre.trim(),
         dni: formDni.trim(),
@@ -401,7 +443,7 @@ const ReservarHabitacionAdmin = () => {
           <div className={styles.modalGrid}>
             <div>
               <label className={styles.label} htmlFor="tipoHabAdmin">
-                Tipo de habitación
+                Habitación
               </label>
               <select
                 id="tipoHabAdmin"
@@ -410,9 +452,9 @@ const ReservarHabitacionAdmin = () => {
                 onChange={(e) => setTipoSeleccionado(e.target.value)}
               >
                 <option value="">Seleccionar...</option>
-                {TIPOS_HABITACION.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre}
+                {opcionesHabitacion.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
                   </option>
                 ))}
               </select>
@@ -452,12 +494,53 @@ const ReservarHabitacionAdmin = () => {
                 id="cantPersonasAdmin"
                 type="number"
                 min={1}
+                max={camasHabitacion}
                 className={styles.input}
                 value={cantidadPersonas}
                 onChange={(e) => setCantidadPersonas(e.target.value)}
+                readOnly={modoReserva === "completa" || !permiteCompartir}
               />
             </div>
           </div>
+
+          {permiteCompartir && (
+            <div className={styles.modalGrid} style={{ marginTop: "0.75rem" }}>
+              <div>
+                <label className={styles.label}>Modalidad</label>
+                <select
+                  className={styles.input}
+                  value={modoReserva}
+                  onChange={(e) => setModoReserva(e.target.value)}
+                >
+                  <option value="completa">
+                    Habitación completa (hasta {camasHabitacion} personas)
+                  </option>
+                  <option value="compartida">Compartir habitación</option>
+                </select>
+              </div>
+
+              {modoReserva === "compartida" && (
+                <div>
+                  <label className={styles.label} htmlFor="sexoAdmin">
+                    Sexo del grupo que se hospeda
+                  </label>
+                  <select
+                    id="sexoAdmin"
+                    className={styles.input}
+                    value={sexoSeleccionado}
+                    onChange={(e) => setSexoSeleccionado(e.target.value)}
+                  >
+                    <option value="">Seleccionar...</option>
+                    {SEXO_OPCIONES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           {errorFechas && (
             <p className={styles.reservaErrorText}>{errorFechas}</p>

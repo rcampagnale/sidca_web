@@ -53,6 +53,9 @@ import Convenio from "../pages/Convenios/Convenios";
 import Servicios from "../pages/Admin/Servicios/Servicios";
 import GestionDelegadosAdmin from "../pages/Admin/GestionDelegadosAdmin/GestionDelegadosAdmin";
 import GestionDelegadosUsuario from "../pages/Delegado/GestionDelegadosUsuario/GestionDelegadosUsuario";
+import GestionPagosAdmin from "../pages/Admin/GestionPagos/GestionPagosAdmin";
+import GestionPagos from "../pages/GestionPagos/GestionPagos";
+import PagoResultado from "../pages/GestionPagos/PagoResultado";
 
 // Página pública Comercio
 import Comercio from "../pages/Comercio/comercio";
@@ -70,6 +73,45 @@ import MenuNavegacion from "../pages/Prototipos/MenuNavegacion/MenuNavegacion";
 import ServiciosContratadosPrototipo from "../pages/Prototipos/ServiciosContratados/ServiciosContratados";
 
 import { getCategories } from "../redux/reducers/categorias/actions";
+
+const RootPublicRoute = ({ location }) => {
+  const search = location?.search || "";
+  const params = new URLSearchParams(search);
+  const mercadoPagoStatus = String(
+    params.get("mp") ||
+      params.get("status") ||
+      params.get("collection_status") ||
+      ""
+  ).toLowerCase();
+  const isMercadoPagoReturn =
+    params.has("mp") ||
+    params.has("collection_id") ||
+    params.has("payment_id") ||
+    params.has("external_reference");
+
+  if (isMercadoPagoReturn) {
+    const pathname =
+      mercadoPagoStatus === "failure" ||
+      mercadoPagoStatus === "rejected" ||
+      mercadoPagoStatus === "null"
+        ? "/pagos/error"
+        : mercadoPagoStatus === "pending" ||
+          mercadoPagoStatus === "in_process"
+        ? "/pagos/pendiente"
+        : "/pagos/resultado";
+
+    return (
+      <Redirect
+        to={{
+          pathname,
+          search,
+        }}
+      />
+    );
+  }
+
+  return <PublicRoute exact path="/" component={LoginUser} fullBleed />;
+};
 
 const AppRouter = () => {
   const categorias = useSelector((state) => state.categorias);
@@ -98,11 +140,10 @@ const AppRouter = () => {
             WEB PÚBLICA
         =========================== */}
 
-        <PublicRoute
+        <Route
           exact
           path="/"
-          component={LoginUser}
-          fullBleed
+          component={RootPublicRoute}
         />
 
         <PublicRoute
@@ -219,6 +260,11 @@ const AppRouter = () => {
           component={GestionDelegadosUsuario}
         />
 
+        <PrivateRoute exact path="/gestion-pagos" component={GestionPagos} />
+        <PrivateRoute exact path="/pagos/resultado" component={PagoResultado} />
+        <PrivateRoute exact path="/pagos/pendiente" component={PagoResultado} />
+        <PrivateRoute exact path="/pagos/error" component={PagoResultado} />
+
         {/* ===========================
             ADMIN
         =========================== */}
@@ -308,6 +354,18 @@ const AppRouter = () => {
           exact
           path="/admin/gestion-delegados"
           component={GestionDelegadosAdmin}
+        />
+
+        <AdminRoute
+          exact
+          path="/admin/gestion-pagos"
+          component={GestionPagosAdmin}
+        />
+
+        <AdminRoute
+          exact
+          path="/admin/pagos-adherentes"
+          component={GestionPagosAdmin}
         />
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />

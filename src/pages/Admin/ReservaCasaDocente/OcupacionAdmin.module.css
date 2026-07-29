@@ -81,6 +81,20 @@
 }
 .alertaIcon { font-size: 15px; color: #EF9F27; flex-shrink: 0; margin-top: 1px; }
 
+/* ── Alerta bloqueo administrativo ── */
+.alertaBloqueo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(107,114,128,0.12);
+  border-left: 3px solid #6b7280;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111827;
+}
+.alertaBloqueo .alertaIcon { color: #6b7280; }
+
 /* ── Grilla mensual ── */
 .gridWrap {
   overflow-x: auto;
@@ -140,8 +154,19 @@
 }
 .celda:hover { opacity: 0.75; }
 .celda_libre   { background: #97C459; }
+.celda_parcial { background: #FAC775; }
 .celda_ocupada { background: #E24B4A; }
 .celda_vence   { background: #EF9F27; }
+/* Bloqueada: gris rayado, para distinguirla de "ocupada por huéspedes" */
+.celda_bloqueada {
+  background: repeating-linear-gradient(
+    45deg,
+    #9ca3af,
+    #9ca3af 3px,
+    #d1d5db 3px,
+    #d1d5db 6px
+  );
+}
 .celdaSel { outline: 2px solid #374151; outline-offset: 1px; }
 
 .mobileMonthList {
@@ -199,9 +224,11 @@
   text-align: center;
   border: 0.5px solid #e5e7eb;
 }
-.metLibre  { background: #eaf3de; border-color: #c0dd97; }
-.metOcup   { background: #fcebeb; border-color: #f7c1c1; }
-.metVence  { background: #faeeda; border-color: #fac775; }
+.metLibre   { background: #eaf3de; border-color: #c0dd97; }
+.metParcial { background: #fdf6e7; border-color: #fac775; }
+.metOcup    { background: #fcebeb; border-color: #f7c1c1; }
+.metVence   { background: #faeeda; border-color: #fac775; }
+.metBloq    { background: #f3f4f6; border-color: #d1d5db; }
 
 .metNum   { display: block; font-size: 24px; font-weight: 500; color: #111827; }
 .metLabel { display: block; font-size: 11px; color: #6b7280; margin-top: 2px; }
@@ -211,6 +238,10 @@
 .metOcup .metLabel { color: #a32d2d; }
 .metVence .metNum  { color: #854f0b; }
 .metVence .metLabel { color: #854f0b; }
+.metParcial .metNum   { color: #92400e; }
+.metParcial .metLabel { color: #92400e; }
+.metBloq .metNum   { color: #4b5563; }
+.metBloq .metLabel { color: #4b5563; }
 
 /* ── Lista habitaciones ── */
 .listaHoy { display: flex; flex-direction: column; gap: 8px; }
@@ -229,22 +260,58 @@
   flex-wrap: wrap;
 }
 .filaHab.vence { border-color: #EF9F27; }
+.filaHab.parcial { border-color: #FAC775; }
+.filaHab.bloqueada { border-color: #d1d5db; background: #f9fafb; }
 
 .filaInfo { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 2px; }
-.filaHabNombre { font-size: 13px; font-weight: 500; color: #111827; }
+.filaHabNombre {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .filaHuesped   { font-size: 12px; color: #6b7280; }
+
+/* Plazas ocupadas / total, sexo del grupo y cupos libres */
+.filaPlazas {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+.filaSexo {
+  font-size: 11px;
+  font-weight: 500;
+  color: #185FA5;
+  background: #e6f1fb;
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+.filaCupos { font-size: 12px; color: #92400e; }
+.filaBloqueo { font-size: 12px; color: #4b5563; }
+
+.accionesGrupo { display: flex; flex-direction: column; gap: 4px; }
 
 /* dots */
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.dot_libre   { background: #639922; }
-.dot_ocupada { background: #E24B4A; }
-.dot_vence   { background: #EF9F27; }
+.dot_libre     { background: #639922; }
+.dot_parcial   { background: #EF9F27; }
+.dot_ocupada   { background: #E24B4A; }
+.dot_vence     { background: #EF9F27; }
+.dot_bloqueada { background: #9ca3af; }
 
 /* badges */
 .badge { font-size: 11px; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
-.badge_libre   { background: #eaf3de; color: #3b6d11; }
-.badge_ocupada { background: #fcebeb; color: #a32d2d; }
-.badge_vence   { background: #faeeda; color: #854f0b; }
+.badge_libre     { background: #eaf3de; color: #3b6d11; }
+.badge_parcial   { background: #fdf6e7; color: #92400e; }
+.badge_ocupada   { background: #fcebeb; color: #a32d2d; }
+.badge_vence     { background: #faeeda; color: #854f0b; }
+.badge_bloqueada { background: #f3f4f6; color: #4b5563; }
 
 /* botones acción */
 .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -349,12 +416,21 @@
     background: #97C459;
   }
 
+  .mobileDay_parcial {
+    background: #FAC775;
+    color: #422e02;
+  }
+
   .mobileDay_ocupada {
     background: #E24B4A;
   }
 
   .mobileDay_vence {
     background: #EF9F27;
+  }
+
+  .mobileDay_bloqueada {
+    background: #9ca3af;
   }
 
   .mobileDayHoy {

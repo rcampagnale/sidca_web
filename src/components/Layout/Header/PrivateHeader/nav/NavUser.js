@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useHistory } from "react-router";
 import styles from "./navUser.module.scss";
 import { confirmDialog } from "primereact/confirmdialog";
+import { FEATURE_FLAGS } from "../../../../../config/featureFlags";
 
 const NavUser = ({
   active,
@@ -79,6 +80,11 @@ const NavUser = ({
           <li onClick={() => navigateTo("/delegado/gestion-delegados")}>
             Gestión Delegados
           </li>
+        )}
+
+        {/* Oculto hasta terminar la integración de pagos (ver featureFlags). */}
+        {FEATURE_FLAGS.gestionPagosUsuario && (
+          <li onClick={() => navigateTo("/gestion-pagos")}>Gestión de Pagos</li>
         )}
 
         {mostrarPantallaQR && (
