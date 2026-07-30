@@ -52,7 +52,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "copy:pdf-worker": "node scripts/copy-pdf-worker.js",
-    "postinstall": "npm run copy:pdf-worker"
+    "postinstall": "npm run copy:pdf-worker",
+    "build:compat": "node scripts/build-compat.js"
   },
   "eslintConfig": {
     "extends": [

@@ -1,0 +1,429 @@
+/* src/pages/GestionDelegados/CargaMasivaExpedientes.module.css
+   Estilos propios de la carga masiva. No se toca GestionDelegados.module.css
+   para no alterar los estilos ya existentes de la pantalla. */
+
+/* ── Pasos del asistente ── */
+.pasos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.paso {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.pasoActivo {
+  color: #0f172a;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+/* ── Textos ── */
+.subtitulo {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.ayuda {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.avisoPaginas {
+  font-size: 0.82rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+/* ── Etapa 1: cargar ── */
+.etapaCargar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inputFile {
+  padding: 0.65rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.progresoBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progresoBox small {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+/* ── Indicadores ── */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.indicadorValor {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.indicadorLabel {
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.indicador_ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.indicador_ok .indicadorValor {
+  color: #15803d;
+}
+
+.indicador_warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.indicador_warn .indicadorValor {
+  color: #92400e;
+}
+
+.indicador_error {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.indicador_error .indicadorValor {
+  color: #b91c1c;
+}
+
+.indicador_info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.indicador_info .indicadorValor {
+  color: #1d4ed8;
+}
+
+/* ── Mes de haber ── */
+.mesBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  margin-bottom: 0.85rem;
+}
+
+.mesBox label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mesBox label span {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mesDropdown {
+  min-width: 220px;
+}
+
+.mesInfo {
+  font-size: 0.82rem;
+  color: #78350f;
+}
+
+/* ── Filtros ── */
+.filtrosRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.contadorSel {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+/* ── Tabla de verificación ── */
+.tabla :global(.p-datatable-thead > tr > th) {
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 0.5rem 0.5rem;
+  white-space: nowrap;
+}
+
+.tabla :global(.p-datatable-tbody > tr > td) {
+  font-size: 0.78rem;
+  padding: 0.45rem 0.5rem;
+  vertical-align: middle;
+}
+
+.filaOk :global(td) {
+  background: #f6fdf8 !important;
+}
+.filaWarn :global(td) {
+  background: #fffdf5 !important;
+}
+.filaError :global(td) {
+  background: #fef7f7 !important;
+}
+.filaInfo :global(td) {
+  background: #f7fafe !important;
+}
+
+/* ── Pills de coincidencia ── */
+.pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.pillOk {
+  background: #dcfce7;
+  color: #15803d;
+}
+.pillWarn {
+  background: #fef3c7;
+  color: #92400e;
+}
+.pillError {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.pillInfo {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.obsText {
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.obsExtra {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* ── Etapa 3: procesando ── */
+.etapaProcesando {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 0;
+}
+
+.progresoDetalle {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+/* ── Etapa 4: resumen ── */
+.etapaResumen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.resumenAcciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.listaErrores {
+  font-size: 0.8rem;
+  color: #7f1d1d;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.listaErrores ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+/* ── Confirmación ── */
+.confirmBody {
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.confirmBody p {
+  margin: 0 0 0.35rem;
+}
+
+.confirmNota {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+/* ── Footer ── */
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.footerLeft,
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Mensajes de WhatsApp ── */
+.listaMensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.mensajeCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mensajeHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mensajeHeader strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.mensajeMeta {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.mensajeTexto {
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.mensajeAcciones {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .indicadores {
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  }
+
+  .filtrosRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contadorSel {
+    margin-left: 0;
+  }
+
+  .footerRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footerLeft,
+  .footerRight {
+    justify-content: space-between;
+  }
+
+  .mesDropdown {
+    min-width: 0;
+    width: 100%;
+  }
+}

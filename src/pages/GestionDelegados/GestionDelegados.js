@@ -30,25 +30,24 @@ import * as XLSX from "xlsx";
 import { db } from "../../firebase/firebase-config";
 import styles from "./GestionDelegados.module.css";
 import ExpedientesDashboard from "./ExpedientesDashboard";
+import CargaMasivaExpedientes from "./CargaMasivaExpedientes";
+// Lógica de finalización compartida con la carga masiva desde PDF: ambas
+// rutas usan el MISMO generador de mensaje y los mismos campos de escritura.
+import {
+  MESES_HABER,
+  ESTADOS_CIERRE_CON_OBSERVACION,
+  obtenerMesLabel,
+  obtenerMesCobroSiguiente,
+  abrirWhatsapp,
+  generarMensajeExpedienteFinalizado,
+  construirPayloadFinalizacion,
+  construirMovimientoFinalizacion,
+} from "../../utils/expedienteFinalizacion";
 
 const ESTADOS = ["ALTA_DE_SERVICIO", "RECLAMO", "DEUDA", "VARIOS", "SOLICITUD"];
 const ESTADOS_SUELDO = ["ACTIVO", "INACTIVO"];
 const OBSERVACION_ESTADO_SUELDO_ACTIVO =
   "CIRCUITO ADMINISTRATIVO COMPLETO, PENDIENTE DE RESOLUCIÓN";
-const MESES_HABER = [
-  { label: "Enero", value: "enero" },
-  { label: "Febrero", value: "febrero" },
-  { label: "Marzo", value: "marzo" },
-  { label: "Abril", value: "abril" },
-  { label: "Mayo", value: "mayo" },
-  { label: "Junio", value: "junio" },
-  { label: "Julio", value: "julio" },
-  { label: "Agosto", value: "agosto" },
-  { label: "Septiembre", value: "septiembre" },
-  { label: "Octubre", value: "octubre" },
-  { label: "Noviembre", value: "noviembre" },
-  { label: "Diciembre", value: "diciembre" },
-];
 const DEPENDENCIAS_GRUPOS = [
   {
     label: "Direcciones de Educación",
@@ -677,101 +676,10 @@ const mesTexto = (periodo) => {
   }).format(new Date(anio, mes - 1, 1));
 };
 
-const obtenerMesLabel = (value) =>
-  MESES_HABER.find((mes) => mes.value === value)?.label.toLowerCase() || value || "";
-
-const WHATSAPP_SINDICATO = "+54 9 383 423-0813";
-
-const normalizarTelefonoWhatsapp = (value) => {
-  let digits = String(value || "").replace(/\D/g, "");
-
-  if (!digits) return "";
-
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("0")) digits = digits.slice(1);
-
-  if (digits.startsWith("54")) {
-    if (!digits.startsWith("549") && digits.length >= 12) {
-      digits = `549${digits.slice(2)}`;
-    }
-    return digits;
-  }
-
-  if (digits.length === 10) return `549${digits}`;
-  if (digits.length === 11 && digits.startsWith("15")) return `549${digits.slice(2)}`;
-
-  return digits;
-};
-
-const abrirWhatsapp = ({ telefono, mensaje }) => {
-  const phone = normalizarTelefonoWhatsapp(telefono);
-  if (!phone || !mensaje) return false;
-
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
-  return true;
-};
-
-const obtenerMesCobroSiguiente = (value) => {
-  const index = MESES_HABER.findIndex((mes) => mes.value === value);
-  if (index < 0) return "";
-  return MESES_HABER[(index + 1) % MESES_HABER.length].value;
-};
-
-const ESTADOS_CIERRE_CON_OBSERVACION = ["SOLICITUD", "RECLAMO", "VARIOS"];
-
-const construirMensajeFinalizacion = ({
-  afiliado,
-  expediente,
-  haberMes,
-  cobroMes,
-  estado,
-  observacion,
-}) => {
-  if (ESTADOS_CIERRE_CON_OBSERVACION.includes(estado)) {
-    return construirMensajeCierreConObservacion({
-      afiliado,
-      expediente,
-      observacion,
-    });
-  }
-
-  return construirMensajeCierreExpediente({ afiliado, expediente, haberMes, cobroMes });
-};
-
-const construirMensajeCierreConObservacion = ({ afiliado, expediente, observacion }) => {
-  const nombre = afiliado || "Docente";
-  const estadoTexto = "Finalizado";
-  const expedienteTexto = limpiarTexto(expediente)
-    ? ` N° ${limpiarTexto(expediente)}`
-    : "";
-  const observacionTexto = limpiarTexto(observacion) || "Sin observación cargada.";
-
-  return (
-    `Estimado/a docente ${nombre}:\n\n` +
-    `Le informamos que su expediente${expedienteTexto} se encuentra actualmente en estado ${estadoTexto}.\n\n` +
-    "Observación:\n" +
-    `${observacionTexto}\n\n` +
-    "Desde el Sindicato de Docentes de Catamarca quedamos a disposición para acompañarlo/a ante cualquier consulta o novedad.\n\n" +
-    "Saludos cordiales."
-  );
-};
-
-const construirMensajeCierreExpediente = ({ afiliado, expediente, haberMes, cobroMes }) => {
-  const nombre = afiliado || "Docente";
-  const expedienteTexto = limpiarTexto(expediente)
-    ? ` N° ${limpiarTexto(expediente)}`
-    : "";
-  const haber = obtenerMesLabel(haberMes) || "julio";
-  const cobro = obtenerMesLabel(cobroMes) || "agosto";
-
-  return (
-    `Estimado/a docente ${nombre}, le informamos que su expediente${expedienteTexto} se encuentra finalizado ` +
-    `y que percibirá el haber correspondiente al mes de ${haber}, a cobrar en ${cobro}.\n\n` +
-    "Desde el Sindicato de Docentes de Catamarca quedamos a disposición para acompañarlo/a ante cualquier consulta.\n\n" +
-    "Saludos cordiales."
-  );
-};
+/* Los helpers de finalización (mensaje, teléfono, meses) viven en
+   src/utils/expedienteFinalizacion.js y se importan arriba, para que la
+   finalización individual y la carga masiva compartan exactamente la misma
+   lógica. */
 
 const mapaColumnas = {
   orden: ["orden"],
@@ -893,6 +801,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const [mostrarFiltrosMobile, setMostrarFiltrosMobile] = useState(false);
   const [visibleDuplicados, setVisibleDuplicados] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [visibleCargaMasiva, setVisibleCargaMasiva] = useState(false);
   const [visibleExportar, setVisibleExportar] = useState(false);
   const dependenciasExport = [];
   const estadosSueldoExport = [];
@@ -1696,7 +1605,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       return;
     }
 
-    const mensajeFinalizacion = construirMensajeFinalizacion({
+    const mensajeFinalizacion = generarMensajeExpedienteFinalizado({
       afiliado: seleccionado.apellidoNombre,
       expediente: seleccionado.expediente,
       haberMes: haberFinalizacionMes,
@@ -1708,6 +1617,8 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     const telefonoDestino = seleccionado.telefono || afiliadoActivo?.telefono || "";
     setFinalizandoExpediente(true);
     try {
+      // A diferencia de la carga masiva, acá sí se aplican los cambios del
+      // formulario de edición junto con la finalización.
       const payloadEdicion = {
         departamento: limpiarTexto(formEdicion.departamento),
         nivel: limpiarTexto(formEdicion.nivel),
@@ -1715,31 +1626,28 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         estado: formEdicion.estado || "ALTA_DE_SERVICIO",
         estadoSueldo: formEdicion.estadoSueldo || "",
       };
-      await updateDoc(refExpediente(seleccionado.dni, seleccionado.id), {
-        ...payloadEdicion,
-        observacionActual: mensajeFinalizacion,
-        finalizado: true,
-        mensajeFinalizacion,
-        whatsappEmisor: WHATSAPP_SINDICATO,
-        whatsappDestino: normalizarTelefonoWhatsapp(telefonoDestino),
-        haberFinalizacionMes,
-        cobroFinalizacionMes,
-        fechaFinalizacion: serverTimestamp(),
-        finalizadoPor: usuarioMovimiento,
-        updatedAt: serverTimestamp(),
-        updatedBy: usuarioMovimiento,
-      });
-      await registrarMovimiento({
-        expediente: seleccionado,
-        tipo: "finalizacion_expediente",
-        observacion: mensajeFinalizacion,
-        estadoAnterior: seleccionado.estado,
-        estadoNuevo: payloadEdicion.estado,
-        dependenciaAnterior: seleccionado.dependencia,
-        dependenciaNueva: payloadEdicion.dependencia,
-        estadoSueldoAnterior: seleccionado.estadoSueldo,
-        estadoSueldoNuevo: payloadEdicion.estadoSueldo,
-      });
+      await updateDoc(
+        refExpediente(seleccionado.dni, seleccionado.id),
+        construirPayloadFinalizacion({
+          datosEdicion: payloadEdicion,
+          mensajeFinalizacion,
+          telefonoDestino,
+          haberFinalizacionMes,
+          cobroFinalizacionMes,
+          usuarioMovimiento,
+          extra: { origen: "finalizacion_individual" },
+        })
+      );
+      await addDoc(
+        refMovimientos(seleccionado.dni, seleccionado.id),
+        construirMovimientoFinalizacion({
+          mensajeFinalizacion,
+          expedienteActual: seleccionado,
+          datosEdicion: payloadEdicion,
+          usuarioMovimiento,
+          extra: { origen: "finalizacion_individual" },
+        })
+      );
       const whatsappAbierto = abrirWhatsapp({
         telefono: telefonoDestino,
         mensaje: mensajeFinalizacion,
@@ -2068,7 +1976,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   const puedePrevisualizarFinalizacion =
     !!seleccionado && (!requiereMesHaberPreview || !!mesHaberFinalizar);
   const mensajePreviewFinalizacion = puedePrevisualizarFinalizacion
-    ? construirMensajeFinalizacion({
+    ? generarMensajeExpedienteFinalizado({
         afiliado: seleccionado?.apellidoNombre,
         expediente: seleccionado?.expediente,
         haberMes: mesHaberFinalizar,
@@ -2108,6 +2016,17 @@ const GestionDelegados = ({ modo = "delegado" }) => {
   return (
     <main className={styles.page}>
       <Toast ref={toast} />
+
+      {/* Carga masiva de expedientes finalizados desde PDF oficial */}
+      <CargaMasivaExpedientes
+        visible={visibleCargaMasiva}
+        onHide={() => setVisibleCargaMasiva(false)}
+        usuarioMovimiento={usuarioMovimiento}
+        modoUsuario={modo}
+        onFinalizado={cargarExpedientes}
+        toast={toast}
+      />
+
       <header className={styles.hero}>
         <div>
           <span className={styles.eyebrow}>
@@ -2187,6 +2106,17 @@ const GestionDelegados = ({ modo = "delegado" }) => {
                   loading={importando}
                 />
               </>
+            )}
+            {/* Carga masiva desde los PDF oficiales de anexos.
+                Usa el mismo permiso que la finalización individual: quien puede
+                finalizar un expediente de a uno, puede hacerlo en masa. */}
+            {permisos.cambiarEstado && (
+              <Button
+                label="Carga masiva desde PDF"
+                icon="pi pi-file-pdf"
+                className="p-button-help"
+                onClick={() => setVisibleCargaMasiva(true)}
+              />
             )}
             {permisos.exportarExcel && (
               <Button

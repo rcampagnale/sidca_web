@@ -100,7 +100,7 @@ export const extraerExpedienteDesdeTexto = (texto) => {
   }
 
   // Formato corto: NNNNNNN/AA o NNNNNNN/AAAA o NNNNNNN-AA
-  const corto = limpio.match(/\b(\d{3,10})\s*[/\-]\s*(\d{2}|\d{4})\b/);
+  const corto = limpio.match(/\b(\d{3,10})\s*[/-]\s*(\d{2}|\d{4})\b/);
   if (corto) return `${corto[1]}/${corto[2]}`;
 
   return "";
@@ -137,7 +137,7 @@ export const getExpedienteComparable = (valor) => {
   }
 
   // 2) Formato corto: el número va primero y el año después
-  const corto = limpio.match(/(\d{3,10})\s*[/\-]\s*(\d{2}|\d{4})(?!\d)/);
+  const corto = limpio.match(/(\d{3,10})\s*[/-]\s*(\d{2}|\d{4})(?!\d)/);
   if (corto) {
     const numero = corto[1].replace(/^0+/, "") || corto[1];
     const anio = anioCorto(corto[2]);

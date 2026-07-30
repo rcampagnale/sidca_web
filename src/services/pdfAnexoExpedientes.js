@@ -28,7 +28,6 @@ import {
   extraerExpedienteDesdeTexto,
   normalizeCuil,
   normalizeDocumento,
-  limpiarTextoPlano,
 } from "../utils/expedientesNormalizacion";
 
 // El worker se sirve desde public/ (lo copia scripts/copy-pdf-worker.js).
@@ -444,4 +443,6 @@ export const __testing = {
   BANDAS,
 };
 
-export default { leerAnexoPdf, agruparFilasPdf };
+const pdfAnexoExpedientes = { leerAnexoPdf, agruparFilasPdf };
+
+export default pdfAnexoExpedientes;
