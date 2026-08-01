@@ -529,7 +529,13 @@ const CargaMasivaExpedientes = ({
         header="Carga masiva de expedientes finalizados"
         visible={visible}
         style={{ width: "min(1400px, 96vw)" }}
-        contentStyle={{ minHeight: "40vh" }}
+        breakpoints={{ "960px": "92vw", "640px": "96vw" }}
+        className={styles.dialog}
+        contentStyle={{
+          minHeight: "40vh",
+          maxHeight: "calc(100vh - 150px)",
+          overflowY: "auto",
+        }}
         modal
         closable={!procesando}
         closeOnEscape={!procesando}
@@ -734,7 +740,6 @@ const CargaMasivaExpedientes = ({
               paginator
               rows={10}
               rowsPerPageOptions={[10, 25, 50, 100]}
-              responsiveLayout="scroll"
               emptyMessage="No hay registros para mostrar."
               className={styles.tabla}
               rowClassName={(row) =>
