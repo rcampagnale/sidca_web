@@ -1,5 +1,6 @@
 .root { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem; }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.headerActions { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; justify-content: flex-end; }
 .header h2 { margin: 0; color: #172033; font-size: 1.25rem; }
 .header p { margin: .3rem 0 0; color: #64748b; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; margin: 1.2rem 0; }
@@ -47,6 +48,9 @@
     width: 100%;
     justify-content: center;
   }
+
+  .headerActions { width: 100%; justify-content: stretch; }
+  .headerActions :global(.p-button) { flex: 1 1 12rem; }
 
   .kpis {
     grid-template-columns: 1fr 1fr;

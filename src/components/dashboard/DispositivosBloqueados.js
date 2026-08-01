@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
@@ -66,6 +67,7 @@ const DispositivosBloqueados = () => {
   const [cursoFiltro, setCursoFiltro] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [reiniciando, setReiniciando] = useState("");
+  const [reiniciandoTodos, setReiniciandoTodos] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -275,6 +277,77 @@ const DispositivosBloqueados = () => {
     }
   };
 
+  const reiniciarTodosLosDispositivos = async () => {
+    if (reiniciandoTodos || reiniciando) return;
+    const total = vinculados.filter((persona) => persona.dispositivoAsistenciaId).length;
+    if (!total) {
+      window.alert("No hay dispositivos registrados para reiniciar.");
+      return;
+    }
+    const confirmar = window.confirm(
+      `¿Reiniciar los ${total} dispositivos registrados?\n\n` +
+        "Se quitarán los vínculos de dispositivo de usuarios y nuevoAfiliado. " +
+        "Los bloqueos históricos se conservarán."
+    );
+    if (!confirmar) return;
+
+    setReiniciandoTodos(true);
+    try {
+      const referencias = [];
+      for (const coleccion of ["usuarios", "nuevoAfiliado"]) {
+        const snap = await getDocs(collection(db, coleccion));
+        snap.docs.forEach((item) => {
+          const data = item.data() || {};
+          if (data.dispositivoAsistenciaId || data.dispositivoBloqueado) {
+            referencias.push({ ref: item.ref, data });
+          }
+        });
+      }
+
+      const admin =
+        localStorage.getItem("adminEmail") || localStorage.getItem("userEmail") || "admin_web";
+      for (let i = 0; i < referencias.length; i += 400) {
+        const lote = referencias.slice(i, i + 400);
+        const batch = writeBatch(db);
+        lote.forEach(({ ref, data }) => {
+          batch.update(ref, {
+            dispositivoAnteriorId: data.dispositivoAsistenciaId || null,
+            dispositivoAnteriorModelo: modeloDispositivo(data),
+            dispositivoAsistenciaId: null,
+            asistenciaDispositivoVinculado: false,
+            dispositivoBloqueado: false,
+            dispositivoModelo: null,
+            dispositivoCodigoModelo: null,
+            dispositivoPlataforma: null,
+            dispositivoUserAgent: null,
+            dispositivoVinculadoEn: null,
+            dispositivoVinculadoDesde: null,
+            dispositivoUltimaValidacionEn: null,
+            dispositivoReiniciadoEn: serverTimestamp(),
+            dispositivoReiniciadoPor: admin,
+            dispositivoReinicioMotivo: "reinicio_masivo_desde_dashboard_dispositivos",
+          });
+        });
+        await batch.commit();
+      }
+
+      await addDoc(collection(db, "asistencia_reinicios_dispositivo"), {
+        tipo: "masivo",
+        cantidadDispositivos: referencias.length,
+        reiniciadoPor: admin,
+        motivo: "reinicio_masivo_desde_dashboard_dispositivos",
+        creadoEn: serverTimestamp(),
+      });
+      await cargar();
+      window.alert(`Se reiniciaron ${referencias.length} dispositivos.`);
+    } catch (err) {
+      console.error("[DispositivosBloqueados] reinicio masivo:", err);
+      window.alert(err?.message || "No se pudieron reiniciar todos los dispositivos.");
+    } finally {
+      setReiniciandoTodos(false);
+    }
+  };
+
   const filas = useMemo(() => {
     const correctos = vinculadosSinProblemas.map((item) => ({
       ...item, id: `vinculado-${item.dni}`, tipo: "ok", modelo: modeloDispositivo(item), fecha: item.dispositivoVinculadoEn,
@@ -301,7 +374,10 @@ const DispositivosBloqueados = () => {
     <section className={styles.root}>
       <div className={styles.header}>
         <div><h2>Dispositivos de asistencia</h2><p>Vinculaciones correctas e intentos rechazados al registrar asistencia presencial.</p></div>
-        <Button label="Actualizar" icon="pi pi-refresh" className="p-button-outlined" onClick={cargar} loading={loading} />
+        <div className={styles.headerActions}>
+          <Button label="Reiniciar todos" icon="pi pi-refresh" className="p-button-warning p-button-outlined" onClick={reiniciarTodosLosDispositivos} loading={reiniciandoTodos} disabled={loading || Boolean(reiniciando)} />
+          <Button label="Actualizar" icon="pi pi-refresh" className="p-button-outlined" onClick={cargar} loading={loading || reiniciandoTodos} />
+        </div>
       </div>
       <div className={styles.kpis}>
         <article><span>Usuarios con dispositivo</span><strong>{vinculados.length}</strong></article>
