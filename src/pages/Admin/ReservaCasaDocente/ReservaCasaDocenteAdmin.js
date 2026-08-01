@@ -27,6 +27,11 @@ const ESTADOS = [
   { value: "pendiente", label: "Pendiente" },
   { value: "confirmada", label: "Confirmada" },
   { value: "rechazada", label: "Rechazada" },
+  { value: "modificacion_solicitada", label: "Modificación solicitada" },
+  { value: "modificacion_rechazada", label: "Modificación no aprobada" },
+  { value: "cancelacion_solicitada", label: "Cancelación solicitada" },
+  { value: "cancelacion_rechazada", label: "Cancelación no aprobada" },
+  { value: "cancelada", label: "Cancelada" },
 ];
 
 const getEstadoLabel = (estado) =>
@@ -617,8 +622,15 @@ const ReservaCasaDocenteAdmin = () => {
   const EMOJI_WARNING = "⚠️";
 
   const buildWhatsappMessage = (reserva, nuevoEstado, notasAdmin) => {
-    const estadoLabel =
-      nuevoEstado === "confirmada" ? "CONFIRMADA" : "RECHAZADA";
+    const estadoLabel = {
+      confirmada: "CONFIRMADA",
+      rechazada: "RECHAZADA",
+      cancelada: "CANCELADA",
+      modificacion_solicitada: "MODIFICACIÓN DE FECHAS",
+      modificacion_rechazada: "MODIFICACIÓN NO APROBADA",
+      cancelacion_solicitada: "SOLICITUD DE CANCELACIÓN",
+      cancelacion_rechazada: "CANCELACIÓN NO APROBADA",
+    }[nuevoEstado] || String(nuevoEstado || "ACTUALIZADA").toUpperCase();
 
     const nombre = reserva.apellidoNombre || "docente";
     const habitacion = getNombreHabitacion(reserva);
@@ -636,6 +648,18 @@ const ReservaCasaDocenteAdmin = () => {
       `* Personas: ${personas}\n`;
 
     // Importe + horarios + importante SOLO si está confirmada
+    if (nuevoEstado === "cancelada") {
+      mensaje += "\nLa cancelación de tu reserva fue aprobada y realizada con éxito.\n";
+    } else if (nuevoEstado === "modificacion_solicitada") {
+      mensaje += "\nLa modificación de fechas quedó registrada y será revisada por la administración.\n";
+    } else if (nuevoEstado === "modificacion_rechazada") {
+      mensaje += "\nLa modificación de fechas no fue aprobada. Se mantienen las fechas originales de la reserva.\n";
+    } else if (nuevoEstado === "cancelacion_solicitada") {
+      mensaje += "\nLa solicitud de cancelación quedó registrada y será revisada por la administración.\n";
+    } else if (nuevoEstado === "cancelacion_rechazada") {
+      mensaje += "\nLa solicitud de cancelación no fue aprobada. La reserva continúa vigente.\n";
+    }
+
     if (nuevoEstado === "confirmada") {
       const hab = getHabitacionDeReserva(reserva);
       const { precioFinalNoche, noches, totalReserva, gastosVarios, totalGeneral, diasExtra } =
@@ -703,6 +727,15 @@ const ReservaCasaDocenteAdmin = () => {
 
     const estadoAnterior = selectedReserva.estado;
     const nuevoEstado = modalEstado;
+    // Una cancelación no aprobada mantiene la reserva confirmada.
+    const estadoPersistido =
+      nuevoEstado === "cancelacion_rechazada" ? "confirmada" :
+      nuevoEstado === "modificacion_rechazada"
+        ? (selectedReserva.estadoAnteriorModificacion || "confirmada")
+        : nuevoEstado;
+    const fechasRestauradas = nuevoEstado === "modificacion_rechazada" && selectedReserva.fechaIngresoAnterior
+      ? { fechaIngreso: selectedReserva.fechaIngresoAnterior, fechaEgreso: selectedReserva.fechaEgresoAnterior }
+      : {};
     const gastosVarios = Math.max(Number(modalGastosVarios) || 0, 0);
     const hab = getHabitacionDeReserva(selectedReserva);
     const { totalReserva } = calcularPreciosReservaAdmin(selectedReserva, hab);
@@ -715,7 +748,8 @@ const ReservaCasaDocenteAdmin = () => {
       );
 
       await updateDoc(reservaRef, {
-        estado: nuevoEstado,
+        estado: estadoPersistido,
+        ...fechasRestauradas,
         notasAdmin: modalNotas,
         gastosVarios,
         totalGeneral: totalReserva + gastosVarios,
@@ -723,12 +757,13 @@ const ReservaCasaDocenteAdmin = () => {
 
       // 🔔 Si cambió el estado a CONFIRMADA o RECHAZADA, disparamos WhatsApp
       if (
-        estadoAnterior !== nuevoEstado &&
-        (nuevoEstado === "confirmada" || nuevoEstado === "rechazada")
+        (estadoAnterior !== estadoPersistido || nuevoEstado === "cancelacion_rechazada") &&
+        ["confirmada", "rechazada", "cancelada", "modificacion_solicitada", "modificacion_rechazada", "cancelacion_solicitada", "cancelacion_rechazada"].includes(nuevoEstado)
       ) {
         const reservaActualizada = {
           ...selectedReserva,
-          estado: nuevoEstado,
+          estado: estadoPersistido,
+          ...fechasRestauradas,
           notasAdmin: modalNotas,
           gastosVarios,
           totalGeneral: totalReserva + gastosVarios,
@@ -1193,6 +1228,14 @@ const ReservaCasaDocenteAdmin = () => {
                               {selectedReserva.motivo}
                             </p>
                           </div>
+                          {selectedReserva.motivoCancelacion && (
+                            <div>
+                              <p className={styles.modalLabel}>Motivo de cancelación informado por el afiliado</p>
+                              <p className={styles.modalValue}>
+                                {selectedReserva.motivoCancelacion}
+                              </p>
+                            </div>
+                          )}
                           <div>
                             <p className={styles.modalLabel}>
                               Fecha de solicitud
@@ -1293,6 +1336,11 @@ const ReservaCasaDocenteAdmin = () => {
                       <option value="pendiente">Pendiente</option>
                       <option value="confirmada">Confirmada</option>
                       <option value="rechazada">Rechazada</option>
+                      <option value="modificacion_solicitada">Modificación solicitada</option>
+                      <option value="modificacion_rechazada">Modificación no aprobada</option>
+                      <option value="cancelacion_solicitada">Cancelación solicitada</option>
+                      <option value="cancelacion_rechazada">Cancelación no aprobada</option>
+                      <option value="cancelada">Cancelada (solicitud aprobada)</option>
                     </select>
                   </div>
 

@@ -13,6 +13,8 @@ import {
   query,
   where,
   addDoc,
+  updateDoc,
+  doc,
 } from "firebase/firestore";
 import {
   SEXO_OPCIONES,
@@ -33,12 +35,26 @@ const esHabitacionDeUnaCama = (habitacion) =>
 // 🔹 Cálculo de precios por reserva (POR NOCHE), a partir de la cantidad de
 // personas que el huésped eligió pagar (1 afiliado + el resto no afiliados).
 // Si reserva la habitación completa, cantidadPersonas = camas de la habitación.
-const calcularPreciosReserva = (habitacion, cantidadPersonas) => {
-  const precioAfiliado = Number(habitacion?.precio) || 0;
-  const precioNoAfiliado = Number(habitacion?.precioNoAfiliado) || 0;
+const calcularPreciosReserva = (habitacion, cantidadPersonas, esAdherente = true) => {
+  const precioAfiliado = Number(
+    esAdherente ? habitacion?.precioAdherente : habitacion?.precio
+  ) || 0;
+  const precioNoAfiliado = Number(
+    esAdherente
+      ? habitacion?.precioAdherenteNoAfiliado
+      : habitacion?.precioNoAfiliado
+  ) || 0;
 
   if (!precioAfiliado) {
     return { precioAfiliado, precioNoAfiliado, precioFinal: 0 };
+  }
+
+  if (!esAdherente) {
+    return {
+      precioAfiliado,
+      precioNoAfiliado,
+      precioFinal: precioNoAfiliado > 0 ? precioNoAfiliado * (Number(cantidadPersonas) || 1) : 0,
+    };
   }
 
   const cantNoAfiliados = Math.max((Number(cantidadPersonas) || 1) - 1, 0);
@@ -76,8 +92,17 @@ const normalizarEstado = (raw) => {
   if (e === "confirmada") return "Confirmada";
   if (e === "rechazada") return "Rechazada";
   if (e === "cancelada") return "Cancelada";
+  if (e === "modificacion_solicitada") return "Modificación solicitada";
+  if (e === "modificacion_rechazada") return "Modificación no aprobada";
+  if (e === "cancelacion_solicitada") return "Cancelación solicitada";
+  if (e === "cancelacion_rechazada") return "Cancelación no aprobada";
   return raw || "Pendiente";
 };
+
+const valorVerdadero = (value) =>
+  value === true || ["true", "1", "si", "sí", "s", "adherente"].includes(
+    String(value ?? "").trim().toLowerCase()
+  );
 
 const ReservaCasaDocenteModales = ({
   isReservaModalOpen,
@@ -144,6 +169,8 @@ const ReservaCasaDocenteModales = ({
   const [buscandoAfiliado, setBuscandoAfiliado] = useState(false);
   const [mensajeAutofill, setMensajeAutofill] = useState("");
   const [autofillOk, setAutofillOk] = useState(false);
+  const [validacionAdherente, setValidacionAdherente] = useState(null);
+  const [reservaSuspendida, setReservaSuspendida] = useState(false);
 
   const [emailBloqueado, setEmailBloqueado] = useState(false);
   const [celularBloqueado, setCelularBloqueado] = useState(false);
@@ -155,6 +182,11 @@ const ReservaCasaDocenteModales = ({
   const [dniConsulta, setDniConsulta] = useState("");
   const [consultaLoading, setConsultaLoading] = useState(false);
   const [consultaResultados, setConsultaResultados] = useState([]);
+  const [cancelandoReserva, setCancelandoReserva] = useState(null);
+  const [editandoReserva, setEditandoReserva] = useState(null);
+  const [editFechas, setEditFechas] = useState({ ingreso: "", egreso: "" });
+  const [reservaCancelacion, setReservaCancelacion] = useState(null);
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [consultaMensaje, setConsultaMensaje] = useState("");
 
   /* ======================
@@ -184,6 +216,8 @@ const ReservaCasaDocenteModales = ({
       setBuscandoAfiliado(false);
       setMensajeAutofill("");
       setAutofillOk(false);
+      setValidacionAdherente(null);
+      setReservaSuspendida(false);
 
       setEmailBloqueado(false);
       setCelularBloqueado(false);
@@ -279,6 +313,63 @@ const ReservaCasaDocenteModales = ({
         return;
       }
 
+      // El registro en adherentes es la fuente principal para identificar al
+      // afiliado adherente. El estado operativo se completa con nuevoAfiliado.activo.
+      let snapAdherente = await getDocs(
+        query(collection(dbSidca, "adherentes"), where("dni", "==", dni))
+      );
+      if (snapAdherente.empty && Number.isFinite(Number(dni))) {
+        snapAdherente = await getDocs(
+          query(collection(dbSidca, "adherentes"), where("dni", "==", Number(dni)))
+        );
+      }
+      let registroAdherente = snapAdherente.empty
+        ? null
+        : snapAdherente.docs[0].data() || {};
+      if (!registroAdherente) {
+        // Compatibilidad con documentos cuyo DNI tiene puntos, guiones o está
+        // guardado como número y no puede resolverse con where exacto.
+        const todosAdherentes = await getDocs(collection(dbSidca, "adherentes"));
+        const encontrado = todosAdherentes.docs.find((item) => {
+          const data = item.data() || {};
+          return String(data.dni || data.DNI || "").replace(/\D/g, "") === dni;
+        });
+        registroAdherente = encontrado?.data() || null;
+      }
+      const esAdherente = valorVerdadero(docData.adherente) || !!registroAdherente;
+      if (esAdherente) {
+        let snapNuevo = await getDocs(
+          query(collection(dbSidca, "nuevoAfiliado"), where("dni", "==", dni))
+        );
+        if (snapNuevo.empty && Number.isFinite(Number(dni))) {
+          snapNuevo = await getDocs(
+            query(collection(dbSidca, "nuevoAfiliado"), where("dni", "==", Number(dni)))
+          );
+        }
+        const registroNuevo = snapNuevo.empty ? null : snapNuevo.docs[0].data() || {};
+        const estadoAdherente =
+          registroNuevo?.activo ??
+          registroAdherente.activo ??
+          registroAdherente.habilitado ??
+          registroAdherente.habilitada;
+        const habilitado =
+          estadoAdherente !== undefined
+            ? valorVerdadero(estadoAdherente)
+            : valorVerdadero(registroNuevo?.activo);
+        setValidacionAdherente({ esAdherente: true, habilitado });
+        setReservaSuspendida(!habilitado);
+        if (!habilitado) {
+          setMensajeAutofill(
+            "Tu afiliación como Adherente se encuentra suspendida. Comunicate con el Área Afiliado Adherente para regularizar tu situación."
+          );
+          setAutofillOk(false);
+          return;
+        }
+      } else {
+        setValidacionAdherente({ esAdherente: false, habilitado: true });
+        setReservaSuspendida(false);
+      }
+
       const apellido =
         docData.apellido ||
         docData.Apellido ||
@@ -325,7 +416,11 @@ const ReservaCasaDocenteModales = ({
       }
 
       setAutofillOk(true);
-      setMensajeAutofill("Datos cargados desde el padrón de afiliados.");
+      setMensajeAutofill(
+        esAdherente
+          ? "Datos cargados. Afiliado adherente habilitado: se aplicarán las tarifas adherentes."
+          : "Datos cargados desde el padrón de afiliados."
+      );
     } catch (error) {
       console.error(
         "[ReservaCasaDocente] Error buscando afiliado por DNI:",
@@ -481,6 +576,13 @@ const ReservaCasaDocenteModales = ({
       return;
     }
 
+    if (!validacionAdherente?.habilitado || reservaSuspendida) {
+      setFormError(
+        "Ingresá tu DNI y validá que tu cuenta esté habilitada antes de continuar."
+      );
+      return;
+    }
+
     if (!fechaIngreso || !fechaEgreso) {
       setFormError("Las fechas de ingreso y egreso son obligatorias.");
       return;
@@ -511,7 +613,9 @@ const ReservaCasaDocenteModales = ({
     // ✅ Aceptación obligatoria
     if (!aceptaDescuento) {
       setFormError(
-        "Para registrar la reserva debés aceptar el descuento sobre tu recibo de sueldo."
+        validacionAdherente?.esAdherente
+          ? "Debés aceptar que el pago se realizará mediante transferencia, según las indicaciones de Casa del Docente."
+          : "Para registrar la reserva debés aceptar el descuento sobre tu recibo de sueldo."
       );
       return;
     }
@@ -531,7 +635,11 @@ const ReservaCasaDocenteModales = ({
       const cantNoAfiliados = Math.max(cantidadPersonas - 1, 0);
 
       const { precioAfiliado, precioNoAfiliado, precioFinal } =
-        calcularPreciosReserva(habitacionAsignable, cantidadPersonas);
+        calcularPreciosReserva(
+          habitacionAsignable,
+          cantidadPersonas,
+          validacionAdherente?.esAdherente
+        );
 
       const noches = calcularNoches(fechaIngreso, fechaEgreso);
       const precioTotalEstadia =
@@ -553,6 +661,7 @@ const ReservaCasaDocenteModales = ({
         precioNoAfiliado,
         precioFinal, // por noche
         precioTotalEstadia, // total noches
+        tipoAfiliado: validacionAdherente?.esAdherente ? "adherente" : "comun",
         apellidoNombre: formNombre.trim(),
         dni: formDni.trim(),
         email: formEmail.trim(),
@@ -692,6 +801,69 @@ const ReservaCasaDocenteModales = ({
       );
     } finally {
       setConsultaLoading(false);
+    }
+  };
+
+  const handleSolicitarCancelacion = async (reserva) => {
+    setReservaCancelacion(reserva);
+    setMotivoCancelacion("");
+  };
+
+  const confirmarSolicitudCancelacion = async () => {
+    const reserva = reservaCancelacion;
+    const motivo = motivoCancelacion;
+    if (!reserva) return;
+    if (!motivo.trim()) return;
+    setCancelandoReserva(reserva.id);
+    try {
+      await updateDoc(doc(dbReservas, "reservasCasaDocente", reserva.id), {
+        estado: "cancelacion_solicitada",
+        motivoCancelacion: motivo.trim(),
+        fechaSolicitudCancelacion: new Date().toISOString(),
+      });
+      setConsultaResultados((prev) =>
+        prev.map((item) =>
+          item.id === reserva.id
+            ? { ...item, estado: "cancelacion_solicitada", motivoCancelacion: motivo.trim() }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error("[ReservaCasaDocente] Error solicitando cancelación:", error);
+      window.alert("No se pudo solicitar la cancelación. Intentá nuevamente.");
+    } finally {
+      setCancelandoReserva(null);
+      setReservaCancelacion(null);
+      setMotivoCancelacion("");
+    }
+  };
+
+  const handleGuardarEdicion = async (reserva) => {
+    if (!editFechas.ingreso || !editFechas.egreso || editFechas.egreso <= editFechas.ingreso) {
+      window.alert("La fecha de egreso debe ser posterior a la de ingreso.");
+      return;
+    }
+    const noches = calcularNoches(editFechas.ingreso, editFechas.egreso);
+    const estado = String(reserva.estado || "").toLowerCase();
+    const requiereRevision = !["pedido", "pendiente"].includes(estado);
+    try {
+      await updateDoc(doc(dbReservas, "reservasCasaDocente", reserva.id), {
+        fechaIngresoAnterior: reserva.fechaIngreso,
+        fechaEgresoAnterior: reserva.fechaEgreso,
+        estadoAnteriorModificacion: reserva.estado || "pendiente",
+        fechaIngreso: editFechas.ingreso,
+        fechaEgreso: editFechas.egreso,
+        noches,
+        ...(requiereRevision ? { estado: "modificacion_solicitada" } : {}),
+        fechaSolicitudModificacion: new Date().toISOString(),
+      });
+      setConsultaResultados((prev) => prev.map((item) => item.id === reserva.id
+        ? { ...item, fechaIngreso: editFechas.ingreso, fechaEgreso: editFechas.egreso, noches, ...(requiereRevision ? { estado: "modificacion_solicitada" } : {}) }
+        : item));
+      setEditandoReserva(null);
+    } catch (error) {
+      console.error("[ReservaCasaDocente] Error editando reserva:", error);
+      window.alert("No se pudo actualizar la reserva.");
     }
   };
 
@@ -868,7 +1040,7 @@ const ReservaCasaDocenteModales = ({
               {disponibilidadOk && !reservaConfirmada && (
                 <>
                   {/* 🔹 Detalle de precios + cantidad de no afiliados */}
-                  {habitacionAsignable && (
+                  {habitacionAsignable && validacionAdherente?.habilitado && !reservaSuspendida && (
                     <>
                       {(() => {
                         const totalPersonas = Math.max(
@@ -885,7 +1057,8 @@ const ReservaCasaDocenteModales = ({
                           precioFinal,
                         } = calcularPreciosReserva(
                           habitacionAsignable,
-                          totalPersonas
+                          totalPersonas,
+                          validacionAdherente?.esAdherente
                         );
 
                         const noches = calcularNoches(
@@ -912,21 +1085,22 @@ const ReservaCasaDocenteModales = ({
                                 </strong>
                               </p>
                               <p className={styles.reservaResultadoText}>
-                                Precio afiliado (por noche):{" "}
+                                {validacionAdherente?.esAdherente
+                                  ? "Precio por noche (Afiliado adherente) (ARS):"
+                                  : "Precio afiliado (por noche):"}{" "}
                                 {precioAfiliado
                                   ? `$${precioAfiliado}`
                                   : "A definir"}
                               </p>
-                              {!esHabitacionDeUnaCama(habitacionAsignable) &&
-                                cantNoAfValidos > 0 && (
-                                  <p className={styles.reservaResultadoText}>
-                                    Precio no afiliado (por noche):{" "}
-                                    {precioNoAfiliado
-                                      ? `$${precioNoAfiliado}`
-                                      : "A definir"}
-                                    {`  (${cantNoAfValidos} no afiliado/s)`}
-                                  </p>
-                                )}
+                              <p className={styles.reservaResultadoText}>
+                                {validacionAdherente?.esAdherente
+                                  ? "Precio por noche (Adherente no afiliado) (ARS):"
+                                  : "Precio no afiliado (por noche):"}{" "}
+                                {precioNoAfiliado ? `$${precioNoAfiliado}` : "A definir"}
+                                {!esHabitacionDeUnaCama(habitacionAsignable) &&
+                                  cantNoAfValidos > 0 &&
+                                  `  (${cantNoAfValidos} no afiliado/s)`}
+                              </p>
                               <p className={styles.reservaResultadoText}>
                                 Precio final por noche para{" "}
                                 <strong>
@@ -938,9 +1112,9 @@ const ReservaCasaDocenteModales = ({
                                   ? `$${precioFinal}`
                                   : "A definir"}
                               </p>
-                              {noches > 0 && (
+                              {noches > 1 && (
                                 <p className={styles.reservaResultadoText}>
-                                  Precio final para{" "}
+                                  Precio final de la estadía (total){" "}
                                   <strong>
                                     {noches} noche
                                     {noches !== 1 ? "s" : ""} ·{" "}
@@ -1004,6 +1178,17 @@ const ReservaCasaDocenteModales = ({
                     >
                       {mensajeAutofill}
                     </p>
+                  )}
+                  {reservaSuspendida && (
+                    <div className={styles.reservaSuspensionBox}>
+                      <strong>Cuenta suspendida</strong>
+                      <p>
+                        Tu afiliación figura como Adherente y actualmente se encuentra suspendida.
+                      </p>
+                      <p>
+                        Comunicate por WhatsApp con el Área Afiliado Adherente (solo mensajes, no llamadas) para regularizar tu situación.
+                      </p>
+                    </div>
                   )}
 
                   {/* Campos (nombre, dni, email, celular) */}
@@ -1107,7 +1292,7 @@ const ReservaCasaDocenteModales = ({
                   {/* ✅ Cuadro de aceptación de descuento */}
                   <div className={styles.reservaAceptacionBox}>
                     <p className={styles.reservaAceptacionLegend}>
-                      Autorización de descuento
+                      {validacionAdherente?.esAdherente ? "Pago por transferencia" : "Autorización de descuento"}
                     </p>
                     <div className={styles.reservaCheckboxRow}>
                       <label className={styles.reservaCheckboxLabel}>
@@ -1118,10 +1303,9 @@ const ReservaCasaDocenteModales = ({
                             setAceptaDescuento(e.target.checked)
                           }
                         />
-                        Declaro que acepto que el importe correspondiente a los
-                        servicios de hospedaje de la Casa del Docente sea
-                        descontado de mi recibo de sueldo en concepto de
-                        servicios.
+                        {validacionAdherente?.esAdherente
+                          ? "Declaro que realizaré el pago mediante transferencia, según las indicaciones que me informe Casa del Docente."
+                          : "Declaro que acepto que el importe correspondiente a los servicios de hospedaje de la Casa del Docente sea descontado de mi recibo de sueldo en concepto de servicios."}
                       </label>
                     </div>
                   </div>
@@ -1164,7 +1348,10 @@ const ReservaCasaDocenteModales = ({
                   onClick={
                     disponibilidadOk ? confirmarReserva : consultarDisponibilidad
                   }
-                  disabled={checkingDisponibilidad || sendingReserva}
+                    disabled={
+                      checkingDisponibilidad ||
+                      sendingReserva
+                    }
                 >
                   {disponibilidadOk
                     ? sendingReserva
@@ -1244,6 +1431,12 @@ const ReservaCasaDocenteModales = ({
                     const estaRechazada =
                       String(reserva.estado || "").toLowerCase() ===
                       "rechazada";
+                    const estadoReserva = String(reserva.estado || "").toLowerCase();
+                    const puedeSolicitarCancelacion = ![
+                      "cancelada",
+                      "cancelacion_solicitada",
+                      "rechazada",
+                    ].includes(estadoReserva);
 
                     return (
                       <div
@@ -1268,6 +1461,43 @@ const ReservaCasaDocenteModales = ({
                             Motivo: {motivoRechazo.trim()}
                           </p>
                         )}
+                        {puedeSolicitarCancelacion && (
+                          <button
+                            type="button"
+                            className={styles.reservaSecondaryButton}
+                            onClick={() => {
+                              setEditandoReserva(reserva.id);
+                              setEditFechas({ ingreso: reserva.fechaIngreso || "", egreso: reserva.fechaEgreso || "" });
+                            }}
+                          >
+                            Editar fechas
+                          </button>
+                        )}
+                        {editandoReserva === reserva.id && (
+                          <div className={styles.reservaAutofillRow}>
+                            <input type="date" value={editFechas.ingreso} onChange={(e) => setEditFechas((v) => ({ ...v, ingreso: e.target.value }))} />
+                            <input type="date" value={editFechas.egreso} onChange={(e) => setEditFechas((v) => ({ ...v, egreso: e.target.value }))} />
+                            <button type="button" className={styles.reservaAutofillButton} onClick={() => handleGuardarEdicion(reserva)}>Guardar</button>
+                            <button type="button" className={styles.reservaSecondaryButton} onClick={() => setEditandoReserva(null)}>Cancelar</button>
+                          </div>
+                        )}
+                        {puedeSolicitarCancelacion && (
+                          <button
+                            type="button"
+                            className={styles.reservaSecondaryButton}
+                            onClick={() => handleSolicitarCancelacion(reserva)}
+                            disabled={cancelandoReserva === reserva.id}
+                          >
+                            {cancelandoReserva === reserva.id
+                              ? "Enviando..."
+                              : "Solicitar cancelación"}
+                          </button>
+                        )}
+                        {estadoReserva === "cancelacion_solicitada" && (
+                          <p className={styles.reservaResultadoText}>
+                            Cancelación pendiente de revisión administrativa.
+                          </p>
+                        )}
                       </div>
                     );
                   })}
@@ -1283,6 +1513,24 @@ const ReservaCasaDocenteModales = ({
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {reservaCancelacion && (
+        <div className={styles.reservaModalOverlay}>
+          <div className={styles.reservaModal} role="dialog" aria-modal="true">
+            <div className={styles.reservaModalHeader}>
+              <h3 className={styles.reservaModalTitle}>Solicitar cancelación</h3>
+              <button type="button" className={styles.reservaModalClose} onClick={() => setReservaCancelacion(null)}>×</button>
+            </div>
+            <div className={styles.reservaModalBody}>
+              <p className={styles.reservaModalInfo}>Indicá el motivo de la cancelación de tu reserva.</p>
+              <textarea className={`${styles.reservaInput} ${styles.reservaCancelacionTextarea}`} rows={5} autoFocus value={motivoCancelacion} onChange={(e) => setMotivoCancelacion(e.target.value)} placeholder="Escribí el motivo..." maxLength={500} />
+            </div>
+            <div className={styles.reservaModalFooter}>
+              <button type="button" className={styles.reservaSecondaryButton} onClick={() => setReservaCancelacion(null)}>Volver</button>
+              <button type="button" className={styles.reservaPrimaryButton} disabled={!motivoCancelacion.trim() || cancelandoReserva} onClick={confirmarSolicitudCancelacion}>Enviar solicitud</button>
             </div>
           </div>
         </div>

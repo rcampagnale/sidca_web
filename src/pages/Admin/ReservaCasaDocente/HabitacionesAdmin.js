@@ -83,6 +83,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
     descripcion: "",
     precio: "",
     precioNoAfiliado: "",
+    precioAdherente: "",
+    precioAdherenteNoAfiliado: "",
     ubicacion: "",
     estacionamiento: "si",
     imagenes: [],
@@ -135,6 +137,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
       descripcion: "",
       precio: "",
       precioNoAfiliado: "",
+      precioAdherente: "",
+      precioAdherenteNoAfiliado: "",
       ubicacion: "",
       estacionamiento: "si",
       imagenes: [],
@@ -157,6 +161,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
       descripcion: habitacion.descripcion || "",
       precio: habitacion.precio ?? "",
       precioNoAfiliado: habitacion.precioNoAfiliado ?? "",
+      precioAdherente: habitacion.precioAdherente ?? "",
+      precioAdherenteNoAfiliado: habitacion.precioAdherenteNoAfiliado ?? "",
       ubicacion: habitacion.ubicacion || "",
       estacionamiento: habitacion.estacionamiento ? "si" : "no",
       imagenes: [],
@@ -252,6 +258,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
           descripcion: form.descripcion.trim(),
           precio: Number(form.precio) || 0,
           precioNoAfiliado: Number(form.precioNoAfiliado) || 0,
+          precioAdherente: Number(form.precioAdherente) || 0,
+          precioAdherenteNoAfiliado: Number(form.precioAdherenteNoAfiliado) || 0,
           ubicacion: form.ubicacion.trim(),
           estacionamiento: form.estacionamiento === "si",
           updatedAt: serverTimestamp(),
@@ -285,6 +293,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
           descripcion: form.descripcion.trim(),
           precio: Number(form.precio) || 0,
           precioNoAfiliado: Number(form.precioNoAfiliado) || 0,
+          precioAdherente: Number(form.precioAdherente) || 0,
+          precioAdherenteNoAfiliado: Number(form.precioAdherenteNoAfiliado) || 0,
           ubicacion: form.ubicacion.trim(),
           estacionamiento: form.estacionamiento === "si",
           imagenes: [],
@@ -358,6 +368,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
         descripcion: habitacion.descripcion || "",
         precio: habitacion.precio ?? 0,
         precioNoAfiliado: habitacion.precioNoAfiliado ?? 0,
+        precioAdherente: habitacion.precioAdherente ?? 0,
+        precioAdherenteNoAfiliado: habitacion.precioAdherenteNoAfiliado ?? 0,
         ubicacion: habitacion.ubicacion || "",
         estacionamiento: !!habitacion.estacionamiento,
         imagenes: Array.isArray(habitacion.imagenes)
@@ -417,7 +429,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                   <th>Baños</th>
                   <th>Precio afiliado</th>
                   <th>Precio no afiliado</th>
-                  <th>Precio final</th>
+                  <th>Precio adherente</th>
+                  <th>Precio acomp. adherente</th>
                   <th>Ubicación</th>
                   <th>Estac.</th>
                   <th>Acciones</th>
@@ -425,7 +438,6 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
               </thead>
               <tbody>
                 {habitaciones.map((h) => {
-                  const precioFinal = calcularPrecioFinal(h);
                   return (
                     <tr key={h.id}>
                       <td>{nombreDeHabitacion(h)}</td>
@@ -435,7 +447,8 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                       <td>
                         {h.precioNoAfiliado ? `$${h.precioNoAfiliado}` : "-"}
                       </td>
-                      <td>{precioFinal ? `$${precioFinal}` : "-"}</td>
+                      <td>{h.precioAdherente ? `$${h.precioAdherente}` : "-"}</td>
+                      <td>{h.precioAdherenteNoAfiliado ? `$${h.precioAdherenteNoAfiliado}` : "-"}</td>
                       <td>{h.ubicacion}</td>
                       <td>{h.estacionamiento ? "Sí" : "No"}</td>
                       <td className={styles.actionCell}>
@@ -619,6 +632,38 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                 </div>
 
                 <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="precioAdherente">
+                    Precio por noche (Afiliado adherente) (ARS)
+                  </label>
+                  <input
+                    id="precioAdherente"
+                    name="precioAdherente"
+                    type="number"
+                    min="0"
+                    className={styles.input}
+                    value={form.precioAdherente}
+                    onChange={handleChange}
+                    placeholder="Ej: 18000"
+                  />
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="precioAdherenteNoAfiliado">
+                    Precio por noche (Adherente no afiliado) (ARS)
+                  </label>
+                  <input
+                    id="precioAdherenteNoAfiliado"
+                    name="precioAdherenteNoAfiliado"
+                    type="number"
+                    min="0"
+                    className={styles.input}
+                    value={form.precioAdherenteNoAfiliado}
+                    onChange={handleChange}
+                    placeholder="Ej: 22000"
+                  />
+                </div>
+
+                <div className={styles.fieldGroup}>
                   <label className={styles.label} htmlFor="ubicacion">
                     Ubicación<span className={styles.required}> *</span>
                   </label>
@@ -746,6 +791,18 @@ const HabitacionesAdmin = ({ reservas = [] }) => {
                     {habitacionVer.precioNoAfiliado
                       ? `$${habitacionVer.precioNoAfiliado}`
                       : "-"}
+                  </p>
+                </div>
+                <div className={styles.fieldGroup}>
+                  <span className={styles.label}>Precio afiliado adherente</span>
+                  <p className={styles.valueText}>
+                    {habitacionVer.precioAdherente ? `$${habitacionVer.precioAdherente}` : "-"}
+                  </p>
+                </div>
+                <div className={styles.fieldGroup}>
+                  <span className={styles.label}>Precio adherente no afiliado</span>
+                  <p className={styles.valueText}>
+                    {habitacionVer.precioAdherenteNoAfiliado ? `$${habitacionVer.precioAdherenteNoAfiliado}` : "-"}
                   </p>
                 </div>
                 <div className={styles.fieldGroup}>
