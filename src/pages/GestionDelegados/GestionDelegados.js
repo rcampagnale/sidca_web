@@ -991,6 +991,10 @@ const GestionDelegados = ({ modo = "delegado" }) => {
         String(item.fechaInicio || "").slice(0, 7) !== filtroValor
       ) return false;
       if (
+        filtroValor && filtroDimension === "fechaFinalizacion" &&
+        String(item.fechaFinalizacion || "").slice(0, 7) !== filtroValor
+      ) return false;
+      if (
         filtroValor && filtroDimension === "fechaSueldoActivo" &&
         (item.estadoSueldo !== "ACTIVO" ||
           String(item.fechaInicio || "").slice(0, 7) !== filtroValor)
@@ -1025,6 +1029,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
     { label: "Por departamento", value: "departamento" },
     { label: "Por nivel", value: "nivel" },
     { label: "Expedientes por fecha de inicio (mes)", value: "fechaInicio" },
+    { label: "Expedientes finalizados por mes", value: "fechaFinalizacion" },
     {
       label: "Expedientes por fecha de sueldo activo",
       value: "fechaSueldoActivo",
@@ -1052,6 +1057,9 @@ const GestionDelegados = ({ modo = "delegado" }) => {
       } else if (filtroDimension === "fechaInicio") {
         const periodo = String(item.fechaInicio || "").slice(0, 7);
         if (periodo.length === 7) valores.add(periodo);
+      } else if (filtroDimension === "fechaFinalizacion" && item.finalizado) {
+        const periodo = String(item.fechaFinalizacion || "").slice(0, 7);
+        if (periodo.length === 7) valores.add(periodo);
       } else if (
         filtroDimension === "fechaSueldoActivo" &&
         item.estadoSueldo === "ACTIVO"
@@ -1077,6 +1085,7 @@ const GestionDelegados = ({ modo = "delegado" }) => {
               ? "Finalizados"
               : "En trámite"
             : filtroDimension === "fechaInicio" ||
+              filtroDimension === "fechaFinalizacion" ||
               filtroDimension === "fechaSueldoActivo"
             ? mesTexto(value)
             : value,

@@ -388,6 +388,17 @@
   height: 260px;
 }
 
+.chartBoxCompact {
+  height: 210px !important;
+}
+
+.dashboardCard small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
 .chartBoxPie {
   display: flex;
   justify-content: center;

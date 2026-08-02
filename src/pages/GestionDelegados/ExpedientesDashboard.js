@@ -94,6 +94,21 @@ const contarPorFinalizacion = (items) => {
   return new Map([...mapa.entries()].filter(([, cantidad]) => cantidad > 0));
 };
 
+const contarPorFechaFinalizacion = (items, modo = "mes") => {
+  const mapa = new Map();
+  items.filter((item) => item.finalizado && item.fechaFinalizacion).forEach((item) => {
+    const raw = item.fechaFinalizacion;
+    const fecha = raw?.toDate
+      ? raw.toDate().toISOString().slice(0, 10)
+      : raw?.seconds
+      ? new Date(Number(raw.seconds) * 1000).toISOString().slice(0, 10)
+      : String(raw).match(/^\d{4}-\d{2}-\d{2}/)?.[0] || "";
+    const clave = modo === "dia" ? fecha : fecha.slice(0, 7);
+    if (clave) mapa.set(clave, (mapa.get(clave) || 0) + 1);
+  });
+  return new Map([...mapa.entries()].sort());
+};
+
 const contarPorCircuitoAdministrativo = (items) => {
   const mapa = new Map([
     [CIRCUITO_ADMINISTRATIVO_LABELS.COMPLETO_PENDIENTE, 0],
@@ -153,14 +168,15 @@ const tooltipConPorcentaje = (total) => ({
 });
 
 const ExpedientesDashboard = ({ expedientes = [] }) => {
-  const porEstado = useMemo(() => contarPor(expedientes, "estado", ESTADO_LABELS), [expedientes]);
+  const expedientesActivos = useMemo(() => expedientes.filter((item) => !item.finalizado), [expedientes]);
+  const porEstado = useMemo(() => contarPor(expedientesActivos, "estado", ESTADO_LABELS), [expedientesActivos]);
   const porEstadoSueldo = useMemo(
-    () => contarPor(expedientes, "estadoSueldo", ESTADO_SUELDO_LABELS),
-    [expedientes]
+    () => contarPor(expedientesActivos, "estadoSueldo", ESTADO_SUELDO_LABELS),
+    [expedientesActivos]
   );
-  const porDependencia = useMemo(() => contarPor(expedientes, "dependencia"), [expedientes]);
-  const porDepartamento = useMemo(() => contarPor(expedientes, "departamento"), [expedientes]);
-  const porNivel = useMemo(() => contarPorNivel(expedientes), [expedientes]);
+  const porDependencia = useMemo(() => contarPor(expedientesActivos, "dependencia"), [expedientesActivos]);
+  const porDepartamento = useMemo(() => contarPor(expedientesActivos, "departamento"), [expedientesActivos]);
+  const porNivel = useMemo(() => contarPorNivel(expedientesActivos), [expedientesActivos]);
   const porFinalizacion = useMemo(
     () => contarPorFinalizacion(expedientes),
     [expedientes]
@@ -169,7 +185,9 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
     () => contarPorCircuitoAdministrativo(expedientes),
     [expedientes]
   );
-  const porMes = useMemo(() => contarPorMes(expedientes), [expedientes]);
+  const porMes = useMemo(() => contarPorMes(expedientesActivos), [expedientesActivos]);
+  const porMesFinalizacion = useMemo(() => contarPorFechaFinalizacion(expedientes, "mes"), [expedientes]);
+  const porDiaFinalizacion = useMemo(() => contarPorFechaFinalizacion(expedientes, "dia"), [expedientes]);
   const porMesSueldoActivo = useMemo(
     () =>
       contarPorMes(
@@ -331,19 +349,30 @@ const ExpedientesDashboard = ({ expedientes = [] }) => {
       </div>
 
       <div className={styles.dashboardCard}>
-        <h4>Expedientes finalizados</h4>
-        <p className={styles.dashboardCardTotal}>{totalDe(porFinalizacion)} expediente(s)</p>
-        <div className={styles.chartBoxPie}>
+        <h4>Expedientes finalizados por período</h4>
+        <p className={styles.dashboardCardTotal}>{totalDe(porMesFinalizacion)} expediente(s) finalizado(s)</p>
+        <div className={`${styles.chartBox} ${styles.chartBoxCompact}`}>
           <Chart
-            key={`finalizacion-${porFinalizacion.size}`}
-            type="doughnut"
-            data={pieData(porFinalizacion)}
-            options={pieOptions(porFinalizacion)}
-            width={PIE_SIZE}
-            height={PIE_SIZE}
+            key={`finalizacion-mes-${porMesFinalizacion.size}`}
+            type="bar"
+            data={barDataMes(porMesFinalizacion, "#16a34a")}
+            options={barOptionsMes(porMesFinalizacion)}
           />
         </div>
-        <Leyenda mapa={porFinalizacion} />
+        <small>Los expedientes se agrupan por mes de fecha de finalización.</small>
+      </div>
+
+      <div className={`${styles.dashboardCard} ${styles.dashboardCardWide}`}>
+        <h4>Expedientes finalizados por día</h4>
+        <p className={styles.dashboardCardTotal}>{totalDe(porDiaFinalizacion)} expediente(s)</p>
+        <div className={`${styles.chartBox} ${styles.chartBoxCompact}`}>
+          <Chart
+            key={`finalizacion-dia-${porDiaFinalizacion.size}`}
+            type="bar"
+            data={barDataMes(porDiaFinalizacion, "#2563eb")}
+            options={barOptionsMes(porDiaFinalizacion)}
+          />
+        </div>
       </div>
 
       <div className={styles.dashboardCard}>
