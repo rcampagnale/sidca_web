@@ -235,6 +235,36 @@ export const reincluirUsuarioEmision = async (cursoId, usuarioDocId) => {
 };
 
 /**
+ * Busca el certificado VIGENTE ya emitido para un participante y curso.
+ *
+ * Devuelve la emisión completa (token, urlValidacion y los snapshots) o null
+ * si todavía no fue emitido. El 404 del backend no es un error: es la
+ * respuesta normal para alguien sin emitir, así que se traduce a null y la
+ * pantalla lo trata como "disponible para emitir".
+ *
+ * Es la que permite que el QR siga apareciendo después de recargar la página:
+ * el estado en memoria se pierde, pero la emisión sigue en Firestore.
+ */
+export const obtenerEmisionVigenteCertificado = async (
+  cursoId,
+  usuarioDocId
+) => {
+  try {
+    const datos = await pedir(
+      `/admin/emision/${encodeURIComponent(cursoId)}/usuario/${encodeURIComponent(
+        usuarioDocId
+      )}`,
+      { method: "GET" }
+    );
+
+    return datos?.emision || null;
+  } catch (error) {
+    if (error?.status === 404) return null;
+    throw error;
+  }
+};
+
+/**
  * Emite el certificado de UN participante.
  *
  * Lo único que viaja es usuarioDocId: a quién emitir. El backend vuelve a

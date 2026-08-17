@@ -25,6 +25,7 @@
 
 import React from "react";
 import { Dialog } from "primereact/dialog";
+import QRCode from "react-qr-code";
 
 import plantillaCertificado from "../../../../assets/constancia/certificadocursosidca.png";
 import styles from "./CertificadoPreview.module.css";
@@ -65,6 +66,9 @@ const ANCHO_CAR = ANCHO_CAR_NEGRITA;
 
 /** Ancho de .nombreBox en el CSS. Debe coincidir con el de la hoja de estilos. */
 const ANCHO_CAJA_NOMBRE = 36.5;
+
+/** Ancho de .resolucionBox en el CSS. Su geometría no cambia. */
+const ANCHO_CAJA_RESOLUCION = 15;
 
 /**
  * El diálogo NO fija tamaño: se adapta al certificado.
@@ -138,6 +142,8 @@ const CertificadoPreview = ({
   onEmitir,
   emitiendo = false,
   emitido = false,
+  consultandoEmision = false,
+  emision = null,
   puedeEmitir = true,
   motivoNoEmitir = "",
 }) => {
@@ -151,11 +157,18 @@ const CertificadoPreview = ({
     onCerrar?.();
   };
 
-  const botonEmitirDeshabilitado = emitiendo || emitido || !puedeEmitir;
+  // URL que codifica el QR. Sale TAL CUAL del backend: no se reconstruye ni se
+  // concatena nada acá. Sin emisión no hay URL y la caja queda con su
+  // placeholder.
+  const urlValidacion = String(emision?.urlValidacion || "").trim();
+
+  const botonEmitirDeshabilitado =
+    emitiendo || emitido || consultandoEmision || !puedeEmitir;
 
   let textoBotonEmitir = "Emitir certificado";
   if (emitiendo) textoBotonEmitir = "Emitiendo…";
   else if (emitido) textoBotonEmitir = "Certificado emitido";
+  else if (consultandoEmision) textoBotonEmitir = "Verificando emisión…";
 
   const fuentePlantilla = plantilla?.url || plantillaCertificado;
 
@@ -239,12 +252,26 @@ const escalaNombre = Math.min(1, ANCHO_CAJA_NOMBRE / anchoNombreNecesario);
 const fsCarga = fsDatos;
 const fsFecha = fsDatos;
 
-// Resolución mantiene su cálculo independiente.
+// Resolución: mismo principio que nombre y días. Conserva un cuerpo legible y,
+// si el texto no entra en su caja, se comprime en horizontal en lugar de
+// recortarse con elipsis. Una resolución cortada —"RESO-2025-01-CAT-…"— es
+// inservible para validar, así que tiene que verse completa.
 const fsResolucion = escalarUnaLinea(
   resolucion,
   15,
   2.2,
   1.4
+);
+
+const cuerpoResolucion = cuerpoUnaLinea(resolucion, 15, 2.2, 1.4);
+
+const anchoResolucionNecesario =
+  (String(resolucion).trim().length || 1) * ANCHO_CAR_NEGRITA * cuerpoResolucion;
+
+// 1 cuando entra cómoda: la mayoría de las resoluciones cortas no se deforman.
+const escalaResolucion = Math.min(
+  1,
+  ANCHO_CAJA_RESOLUCION / anchoResolucionNecesario
 );
 
   return (
@@ -269,7 +296,7 @@ const fsResolucion = escalarUnaLinea(
         <div className={styles.pie}>
           <p className={styles.notaPie}>
             {emitido
-              ? "Emisión registrada correctamente. El QR y la descarga se incorporarán en la siguiente etapa."
+              ? "Emisión registrada correctamente. El código QR de validación ya está incorporado. La descarga en PDF se incorporará en la siguiente etapa."
               : "Revisá los datos antes de emitir el certificado."}
           </p>
 
@@ -373,7 +400,14 @@ const fsResolucion = escalarUnaLinea(
             className={`${styles.caja} ${styles.resolucionBox}`}
             style={{ fontSize: fsResolucion }}
           >
-            {resolucion}
+            {/* Se comprime en horizontal si hace falta, para mostrarse
+                COMPLETA sin recorte y sin mover la caja. */}
+            <span
+              className={styles.resolucionTexto}
+              style={{ transform: `scaleX(${escalaResolucion.toFixed(3)})` }}
+            >
+              {resolucion}
+            </span>
           </div>
 
           {/* Continuación de "… se expide en San Fernando … a los" */}
@@ -384,19 +418,36 @@ const fsResolucion = escalarUnaLinea(
             {fecha}
           </div>
 
-          {/* Zona reservada del QR: margen derecho, por debajo de la fecha y
-              a la altura del bloque de firma, que está a la izquierda. */}
-          <div className={styles.qrBox} aria-hidden="true">
-            <span className={styles.qrTexto}>QR</span>
+          {/* Zona del QR: margen derecho, por debajo de la fecha y a la altura
+              del bloque de firma, que está a la izquierda.
+              La CAJA no cambia — misma posición y tamaño de siempre. Lo único
+              que cambia es su contenido: placeholder mientras no hay emisión,
+              QR real en cuanto existe. */}
+          <div
+            className={`${styles.qrBox} ${
+              urlValidacion ? styles.qrBoxEmitido : ""
+            }`}
+          >
+            {urlValidacion ? (
+              <span className={styles.qrReal}>
+                <QRCode
+                  value={urlValidacion}
+                  size={256}
+                  level="M"
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
+                  title="Código QR de validación del certificado"
+                />
+              </span>
+            ) : (
+              <span className={styles.qrTexto} aria-hidden="true">
+                QR
+              </span>
+            )}
           </div>
         </div>
       </div>
       </div>
-
-      <p className={styles.avisoPosiciones}>
-        Las posiciones son provisorias y se ajustan en la etapa de emisión,
-        junto con las firmas y el QR real.
-      </p>
     </Dialog>
   );
 };

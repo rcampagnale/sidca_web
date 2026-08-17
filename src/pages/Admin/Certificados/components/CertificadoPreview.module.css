@@ -24,9 +24,8 @@
      Dialog            (width: auto — se ajusta al contenido)
      ├── header
      ├── contenido
-     │   ├── previewViewport
-     │   │   └── certificado   ← el que define el ancho
-     │   └── avisoPosiciones
+     │   └── previewViewport
+     │       └── certificado   ← el que define el ancho
      └── footer
 
    El camino inverso —diálogo a pantalla completa y certificado adaptándose
@@ -58,10 +57,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.avisoPosiciones {
-  flex: 0 0 auto;
 }
 
 .encabezado {
@@ -106,9 +101,11 @@
  * es automática, aspect-ratio la recalcula sobre ese ancho — la proporción
  * nunca se deforma.
  *
- * --cromoAlto es lo que ocupan encabezado, aviso, pie y padding del diálogo.
- * Está estimado por lo alto a propósito: si sobra, el certificado queda un
- * poco más chico; si faltara, aparecería scroll.
+ * --cromoAlto es lo que ocupan encabezado, pie y padding del diálogo. Bajó
+ * al eliminar la franja de aviso, que ya no corresponde: sin ella el
+ * certificado gana esa altura. Sigue estimado por lo alto a propósito — si
+ * sobra, el certificado queda un poco más chico; si faltara, aparecería
+ * scroll, que es preferible a recortarlo.
  *
  * Se usan unidades de viewport y no de container query porque el diálogo ya
  * no tiene tamaño propio: medir contra él sería circular.
@@ -117,7 +114,7 @@
  * cqw escalen junto con el lienzo. Al achicarse el certificado, todo su
  * contenido se achica en bloque. */
 .certificado {
-  --cromoAlto: 270px;
+  --cromoAlto: 215px;
 
   container-type: inline-size;
   position: relative;
@@ -131,10 +128,10 @@
   border-radius: 8px;
 }
 
-/* En móvil el pie apila nota y botón, y el aviso ocupa más renglones. */
+/* En móvil el pie apila la nota y los dos botones, así que ocupa más alto. */
 @media (max-width: 767px) {
   .certificado {
-    --cromoAlto: 330px;
+    --cromoAlto: 275px;
   }
 }
 
@@ -220,7 +217,6 @@
  * caja, y acá se impide el salto de línea. */
 .modalidadBox,
 .cargaHorariaBox,
-.resolucionBox,
 .fechaBox,
 .dniBox {
   white-space: nowrap;
@@ -322,11 +318,27 @@
 
 /* Pegada al final de la leyenda (71.9%) para que se lea como parte de la
    misma oración y no como un dato suelto. */
+/* Fuera del grupo con elipsis a propósito: la resolución debe verse COMPLETA.
+   Una resolución cortada no sirve para validar nada. Se resuelve comprimiendo
+   el span interno (ver .resolucionTexto), no recortando.
+   top, left y width quedan exactamente como estaban. */
 .resolucionBox {
   top: 65.1%;
   left: 72.6%;
   width: 15%;
   text-align: left;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* La escala la calcula el componente: 1 cuando la resolución entra cómoda.
+   transform-origin a la izquierda para que al comprimirse siga arrancando
+   pegada a la leyenda "Resolución S.P.E. Nº". */
+.resolucionTexto {
+  display: inline-block;
+  white-space: nowrap;
+  transform-origin: left center;
 }
 
 /* --- Línea: "El presente certificado se expide … a los ⟨FECHA⟩" ------- */
@@ -364,6 +376,40 @@
   border-radius: 4px;
 }
 
+/* Con QR real se quita la decoración de placeholder: el borde punteado
+   enmarcaría el código y el fondo grisáceo invadiría su zona de silencio.
+   Modifica SÓLO borde y fondo — top, right, width y aspect-ratio siguen
+   definidos únicamente en .qrBox y no se tocan. */
+.qrBoxEmitido {
+  background: #ffffff;
+  border: none;
+  border-radius: 0;
+}
+
+/* QR real. Cubre la caja por completo con blanco puro: así el fondo grisáceo
+   del placeholder no se transparenta en la zona de silencio, que el lector
+   necesita para reconocer el código.
+   El padding es la quiet zone. Sin border-radius, sin opacidad, sin rotación
+   y sin nada encima: cualquiera de esas cosas puede impedir el escaneo.
+   La CAJA no cambia — top, right, width y aspect-ratio quedan intactos. */
+.qrReal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 6%;
+  background: #ffffff;
+}
+
+.qrReal svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  shape-rendering: crispEdges;
+}
+
 .qrTexto {
   font-size: 3cqw;
   font-weight: 700;
@@ -374,16 +420,6 @@
    AVISO Y PIE DEL DIÁLOGO
    ================================================================== */
 
-.avisoPosiciones {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: #92400e;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-}
 
 .pie {
   display: flex;

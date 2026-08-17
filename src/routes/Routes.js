@@ -18,6 +18,7 @@ import Enlaces from "../pages/Admin/Enlaces/Enlaces";
 import AfiliadosNuevos from "../pages/Admin/AfiliadosNuevos/AfiliadosNuevos";
 import Cursos from "../pages/Admin/Cursos/Cursos";
 import CertificadosAdmin from "../pages/Admin/Certificados/CertificadosAdmin";
+import ValidarCertificadoQr from "../pages/ValidarCertificado/ValidarCertificadoQr";
 import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
 import Novedades from "../pages/Admin/Novedades/Novedades";
 import NovedadesUser from "../pages/Novedades/Novedades";
@@ -127,6 +128,22 @@ const AppRouter = () => {
   return (
     <BrowserRouter basename={"/"}>
       <Switch>
+        {/* ===========================
+            VALIDACIÓN DE CERTIFICADO POR QR
+
+            Route normal, NO AdminRoute / PrivateRoute / PublicRoute: la
+            pantalla maneja su propia autenticación con una instancia Firebase
+            aislada, y envolverla en un guard produciría redirecciones
+            inesperadas al llegar desde un QR sin sesión.
+
+            Va primera para que ningún patrón anterior la capture.
+        =========================== */}
+        <Route
+          exact
+          path="/validar-certificado/:cursoId/:token"
+          component={ValidarCertificadoQr}
+        />
+
         <Route
           exact
           path="/prototipos/menu-navegacion"

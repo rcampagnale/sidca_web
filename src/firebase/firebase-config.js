@@ -19,6 +19,7 @@ const storage = getStorage(firebaseApp);
 const auth = getAuth(firebaseApp);
 
 export {
+  firebaseApp,
   db,
   storage,
   auth,

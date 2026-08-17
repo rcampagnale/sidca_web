@@ -39,6 +39,7 @@ import {
   obtenerAprobadosCurso,
   obtenerConfiguracionCertificado,
   obtenerConfiguracionesCertificado,
+  obtenerEmisionVigenteCertificado,
 } from "../../../services/certificadosService";
 import CertificadoPreview from "./components/CertificadoPreview";
 import SelectorConfiguracion from "./SelectorConfiguracion";
@@ -151,19 +152,40 @@ const EmitirCertificados = ({ notificar }) => {
   // click no dispare dos POST.
   const [emitiendoUsuario, setEmitiendoUsuario] = useState("");
 
-  // Emitidos durante ESTA sesión de pantalla. Es sólo comodidad de UX: la
-  // autoridad sigue siendo el backend, que responde 409 si ya existe un
-  // certificado vigente. Al recargar la página este registro se pierde y el
-  // backend vuelve a ser el único que decide.
-  const [emitidosSesion, setEmitidosSesion] = useState(() => new Set());
+  // Consulta de emisión en curso. Evita pedidos duplicados y bloquea el botón
+  // Emitir mientras todavía no sabemos si ya existe un certificado.
+  const [consultandoEmisionUsuario, setConsultandoEmisionUsuario] = useState("");
 
-  const marcarEmitido = useCallback((usuarioDocId) => {
-    setEmitidosSesion((previos) => {
-      const siguiente = new Set(previos);
-      siguiente.add(usuarioDocId);
+  /**
+   * Emisiones conocidas en esta pantalla: usuarioDocId -> emisión completa.
+   *
+   * Un Map y no un Set porque el QR necesita la urlValidacion, y más adelante
+   * el PDF necesitará el token y el snapshot. Tener la clave alcanza para
+   * saber que está emitido, así que no hace falta un segundo estado.
+   *
+   * Se llena por dos vías: la respuesta del POST al emitir, y el GET al abrir
+   * el preview de alguien ya emitido. La autoridad sigue siendo el backend.
+   */
+  const [emisionesSesion, setEmisionesSesion] = useState(() => new Map());
+
+  const recordarEmision = useCallback((usuarioDocId, emision) => {
+    setEmisionesSesion((previas) => {
+      const siguiente = new Map(previas);
+      siguiente.set(usuarioDocId, emision || null);
       return siguiente;
     });
   }, []);
+
+  /**
+   * ¿Este participante tiene certificado emitido?
+   *
+   * Ojo con la semántica del Map: una clave presente con valor null significa
+   * "ya consultamos y NO está emitido". Por eso se mira el valor y no has().
+   */
+  const estaEmitido = useCallback(
+    (usuarioDocId) => Boolean(emisionesSesion.get(usuarioDocId)),
+    [emisionesSesion]
+  );
 
   // Lista de certificados configurados. Se pide una sola vez al abrir la
   // pestaña; el filtrado del selector es en memoria.
@@ -294,8 +316,18 @@ const EmitirCertificados = ({ notificar }) => {
 
   const puedePrevisualizar = Boolean(configuracion);
 
+  /**
+   * Abre el preview y averigua si ese participante ya tiene certificado.
+   *
+   * El certificado se muestra de inmediato; la consulta va después y en
+   * paralelo, así abrir el preview nunca se siente lento. Es una consulta
+   * LAZY, por participante: nunca se piden las emisiones de toda la tabla.
+   *
+   * Es lo que hace que el QR siga apareciendo después de un F5: el Map en
+   * memoria se pierde, pero la emisión sigue en Firestore.
+   */
   const abrirPreview = useCallback(
-    (participante) => {
+    async (participante) => {
       if (!puedePrevisualizar) {
         notificar?.(
           "warn",
@@ -304,9 +336,40 @@ const EmitirCertificados = ({ notificar }) => {
         );
         return;
       }
+
       setParticipantePreview(participante);
+
+      const usuarioDocId = participante?.usuarioDocId;
+
+      // Sin usuario no hay emisión posible; y si ya la conocemos, no se
+      // vuelve a preguntar.
+      if (!curso || !usuarioDocId) return;
+      if (emisionesSesion.has(usuarioDocId)) return;
+
+      setConsultandoEmisionUsuario(usuarioDocId);
+
+      try {
+        const emision = await obtenerEmisionVigenteCertificado(
+          curso.id,
+          usuarioDocId
+        );
+
+        // null = 404 controlado: todavía no emitido. Se registra igual para no
+        // repetir la consulta cada vez que se abre el mismo preview.
+        recordarEmision(usuarioDocId, emision);
+      } catch (e) {
+        // Error real de red o servidor. No se cierra el preview: el
+        // certificado se sigue viendo, sólo no sabemos si está emitido.
+        notificar?.(
+          "error",
+          "No se pudo consultar la emisión",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setConsultandoEmisionUsuario("");
+      }
     },
-    [puedePrevisualizar, notificar]
+    [puedePrevisualizar, curso, emisionesSesion, recordarEmision, notificar]
   );
 
   /**
@@ -323,8 +386,11 @@ const EmitirCertificados = ({ notificar }) => {
     async (participante) => {
       if (!curso || !configuracion || !participante) return;
       if (!esEmitible(participante)) return;
-      if (emitidosSesion.has(participante.usuarioDocId)) return;
+      if (emisionesSesion.get(participante.usuarioDocId)) return;
       if (emitiendoUsuario) return;
+      // Todavía no sabemos si ya existe un certificado: esperar la consulta
+      // evita un 409 innecesario.
+      if (consultandoEmisionUsuario === participante.usuarioDocId) return;
 
       const confirmado = window.confirm(
         `¿Emitir el certificado de "${participante.apellidoNombre}"?\n\n` +
@@ -350,7 +416,9 @@ const EmitirCertificados = ({ notificar }) => {
           );
         }
 
-        marcarEmitido(participante.usuarioDocId);
+        // Se guarda la emisión COMPLETA, no sólo la marca: el QR necesita
+        // urlValidacion y así aparece de inmediato, sin un GET extra.
+        recordarEmision(participante.usuarioDocId, emision);
 
         notificar?.(
           "success",
@@ -358,12 +426,21 @@ const EmitirCertificados = ({ notificar }) => {
           `El certificado de ${participante.apellidoNombre} fue registrado correctamente.`
         );
       } catch (e) {
-        // Si el backend avisa que YA existe un certificado vigente, se marca
-        // igual como emitido: reintentar sólo repetiría el mismo 409. No se
-        // hace ante cualquier 409 — excluido, curso apartado o datos
-        // incompletos son situaciones distintas y corregibles.
+        // Si el backend avisa que YA existe un certificado vigente, se
+        // recupera esa emisión para poder mostrar su QR: el certificado
+        // existe, sólo no lo teníamos en memoria. No se hace ante cualquier
+        // 409 — excluido, curso apartado o datos incompletos son situaciones
+        // distintas y corregibles.
         if (esErrorYaEmitido(e)) {
-          marcarEmitido(participante.usuarioDocId);
+          try {
+            const existente = await obtenerEmisionVigenteCertificado(
+              curso.id,
+              participante.usuarioDocId
+            );
+            if (existente) recordarEmision(participante.usuarioDocId, existente);
+          } catch (errorConsulta) {
+            /* si tampoco se puede consultar, queda el mensaje de error */
+          }
         }
 
         notificar?.(
@@ -378,9 +455,10 @@ const EmitirCertificados = ({ notificar }) => {
     [
       curso,
       configuracion,
-      emitidosSesion,
+      emisionesSesion,
       emitiendoUsuario,
-      marcarEmitido,
+      consultandoEmisionUsuario,
+      recordarEmision,
       notificar,
     ]
   );
@@ -749,14 +827,10 @@ const EmitirCertificados = ({ notificar }) => {
                                     disabled={
                                       quitandoUsuario ===
                                         participante.usuarioDocId ||
-                                      emitidosSesion.has(
-                                        participante.usuarioDocId
-                                      )
+                                      estaEmitido(participante.usuarioDocId)
                                     }
                                     title={
-                                      emitidosSesion.has(
-                                        participante.usuarioDocId
-                                      )
+                                      estaEmitido(participante.usuarioDocId)
                                         ? MOTIVO_YA_EMITIDO
                                         : "Deja de aparecer para emitir. No borra al usuario ni su aprobación."
                                     }
@@ -822,10 +896,10 @@ const EmitirCertificados = ({ notificar }) => {
                               onClick={() => quitarParticipante(participante)}
                               disabled={
                                 quitandoUsuario === participante.usuarioDocId ||
-                                emitidosSesion.has(participante.usuarioDocId)
+                                estaEmitido(participante.usuarioDocId)
                               }
                               title={
-                                emitidosSesion.has(participante.usuarioDocId)
+                                estaEmitido(participante.usuarioDocId)
                                   ? MOTIVO_YA_EMITIDO
                                   : undefined
                               }
@@ -862,10 +936,11 @@ const EmitirCertificados = ({ notificar }) => {
             : ""
         }
         emitiendo={emitiendoUsuario === participantePreview?.usuarioDocId}
-        emitido={Boolean(
-          participantePreview?.usuarioDocId &&
-            emitidosSesion.has(participantePreview.usuarioDocId)
-        )}
+        emitido={estaEmitido(participantePreview?.usuarioDocId)}
+        consultandoEmision={
+          consultandoEmisionUsuario === participantePreview?.usuarioDocId
+        }
+        emision={emisionesSesion.get(participantePreview?.usuarioDocId) || null}
         onEmitir={() => emitirParticipante(participantePreview)}
         onCerrar={() => setParticipantePreview(null)}
       />
