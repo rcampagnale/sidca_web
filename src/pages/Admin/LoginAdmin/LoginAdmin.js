@@ -1,9 +1,14 @@
 // src/pages/Admin/LoginAdmin/LoginAdmin.js
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory, Route } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import { adminLogin } from '../../../redux/reducers/user/actions';
+import {
+  MENSAJE_INACTIVIDAD,
+  MOTIVO_INACTIVIDAD,
+  consumirMotivoCierre,
+} from '../../../utils/adminSession';
 import styles from './styles.module.css';
 
 import { InputText } from 'primereact/inputtext';
@@ -36,6 +41,16 @@ const LoginAdmin = () => {
 
   const [form, handleInputChange, reset] = useForm(initialform);
 
+  // Motivo del último cierre. Se lee una sola vez y se borra, así el aviso no
+  // reaparece al volver a esta pantalla.
+  const [avisoCierre, setAvisoCierre] = useState('');
+
+  useEffect(() => {
+    if (consumirMotivoCierre() === MOTIVO_INACTIVIDAD) {
+      setAvisoCierre(MENSAJE_INACTIVIDAD);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     await dispatch(adminLogin(form));
@@ -56,6 +71,24 @@ const LoginAdmin = () => {
       <div className={styles.container}>
         <form onSubmit={handleSubmit} className={styles.formAdmin}>
           <h2 className={styles.title}>Administradores</h2>
+
+          {avisoCierre && (
+            <div
+              role="status"
+              style={{
+                marginBottom: '14px',
+                padding: '10px 12px',
+                fontSize: '0.86rem',
+                lineHeight: 1.45,
+                color: '#92400e',
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '8px',
+              }}
+            >
+              {avisoCierre}
+            </div>
+          )}
 
           <span className={`p-float-label ${styles.inputSection}`}>
             <InputText

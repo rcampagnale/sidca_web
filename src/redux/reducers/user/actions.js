@@ -1,7 +1,13 @@
 import * as types from "./types";
 import { db } from "../../../firebase/firebase-config";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  browserSessionPersistence,
+  getAuth,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { clearAfiliados } from "../afiliados/actions";
 import { clearAsesoramiento } from "../asesoramiento/actions";
 import { clearCuotas } from "../cuotas/actions";
@@ -9,6 +15,12 @@ import { clearCursos } from "../cursos/actions";
 import { clearEnlaces } from "../enlaces/actions";
 import { clearNovedades } from "../novedades/actions";
 import { clearTransacciones } from "../transacciones/actions";
+import {
+  MOTIVO_MANUAL,
+  limpiarSesionAdminStorage,
+  marcarMotivoCierre,
+  registrarActividadAdmin,
+} from "../../../utils/adminSession";
 
 /** Utils */
 const normalizeDni = (dniRaw) =>
@@ -22,6 +34,18 @@ export const adminLogin = (data) => {
   return async (dispatch) => {
     dispatch(authenticateAdminProcess());
     const auth = getAuth();
+
+    // Persistencia de pestaña: el usuario de Firebase sobrevive al refresh y
+    // a la navegación interna, pero muere al cerrar la pestaña. Es lo que
+    // corresponde para el panel administrativo, y deja a Firebase alineado
+    // con es_admin, que vive en sessionStorage y también muere con la
+    // pestaña. Sin esto quedaban desincronizados.
+    try {
+      await setPersistence(auth, browserSessionPersistence);
+    } catch (error) {
+      console.error("[adminSession] no se pudo fijar la persistencia:", error);
+    }
+
     return signInWithEmailAndPassword(auth, data.admin, data.password)
       .then((userCredential) => {
         const user = userCredential.user;
@@ -30,6 +54,11 @@ export const adminLogin = (data) => {
           JSON.stringify({ uid: user.uid, accessToken: user.accessToken })
         );
         sessionStorage.setItem("es_admin", "true");
+
+        // Arranca el contador de inactividad. Va forzado: sin esta marca la
+        // sesión se consideraría vencida en el primer chequeo.
+        registrarActividadAdmin(true);
+
         // Limpio claves de sesión de usuario normal por si quedaron
         localStorage.removeItem("sidca_user_docId");
         localStorage.removeItem("sidca_user_dni");
@@ -194,39 +223,58 @@ Días no laborables: Feriados, Asuetos, Sábado y Domingo no se atiende.
 
 /* ================= LOGOUTS ================= */
 
-export const adminLogout = () => {
+/**
+ * Cierre REAL de la sesión administrativa.
+ *
+ * Único camino de cierre: lo usan tanto el logout manual como el automático
+ * por inactividad. Compartirlo evita que el automático se olvide de limpiar
+ * algo que sí limpia el manual.
+ *
+ * Pasos, en orden:
+ *   1. signOut de Firebase — sin esto la sesión podría restaurarse sola.
+ *   2. limpieza de los stores de Redux.
+ *   3. limpieza de TODAS las claves administrativas de sessionStorage.
+ *   4. marca del motivo, para que LoginAdmin pueda explicarlo.
+ *
+ * Si signOut falla igual se limpia todo: dejar la sesión a medio cerrar sería
+ * peor que cerrarla del todo.
+ */
+export const cerrarSesionAdmin = ({ motivo = MOTIVO_MANUAL } = {}) => {
   return async (dispatch) => {
     dispatch(adminLogoutProcess());
+
     const auth = getAuth();
-    return signOut(auth)
-      .then(() => {
-        dispatch(adminLogoutSuccess());
 
-        // limpiar stores
-        dispatch(clearAfiliados());
-        dispatch(clearAsesoramiento());
-        dispatch(clearCuotas());
-        dispatch(clearCursos());
-        dispatch(clearEnlaces());
-        dispatch(clearNovedades());
-        dispatch(clearTransacciones());
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('[adminSession] signOut falló, se limpia igual:', error);
+    }
 
-        // limpiar storage
-        sessionStorage.removeItem("user");
-        sessionStorage.removeItem("es_admin");
-        localStorage.removeItem("sidca_user_docId");
-        localStorage.removeItem("sidca_user_dni");
+    dispatch(adminLogoutSuccess());
 
-        return { ok: true };
-      })
-      .catch(() => {
-        dispatch(
-          adminLogoutError("Algo ha salido mal al intentar cerrar sesión")
-        );
-        return { ok: false };
-      });
+    // limpiar stores
+    dispatch(clearAfiliados());
+    dispatch(clearAsesoramiento());
+    dispatch(clearCuotas());
+    dispatch(clearCursos());
+    dispatch(clearEnlaces());
+    dispatch(clearNovedades());
+    dispatch(clearTransacciones());
+
+    // limpiar storage administrativo (user, es_admin, last_activity)
+    limpiarSesionAdminStorage();
+    localStorage.removeItem('sidca_user_docId');
+    localStorage.removeItem('sidca_user_dni');
+
+    marcarMotivoCierre(motivo);
+
+    return { ok: true };
   };
 };
+
+/** Cierre manual: el administrador presionó "Cerrar sesión". */
+export const adminLogout = () => cerrarSesionAdmin({ motivo: MOTIVO_MANUAL });
 
 export const logout = () => {
   return async (dispatch) => {
