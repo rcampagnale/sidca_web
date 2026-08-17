@@ -40,6 +40,7 @@ import {
   obtenerConfiguracionCertificado,
   obtenerConfiguracionesCertificado,
   obtenerEmisionVigenteCertificado,
+  reincluirUsuarioEmision,
 } from "../../../services/certificadosService";
 import CertificadoPreview from "./components/CertificadoPreview";
 import SelectorConfiguracion from "./SelectorConfiguracion";
@@ -135,6 +136,10 @@ const EmitirCertificados = ({ notificar }) => {
   const [resumen, setResumen] = useState(RESUMEN_VACIO);
   const [participantes, setParticipantes] = useState([]);
 
+  // Apartados de la emisión. Conservan su aprobación: se listan aparte para
+  // poder recuperarlos, no para emitirles.
+  const [participantesExcluidos, setParticipantesExcluidos] = useState([]);
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -146,6 +151,7 @@ const EmitirCertificados = ({ notificar }) => {
   const [seleccion, setSeleccion] = useState(null);
 
   const [quitandoUsuario, setQuitandoUsuario] = useState("");
+  const [recuperandoUsuario, setRecuperandoUsuario] = useState("");
   const [quitandoCurso, setQuitandoCurso] = useState(false);
 
   // Emisión en curso. Sirve para el estado del botón y para que un doble
@@ -220,9 +226,30 @@ const EmitirCertificados = ({ notificar }) => {
     setSinConfiguracion(false);
     setResumen(RESUMEN_VACIO);
     setParticipantes([]);
+    setParticipantesExcluidos([]);
     setBusqueda("");
     setError("");
   }, []);
+
+  /**
+   * Vuelve a pedir los aprobados y reemplaza resumen y listas con lo que
+   * responde el backend.
+   *
+   * Se usa después de apartar o recuperar a alguien. Recalcular los contadores
+   * a mano sería frágil: son seis valores relacionados entre sí —aprobados,
+   * disponibles, identificados, datosIncompletos, sinUsuario, excluidos— y
+   * cualquier ajuste parcial los desincroniza. El backend es la única fuente
+   * que los deja coherentes.
+   */
+  const recargarAprobados = useCallback(async () => {
+    if (!curso) return;
+
+    const datos = await obtenerAprobadosCurso(curso.id);
+
+    setResumen(datos.resumen || RESUMEN_VACIO);
+    setParticipantes(datos.participantes || []);
+    setParticipantesExcluidos(datos.participantesExcluidos || []);
+  }, [curso]);
 
   /**
    * Configuración y aprobados se piden en paralelo: son independientes y así
@@ -268,6 +295,9 @@ const EmitirCertificados = ({ notificar }) => {
       if (resAprobados.status === "fulfilled") {
         setResumen(resAprobados.value.resumen || RESUMEN_VACIO);
         setParticipantes(resAprobados.value.participantes || []);
+        setParticipantesExcluidos(
+          resAprobados.value.participantesExcluidos || []
+        );
       } else {
         const fallo = resAprobados.reason;
 
@@ -467,8 +497,13 @@ const EmitirCertificados = ({ notificar }) => {
    * Aparta a un participante de la emisión.
    *
    * NO elimina al usuario ni su aprobación: el backend sólo agrega su
-   * usuarioDocId a certificados/{cursoId}.usuariosExcluidos. Se quita de la
-   * lista en memoria para no repetir el viaje de aprobados.
+   * usuarioDocId a certificados/{cursoId}.usuariosExcluidos.
+   *
+   * Al terminar se recargan los aprobados en lugar de ajustar la lista y los
+   * contadores a mano. Antes se hacía así, pero ahora la persona tiene que
+   * aparecer en el bloque de apartados, y reconstruir las dos listas más los
+   * seis contadores en memoria es exactamente donde se cuelan las
+   * inconsistencias.
    */
   const quitarParticipante = useCallback(
     async (participante) => {
@@ -494,35 +529,17 @@ const EmitirCertificados = ({ notificar }) => {
       try {
         await excluirUsuarioEmision(curso.id, participante.usuarioDocId);
 
-        setParticipantes((previos) =>
-          previos.filter((p) => p.usuarioDocId !== participante.usuarioDocId)
-        );
-
-        // "aprobados" NO baja: es el total de aprobaciones académicas y
-        // excluir no borra ninguna. Lo que baja es lo disponible para emitir.
-        setResumen((previo) => ({
-          ...previo,
-          disponibles: Math.max(0, (previo.disponibles || 0) - 1),
-          identificados:
-            participante.estado === "aprobado"
-              ? Math.max(0, (previo.identificados || 0) - 1)
-              : previo.identificados,
-          datosIncompletos:
-            participante.estado === "datos_incompletos"
-              ? Math.max(0, (previo.datosIncompletos || 0) - 1)
-              : previo.datosIncompletos,
-          excluidos: (previo.excluidos || 0) + 1,
-        }));
-
         // Si estaba abierto su preview, se cierra.
         setParticipantePreview((previo) =>
           previo?.usuarioDocId === participante.usuarioDocId ? null : previo
         );
 
+        await recargarAprobados();
+
         notificar?.(
           "success",
           "Participante quitado de la emisión",
-          "Su aprobación y sus datos siguen intactos."
+          "Su aprobación y sus datos siguen intactos. Podés recuperarlo desde el bloque de apartados."
         );
       } catch (e) {
         notificar?.(
@@ -534,7 +551,54 @@ const EmitirCertificados = ({ notificar }) => {
         setQuitandoUsuario("");
       }
     },
-    [curso, notificar]
+    [curso, recargarAprobados, notificar]
+  );
+
+  /**
+   * Recupera a un participante apartado para que vuelva a estar disponible.
+   *
+   * Es la inversa exacta de apartarlo: el backend sólo saca su usuarioDocId de
+   * certificados/{cursoId}.usuariosExcluidos. No restaura nada — la aprobación
+   * nunca se borró — ni crea ni anula certificados emitidos.
+   *
+   * Se permite también para registros sin usuario asociado: la acción sólo
+   * revierte la exclusión, y seguirán sin poder emitirse por su estado.
+   */
+  const recuperarParticipante = useCallback(
+    async (participante) => {
+      if (!curso || !participante?.usuarioDocId) return;
+      if (recuperandoUsuario) return;
+
+      const confirmado = window.confirm(
+        `¿Recuperar a "${participante.apellidoNombre || "este participante"}" para la emisión de certificados?\n\n` +
+          "Su aprobación nunca fue eliminada. Volverá a estar disponible para emitir este certificado."
+      );
+
+      if (!confirmado) return;
+
+      setRecuperandoUsuario(participante.usuarioDocId);
+
+      try {
+        await reincluirUsuarioEmision(curso.id, participante.usuarioDocId);
+
+        await recargarAprobados();
+
+        notificar?.(
+          "success",
+          "Participante recuperado",
+          "Volvió a estar disponible para la emisión de certificados. Su aprobación se mantuvo intacta."
+        );
+      } catch (e) {
+        notificar?.(
+          "error",
+          "No se pudo recuperar el participante",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setRecuperandoUsuario("");
+      }
+    },
+    [curso, recuperandoUsuario, recargarAprobados, notificar]
   );
 
   /**
@@ -745,9 +809,15 @@ const EmitirCertificados = ({ notificar }) => {
             </p>
           )}
 
+          {/* Sin aprobados y "todos apartados" son situaciones distintas: la
+              primera es que no se cargó el Excel, la segunda que alguien los
+              quitó de la emisión. Decir lo primero cuando pasa lo segundo
+              mandaría a buscar el problema al lugar equivocado. */}
           {participantes.length === 0 ? (
             <p className={styles.estadoTexto}>
-              Esta capacitación todavía no tiene aprobados cargados.
+              {resumen.aprobados === 0
+                ? "Esta capacitación todavía no tiene aprobados cargados."
+                : "No hay participantes disponibles para emitir. Todos los aprobados están apartados de la emisión."}
             </p>
           ) : (
             <>
@@ -920,6 +990,101 @@ const EmitirCertificados = ({ notificar }) => {
                 </>
               )}
             </>
+          )}
+
+          {/* ---- Apartados de la emisión ----
+              Bloque separado a propósito: no son candidatos a emitir, son
+              personas cuya aprobación sigue vigente y que pueden reincorporarse.
+              Mezclarlos con los disponibles invitaría a intentar emitirles. */}
+          {participantesExcluidos.length > 0 && (
+            <section className={emitir.bloqueApartados}>
+              <h3 className={emitir.apartadosTitulo}>
+                Participantes apartados de la emisión
+              </h3>
+
+              <p className={emitir.apartadosTexto}>
+                Estos participantes conservan su aprobación. Podés recuperarlos
+                para que vuelvan a estar disponibles para emitir.
+              </p>
+
+              <div className={emitir.tablaWrap}>
+                <table className={emitir.tabla}>
+                  <thead>
+                    <tr>
+                      <th>Apellido y nombre</th>
+                      <th>DNI</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participantesExcluidos.map((participante) => (
+                      <tr key={participante.usuarioDocId}>
+                        <td className={emitir.celdaNombre}>
+                          {participante.apellidoNombre || "—"}
+                        </td>
+                        <td>{formatearDni(participante.dni)}</td>
+                        <td>
+                          <span
+                            className={`${emitir.estado} ${emitir.estadoApartado}`}
+                          >
+                            {ETIQUETA_ESTADO[participante.estado] ||
+                              participante.estado}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={emitir.botonRecuperar}
+                            onClick={() => recuperarParticipante(participante)}
+                            disabled={
+                              recuperandoUsuario === participante.usuarioDocId
+                            }
+                            title="Vuelve a estar disponible para emitir. Su aprobación nunca se eliminó."
+                          >
+                            {recuperandoUsuario === participante.usuarioDocId
+                              ? "Recuperando…"
+                              : "Recuperar para emisión"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <ul className={emitir.tarjetas}>
+                {participantesExcluidos.map((participante) => (
+                  <li key={participante.usuarioDocId} className={emitir.tarjeta}>
+                    <span className={emitir.tarjetaNombre}>
+                      {participante.apellidoNombre || "—"}
+                    </span>
+
+                    <span className={emitir.tarjetaDato}>
+                      DNI: {formatearDni(participante.dni)}
+                    </span>
+
+                    <span className={`${emitir.estado} ${emitir.estadoApartado}`}>
+                      {ETIQUETA_ESTADO[participante.estado] ||
+                        participante.estado}
+                    </span>
+
+                    <button
+                      type="button"
+                      className={emitir.botonRecuperar}
+                      onClick={() => recuperarParticipante(participante)}
+                      disabled={
+                        recuperandoUsuario === participante.usuarioDocId
+                      }
+                    >
+                      {recuperandoUsuario === participante.usuarioDocId
+                        ? "Recuperando…"
+                        : "Recuperar para emisión"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
           </>
         )}

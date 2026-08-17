@@ -199,6 +199,11 @@ export const obtenerAprobadosCurso = async (cursoId) => {
     participantes: Array.isArray(datos?.participantes)
       ? datos.participantes
       : [],
+    // Apartados de la emisión. Conservan su aprobación y se recuperan con
+    // reincluirUsuarioEmision().
+    participantesExcluidos: Array.isArray(datos?.participantesExcluidos)
+      ? datos.participantesExcluidos
+      : [],
   };
 };
 

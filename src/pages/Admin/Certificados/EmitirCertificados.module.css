@@ -329,3 +329,72 @@
   line-height: 1.45;
   color: #475569;
 }
+
+/* ------------------------------------------------------------------
+   PARTICIPANTES APARTADOS DE LA EMISIÓN
+   Separados de la lista principal: no son candidatos a emitir, son
+   aprobaciones vigentes que alguien quitó de la emisión y se pueden
+   reincorporar. Tono ámbar neutro, no de error: nada está mal.
+   ------------------------------------------------------------------ */
+
+.bloqueApartados {
+  margin-top: 22px;
+  padding: 14px;
+  background: #fffdf7;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+}
+
+.apartadosTitulo {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.3;
+  color: #92400e;
+}
+
+.apartadosTexto {
+  margin: 6px 0 14px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #78350f;
+}
+
+.estadoApartado {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+/* Acción positiva, no destructiva: reincorpora a alguien. */
+.botonRecuperar {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.botonRecuperar:hover:not(:disabled) {
+  background: #dcfce7;
+}
+
+.botonRecuperar:focus-visible {
+  outline: 3px solid #86efac;
+  outline-offset: 2px;
+}
+
+.botonRecuperar:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+/* En móvil el botón ocupa el ancho de la tarjeta. */
+.tarjeta .botonRecuperar {
+  width: 100%;
+}
