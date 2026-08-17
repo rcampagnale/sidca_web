@@ -8,9 +8,19 @@
 // reemplaza autenticación: sin sesión no se muestra ni un dato del
 // certificado, sólo el formulario de ingreso.
 //
-// La sesión es la de validatorAuth, una instancia Firebase aislada. Ingresar o
-// cerrar sesión acá NO afecta la sesión administrativa del panel, que puede
-// estar abierta en otra pestaña.
+// QUÉ SESIÓN SE USA, EN ORDEN
+//   1. validatorAuth  — si un validador ya ingresó acá, esa es su identidad
+//                       explícita para validar y tiene prioridad.
+//   2. auth principal — la sesión del panel. Un administrador que escanea un
+//                       QR no debería tener que loguearse una segunda vez.
+//   3. formulario     — sin ninguna sesión.
+//
+// Quién tiene permiso lo decide el BACKEND, que acepta administrador O usuario
+// con validarCertificados === true. Acá no se comprueban roles.
+//
+// La sesión principal sólo se LEE. Esta pantalla nunca hace signIn ni signOut
+// sobre ella: si no tiene permiso, se ofrece el formulario del validador y la
+// sesión del panel queda intacta.
 //
 // Todos los datos que se muestran vienen del snapshot que devuelve el backend.
 // No se consulta Firestore desde acá, ni usuarios, ni cursos.
@@ -20,10 +30,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { auth } from "../../firebase/firebase-config";
 import { validatorAuth } from "../../firebase/firebaseCertificadosValidator";
 import {
   cerrarSesionValidador,
+  descartarSesionValidadorVencida,
   iniciarSesionValidador,
+  registrarActividadValidador,
+  sesionValidadorExpirada,
   validarCertificadoQr,
 } from "../../services/certificadosValidacionService";
 import styles from "./ValidarCertificadoQr.module.css";
@@ -59,8 +73,9 @@ const ETIQUETA_ESTADO = {
 const ValidarCertificadoQr = () => {
   const { cursoId, token: certificadoToken } = useParams();
 
-  // null = Firebase todavía no terminó de restaurar la sesión.
-  const [usuario, setUsuario] = useState(undefined);
+  // undefined = Firebase todavía no terminó de restaurar esa sesión.
+  const [usuarioValidador, setUsuarioValidador] = useState(undefined);
+  const [usuarioPrincipal, setUsuarioPrincipal] = useState(undefined);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,52 +87,127 @@ const ValidarCertificadoQr = () => {
   const [errorValidacion, setErrorValidacion] = useState("");
   const [estadoError, setEstadoError] = useState(0);
 
+  /** Origen de la sesión con la que se validó: "validador" | "principal". */
+  const [origenSesion, setOrigenSesion] = useState("");
+
   /**
-   * Consulta la validez del certificado.
-   *
-   * Un 401 que sobrevive al reintento del servicio significa que la sesión ya
-   * no sirve: se cierra y la pantalla vuelve al formulario.
+   * La sesión principal no sirvió (403 o 401): hay que pedir una cuenta
+   * autorizada. Se fuerza el formulario SIN tocar esa sesión, que sigue siendo
+   * válida para el panel administrativo.
    */
-  const validar = useCallback(async () => {
-    setValidando(true);
-    setErrorValidacion("");
-    setEstadoError(0);
-    setValidacion(null);
+  const [principalRechazada, setPrincipalRechazada] = useState(false);
 
-    try {
-      const resultado = await validarCertificadoQr(cursoId, certificadoToken);
-      setValidacion(resultado);
-    } catch (e) {
-      const status = Number(e?.status || 0);
-
-      setEstadoError(status);
-      setErrorValidacion(e?.message || "No se pudo validar el certificado.");
-
-      if (status === 401) {
-        try {
-          await cerrarSesionValidador();
-        } catch (errorCierre) {
-          /* si falla el cierre, el formulario aparece igual */
-        }
+  /**
+   * Consulta la validez del certificado con la sesión indicada.
+   *
+   * La reacción ante un rechazo depende de QUÉ sesión se usó:
+   *
+   *   principal → nunca se cierra desde acá. Se pasa al formulario del
+   *               validador con un aviso. Puede ser simplemente un usuario sin
+   *               permiso de validación, y su sesión del panel es legítima.
+   *
+   *   validador → es la cuenta elegida explícitamente para validar, así que un
+   *               403 sí se muestra como "Usuario no autorizado", y un 401 la
+   *               cierra y vuelve al formulario.
+   */
+  const validarCon = useCallback(
+    async (usuarioFirebase, origen) => {
+      // La sesión del validador persiste entre pestañas, así que puede llegar
+      // acá ya vencida. Se comprueba antes de gastar el request; el signOut
+      // dispara onAuthStateChanged y la pantalla vuelve al formulario.
+      if (origen === "validador" && sesionValidadorExpirada()) {
+        await descartarSesionValidadorVencida();
+        return;
       }
-    } finally {
-      setValidando(false);
-    }
-  }, [cursoId, certificadoToken]);
 
-  // Estado de la sesión del validador. Si ya hay usuario, se valida solo: no
-  // se vuelve a pedir correo y contraseña.
+      setValidando(true);
+      setErrorValidacion("");
+      setEstadoError(0);
+      setValidacion(null);
+      setOrigenSesion(origen);
+
+      try {
+        const resultado = await validarCertificadoQr(cursoId, certificadoToken, {
+          usuarioFirebase,
+        });
+        setValidacion(resultado);
+
+        // Validación exitosa = actividad. Así el plazo son 5 horas de
+        // INACTIVIDAD y no 5 horas absolutas desde el login: cada QR
+        // verificado durante el turno renueva la sesión.
+        if (origen === "validador") registrarActividadValidador();
+      } catch (e) {
+        const status = Number(e?.status || 0);
+
+        if (origen === "principal" && (status === 403 || status === 401)) {
+          setPrincipalRechazada(true);
+          setValidando(false);
+          return;
+        }
+
+        setEstadoError(status);
+        setErrorValidacion(e?.message || "No se pudo validar el certificado.");
+
+        if (origen === "validador" && status === 401) {
+          try {
+            await cerrarSesionValidador();
+          } catch (errorCierre) {
+            /* si falla el cierre, el formulario aparece igual */
+          }
+        }
+      } finally {
+        setValidando(false);
+      }
+    },
+    [cursoId, certificadoToken]
+  );
+
+  // Se escuchan las DOS sesiones. Son instancias independientes: un cambio en
+  // una no afecta a la otra.
   useEffect(() => {
-    const desuscribir = validatorAuth.onAuthStateChanged((usuarioActual) => {
-      setUsuario(usuarioActual || null);
+    const desuscribirValidador = validatorAuth.onAuthStateChanged((usuario) => {
+      setUsuarioValidador(usuario || null);
     });
 
-    return desuscribir;
+    const desuscribirPrincipal = auth.onAuthStateChanged((usuario) => {
+      setUsuarioPrincipal(usuario || null);
+    });
+
+    return () => {
+      desuscribirValidador();
+      desuscribirPrincipal();
+    };
   }, []);
 
+  const inicializando =
+    usuarioValidador === undefined || usuarioPrincipal === undefined;
+
+  // Prioridad: validador explícito, después sesión principal.
+  const sesionElegida = usuarioValidador
+    ? { usuario: usuarioValidador, origen: "validador" }
+    : usuarioPrincipal && !principalRechazada
+    ? { usuario: usuarioPrincipal, origen: "principal" }
+    : null;
+
+  // Se valida al resolverse las sesiones y cada vez que cambia la elegida.
+  // La dependencia es el uid, no el objeto: Firebase reemplaza la instancia de
+  // User al renovar el token y eso no debe disparar otra consulta.
+  const uidElegido = sesionElegida?.usuario?.uid || "";
+  const origenElegido = sesionElegida?.origen || "";
+
   useEffect(() => {
-    if (usuario) validar();
-  }, [usuario, validar]);
+    if (inicializando) return;
+    if (!sesionElegida) return;
+
+    validarCon(sesionElegida.usuario, sesionElegida.origen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inicializando, uidElegido, origenElegido]);
+
+  // Si el validador ingresa después de un rechazo de la sesión principal, se
+  // limpia la marca para que su resultado se muestre normalmente.
+  useEffect(() => {
+    if (usuarioValidador) setPrincipalRechazada(false);
+  }, [usuarioValidador]);
 
   const manejarIngreso = async (evento) => {
     evento.preventDefault();
@@ -155,8 +245,8 @@ const ValidarCertificadoQr = () => {
     </header>
   );
 
-  // ---- Firebase todavía restaurando la sesión ----
-  if (usuario === undefined) {
+  // ---- Firebase todavía restaurando alguna de las dos sesiones ----
+  if (inicializando) {
     return (
       <div className={styles.pagina}>
         <div className={styles.tarjeta}>
@@ -167,17 +257,24 @@ const ValidarCertificadoQr = () => {
     );
   }
 
-  // ---- Sin sesión: no se muestra NINGÚN dato del certificado ----
-  if (!usuario) {
+  // ---- Sin sesión utilizable: no se muestra NINGÚN dato del certificado ----
+  if (!sesionElegida) {
     return (
       <div className={styles.pagina}>
         <div className={styles.tarjeta}>
           {encabezado}
 
-          <p className={styles.introduccion}>
-            Para verificar este certificado debés ingresar con una cuenta
-            autorizada.
-          </p>
+          {principalRechazada ? (
+            <p className={styles.avisoSesion}>
+              La sesión actual no tiene permiso para validar certificados.
+              Ingresá con una cuenta autorizada.
+            </p>
+          ) : (
+            <p className={styles.introduccion}>
+              Para verificar este certificado debés ingresar con una cuenta
+              autorizada.
+            </p>
+          )}
 
           <form onSubmit={manejarIngreso} className={styles.formulario}>
             <label className={styles.campo}>
@@ -369,16 +466,37 @@ const ValidarCertificadoQr = () => {
 
         <div className={styles.pie}>
           <span className={styles.sesion}>
-            Sesión: {usuario.email || "cuenta autorizada"}
+            {origenSesion === "principal"
+              ? `Validado con tu sesión de SIDCA: ${
+                  sesionElegida.usuario.email || "cuenta autorizada"
+                }`
+              : `Sesión: ${sesionElegida.usuario.email || "cuenta autorizada"}`}
           </span>
 
-          <button
-            type="button"
-            className={styles.botonSecundario}
-            onClick={manejarCierre}
-          >
-            Cerrar sesión
-          </button>
+          {/* Sólo se ofrece cerrar la sesión del VALIDADOR. Con la sesión
+              principal no se muestra: cerrarla desde acá sacaría al
+              administrador del panel, que no es lo que esperaría. */}
+          {origenSesion === "validador" && (
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={manejarCierre}
+            >
+              Cerrar sesión
+            </button>
+          )}
+
+          {/* Con la sesión principal se ofrece validar con otra cuenta, sin
+              tocar la del panel. */}
+          {origenSesion === "principal" && (
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setPrincipalRechazada(true)}
+            >
+              Usar otra cuenta
+            </button>
+          )}
         </div>
       </div>
     </div>
