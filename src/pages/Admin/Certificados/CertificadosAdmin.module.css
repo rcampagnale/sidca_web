@@ -1,0 +1,697 @@
+/* src/pages/Admin/Certificados/CertificadosAdmin.module.css
+
+   Diseño MOBILE-FIRST.
+
+   Las reglas base están pensadas para 320 px: una sola columna, inputs al
+   100 %, targets táctiles de al menos 44 px y títulos que hacen wrap.
+   Las media queries sólo AGREGAN capacidades a partir de 768 px.
+
+   Estilos propios del módulo: no se toca ningún CSS existente. */
+
+/* ── Contenedor ── */
+.pagina {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 1rem 0.75rem 3rem;
+  background: #f1f5f9;
+  /* Ninguna franja de la página puede desbordar a lo ancho. */
+  overflow-x: hidden;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ── Encabezado ── */
+.encabezado {
+  margin-bottom: 1rem;
+}
+
+.titulo {
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.25;
+  color: #0f172a;
+  /* Títulos largos se parten en varias líneas en vez de desbordar. */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.subtitulo {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+/* ── Secciones (Configurar / Emitir / …) ── */
+.secciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.seccionBoton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.seccionBotonActiva {
+  color: #0f172a;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.seccionBoton:disabled {
+  color: #94a3b8;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.seccionPendiente {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #94a3b8;
+}
+
+/* ── Bloques ── */
+.bloque {
+  box-sizing: border-box;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.bloqueHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.bloqueTitulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: break-word;
+}
+
+.bloqueContador {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* ── Textos auxiliares ── */
+.ayuda {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.estadoTexto {
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.mensajeError {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+
+/* ── Campos ── */
+.grillaCampos {
+  display: grid;
+  /* Móvil: una sola columna. */
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* Evita que un campo fuerce el ancho de la grilla en pantallas chicas. */
+  min-width: 0;
+}
+
+.campoLabel {
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #334155;
+}
+
+.campoAyuda {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #94a3b8;
+}
+
+.campoError {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.6rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.input:focus {
+  outline: 2px solid #fcd34d;
+  outline-offset: 1px;
+  border-color: #fcd34d;
+}
+
+.input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.inputError {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.inputArchivo {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem;
+  font-size: 0.8rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+}
+
+/* ── Selector de curso ── */
+.selectorCurso {
+  display: flex;
+  flex-direction: column;
+}
+
+.listaCursos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* La lista puede ser larga: se acota y scrollea en vertical, nunca en
+     horizontal. */
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cursoItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.7rem 0.8rem;
+  font-family: inherit;
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.cursoItemActivo {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  box-shadow: inset 0 0 0 1px #fcd34d;
+}
+
+.cursoItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cursoTitulo {
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #0f172a;
+  /* Requisito: el título no depende de entrar en una sola línea. */
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.cursoMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip,
+.chipNeutro {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.chipTerminado {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.chipAbierto {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.chipNeutro {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+/* ── Resumen del curso elegido ── */
+.resumenCurso {
+  box-sizing: border-box;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 14px;
+}
+
+.resumenEtiqueta {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #92400e;
+}
+
+.resumenTitulo {
+  margin: 0.3rem 0;
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.resumenId {
+  margin: 0 0 0.3rem;
+  font-size: 0.74rem;
+  color: #78350f;
+  /* Un ID largo no debe ensanchar la tarjeta. */
+  overflow-wrap: anywhere;
+}
+
+.resumenEstado {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #78350f;
+}
+
+/* ── Firmas ── */
+.listaFirmas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 0.85rem;
+}
+
+.firmaCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  box-sizing: border-box;
+  padding: 0.8rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.firmaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.firmaOrden {
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #334155;
+}
+
+.firmaAccionesOrden {
+  display: flex;
+  gap: 6px;
+}
+
+.firmaPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0.6rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.firmaPreview img {
+  max-width: 100%;
+  max-height: 90px;
+  object-fit: contain;
+}
+
+/* ── Botones ── */
+.botonPrimario {
+  /* En móvil ocupa todo el ancho: es la acción principal. */
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0.75rem 1.25rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #0f172a;
+  background: #fcd34d;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.botonPrimario:disabled {
+  color: #94a3b8;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.botonSecundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.6rem 1rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonSecundario:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.botonIcono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Target táctil mínimo. */
+  width: 44px;
+  height: 44px;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonIcono:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.botonIconoPeligro {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.botonTextoPeligro {
+  padding: 0.35rem 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #b91c1c;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ── Barra de acciones ── */
+.barraAcciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-sizing: border-box;
+  padding: 0.9rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.notaGuardado {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+/* ══════════════════════════════════════════════
+   TABLET — a partir de 768 px hay lugar para dos
+   columnas y para que los botones dejen de ser
+   de ancho completo.
+   ══════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .pagina {
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  .titulo {
+    font-size: 1.7rem;
+  }
+
+  .bloque,
+  .resumenCurso,
+  .barraAcciones {
+    padding: 1.15rem;
+  }
+
+  .grillaCampos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .botonPrimario,
+  .botonSecundario {
+    width: auto;
+  }
+
+  .barraAcciones {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .listaCursos {
+    max-height: 420px;
+  }
+
+  .cursoItem {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .cursoTitulo {
+    flex: 1 1 auto;
+    /* min-width: 0 es lo que permite que el texto se parta dentro del flex
+       en vez de empujar la fila y provocar scroll horizontal. */
+    min-width: 0;
+  }
+
+  .cursoMeta {
+    flex: 0 0 auto;
+  }
+
+  .firmaPreview {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   ESCRITORIO
+   ══════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  .pagina {
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .titulo {
+    font-size: 1.9rem;
+  }
+
+  .grillaCampos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================
+   MODALES (Configurar / Emitir)
+   El overlay, el botón de cierre, el bloqueo de scroll y el apilado los
+   aporta el Dialog de PrimeReact. Acá sólo se define la caja: altura
+   máxima, scroll interno del contenido y el encabezado/pie propios.
+   ============================================================ */
+
+.modal {
+  max-height: 92vh;
+}
+
+/* El contenido hace su propio scroll; el alto restante descuenta
+   encabezado y pie del Dialog. */
+.modalContenido {
+  max-height: calc(92vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /* Deja lugar al botón de cierre de PrimeReact, que va a la derecha. */
+  padding-right: 8px;
+}
+
+.modalTitulo {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.modalSubtitulo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.modalMeta {
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+/* Mobile-first: los botones ocupan el ancho y pueden bajar de línea. */
+.modalPie {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.modalPie .botonPrimario,
+.modalPie .botonSecundario {
+  width: 100%;
+}
+
+.modalPie .notaGuardado {
+  margin: 0;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .modalContenido {
+    max-height: calc(92vh - 190px);
+  }
+
+  .modalPie {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .modalPie .botonPrimario,
+  .modalPie .botonSecundario {
+    width: auto;
+  }
+
+  .modalPie .notaGuardado {
+    flex: 1 1 auto;
+    margin-right: auto;
+  }
+}

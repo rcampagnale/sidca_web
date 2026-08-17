@@ -38,6 +38,9 @@ const NAV_GROUPS = [
     items: [
       { label: "Asistencia", path: "/admin/ListaAsistencia" },
       { label: "Cursos", path: "/admin/cursos" },
+
+      // ✅ Módulo administrativo de certificados
+      { label: "Gestión de Certificados", path: "/admin/certificados" },
     ],
   },
   {

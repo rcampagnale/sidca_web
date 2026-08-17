@@ -17,6 +17,7 @@ import Admin from "../pages/Admin/Admin/Admin";
 import Enlaces from "../pages/Admin/Enlaces/Enlaces";
 import AfiliadosNuevos from "../pages/Admin/AfiliadosNuevos/AfiliadosNuevos";
 import Cursos from "../pages/Admin/Cursos/Cursos";
+import CertificadosAdmin from "../pages/Admin/Certificados/CertificadosAdmin";
 import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
 import Novedades from "../pages/Admin/Novedades/Novedades";
 import NovedadesUser from "../pages/Novedades/Novedades";
@@ -369,6 +370,14 @@ const AppRouter = () => {
         />
 
         <AdminRoute exact path="/admin/cursos" component={Cursos} />
+
+        {/* Gestión de Certificados SIDCA. Las escrituras se autorizan en el
+            backend; esta ruta sólo controla el acceso a la pantalla. */}
+        <AdminRoute
+          exact
+          path="/admin/certificados"
+          component={CertificadosAdmin}
+        />
 
         <AdminRoute exact path="/admin/nuevo-curso" component={NuevoCurso} />
 

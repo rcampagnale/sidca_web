@@ -1,0 +1,331 @@
+/* EmitirCertificados.module.css
+ *
+ * Mobile-first. Hasta 767 px se muestran tarjetas verticales; desde 768 px
+ * aparece la tabla. Nunca están visibles las dos a la vez, y la tabla vive
+ * dentro de un contenedor con overflow-x propio para que jamás genere scroll
+ * horizontal en la página.
+ */
+
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.indicadorNumero {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.indicadorEtiqueta {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.advertencia {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+
+.avisoBloqueante {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+}
+
+/* ---------- Estados ---------- */
+
+.estado {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.estadoAprobado {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.estadoSinUsuario {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.estadoIncompleto {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+/* ---------- Botón ---------- */
+
+.botonPreview {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #1d4ed8;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonPreview:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.botonPreview:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.botonPreview:disabled {
+  color: #94a3b8;
+  background: #e2e8f0;
+  cursor: not-allowed;
+}
+
+/* ---------- Tarjetas (móvil) ---------- */
+
+.tarjetas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.tarjetaNombre {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.tarjetaDato {
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.tarjeta .botonPreview {
+  width: 100%;
+}
+
+/* ---------- Tabla (escritorio) ---------- */
+
+.tablaWrap {
+  display: none;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tabla th {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.celdaNombre {
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+  .indicadores {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tablaWrap {
+    display: block;
+  }
+
+  .tarjetas {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   ACCIONES POR PARTICIPANTE
+   "Quitar de emisión" NO borra al usuario ni su aprobación: sólo lo
+   aparta de la emisión de certificados. Por eso es un botón de contorno
+   y no un rojo sólido de acción destructiva.
+   ------------------------------------------------------------------ */
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.botonQuitar {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.botonQuitar:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.botonQuitar:focus-visible {
+  outline: 3px solid #fdba74;
+  outline-offset: 2px;
+}
+
+.botonQuitar:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.botonQuitarCurso {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonQuitarCurso:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.botonQuitarCurso:focus-visible {
+  outline: 3px solid #fdba74;
+  outline-offset: 2px;
+}
+
+.botonQuitarCurso:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+/* En móvil los botones ocupan el ancho y bajan de línea. */
+.tarjeta .acciones {
+  width: 100%;
+  flex-direction: column;
+}
+
+.tarjeta .acciones .botonPreview,
+.tarjeta .acciones .botonQuitar {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .acciones {
+    flex-direction: row;
+  }
+}
+
+/* ------------------------------------------------------------------
+   REGISTROS NO GESTIONABLES
+   Aprobaciones cuyo documento de usuario ya no existe: no se pueden
+   previsualizar ni apartar de la emisión, porque ya son no emitibles.
+   ------------------------------------------------------------------ */
+
+.sinAcciones {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  cursor: help;
+  white-space: nowrap;
+}
+
+.sinAccionesTarjeta {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.notaIndicadores {
+  margin: 0 0 14px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #475569;
+}

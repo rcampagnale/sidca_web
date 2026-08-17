@@ -1,0 +1,726 @@
+// src/pages/Admin/Certificados/EmitirCertificados.js
+//
+// Pestaña EMITIR — etapa de preparación.
+//
+// Flujo:
+//   1. Elegir entre los certificados YA CONFIGURADOS.
+//   2. GET configuración -> datos documentales para el preview.
+//   3. GET aprobados      -> lista real, resuelta por el backend.
+//   4. Buscar y previsualizar.
+//
+// La fuente NO es la colección "cursos": eso es lo que usa Configurar, cuya
+// finalidad es justamente elegir qué curso configurar. Emitir sólo puede
+// trabajar sobre capacitaciones que ya tienen certificado configurado, así
+// que parte de "certificados" filtrado por el backend. Los documentos
+// históricos de esa colección (sin cursoId) quedan fuera.
+//
+//   CONFIGURAR -> cursos
+//   EMITIR     -> certificados configurados
+//   EMITIDOS   -> certificados con emitidos (etapa futura)
+//
+// Los aprobados NO se cargan a mano: salen del importador de Excel existente
+// (usuarios/{usuarioDocId}/cursos con aprobo:true). El frontend no envía DNI
+// ni decide quién está aprobado; sólo muestra lo que responde el backend
+// autenticado.
+//
+// Esta etapa NO emite: no genera QR, token, código ni PDF, y no escribe nada.
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Dialog } from "primereact/dialog";
+
+import {
+  eliminarConfiguracionCertificado,
+  excluirUsuarioEmision,
+  obtenerAprobadosCurso,
+  obtenerConfiguracionCertificado,
+  obtenerConfiguracionesCertificado,
+} from "../../../services/certificadosService";
+import CertificadoPreview from "./components/CertificadoPreview";
+import SelectorConfiguracion from "./SelectorConfiguracion";
+import styles from "./CertificadosAdmin.module.css";
+import emitir from "./EmitirCertificados.module.css";
+
+const DIACRITICOS = new RegExp("[\\u0300-\\u036f]", "g");
+
+const normalizar = (valor) =>
+  String(valor || "")
+    .normalize("NFD")
+    .replace(DIACRITICOS, "")
+    .trim()
+    .toLowerCase();
+
+/** Sólo para mostrar. El DNI almacenado no se modifica. */
+const formatearDni = (dni) => {
+  const limpio = String(dni || "").replace(/\D/g, "");
+  if (!limpio) return "—";
+  return limpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const ETIQUETA_ESTADO = {
+  aprobado: "Aprobado",
+  sin_usuario: "Sin usuario asociado",
+  datos_incompletos: "Datos incompletos",
+};
+
+const CLASE_ESTADO = {
+  aprobado: emitir.estadoAprobado,
+  sin_usuario: emitir.estadoSinUsuario,
+  datos_incompletos: emitir.estadoIncompleto,
+};
+
+const RESUMEN_VACIO = {
+  documentosAprobacion: 0,
+  aprobados: 0,
+  disponibles: 0,
+  identificados: 0,
+  sinUsuario: 0,
+  datosIncompletos: 0,
+  duplicados: 0,
+  excluidos: 0,
+};
+
+/**
+ * Un registro es gestionable sólo si su usuario existe realmente.
+ *
+ * Los "sin usuario asociado" son aprobaciones cuyo documento de usuario ya
+ * no existe: no se pueden previsualizar (no hay nombre ni DNI que imprimir)
+ * y no tiene sentido apartarlos de la emisión, porque ya son no emitibles.
+ */
+const esGestionable = (participante) =>
+  Boolean(participante?.usuarioDocId) && participante?.estado !== "sin_usuario";
+
+const MOTIVO_NO_GESTIONABLE =
+  "No se puede gestionar la emisión porque este registro no está asociado a un usuario.";
+
+const EmitirCertificados = ({ notificar }) => {
+  const [configuraciones, setConfiguraciones] = useState([]);
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [errorLista, setErrorLista] = useState("");
+  const [busquedaCurso, setBusquedaCurso] = useState("");
+
+  const [curso, setCurso] = useState(null);
+  const [modalEmitirVisible, setModalEmitirVisible] = useState(false);
+  const [configuracion, setConfiguracion] = useState(null);
+  const [sinConfiguracion, setSinConfiguracion] = useState(false);
+
+  const [resumen, setResumen] = useState(RESUMEN_VACIO);
+  const [participantes, setParticipantes] = useState([]);
+
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+
+  const [participantePreview, setParticipantePreview] = useState(null);
+
+  // Fila del listado que se abrió: aporta resolución y estado al encabezado
+  // del modal sin esperar a que llegue la configuración completa.
+  const [seleccion, setSeleccion] = useState(null);
+
+  const [quitandoUsuario, setQuitandoUsuario] = useState("");
+  const [quitandoCurso, setQuitandoCurso] = useState(false);
+
+  // Lista de certificados configurados. Se pide una sola vez al abrir la
+  // pestaña; el filtrado del selector es en memoria.
+  useEffect(() => {
+    let activo = true;
+
+    const cargar = async () => {
+      try {
+        const lista = await obtenerConfiguracionesCertificado();
+        if (!activo) return;
+        setConfiguraciones(lista);
+        setErrorLista("");
+      } catch (e) {
+        if (!activo) return;
+        setErrorLista(
+          e?.message || "No se pudieron cargar los certificados configurados."
+        );
+      } finally {
+        if (activo) setCargandoLista(false);
+      }
+    };
+
+    cargar();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const limpiar = useCallback(() => {
+    setConfiguracion(null);
+    setSinConfiguracion(false);
+    setResumen(RESUMEN_VACIO);
+    setParticipantes([]);
+    setBusqueda("");
+    setError("");
+  }, []);
+
+  /**
+   * Configuración y aprobados se piden en paralelo: son independientes y así
+   * la pantalla no espera dos viajes encadenados.
+   *
+   * Se vuelve a pedir la configuración completa aunque el listado ya traiga
+   * algunos campos: el selector sólo recibe los livianos y el preview
+   * necesita cargaHoraria, dias y fecha.
+   */
+  const seleccionarCurso = useCallback(
+    async (configuracionElegida) => {
+      const cursoElegido = {
+        id: configuracionElegida.cursoId,
+        titulo:
+          configuracionElegida.cursoTitulo || configuracionElegida.titulo || "",
+        cursoId: configuracionElegida.cursoId,
+      };
+
+      setCurso(cursoElegido);
+      setSeleccion(configuracionElegida);
+      limpiar();
+      // Se abre de inmediato y muestra el estado de carga adentro.
+      setModalEmitirVisible(true);
+      setCargando(true);
+
+      const [resConfig, resAprobados] = await Promise.allSettled([
+        obtenerConfiguracionCertificado(cursoElegido.id),
+        obtenerAprobadosCurso(cursoElegido.id),
+      ]);
+
+      if (resConfig.status === "fulfilled") {
+        setConfiguracion(resConfig.value);
+        setSinConfiguracion(!resConfig.value);
+      } else {
+        setSinConfiguracion(true);
+        notificar?.(
+          "error",
+          "No se pudo consultar la configuración",
+          resConfig.reason?.message || "Error inesperado."
+        );
+      }
+
+      if (resAprobados.status === "fulfilled") {
+        setResumen(resAprobados.value.resumen || RESUMEN_VACIO);
+        setParticipantes(resAprobados.value.participantes || []);
+      } else {
+        const fallo = resAprobados.reason;
+
+        // 404 acá es "el curso no existe", no "no hay aprobados": sin
+        // aprobados el backend responde 200 con lista vacía.
+        setError(fallo?.message || "No se pudieron cargar los aprobados.");
+        notificar?.(
+          "error",
+          "No se pudieron cargar los aprobados",
+          fallo?.message || "Error inesperado."
+        );
+      }
+
+      setCargando(false);
+    },
+    [limpiar, notificar]
+  );
+
+  // Filtrado en memoria: no se vuelve a consultar el backend por cada tecla.
+  const visibles = useMemo(() => {
+    const termino = normalizar(busqueda);
+    if (!termino) return participantes;
+
+    const soloDigitos = termino.replace(/\D/g, "");
+
+    return participantes.filter((participante) => {
+      if (normalizar(participante.apellidoNombre).includes(termino)) return true;
+      if (soloDigitos && String(participante.dni || "").includes(soloDigitos)) {
+        return true;
+      }
+      return false;
+    });
+  }, [participantes, busqueda]);
+
+  /**
+   * Cierra el modal de Emitir y vuelve al listado.
+   *
+   * No se limpian configuraciones ni busquedaCurso: el listado y el texto del
+   * buscador principal quedan como estaban. Sí se cierra el preview, para que
+   * reabrir no arrastre un participante de la selección anterior.
+   */
+  const cerrarModalEmitir = useCallback(() => {
+    setModalEmitirVisible(false);
+    setParticipantePreview(null);
+  }, []);
+
+  const puedePrevisualizar = Boolean(configuracion);
+
+  const abrirPreview = useCallback(
+    (participante) => {
+      if (!puedePrevisualizar) {
+        notificar?.(
+          "warn",
+          "Falta la configuración",
+          "Configurá el certificado de esta capacitación antes de previsualizar."
+        );
+        return;
+      }
+      setParticipantePreview(participante);
+    },
+    [puedePrevisualizar, notificar]
+  );
+
+  /**
+   * Aparta a un participante de la emisión.
+   *
+   * NO elimina al usuario ni su aprobación: el backend sólo agrega su
+   * usuarioDocId a certificados/{cursoId}.usuariosExcluidos. Se quita de la
+   * lista en memoria para no repetir el viaje de aprobados.
+   */
+  const quitarParticipante = useCallback(
+    async (participante) => {
+      if (!curso) return;
+
+      // Defensa: los registros sin usuario ya son no emitibles y no tiene
+      // sentido apartarlos. La UI no ofrece el botón, esto cubre el resto.
+      if (!esGestionable(participante)) {
+        notificar?.("warn", "Registro no gestionable", MOTIVO_NO_GESTIONABLE);
+        return;
+      }
+
+      const confirmado = window.confirm(
+        `¿Quitar a ${participante.apellidoNombre || "este participante"} de la emisión de certificados?\n\n` +
+          "No se elimina el usuario, ni su aprobación, ni ningún dato académico. " +
+          "Solamente deja de aparecer para emitir certificados de esta capacitación, y se puede revertir."
+      );
+
+      if (!confirmado) return;
+
+      setQuitandoUsuario(participante.usuarioDocId);
+
+      try {
+        await excluirUsuarioEmision(curso.id, participante.usuarioDocId);
+
+        setParticipantes((previos) =>
+          previos.filter((p) => p.usuarioDocId !== participante.usuarioDocId)
+        );
+
+        // "aprobados" NO baja: es el total de aprobaciones académicas y
+        // excluir no borra ninguna. Lo que baja es lo disponible para emitir.
+        setResumen((previo) => ({
+          ...previo,
+          disponibles: Math.max(0, (previo.disponibles || 0) - 1),
+          identificados:
+            participante.estado === "aprobado"
+              ? Math.max(0, (previo.identificados || 0) - 1)
+              : previo.identificados,
+          datosIncompletos:
+            participante.estado === "datos_incompletos"
+              ? Math.max(0, (previo.datosIncompletos || 0) - 1)
+              : previo.datosIncompletos,
+          excluidos: (previo.excluidos || 0) + 1,
+        }));
+
+        // Si estaba abierto su preview, se cierra.
+        setParticipantePreview((previo) =>
+          previo?.usuarioDocId === participante.usuarioDocId ? null : previo
+        );
+
+        notificar?.(
+          "success",
+          "Participante quitado de la emisión",
+          "Su aprobación y sus datos siguen intactos."
+        );
+      } catch (e) {
+        notificar?.(
+          "error",
+          "No se pudo quitar el participante",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setQuitandoUsuario("");
+      }
+    },
+    [curso, notificar]
+  );
+
+  /**
+   * Elimina la configuración de certificado del curso.
+   *
+   * Borra únicamente certificados/{cursoId}. El curso académico, los usuarios
+   * y sus aprobaciones NO se tocan: el curso sigue disponible en Configurar,
+   * ahora como curso sin configurar.
+   *
+   * Es una acción destructiva y no reversible: se pierden los datos
+   * documentales cargados (título, resolución, carga horaria, firmas…).
+   */
+  const quitarCurso = useCallback(async () => {
+    if (!curso) return;
+
+    const confirmado = window.confirm(
+      "Se eliminará la configuración de este certificado.\n\n" +
+        "El curso, sus participantes y sus aprobaciones no serán eliminados. " +
+        "Podrás volver a configurar el certificado desde la pestaña Configurar.\n\n" +
+        `¿Eliminar la configuración de "${curso.titulo}"?`
+    );
+
+    if (!confirmado) return;
+
+    setQuitandoCurso(true);
+
+    try {
+      await eliminarConfiguracionCertificado(curso.id);
+
+      setConfiguraciones((previas) =>
+        previas.filter((c) => c.cursoId !== curso.id)
+      );
+
+      setModalEmitirVisible(false);
+      setParticipantePreview(null);
+
+      notificar?.(
+        "success",
+        "Configuración de certificado eliminada",
+        "El curso, sus participantes y sus aprobaciones siguen intactos."
+      );
+    } catch (e) {
+      notificar?.(
+        "error",
+        "No se pudo eliminar la configuración",
+        e?.message || "Error inesperado."
+      );
+    } finally {
+      setQuitandoCurso(false);
+    }
+  }, [curso, notificar]);
+
+  return (
+    <>
+      <section className={styles.bloque}>
+        <div className={styles.bloqueHeader}>
+          <h2 className={styles.bloqueTitulo}>
+            Seleccioná el certificado configurado
+          </h2>
+        </div>
+
+        {cargandoLista ? (
+          <p className={styles.estadoTexto}>
+            Cargando certificados configurados…
+          </p>
+        ) : errorLista ? (
+          <p className={styles.mensajeError}>{errorLista}</p>
+        ) : (
+          <SelectorConfiguracion
+            configuraciones={configuraciones}
+            configuracionSeleccionada={curso}
+            onSeleccionar={seleccionarCurso}
+            deshabilitado={cargando}
+            busqueda={busquedaCurso}
+            onBuscar={setBusquedaCurso}
+          />
+        )}
+      </section>
+
+      <Dialog
+        visible={modalEmitirVisible}
+        onHide={cerrarModalEmitir}
+        modal
+        blockScroll
+        draggable={false}
+        dismissableMask={false}
+        className={styles.modal}
+        style={{ width: "min(1200px, 96vw)" }}
+        contentClassName={styles.modalContenido}
+        breakpoints={{ "768px": "96vw" }}
+        header={
+          <div className={styles.modalHeader}>
+            <span className={styles.modalTitulo}>Emitir certificados</span>
+            <span className={styles.modalSubtitulo}>
+              {curso?.titulo || "Sin título"}
+            </span>
+            <span className={styles.modalMeta}>
+              {(seleccion?.resolucion || configuracion?.resolucion) && (
+                <>Resolución: {seleccion?.resolucion || configuracion?.resolucion} · </>
+              )}
+              Estado:{" "}
+              <strong>
+                {configuracion?.estadoConfiguracion ||
+                  seleccion?.estadoConfiguracion ||
+                  "borrador"}
+              </strong>
+            </span>
+          </div>
+        }
+        footer={
+          <div className={styles.modalPie}>
+            <p className={styles.notaGuardado}>
+              Esta etapa sólo previsualiza. La emisión con QR y código de
+              certificado todavía no está habilitada.
+            </p>
+
+            <button
+              type="button"
+              className={emitir.botonQuitarCurso}
+              onClick={quitarCurso}
+              disabled={quitandoCurso || cargando}
+              title="Elimina la configuración del certificado. El curso, los participantes y sus aprobaciones no se tocan."
+            >
+              {quitandoCurso ? "Eliminando…" : "Quitar curso de emisión"}
+            </button>
+
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={cerrarModalEmitir}
+            >
+              Cerrar
+            </button>
+          </div>
+        }
+      >
+        {cargando && <p className={styles.estadoTexto}>Consultando…</p>}
+
+        {!cargando && sinConfiguracion && (
+          <p className={emitir.avisoBloqueante}>
+            Este curso todavía no tiene configuración de certificado.
+            Completala en la pestaña <strong>Configurar</strong> para poder
+            previsualizar.
+          </p>
+        )}
+
+        {error && <p className={styles.mensajeError}>{error}</p>}
+
+        {!cargando && !error && (
+          <>
+            <div className={emitir.indicadores}>
+            <div className={emitir.indicador}>
+              <span className={emitir.indicadorNumero}>{resumen.aprobados}</span>
+              <span className={emitir.indicadorEtiqueta}>Aprobados</span>
+            </div>
+            <div className={emitir.indicador}>
+              <span className={emitir.indicadorNumero}>
+                {resumen.identificados}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>Identificados</span>
+            </div>
+            <div className={emitir.indicador}>
+              <span className={emitir.indicadorNumero}>
+                {resumen.sinUsuario}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>Sin usuario</span>
+            </div>
+            <div className={emitir.indicador}>
+              <span className={emitir.indicadorNumero}>
+                {resumen.excluidos}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>Excluidos</span>
+            </div>
+          </div>
+
+          <p className={emitir.notaIndicadores}>
+            <strong>Aprobados</strong> es el total de aprobaciones académicas
+            del curso y no cambia al quitar participantes de la emisión.
+            Quitar a alguien sólo lo aparta de esta pantalla: su aprobación
+            queda intacta.
+          </p>
+
+          {resumen.duplicados > 0 && (
+            <p className={emitir.advertencia}>
+              Se encontraron {resumen.documentosAprobacion} registros de
+              aprobación para {resumen.aprobados}{" "}
+              {resumen.aprobados === 1 ? "persona" : "personas"}. Cada persona
+              aparece una sola vez en la lista.
+            </p>
+          )}
+
+          {resumen.truncado && (
+            <p className={emitir.advertencia}>
+              Se alcanzó el máximo de registros consultados. Puede haber
+              aprobados sin mostrar.
+            </p>
+          )}
+
+          {resumen.excluidos > 0 && (
+            <p className={emitir.advertencia}>
+              {resumen.excluidos}{" "}
+              {resumen.excluidos === 1
+                ? "participante fue apartado"
+                : "participantes fueron apartados"}{" "}
+              de la emisión de esta capacitación. Su aprobación y sus datos
+              siguen intactos.
+            </p>
+          )}
+
+          {participantes.length === 0 ? (
+            <p className={styles.estadoTexto}>
+              Esta capacitación todavía no tiene aprobados cargados.
+            </p>
+          ) : (
+            <>
+              <label className={styles.campo}>
+                <span className={styles.campoLabel}>Buscar participante</span>
+                <input
+                  type="search"
+                  className={styles.input}
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Apellido, nombre o DNI…"
+                />
+              </label>
+
+              <p className={styles.ayuda}>
+                {visibles.length} de {participantes.length}{" "}
+                {participantes.length === 1 ? "participante" : "participantes"}.
+              </p>
+
+              {visibles.length === 0 ? (
+                <p className={styles.estadoTexto}>
+                  Ningún participante coincide con la búsqueda.
+                </p>
+              ) : (
+                <>
+                  {/* Escritorio: tabla. Móvil: tarjetas. Se alternan por CSS. */}
+                  <div className={emitir.tablaWrap}>
+                    <table className={emitir.tabla}>
+                      <thead>
+                        <tr>
+                          <th>Apellido y nombre</th>
+                          <th>DNI</th>
+                          <th>Estado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibles.map((participante) => (
+                          <tr key={participante.usuarioDocId}>
+                            <td className={emitir.celdaNombre}>
+                              {participante.apellidoNombre || "—"}
+                            </td>
+                            <td>{formatearDni(participante.dni)}</td>
+                            <td>
+                              <span
+                                className={`${emitir.estado} ${
+                                  CLASE_ESTADO[participante.estado] || ""
+                                }`}
+                              >
+                                {ETIQUETA_ESTADO[participante.estado] ||
+                                  participante.estado}
+                              </span>
+                            </td>
+                            <td>
+                              {esGestionable(participante) ? (
+                                <div className={emitir.acciones}>
+                                  <button
+                                    type="button"
+                                    className={emitir.botonPreview}
+                                    onClick={() => abrirPreview(participante)}
+                                    disabled={!puedePrevisualizar}
+                                    title={
+                                      puedePrevisualizar
+                                        ? "Ver vista previa"
+                                        : "Configurá el certificado primero"
+                                    }
+                                  >
+                                    Preview certificado
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={emitir.botonQuitar}
+                                    onClick={() =>
+                                      quitarParticipante(participante)
+                                    }
+                                    disabled={
+                                      quitandoUsuario ===
+                                      participante.usuarioDocId
+                                    }
+                                    title="Deja de aparecer para emitir. No borra al usuario ni su aprobación."
+                                  >
+                                    {quitandoUsuario ===
+                                    participante.usuarioDocId
+                                      ? "Quitando…"
+                                      : "Quitar de emisión"}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span
+                                  className={emitir.sinAcciones}
+                                  title={MOTIVO_NO_GESTIONABLE}
+                                >
+                                  No gestionable
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <ul className={emitir.tarjetas}>
+                    {visibles.map((participante) => (
+                      <li
+                        key={participante.usuarioDocId}
+                        className={emitir.tarjeta}
+                      >
+                        <span className={emitir.tarjetaNombre}>
+                          {participante.apellidoNombre || "—"}
+                        </span>
+
+                        <span className={emitir.tarjetaDato}>
+                          DNI: {formatearDni(participante.dni)}
+                        </span>
+
+                        <span
+                          className={`${emitir.estado} ${
+                            CLASE_ESTADO[participante.estado] || ""
+                          }`}
+                        >
+                          {ETIQUETA_ESTADO[participante.estado] ||
+                            participante.estado}
+                        </span>
+
+                        {esGestionable(participante) ? (
+                          <div className={emitir.acciones}>
+                            <button
+                              type="button"
+                              className={emitir.botonPreview}
+                              onClick={() => abrirPreview(participante)}
+                              disabled={!puedePrevisualizar}
+                            >
+                              Preview certificado
+                            </button>
+
+                            <button
+                              type="button"
+                              className={emitir.botonQuitar}
+                              onClick={() => quitarParticipante(participante)}
+                              disabled={
+                                quitandoUsuario === participante.usuarioDocId
+                              }
+                            >
+                              {quitandoUsuario === participante.usuarioDocId
+                                ? "Quitando…"
+                                : "Quitar de emisión"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className={emitir.sinAccionesTarjeta}>
+                            {MOTIVO_NO_GESTIONABLE}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+          </>
+        )}
+      </Dialog>
+
+      <CertificadoPreview
+        abierto={Boolean(participantePreview)}
+        participante={participantePreview}
+        configuracion={configuracion}
+        onCerrar={() => setParticipantePreview(null)}
+      />
+    </>
+  );
+};
+
+export default EmitirCertificados;

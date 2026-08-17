@@ -1,0 +1,433 @@
+/* CertificadoPreview.module.css
+ *
+ * El chrome del diálogo (overlay, cierre, bloqueo de scroll, apilado) lo
+ * aporta PrimeReact. Acá se define el lienzo del certificado y las cajas de
+ * datos variables que van encima de la plantilla.
+ *
+ * SISTEMA DE COORDENADAS
+ * El certificado se piensa siempre APAISADO (2000×1414). El PNG está
+ * guardado en vertical con el contenido rotado, así que se rota sólo la
+ * imagen; las cajas usan coordenadas apaisadas normales.
+ *
+ * ESCALADO
+ * Ningún texto del certificado usa px. Los cuerpos vienen en cqw (relativos
+ * al ancho del lienzo) desde el componente, y las posiciones en %. Así el
+ * certificado entero escala en bloque: al reducirse el preview, textos y
+ * plantilla se achican juntos y la composición se mantiene idéntica.
+ */
+
+/* ==================================================================
+   LAYOUT DEL DIÁLOGO
+   Manda el CERTIFICADO: se dimensiona contra el viewport y el diálogo
+   simplemente lo envuelve.
+
+     Dialog            (width: auto — se ajusta al contenido)
+     ├── header
+     ├── contenido
+     │   ├── previewViewport
+     │   │   └── certificado   ← el que define el ancho
+     │   └── avisoPosiciones
+     └── footer
+
+   El camino inverso —diálogo a pantalla completa y certificado adaptándose
+   adentro— dejaba mucho aire alrededor: como el alto es casi siempre el
+   límite, el certificado quedaba angosto dentro de una ventana muy ancha.
+   ================================================================== */
+
+.dialogo {
+  display: flex;
+  flex-direction: column;
+}
+
+.contenido {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* auto y no hidden: si el cromo del diálogo creciera más de lo previsto,
+     preferimos un scroll antes que recortar el certificado. Con los valores
+     de --cromoAlto no debería aparecer. */
+  overflow: auto;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+/* Wrapper de layout, sin contención: el certificado le da el tamaño. */
+.previewViewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avisoPosiciones {
+  flex: 0 0 auto;
+}
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.tituloDialogo {
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+/* ==================================================================
+   LIENZO DEL CERTIFICADO
+   ================================================================== */
+
+/* El certificado se dimensiona contra los DOS límites del viewport a la vez,
+ * y de él sale el ancho del diálogo.
+ *
+ * Equivale a  escala = min(anchoDisponible / 2000, altoDisponible / 1414):
+ *
+ *   width     = (96vh - --cromoAlto) × 1.4144   → si manda el alto
+ *   max-width = 96vw - 40px                     → si manda el ancho
+ *
+ * Se expresa con width + max-width en lugar de min() porque el parser de
+ * CSS de react-scripts 4 no acepta aritmética suelta dentro de min(). El
+ * resultado es el mismo: max-width recorta el ancho usado y, como la altura
+ * es automática, aspect-ratio la recalcula sobre ese ancho — la proporción
+ * nunca se deforma.
+ *
+ * --cromoAlto es lo que ocupan encabezado, aviso, pie y padding del diálogo.
+ * Está estimado por lo alto a propósito: si sobra, el certificado queda un
+ * poco más chico; si faltara, aparecería scroll.
+ *
+ * Se usan unidades de viewport y no de container query porque el diálogo ya
+ * no tiene tamaño propio: medir contra él sería circular.
+ *
+ * container-type: inline-size NO se toca: es lo que hace que los textos en
+ * cqw escalen junto con el lienzo. Al achicarse el certificado, todo su
+ * contenido se achica en bloque. */
+.certificado {
+  --cromoAlto: 270px;
+
+  container-type: inline-size;
+  position: relative;
+  flex: 0 0 auto;
+  width: calc((96vh - var(--cromoAlto)) * 1.4144);
+  max-width: calc(96vw - 40px);
+  aspect-ratio: 2000 / 1414;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+/* En móvil el pie apila nota y botón, y el aviso ocupa más renglones. */
+@media (max-width: 767px) {
+  .certificado {
+    --cromoAlto: 330px;
+  }
+}
+
+/* La plantilla se rota -90° para verse derecha.
+ *
+ * Al rotar se intercambian ancho y alto, así que las medidas van cruzadas y
+ * expresadas en porcentaje puro (sin unidades de container query, para no
+ * depender de container-type: size):
+ *
+ *   alto del lienzo  H = W × 1414/2000 = 0.7070 W
+ *   layout width  = H = 70.70% del ancho del lienzo
+ *   layout height = W = H / 0.7070 = 141.44% del alto del lienzo
+ *
+ * Rotada, su ancho visual pasa a ser W y su alto visual H: llena el lienzo
+ * exactamente, sin recortes ni bandas.
+ */
+.plantilla {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70.7%;
+  height: 141.44%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+  user-select: none;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* ==================================================================
+   CAJAS DE DATOS VARIABLES
+   Cada campo tiene caja propia: el largo de uno nunca desplaza a otro.
+   Todas se centran verticalmente sobre su línea con translateY(-50%), de
+   modo que al pasar a dos líneas crecen hacia arriba y hacia abajo por
+   igual y no empujan la leyenda de abajo.
+   ================================================================== */
+
+/* Todos los datos variables comparten el mismo tratamiento tipográfico:
+ * misma familia, mismo color y misma negrita que el nombre, el título y la
+ * resolución. Así el certificado se lee parejo y se distingue de un vistazo
+ * lo impreso en la plantilla de lo que se completa.
+ *
+ * Sobre el centrado vertical: las cajas se centran en la línea de su leyenda
+ * con translateY(-50%). Como el dato variable tiene un cuerpo mayor que la
+ * leyenda impresa, centrarlo deja su base más abajo que la de la leyenda; por
+ * eso los porcentajes están calibrados algo por encima de la línea medida, y
+ * no exactamente sobre ella. */
+.caja {
+  position: absolute;
+  color: #111827;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: break-word;
+  transform: translateY(-50%);
+}
+
+/* NOMBRE y TÍTULO: el componente decide cuántas líneas según el largo y
+   aplica una de estas dos clases. Por defecto una sola línea; dos sólo
+   cuando el texto es tan largo que una obligaría a un cuerpo ilegible.
+   Nunca tres: pisaría la leyenda de abajo. */
+.unaLinea {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dosLineas {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* El resto va SIEMPRE en una línea.
+ *
+ * Modalidad, días y carga horaria comparten dos renglones separados por sólo
+ * 3.3% de alto: si cualquiera pasa a dos líneas, invade el de al lado. Por eso
+ * el componente calcula el cuerpo para que el texto entre en el ancho de su
+ * caja, y acá se impide el salto de línea. */
+.modalidadBox,
+.cargaHorariaBox,
+.resolucionBox,
+.fechaBox,
+.dniBox {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Línea: "Que el/la Profesor/a  ⟨NOMBRE⟩ ,  D.N.I Nº ⟨DNI⟩" ------ */
+
+/* El hueco va desde el final de "Que el/la Profesor/a" (31%) hasta el
+   comienzo de ", D.N.I Nº" (69%). */
+/* Usa el MISMO cuerpo que el DNI. Para que un nombre largo entre igual, el
+   span interno se comprime en horizontal (ver .nombreTexto) en lugar de
+   recortarse o bajar de cuerpo. Por eso no lleva elipsis. */
+.nombreBox {
+  top: 36%;
+  left: 32%;
+  width: 36.5%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* La escala la calcula el componente: 1 cuando el nombre entra cómodo, y
+   sólo por debajo de 1 cuando hay que angostarlo. La altura de letra no
+   cambia nunca. */
+.nombreTexto {
+  display: inline-block;
+  white-space: nowrap;
+  transform-origin: center center;
+}
+
+/* Caja independiente: el DNI no se mueve aunque el nombre use dos líneas. */
+.dniBox {
+  top: 35.9%;
+  left: 78%;
+  width: 15%;
+  text-align: left;
+}
+
+/* --- Debajo de "Participó y aprobó el curso denominado" -------------- */
+
+/* Hueco entre esa leyenda (40.7%) y la línea de Modalidad (49.9%).
+   Centrado algo por encima del medio para repartir el crecimiento a dos
+   líneas sin acercarse al renglón de Modalidad. */
+.tituloBox {
+  top: 44.7%;
+  left: 17%;
+  width: 66%;
+  text-align: center;
+}
+
+/* --- Línea: "Modalidad ⟨MOD⟩ , desarrollada durante los días, ⟨DÍAS⟩" - */
+
+.modalidadBox {
+  top: 49.7%;
+  left: 18%;
+  width: 12.5%;
+  text-align: center;
+}
+
+/* Ancho máximo disponible: desde el final de ", desarrollada durante los
+   días," (53.5%) hasta el comienzo de ", en la Ciudad de San" (75.2%).
+ *
+ * Fuera del grupo con elipsis a propósito: el rango debe verse COMPLETO.
+ * En lugar de recortarlo o bajarle el cuerpo, el span interno se comprime
+ * horizontalmente (ver .diasTexto), de modo que la altura de letra siga
+ * siendo la misma que la del DNI. */
+.diasBox {
+  top: 49.9%;
+  left: 51.8%;
+  width: 22%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Compresión horizontal pura: no toca el font-size, así que la altura de
+   letra queda idéntica a la del DNI; sólo se angostan los caracteres. */
+.diasTexto {
+  display: inline-block;
+  white-space: nowrap;
+  transform: scaleX(0.74);
+  transform-origin: center center;
+}
+
+/* --- Línea: "… con una carga Horaria de ⟨CARGA⟩  Con Evaluación Final." */
+
+.cargaHorariaBox {
+  top: 53%;
+  left: 52.5%;
+  width: 23.5%;
+  text-align: center;
+}
+
+/* --- Línea: "… a través de Resolución S.P.E. Nº ⟨RESOLUCIÓN⟩" --------- */
+
+/* Pegada al final de la leyenda (71.9%) para que se lea como parte de la
+   misma oración y no como un dato suelto. */
+.resolucionBox {
+  top: 65.1%;
+  left: 72.6%;
+  width: 15%;
+  text-align: left;
+}
+
+/* --- Línea: "El presente certificado se expide … a los ⟨FECHA⟩" ------- */
+
+/* Baja respecto del ajuste anterior: centrada en 68.7% su base quedaba por
+   encima de la de la leyenda, y el dato se leía flotando sobre el renglón.
+   A 69.5% la base se apoya sobre la línea de "…a los". */
+.fechaBox {
+  top: 69.3%;
+  left: 69.5%;
+  width: 21%;
+  text-align: left;
+}
+
+/* --- QR: margen derecho, debajo de la fecha ------------------------- */
+
+/* Zona libre de la plantilla: la firma está abajo a la izquierda (hasta
+   ~34% del ancho) y la línea de la fecha queda por encima. Los límites son
+   el marco decorativo: la columna derecha arranca en ~96% del ancho y la
+   fila inferior en ~91% del alto. La caja va de 81% a 94.5% en horizontal
+   y de 71.5% a 90.6% en vertical: por debajo de la fecha, que termina en
+   ~71.1%, y sin tocar el recuadro. */
+.qrBox {
+  position: absolute;
+  top: 71.4%;
+  right: 8.5%;
+  width: 14.3%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px dashed #94a3b8;
+  border-radius: 4px;
+}
+
+.qrTexto {
+  font-size: 3cqw;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ==================================================================
+   AVISO Y PIE DEL DIÁLOGO
+   ================================================================== */
+
+.avisoPosiciones {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.pie {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.notaPie {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.botonPie {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #1d4ed8;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonPie:hover {
+  background: #1e40af;
+}
+
+.botonPie:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+@media (min-width: 768px) {
+  .contenido {
+    padding: 16px;
+  }
+
+  .pie {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
