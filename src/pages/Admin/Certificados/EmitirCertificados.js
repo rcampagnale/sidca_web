@@ -1,12 +1,12 @@
 // src/pages/Admin/Certificados/EmitirCertificados.js
 //
-// Pestaña EMITIR — etapa de preparación.
+// Pestaña EMITIR.
 //
 // Flujo:
 //   1. Elegir entre los certificados YA CONFIGURADOS.
 //   2. GET configuración -> datos documentales para el preview.
 //   3. GET aprobados      -> lista real, resuelta por el backend.
-//   4. Buscar y previsualizar.
+//   4. Buscar, previsualizar y EMITIR el certificado de un participante.
 //
 // La fuente NO es la colección "cursos": eso es lo que usa Configurar, cuya
 // finalidad es justamente elegir qué curso configurar. Emitir sólo puede
@@ -23,13 +23,18 @@
 // ni decide quién está aprobado; sólo muestra lo que responde el backend
 // autenticado.
 //
-// Esta etapa NO emite: no genera QR, token, código ni PDF, y no escribe nada.
+// La EMISIÓN ya es real: POST /admin/emision/:cursoId/emitir registra el
+// certificado en Firestore a través del backend, que vuelve a verificar todo
+// por su cuenta (aprobación, exclusión, datos, doble emisión) y arma el
+// snapshot con lo que él mismo lee. El frontend sólo envía usuarioDocId.
+// Todavía NO se genera PDF ni QR gráfico: eso llega en la etapa siguiente.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog } from "primereact/dialog";
 
 import {
   eliminarConfiguracionCertificado,
+  emitirCertificado,
   excluirUsuarioEmision,
   obtenerAprobadosCurso,
   obtenerConfiguracionCertificado,
@@ -92,6 +97,29 @@ const esGestionable = (participante) =>
 const MOTIVO_NO_GESTIONABLE =
   "No se puede gestionar la emisión porque este registro no está asociado a un usuario.";
 
+/**
+ * Para EMITIR el criterio es más estricto que para previsualizar.
+ *
+ * Un registro con datos incompletos se puede mirar, pero no se puede emitir:
+ * saldría un certificado oficial sin DNI o sin nombre. El backend lo rechaza
+ * igual con 409; acá se evita el viaje y se explica el motivo.
+ */
+const esEmitible = (participante) =>
+  Boolean(participante?.usuarioDocId) && participante?.estado === "aprobado";
+
+const MOTIVO_DATOS_INCOMPLETOS =
+  "No se puede emitir porque los datos del participante están incompletos.";
+
+const MOTIVO_YA_EMITIDO =
+  "Este participante ya tiene un certificado emitido. La anulación se gestionará desde Emitidos.";
+
+/** Mensaje del backend que indica inequívocamente una emisión ya existente. */
+const esErrorYaEmitido = (error) =>
+  error?.status === 409 &&
+  String(error?.message || "")
+    .toLowerCase()
+    .includes("ya tiene un certificado vigente");
+
 const EmitirCertificados = ({ notificar }) => {
   const [configuraciones, setConfiguraciones] = useState([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -118,6 +146,24 @@ const EmitirCertificados = ({ notificar }) => {
 
   const [quitandoUsuario, setQuitandoUsuario] = useState("");
   const [quitandoCurso, setQuitandoCurso] = useState(false);
+
+  // Emisión en curso. Sirve para el estado del botón y para que un doble
+  // click no dispare dos POST.
+  const [emitiendoUsuario, setEmitiendoUsuario] = useState("");
+
+  // Emitidos durante ESTA sesión de pantalla. Es sólo comodidad de UX: la
+  // autoridad sigue siendo el backend, que responde 409 si ya existe un
+  // certificado vigente. Al recargar la página este registro se pierde y el
+  // backend vuelve a ser el único que decide.
+  const [emitidosSesion, setEmitidosSesion] = useState(() => new Set());
+
+  const marcarEmitido = useCallback((usuarioDocId) => {
+    setEmitidosSesion((previos) => {
+      const siguiente = new Set(previos);
+      siguiente.add(usuarioDocId);
+      return siguiente;
+    });
+  }, []);
 
   // Lista de certificados configurados. Se pide una sola vez al abrir la
   // pestaña; el filtrado del selector es en memoria.
@@ -261,6 +307,82 @@ const EmitirCertificados = ({ notificar }) => {
       setParticipantePreview(participante);
     },
     [puedePrevisualizar, notificar]
+  );
+
+  /**
+   * Emite el certificado del participante.
+   *
+   * Registra la emisión REAL en Firestore a través del backend. Todavía no
+   * genera PDF ni QR gráfico: eso llega en la etapa siguiente.
+   *
+   * Las comprobaciones de acá son de UX —evitan viajes inútiles y explican el
+   * motivo—. La seguridad real está en el backend, que vuelve a verificar
+   * aprobación, exclusiones, datos y doble emisión por su cuenta.
+   */
+  const emitirParticipante = useCallback(
+    async (participante) => {
+      if (!curso || !configuracion || !participante) return;
+      if (!esEmitible(participante)) return;
+      if (emitidosSesion.has(participante.usuarioDocId)) return;
+      if (emitiendoUsuario) return;
+
+      const confirmado = window.confirm(
+        `¿Emitir el certificado de "${participante.apellidoNombre}"?\n\n` +
+          `DNI: ${formatearDni(participante.dni)}\n\n` +
+          "Esta acción registrará un certificado oficial SIDCA para esta capacitación.\n\n" +
+          "Todavía no se generará el PDF ni la descarga; en esta etapa se registrará " +
+          "la emisión y su código de validación.\n\n¿Continuar?"
+      );
+
+      if (!confirmado) return;
+
+      setEmitiendoUsuario(participante.usuarioDocId);
+
+      try {
+        const emision = await emitirCertificado(
+          curso.id,
+          participante.usuarioDocId
+        );
+
+        if (!emision?.certificadoId || !emision?.token || !emision?.urlValidacion) {
+          throw new Error(
+            "El servidor no devolvió los datos de la emisión. Verificá en Emitidos antes de reintentar."
+          );
+        }
+
+        marcarEmitido(participante.usuarioDocId);
+
+        notificar?.(
+          "success",
+          "Certificado emitido",
+          `El certificado de ${participante.apellidoNombre} fue registrado correctamente.`
+        );
+      } catch (e) {
+        // Si el backend avisa que YA existe un certificado vigente, se marca
+        // igual como emitido: reintentar sólo repetiría el mismo 409. No se
+        // hace ante cualquier 409 — excluido, curso apartado o datos
+        // incompletos son situaciones distintas y corregibles.
+        if (esErrorYaEmitido(e)) {
+          marcarEmitido(participante.usuarioDocId);
+        }
+
+        notificar?.(
+          "error",
+          "No se pudo emitir el certificado",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setEmitiendoUsuario("");
+      }
+    },
+    [
+      curso,
+      configuracion,
+      emitidosSesion,
+      emitiendoUsuario,
+      marcarEmitido,
+      notificar,
+    ]
   );
 
   /**
@@ -447,8 +569,9 @@ const EmitirCertificados = ({ notificar }) => {
         footer={
           <div className={styles.modalPie}>
             <p className={styles.notaGuardado}>
-              Esta etapa sólo previsualiza. La emisión con QR y código de
-              certificado todavía no está habilitada.
+              Podés previsualizar y emitir certificados individuales. La
+              generación del PDF y el QR gráfico se incorporará en la
+              siguiente etapa.
             </p>
 
             <button
@@ -625,9 +748,18 @@ const EmitirCertificados = ({ notificar }) => {
                                     }
                                     disabled={
                                       quitandoUsuario ===
-                                      participante.usuarioDocId
+                                        participante.usuarioDocId ||
+                                      emitidosSesion.has(
+                                        participante.usuarioDocId
+                                      )
                                     }
-                                    title="Deja de aparecer para emitir. No borra al usuario ni su aprobación."
+                                    title={
+                                      emitidosSesion.has(
+                                        participante.usuarioDocId
+                                      )
+                                        ? MOTIVO_YA_EMITIDO
+                                        : "Deja de aparecer para emitir. No borra al usuario ni su aprobación."
+                                    }
                                   >
                                     {quitandoUsuario ===
                                     participante.usuarioDocId
@@ -689,7 +821,13 @@ const EmitirCertificados = ({ notificar }) => {
                               className={emitir.botonQuitar}
                               onClick={() => quitarParticipante(participante)}
                               disabled={
-                                quitandoUsuario === participante.usuarioDocId
+                                quitandoUsuario === participante.usuarioDocId ||
+                                emitidosSesion.has(participante.usuarioDocId)
+                              }
+                              title={
+                                emitidosSesion.has(participante.usuarioDocId)
+                                  ? MOTIVO_YA_EMITIDO
+                                  : undefined
                               }
                             >
                               {quitandoUsuario === participante.usuarioDocId
@@ -717,6 +855,18 @@ const EmitirCertificados = ({ notificar }) => {
         abierto={Boolean(participantePreview)}
         participante={participantePreview}
         configuracion={configuracion}
+        puedeEmitir={esEmitible(participantePreview)}
+        motivoNoEmitir={
+          participantePreview?.estado === "datos_incompletos"
+            ? MOTIVO_DATOS_INCOMPLETOS
+            : ""
+        }
+        emitiendo={emitiendoUsuario === participantePreview?.usuarioDocId}
+        emitido={Boolean(
+          participantePreview?.usuarioDocId &&
+            emitidosSesion.has(participantePreview.usuarioDocId)
+        )}
+        onEmitir={() => emitirParticipante(participantePreview)}
         onCerrar={() => setParticipantePreview(null)}
       />
     </>

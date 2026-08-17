@@ -235,6 +235,32 @@ export const reincluirUsuarioEmision = async (cursoId, usuarioDocId) => {
 };
 
 /**
+ * Emite el certificado de UN participante.
+ *
+ * Lo único que viaja es usuarioDocId: a quién emitir. El backend vuelve a
+ * verificar todo por su cuenta —aprobación real, exclusiones, existencia del
+ * usuario, datos completos, doble emisión— y arma el snapshot con los datos
+ * que él mismo lee de Firestore. Nada de lo que muestra esta pantalla llega
+ * al documento emitido.
+ *
+ * Devuelve el objeto `emision` con certificadoId, token y urlValidacion.
+ * Todavía no se usan para nada visual: el QR y el PDF vienen después.
+ */
+export const emitirCertificado = async (cursoId, usuarioDocId) => {
+  const datos = await pedir(
+    `/admin/emision/${encodeURIComponent(cursoId)}/emitir`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        usuarioDocId: String(usuarioDocId || "").trim(),
+      }),
+    }
+  );
+
+  return datos?.emision || null;
+};
+
+/**
  * Elimina la configuración de certificado de un curso.
  *
  * Borra únicamente el documento certificados/{cursoId}. El curso académico,

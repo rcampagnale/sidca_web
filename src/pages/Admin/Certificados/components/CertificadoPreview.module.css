@@ -399,7 +399,21 @@
   color: #64748b;
 }
 
-.botonPie {
+/* Envuelve Emitir + Cerrar. En pantallas angostas se apilan a ancho
+   completo; el botón nunca queda recortado ni el footer genera scroll
+   horizontal. */
+.pieBotones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pieBotones > button {
+  flex: 1 1 auto;
+}
+
+/* Acción principal del diálogo: emitir el certificado. */
+.botonEmitir {
   min-height: 44px;
   padding: 0 18px;
   font-size: 0.95rem;
@@ -411,13 +425,46 @@
   cursor: pointer;
 }
 
-.botonPie:hover {
+.botonEmitir:hover:not(:disabled) {
   background: #1e40af;
+}
+
+.botonEmitir:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.botonEmitir:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Cerrar pasa a ser la acción secundaria: Emitir es ahora el foco principal
+   del diálogo. */
+.botonPie {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.botonPie:hover:not(:disabled) {
+  background: #e2e8f0;
 }
 
 .botonPie:focus-visible {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
+}
+
+.botonPie:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 @media (min-width: 768px) {
@@ -429,5 +476,9 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .pieBotones > button {
+    flex: 0 0 auto;
   }
 }

@@ -135,8 +135,27 @@ const CertificadoPreview = ({
   configuracion,
   plantilla = null,
   onCerrar,
+  onEmitir,
+  emitiendo = false,
+  emitido = false,
+  puedeEmitir = true,
+  motivoNoEmitir = "",
 }) => {
   if (!participante || !configuracion) return null;
+
+  // Mientras se está emitiendo se evita el cierre accidental: ni Escape ni
+  // click en el fondo ni el botón Cerrar. No bloquea el resto de la app,
+  // sólo impide perder de vista el resultado de una operación en curso.
+  const manejarCierre = () => {
+    if (emitiendo) return;
+    onCerrar?.();
+  };
+
+  const botonEmitirDeshabilitado = emitiendo || emitido || !puedeEmitir;
+
+  let textoBotonEmitir = "Emitir certificado";
+  if (emitiendo) textoBotonEmitir = "Emitiendo…";
+  else if (emitido) textoBotonEmitir = "Certificado emitido";
 
   const fuentePlantilla = plantilla?.url || plantillaCertificado;
 
@@ -231,11 +250,12 @@ const fsResolucion = escalarUnaLinea(
   return (
     <Dialog
       visible={Boolean(abierto)}
-      onHide={onCerrar}
+      onHide={manejarCierre}
       modal
       blockScroll
       draggable={false}
-      dismissableMask
+      dismissableMask={!emitiendo}
+      closeOnEscape={!emitiendo}
       className={styles.dialogo}
       style={ESTILO_DIALOGO}
       contentClassName={styles.contenido}
@@ -248,13 +268,31 @@ const fsResolucion = escalarUnaLinea(
       footer={
         <div className={styles.pie}>
           <p className={styles.notaPie}>
-            Vista previa sobre la plantilla real. No genera QR ni certificado
-            emitido, y no guarda nada.
+            {emitido
+              ? "Emisión registrada correctamente. El QR y la descarga se incorporarán en la siguiente etapa."
+              : "Revisá los datos antes de emitir el certificado."}
           </p>
 
-          <button type="button" className={styles.botonPie} onClick={onCerrar}>
-            Cerrar
-          </button>
+          <div className={styles.pieBotones}>
+            <button
+              type="button"
+              className={styles.botonEmitir}
+              onClick={onEmitir}
+              disabled={botonEmitirDeshabilitado}
+              title={!puedeEmitir && motivoNoEmitir ? motivoNoEmitir : undefined}
+            >
+              {textoBotonEmitir}
+            </button>
+
+            <button
+              type="button"
+              className={styles.botonPie}
+              onClick={manejarCierre}
+              disabled={emitiendo}
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       }
     >
