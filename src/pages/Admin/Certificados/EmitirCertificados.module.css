@@ -398,3 +398,133 @@
 .tarjeta .botonRecuperar {
   width: 100%;
 }
+
+/* ============================================================
+   EMISIÓN MASIVA — confirmación y resumen
+   ============================================================ */
+
+.pieConfirmacion {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* En pantallas angostas los botones se apilan a ancho completo, igual que en
+   el resto de los diálogos del módulo. */
+.pieConfirmacion > * {
+  flex: 1 1 auto;
+}
+
+@media (min-width: 480px) {
+  .pieConfirmacion > * {
+    flex: 0 0 auto;
+  }
+}
+
+/* Cifras del antes y el después. Etiqueta a la izquierda, número a la
+   derecha, para poder leerlas en columna de un vistazo. */
+.resumenConfirmacion {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.resumenConfirmacion > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.resumenConfirmacion dt {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.resumenConfirmacion dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: right;
+}
+
+.erroresMasiva {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+}
+
+.erroresMasivaTitulo {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.erroresMasivaLista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  /* Una tanda grande puede fallar en varios: la lista scrollea sola en vez de
+     estirar el diálogo fuera de la pantalla. */
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.erroresMasivaLista li {
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: #7f1d1d;
+  overflow-wrap: anywhere;
+}
+
+.erroresMasivaLista strong {
+  color: #991b1b;
+}
+
+/* ============================================================
+   PDF MASIVO — progreso
+   ============================================================ */
+
+.barraProgreso {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.barraProgresoRelleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #2563eb;
+  /* El ancho lo fija el porcentaje real del trabajo; la transición sólo evita
+     que salte de golpe entre dos consultas. */
+  transition: width 0.4s ease;
+}
+
+.progresoCifras {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 16px;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.progresoCifras strong {
+  font-size: 1.35rem;
+  color: #111827;
+}

@@ -694,4 +694,133 @@
     flex: 1 1 auto;
     margin-right: auto;
   }
+
+  /* Las etiquetas no se parten: "Emitir 35 certificados" o "Quitar curso de
+     emisión" partidos en dos renglones dentro del botón se leen mal. Si no
+     entran, el pie envuelve el botón entero. */
+  .modalPie .botonPrimario,
+  .modalPie .botonSecundario {
+    white-space: nowrap;
+  }
+}
+
+/* El pie de Emitir tiene cuatro acciones. Entre 768px y 1199px la nota se
+   lleva su propio renglón: compartiendo línea comprimía los botones hasta
+   cortarles el texto. Desde 1200px entran todos en una sola línea. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .modalPie .notaGuardado {
+    flex: 1 1 100%;
+    margin-right: 0;
+  }
+}
+
+/* ============================================================
+   INSTITUCIÓN DEL CERTIFICADO
+   Dos tarjetas seleccionables. No es texto libre: el valor viaja a
+   Firestore y determina la plantilla, así que un typo rompería el
+   certificado sin aviso.
+   ============================================================ */
+
+.listaInstituciones {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.institucionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 60px;
+  padding: 12px 14px;
+  text-align: left;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.institucionCard:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.institucionCard:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.institucionCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.institucionCardActiva {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.institucionEtiqueta {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.institucionDetalle {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+/* ============================================================
+   AUTORIDADES DEL CERTIFICADO
+   Exactamente dos posiciones fijas, sólo texto. Sin agregar,
+   eliminar, mover ni subir imágenes: el modelo de firmas con
+   imagen quedó fuera del flujo.
+   ============================================================ */
+
+.listaAutoridades {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.autoridadCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.autoridadOrden {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+
+/* Informativo, no error: guardar el borrador incompleto está permitido. */
+.avisoAutoridades {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 9px;
+}
+
+@media (min-width: 768px) {
+  .listaInstituciones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .listaAutoridades {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

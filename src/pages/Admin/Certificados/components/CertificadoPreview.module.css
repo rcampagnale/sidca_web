@@ -133,6 +133,15 @@
   .certificado {
     --cromoAlto: 275px;
   }
+
+  /* En el diálogo móvil el lienzo es necesariamente más pequeño. Reducimos
+     sólo la tipografía del preview para que las autoridades entren sin
+     invadir el QR; la captura PDF agrega .pdfCapture y conserva la escala de
+     escritorio. */
+  .previewOnly:not([data-pdf-capture]) .autoridadNombre { font-size: 52% !important; }
+  .previewOnly:not([data-pdf-capture]) .autoridadCargo { font-size: 46% !important; }
+  .previewOnly:not([data-pdf-capture]) .autoridadOrganismo { font-size: 40% !important; }
+  .previewOnly:not([data-pdf-capture]) .autoridadReferencia { font-size: 34% !important; }
 }
 
 /* La plantilla se rota -90° para verse derecha.
@@ -374,6 +383,93 @@
   background: rgba(248, 250, 252, 0.92);
   border: 1px dashed #94a3b8;
   border-radius: 4px;
+}
+
+/* --- AUTORIDADES: izquierda y centro, a la altura del QR -------------
+ *
+ * Reemplazan a las firmas con imagen: ahora sólo texto, hasta cuatro
+ * renglones (nombre, cargo, organismo y referencia). Los renglones vacíos no
+ * se renderizan, así que una autoridad sin referencia no deja hueco.
+ *
+ * Las dos plantillas comparten estas coordenadas — no hay CSS por
+ * institución. Arrancan en 20% en vez de pegadas al margen porque la
+ * plantilla ITM trae un sello impreso abajo a la izquierda que llega hasta
+ * el 17% del ancho; con 20% las dos quedan limpias.
+ *
+ * Reparto horizontal, sin solapes:
+ *   autoridad 1 : 20% → 44%
+ *   autoridad 2 : 48% → 72%
+ *   QR          : 77.2% → 91.5%   (sin tocar)
+ */
+.autoridadBox {
+  position: absolute;
+  top: 75%;
+  width: 24%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08cqw;
+  text-align: center;
+  color: #111827;
+}
+
+.autoridad1Box {
+  left: 20%;
+}
+
+.autoridad2Box {
+  left: 48%;
+}
+
+/* Los cuatro renglones — nombre, cargo, organismo y referencia — comparten
+   base: negrita, centrados y SIN recorte.
+   Nada de text-overflow: ellipsis ni -webkit-line-clamp acá: un dato
+   institucional cortado en "…Calidad Educati..." es un certificado mal
+   emitido. Si no entra, entra más chico, nunca truncado.
+   El cuerpo lo calcula el componente en cqw según el largo real del texto;
+   estas clases sólo fijan peso, interlínea y color. */
+.autoridadNombre {
+  color: #111827;
+  font-size: 70% !important;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.autoridadCargo {
+  color: #111827;
+  font-size: 60% !important;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.autoridadOrganismo {
+  color: #1f2937;
+  font-size: 50% !important;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.autoridadReferencia {
+  color: #1f2937;
+  font-size: 40% !important;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.autoridadNombre {
+  color: #111827;
+}
+
+.autoridadCargo {
+  color: #111827;
+}
+
+.autoridadOrganismo {
+  color: #1f2937;
+}
+
+.autoridadReferencia {
+  color: #1f2937;
 }
 
 /* Con QR real se quita la decoración de placeholder: el borde punteado

@@ -134,16 +134,24 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
     dias: String(datos?.dias || "").trim(),
     fecha: String(datos?.fecha || "").trim(),
     modalidad: String(datos?.modalidad || "").trim(),
-    firmas: (Array.isArray(datos?.firmas) ? datos.firmas : []).map(
-      (firma, indice) => ({
-        nombre: String(firma?.nombre || "").trim(),
-        cargo: String(firma?.cargo || "").trim(),
-        imagenUrl: String(firma?.imagenUrl || "").trim(),
-        imagenPublicId: String(firma?.imagenPublicId || "").trim(),
-        proveedor: String(firma?.proveedor || "cloudinary").trim(),
-        orden: Number.isInteger(firma?.orden) ? firma.orden : indice + 1,
-      })
-    ),
+
+    // Determina la plantilla institucional. Se envía el valor semántico, no
+    // el nombre del PNG: el asset es un detalle del frontend.
+    institucionCertificado:
+      datos?.institucionCertificado === "itm" ? "itm" : "sidca",
+
+    // Autoridades en TEXTO, hasta cuatro renglones. Nada de imagenUrl,
+    // imagenPublicId, proveedor ni plantillas: el modelo de firmas con imagen
+    // quedó fuera del flujo.
+    autoridades: (Array.isArray(datos?.autoridades) ? datos.autoridades : [])
+      .slice(0, 2)
+      .map((autoridad, indice) => ({
+        nombre: String(autoridad?.nombre || "").trim(),
+        cargo: String(autoridad?.cargo || "").trim(),
+        organismo: String(autoridad?.organismo || "").trim(),
+        referencia: String(autoridad?.referencia || "").trim(),
+        orden: indice + 1,
+      })),
   };
 
   const respuesta = await pedir(
@@ -197,12 +205,18 @@ export const obtenerAprobadosCurso = async (cursoId) => {
       duplicados: 0,
     },
     participantes: Array.isArray(datos?.participantes)
-      ? datos.participantes
+      ? datos.participantes.map((participante) => ({
+          ...participante,
+          certificadoEmitido: participante?.certificadoEmitido === true,
+        }))
       : [],
     // Apartados de la emisión. Conservan su aprobación y se recuperan con
     // reincluirUsuarioEmision().
     participantesExcluidos: Array.isArray(datos?.participantesExcluidos)
-      ? datos.participantesExcluidos
+      ? datos.participantesExcluidos.map((participante) => ({
+          ...participante,
+          certificadoEmitido: participante?.certificadoEmitido === true,
+        }))
       : [],
   };
 };
@@ -269,6 +283,14 @@ export const obtenerEmisionVigenteCertificado = async (
   }
 };
 
+export const obtenerCertificadosEmitidosCurso = async (cursoId) => {
+  const datos = await pedir(
+    `/admin/emision/${encodeURIComponent(cursoId)}/emitidos`,
+    { method: "GET" }
+  );
+  return Array.isArray(datos?.emisiones) ? datos.emisiones : [];
+};
+
 /**
  * Emite el certificado de UN participante.
  *
@@ -293,6 +315,42 @@ export const emitirCertificado = async (cursoId, usuarioDocId) => {
   );
 
   return datos?.emision || null;
+};
+
+/**
+ * Emite de una sola vez a todos los aprobados elegibles que todavía no tienen
+ * certificado vigente.
+ *
+ * NO viaja ninguna lista de participantes: sólo el cursoId, en la URL. Quién
+ * corresponde emitir lo decide el backend releyendo el padrón, no lo que esta
+ * pantalla tenga cargado. Manda por el mismo `pedir()` que el resto, así que
+ * usa el Firebase ID Token administrativo de siempre; no hay una segunda
+ * autenticación.
+ *
+ * NO genera el PDF masivo: eso es `iniciarPdfMasivo`, que sólo lee lo ya
+ * emitido.
+ *
+ * Devuelve el resumen: emitidos, yaEmitidos, candidatos, omitidos y errores.
+ * Nunca tokens ni URLs de validación.
+ */
+export const emitirCertificadosMasivamente = async (cursoId) => {
+  const datos = await pedir(
+    `/admin/emision/${encodeURIComponent(cursoId)}/emitir-masivo`,
+    { method: "POST" }
+  );
+
+  return {
+    emitidos: Number(datos?.emitidos || 0),
+    yaEmitidos: Number(datos?.yaEmitidos || 0),
+    candidatos: Number(datos?.candidatos || 0),
+    totalAprobados: Number(datos?.totalAprobados || 0),
+    omitidos: {
+      apartados: Number(datos?.omitidos?.apartados || 0),
+      datosIncompletos: Number(datos?.omitidos?.datosIncompletos || 0),
+      sinUsuario: Number(datos?.omitidos?.sinUsuario || 0),
+    },
+    errores: Array.isArray(datos?.errores) ? datos.errores : [],
+  };
 };
 
 /**
@@ -345,4 +403,39 @@ export const mostrarCursoEmision = async (cursoId) => {
 export const verificarAdministradorCertificados = async () => {
   const datos = await pedir("/admin/health", { method: "GET" });
   return Boolean(datos?.administrador);
+};
+
+export const iniciarPdfMasivo = async (cursoId) => (await pedir(`/admin/pdf-masivo/${encodeURIComponent(cursoId)}/iniciar`, { method: "POST" }))?.trabajo || null;
+export const obtenerEstadoPdfMasivo = async (cursoId, jobId) => (await pedir(`/admin/pdf-masivo/${encodeURIComponent(cursoId)}/${encodeURIComponent(jobId)}`, { method: "GET" }))?.trabajo || null;
+export const obtenerPdfMasivoActual = async (cursoId) => (await pedir(`/admin/pdf-masivo/${encodeURIComponent(cursoId)}/actual`, { method: "GET" }))?.trabajo || null;
+/**
+ * Descarga el PDF ya generado.
+ *
+ * No usa `pedir()` porque la respuesta es binaria, pero manda el mismo ID
+ * Token administrativo.
+ *
+ * El mensaje sale del backend cuando lo hay. Antes cualquier respuesta que no
+ * fuera 200 —401, 403, 409, 500, 502— se traducía a "el PDF todavía no está
+ * disponible", que en la mitad de los casos era falso y ocultaba la causa real
+ * durante la depuración.
+ */
+export const descargarPdfMasivo = async (cursoId, jobId) => {
+  const token = await obtenerIdToken();
+  const response = await fetch(
+    `${API_BASE_URL}/admin/pdf-masivo/${encodeURIComponent(cursoId)}/${encodeURIComponent(jobId)}/descargar`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!response.ok) {
+    const detalle = await response.json().catch(() => null);
+
+    throw new Error(
+      detalle?.error ||
+        (response.status === 409
+          ? "El PDF masivo todavía no está disponible."
+          : `No se pudo descargar el PDF (error ${response.status}).`)
+    );
+  }
+
+  return response.blob();
 };

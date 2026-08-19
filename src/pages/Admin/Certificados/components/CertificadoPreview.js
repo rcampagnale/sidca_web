@@ -27,8 +27,108 @@ import React from "react";
 import { Dialog } from "primereact/dialog";
 import QRCode from "react-qr-code";
 
-import plantillaCertificado from "../../../../assets/constancia/certificadocursosidca.png";
+import plantillaSidca from "../../../../assets/constancia/certificadocursosidca.png";
+import plantillaITM from "../../../../assets/constancia/certificadoITM.png";
 import styles from "./CertificadoPreview.module.css";
+
+/**
+ * Plantilla según la institución. Ambas son 1414×2000 con el contenido
+ * apaisado rotado, así que comparten el mismo sistema de coordenadas.
+ */
+const PLANTILLAS = {
+  sidca: plantillaSidca,
+  itm: plantillaITM,
+};
+
+/** Toda configuración sin institución explícita es SIDCA. */
+const normalizarInstitucion = (valor) => (valor === "itm" ? "itm" : "sidca");
+
+/**
+ * Autoridades a imprimir, con compatibilidad hacia el modelo anterior.
+ *
+ * Prioridad:
+ *   1. snapshot del emitido  — manda siempre que exista.
+ *   2. configuración actual  — para el preview previo a emitir.
+ *   3. firmas legacy         — sólo nombre y cargo; las imágenes se ignoran.
+ *
+ * Devuelve siempre dos posiciones para que el layout no se descoloque cuando
+ * falta una.
+ *
+ * Los cuatro textos se leen con `|| ""`: las autoridades emitidas o guardadas
+ * antes de que existieran organismo y referencia no traen esos campos, y las
+ * firmas legacy nunca los tuvieron. Quedan vacíos y el renglón no se dibuja.
+ */
+const resolverAutoridades = (emision, configuracion) => {
+  const desdeEmision = emision?.certificado?.autoridades;
+  const desdeConfig = configuracion?.autoridades;
+  const legacy =
+    emision?.certificado?.firmas || configuracion?.firmas || null;
+
+  const origen =
+    (Array.isArray(desdeEmision) && desdeEmision.length ? desdeEmision : null) ||
+    (Array.isArray(desdeConfig) && desdeConfig.length ? desdeConfig : null) ||
+    (Array.isArray(legacy) ? legacy : []);
+
+  return [0, 1].map((indice) => ({
+    nombre: String(origen[indice]?.nombre || "").trim(),
+    cargo: String(origen[indice]?.cargo || "").trim(),
+    organismo: String(origen[indice]?.organismo || "").trim(),
+    referencia: String(origen[indice]?.referencia || "").trim(),
+  }));
+};
+
+/**
+ * Reglas de cada renglón de autoridad.
+ *
+ * `cuerpo` es un tamaño FIJO por tipo de línea, no derivado del largo del
+ * texto. Ese es el punto: el criterio anterior calculaba el cuerpo dividiendo
+ * el ancho de la caja por los caracteres, así que la línea más larga —el
+ * nombre— terminaba siendo la más chica y la jerarquía quedaba al revés.
+ * Ahora un organismo largo se resuelve envolviéndolo, sin arrastrar al resto
+ * del bloque.
+ *
+ * `lineas` es cuántos renglones puede ocupar: nombre y cargo van en uno,
+ * organismo y referencia admiten dos. Quien lo hace cumplir es el CSS, al
+ * envolver el texto dentro del ancho de la caja.
+ */
+const RENGLONES_AUTORIDAD = [
+  {
+    campo: "nombre",
+    clase: "autoridadNombre",
+    cuerpo: 1.55,
+    lineas: 1,
+  },
+  {
+    campo: "cargo",
+    clase: "autoridadCargo",
+    cuerpo: 1.25,
+    lineas: 1,
+  },
+  { campo: "organismo", clase: "autoridadOrganismo", cuerpo: 1.1, lineas: 2 },
+  { campo: "referencia", clase: "autoridadReferencia", cuerpo: 1.0, lineas: 2 },
+];
+
+/**
+ * Renglones a imprimir de una autoridad: en orden y sin vacíos.
+ *
+ * Filtrar los vacíos acá es lo que evita el hueco vertical cuando falta, por
+ * ejemplo, la referencia.
+ *
+ * El cuerpo sale tal cual de RENGLONES_AUTORIDAD, sin recalcularse por largo
+ * de texto: cada tipo de línea conserva su jerarquía y un organismo largo se
+ * resuelve envolviéndolo. Ningún renglón lleva elipsis.
+ */
+const lineasAutoridad = (autoridad, estilos) =>
+  RENGLONES_AUTORIDAD.map((renglon) => {
+    const texto = String(autoridad[renglon.campo] || "").trim();
+    if (!texto) return null;
+
+    return {
+      clase: estilos[renglon.clase],
+      texto,
+      fontSize: `${renglon.cuerpo.toFixed(2)}cqw`,
+    };
+  }).filter(Boolean);
 
 /** Formatea el DNI sólo para mostrarlo. El valor original no se toca. */
 const formatearDni = (dni) => {
@@ -170,7 +270,22 @@ const CertificadoPreview = ({
   else if (emitido) textoBotonEmitir = "Certificado emitido";
   else if (consultandoEmision) textoBotonEmitir = "Verificando emisión…";
 
-  const fuentePlantilla = plantilla?.url || plantillaCertificado;
+  // La plantilla la decide la INSTITUCIÓN, nunca el título, la categoría ni
+  // ningún texto del curso.
+  //
+  // El snapshot del emitido tiene prioridad sobre la configuración actual: un
+  // certificado emitido como ITM debe seguir viéndose como ITM aunque después
+  // se cambie la institución del curso. El certificado es un documento
+  // histórico, no un reflejo de la configuración de hoy.
+  const institucionCertificado = normalizarInstitucion(
+    emision?.certificado?.institucionCertificado ||
+      configuracion?.institucionCertificado
+  );
+
+  const fuentePlantilla =
+    plantilla?.url || PLANTILLAS[institucionCertificado] || plantillaSidca;
+
+  const autoridades = resolverAutoridades(emision, configuracion);
 
   const nombre = participante.apellidoNombre || "—";
   const titulo = configuracion.titulo || "—";
@@ -327,7 +442,7 @@ const escalaResolucion = Math.min(
           entre el encabezado y el pie, y el certificado se dimensiona contra
           él. No afecta nada del diseño interno. */}
       <div className={styles.previewViewport}>
-      <div className={styles.certificado}>
+      <div className={`${styles.certificado} ${styles.previewOnly}`}>
         <img
           src={fuentePlantilla}
           alt=""
@@ -417,6 +532,41 @@ const escalaResolucion = Math.min(
           >
             {fecha}
           </div>
+
+          {/* Zona inferior: AUTORIDAD 1 (izquierda) · AUTORIDAD 2 (centro) ·
+              QR (derecha). Las tres comparten renglón y no se solapan.
+
+              Las cajas arrancan en 20% —y no pegadas al margen— porque la
+              plantilla ITM tiene un sello impreso abajo a la izquierda que
+              llega hasta el 17% del ancho. Con las mismas coordenadas las dos
+              plantillas quedan limpias, sin CSS por institución. */}
+          {autoridades.map((autoridad, indice) => {
+            // Hasta cuatro renglones, pero sólo los que tienen contenido: una
+            // autoridad sin referencia no debe dejar un espacio en blanco
+            // debajo del organismo.
+            const lineas = lineasAutoridad(autoridad, styles);
+
+            if (!lineas.length) return null;
+
+            return (
+              <div
+                key={indice}
+                className={`${styles.autoridadBox} ${
+                  indice === 0 ? styles.autoridad1Box : styles.autoridad2Box
+                }`}
+              >
+                {lineas.map((linea) => (
+                  <span
+                    key={linea.clase}
+                    className={linea.clase}
+                    style={{ fontSize: linea.fontSize }}
+                  >
+                    {linea.texto}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
 
           {/* Zona del QR: margen derecho, por debajo de la fecha y a la altura
               del bloque de firma, que está a la izquierda.

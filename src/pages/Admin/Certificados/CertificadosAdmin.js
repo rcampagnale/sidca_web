@@ -7,7 +7,8 @@
 //   2. Buscar la configuración existente en el backend.
 //        200 -> se carga el borrador guardado.
 //        404 -> formulario nuevo con el título precargado.
-//   3. Completar los datos documentales y las firmas.
+//   3. Elegir la institución, completar los datos documentales y las dos
+//      autoridades (nombre y cargo, en texto — ya no hay firmas con imagen).
 //   4. Guardar mediante PUT; el documento queda en certificados/{cursoId}.
 //
 // Toda escritura pasa por sidca-chatbot-backend, que verifica el Firebase ID
@@ -29,11 +30,17 @@ import {
   guardarConfiguracionCertificado,
   obtenerConfiguracionCertificado,
 } from "../../../services/certificadosService";
+import AutoridadesCertificado, {
+  AUTORIDADES_VACIAS,
+  normalizarDosAutoridades,
+} from "./AutoridadesCertificado";
 import EmitirCertificados from "./EmitirCertificados";
-import FirmasCertificado from "./FirmasCertificado";
 import FormularioCertificado, {
   CAMPOS_CERTIFICADO,
 } from "./FormularioCertificado";
+import InstitucionCertificado, {
+  normalizarInstitucion,
+} from "./InstitucionCertificado";
 import SelectorCurso from "./SelectorCurso";
 import styles from "./CertificadosAdmin.module.css";
 
@@ -62,7 +69,12 @@ const CertificadosAdmin = () => {
   const [modalConfigurarVisible, setModalConfigurarVisible] = useState(false);
 
   const [form, setForm] = useState(FORM_VACIO);
-  const [firmas, setFirmas] = useState([]);
+
+  // Institución y autoridades viven fuera de `form` porque no son campos de
+  // texto del formulario: una es una elección entre dos, la otra una lista.
+  const [institucionCertificado, setInstitucionCertificado] = useState("sidca");
+  const [autoridades, setAutoridades] = useState(AUTORIDADES_VACIAS);
+
   const [errores, setErrores] = useState({});
 
   const [configuracion, setConfiguracion] = useState(null);
@@ -101,7 +113,14 @@ const CertificadosAdmin = () => {
             fecha: existente.fecha || "",
             modalidad: existente.modalidad || "",
           });
-          setFirmas(Array.isArray(existente.firmas) ? existente.firmas : []);
+          // Configuraciones anteriores no traen institución: caen en "sidca".
+          setInstitucionCertificado(
+            normalizarInstitucion(existente.institucionCertificado)
+          );
+
+          // El backend ya resolvió el fallback desde las firmas legacy; acá
+          // sólo se completan las dos posiciones fijas.
+          setAutoridades(normalizarDosAutoridades(existente.autoridades));
 
           notificar(
             "info",
@@ -110,12 +129,14 @@ const CertificadosAdmin = () => {
           );
         } else {
           setForm({ ...FORM_VACIO, titulo: cursoElegido.titulo || "" });
-          setFirmas([]);
+          setInstitucionCertificado("sidca");
+          setAutoridades(normalizarDosAutoridades([]));
         }
       } catch (error) {
         // No se deja el formulario a medio cargar: se vuelve al estado neutro.
         setForm({ ...FORM_VACIO, titulo: cursoElegido.titulo || "" });
-        setFirmas([]);
+        setInstitucionCertificado("sidca");
+        setAutoridades(normalizarDosAutoridades([]));
         notificar(
           "error",
           "No se pudo consultar la configuración",
@@ -151,15 +172,13 @@ const CertificadosAdmin = () => {
       }
     });
 
-    firmas.forEach((firma, indice) => {
-      if (!String(firma.nombre || "").trim() || !String(firma.cargo || "").trim()) {
-        nuevos.firmas = `Completá nombre y cargo de la firma ${indice + 1}.`;
-      }
-    });
+    // Las autoridades NO se validan acá: la configuración se guarda como
+    // borrador y puede quedar incompleta. Quien exige las dos completas es el
+    // backend, al emitir. AutoridadesCertificado muestra un aviso informativo.
 
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
-  }, [form, firmas]);
+  }, [form]);
 
   const guardar = useCallback(async () => {
     if (!curso) return;
@@ -178,11 +197,18 @@ const CertificadosAdmin = () => {
     try {
       const guardada = await guardarConfiguracionCertificado(curso.id, {
         ...form,
-        firmas,
+        institucionCertificado,
+        autoridades,
       });
 
       setConfiguracion(guardada);
-      if (guardada?.firmas) setFirmas(guardada.firmas);
+
+      if (guardada) {
+        setInstitucionCertificado(
+          normalizarInstitucion(guardada.institucionCertificado)
+        );
+        setAutoridades(normalizarDosAutoridades(guardada.autoridades));
+      }
 
       notificar(
         "success",
@@ -198,7 +224,7 @@ const CertificadosAdmin = () => {
     } finally {
       setGuardando(false);
     }
-  }, [curso, form, firmas, validar, notificar]);
+  }, [curso, form, institucionCertificado, autoridades, validar, notificar]);
 
   /**
    * Cierra el modal y vuelve al listado. No se limpia el curso: así el ítem
@@ -326,6 +352,14 @@ const CertificadosAdmin = () => {
                       </p>
                     )}
 
+                    {/* La institución va primero: define la plantilla, así que
+                        conviene decidirla antes de cargar los datos. */}
+                    <InstitucionCertificado
+                      valor={institucionCertificado}
+                      onCambiar={setInstitucionCertificado}
+                      deshabilitado={guardando}
+                    />
+
                     <FormularioCertificado
                       valores={form}
                       errores={errores}
@@ -333,22 +367,15 @@ const CertificadosAdmin = () => {
                       deshabilitado={guardando}
                     />
 
-                    <FirmasCertificado
-                      firmas={firmas}
-                      onCambiar={setFirmas}
+                    <AutoridadesCertificado
+                      autoridades={autoridades}
+                      onCambiar={setAutoridades}
                       deshabilitado={guardando}
-                      onError={(mensaje) =>
-                        notificar("error", "Imagen de firma", mensaje)
-                      }
                     />
 
-                    {errores.firmas && (
-                      <p className={styles.mensajeError}>{errores.firmas}</p>
-                    )}
-
                     <p className={styles.notaGuardado}>
-                      Se guarda como <strong>borrador</strong>. La emisión de
-                      certificados todavía no está habilitada.
+                      Se guarda como <strong>borrador</strong>. Podés guardar
+                      aunque falten autoridades: se exigen completas al emitir.
                     </p>
                   </>
                 )

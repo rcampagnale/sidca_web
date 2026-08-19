@@ -35,17 +35,31 @@ import { Dialog } from "primereact/dialog";
 import {
   eliminarConfiguracionCertificado,
   emitirCertificado,
+  emitirCertificadosMasivamente,
   excluirUsuarioEmision,
   obtenerAprobadosCurso,
   obtenerConfiguracionCertificado,
   obtenerConfiguracionesCertificado,
   obtenerEmisionVigenteCertificado,
+  iniciarPdfMasivo,
+  obtenerEstadoPdfMasivo,
+  obtenerPdfMasivoActual,
+  descargarPdfMasivo as descargarPdfMasivoArchivo,
   reincluirUsuarioEmision,
 } from "../../../services/certificadosService";
 import CertificadoPreview from "./components/CertificadoPreview";
 import SelectorConfiguracion from "./SelectorConfiguracion";
 import styles from "./CertificadosAdmin.module.css";
 import emitir from "./EmitirCertificados.module.css";
+// La descarga MASIVA ya no se arma en el navegador: la resuelve el Cloud Run
+// Job. Estos helpers siguen en uso para la descarga INDIVIDUAL, que captura el
+// preview en pantalla y no pasa por el Job.
+import {
+  agregarCanvasAPdf,
+  capturarCertificado,
+  crearPdfA4Horizontal,
+  sanitizarNombreArchivo,
+} from "./utils/certificadoPdf";
 
 const DIACRITICOS = new RegExp("[\\u0300-\\u036f]", "g");
 
@@ -55,6 +69,13 @@ const normalizar = (valor) =>
     .replace(DIACRITICOS, "")
     .trim()
     .toLowerCase();
+
+const claveEmision = (cursoId, usuarioDocId) => {
+  const curso = String(cursoId || "").trim();
+  const usuario = String(usuarioDocId || "").trim();
+  if (!curso || !usuario) return "";
+  return `${curso}::${usuario}`;
+};
 
 /** Sólo para mostrar. El DNI almacenado no se modifica. */
 const formatearDni = (dni) => {
@@ -84,6 +105,52 @@ const RESUMEN_VACIO = {
   datosIncompletos: 0,
   duplicados: 0,
   excluidos: 0,
+};
+
+/* ============================================================
+   PDF MASIVO — estado del trabajo
+   ============================================================ */
+
+/** Cada cuánto se pregunta por el trabajo. Dos segundos, no doscientos ms. */
+const PDF_POLLING_MS = 2000;
+
+/**
+ * ¿El trabajo sigue corriendo?
+ *
+ * Se aceptan también los estados del vocabulario anterior para que un trabajo
+ * que quedó en vuelo no se muestre como colgado.
+ */
+const pdfEnCurso = (trabajo) =>
+  ["pendiente", "procesando", "preparando", "generando", "finalizando"].includes(
+    String(trabajo?.estado || "")
+  );
+
+const pdfCompletado = (trabajo) =>
+  ["completado", "listo"].includes(String(trabajo?.estado || ""));
+
+const pdfConError = (trabajo) => String(trabajo?.estado || "") === "error";
+
+/** Milisegundos a mm:ss (o h:mm:ss si pasa de la hora). */
+const formatearDuracion = (ms) => {
+  const total = Math.max(0, Math.round(Number(ms || 0) / 1000));
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.floor((total % 3600) / 60);
+  const segundos = total % 60;
+  const dosDigitos = (valor) => String(valor).padStart(2, "0");
+
+  return horas > 0
+    ? `${horas}:${dosDigitos(minutos)}:${dosDigitos(segundos)}`
+    : `${dosDigitos(minutos)}:${dosDigitos(segundos)}`;
+};
+
+/** Marca de tiempo a "13:21 hs". Devuelve vacío si el backend no la mandó. */
+const formatearHora = (valor) => {
+  if (!valor) return "";
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return "";
+  return `${String(fecha.getHours()).padStart(2, "0")}:${String(
+    fecha.getMinutes()
+  ).padStart(2, "0")} hs`;
 };
 
 /**
@@ -173,11 +240,29 @@ const EmitirCertificados = ({ notificar }) => {
    * el preview de alguien ya emitido. La autoridad sigue siendo el backend.
    */
   const [emisionesSesion, setEmisionesSesion] = useState(() => new Map());
+  const [descargandoUsuario, setDescargandoUsuario] = useState("");
+  const [descargandoMasivo, setDescargandoMasivo] = useState(false);
 
-  const recordarEmision = useCallback((usuarioDocId, emision) => {
+  // PDF masivo. El trabajo vive en Firestore, no en esta pestaña: por eso se
+  // guarda el documento completo del trabajo y no un progreso local. El texto
+  // del botón y el del diálogo salen de ahí.
+  const [trabajoPdf, setTrabajoPdf] = useState(null);
+  const [dialogoPdfVisible, setDialogoPdfVisible] = useState(false);
+  const [bajandoArchivoPdf, setBajandoArchivoPdf] = useState(false);
+
+  // Emisión masiva. Crea certificados oficiales; no tiene nada que ver con la
+  // descarga masiva, que sólo lee lo que ya está emitido.
+  const [emitiendoMasivo, setEmitiendoMasivo] = useState(false);
+  const [confirmarEmisionMasivaVisible, setConfirmarEmisionMasivaVisible] =
+    useState(false);
+  const [resultadoEmisionMasiva, setResultadoEmisionMasiva] = useState(null);
+
+  const recordarEmision = useCallback((cursoId, usuarioDocId, emision) => {
+    const clave = claveEmision(cursoId, usuarioDocId);
+    if (!clave) return;
     setEmisionesSesion((previas) => {
       const siguiente = new Map(previas);
-      siguiente.set(usuarioDocId, emision || null);
+      siguiente.set(clave, emision || null);
       return siguiente;
     });
   }, []);
@@ -189,8 +274,12 @@ const EmitirCertificados = ({ notificar }) => {
    * "ya consultamos y NO está emitido". Por eso se mira el valor y no has().
    */
   const estaEmitido = useCallback(
-    (usuarioDocId) => Boolean(emisionesSesion.get(usuarioDocId)),
-    [emisionesSesion]
+    (participante) => {
+      if (participante?.certificadoEmitido === true) return true;
+      const clave = claveEmision(curso?.id, participante?.usuarioDocId);
+      return clave ? Boolean(emisionesSesion.get(clave)) : false;
+    },
+    [curso?.id, emisionesSesion]
   );
 
   // Lista de certificados configurados. Se pide una sola vez al abrir la
@@ -333,6 +422,55 @@ const EmitirCertificados = ({ notificar }) => {
   }, [participantes, busqueda]);
 
   /**
+   * Participantes a los que la emisión masiva les crearía un certificado.
+   *
+   * La autoridad es `certificadoEmitido`, que viene del backend: es lo que
+   * sabe si existe una emisión vigente, incluso una hecha por otro
+   * administrador en otra pestaña. `emisionesSesion` no sirve como fuente
+   * porque sólo conoce lo que pasó por esta pantalla.
+   *
+   * Los apartados no se cuentan porque ni siquiera están en `participantes`:
+   * viven en `participantesExcluidos`.
+   *
+   * Es una estimación para el botón y la confirmación. Quién se emite de
+   * verdad lo decide el backend releyendo el padrón.
+   */
+  const participantesPendientesEmision = useMemo(
+    () =>
+      participantes.filter(
+        (participante) =>
+          participante?.estado === "aprobado" &&
+          Boolean(participante?.usuarioDocId) &&
+          participante?.certificadoEmitido !== true
+      ),
+    [participantes]
+  );
+
+  const cantidadPendientesEmision = participantesPendientesEmision.length;
+
+  const cantidadYaEmitidos = useMemo(
+    () =>
+      participantes.filter(
+        (participante) => participante?.certificadoEmitido === true
+      ).length,
+    [participantes]
+  );
+
+  // El botón refleja el trabajo real, no un contador local: después de un F5
+  // vuelve a decir el porcentaje que va.
+  const textoBotonPdfMasivo = pdfEnCurso(trabajoPdf)
+    ? `Generando PDF… ${Number(trabajoPdf?.porcentaje || 0)} %`
+    : "Descarga masiva PDF";
+
+  const textoBotonEmisionMasiva = emitiendoMasivo
+    ? "Emitiendo certificados…"
+    : cantidadPendientesEmision === 0
+    ? "Certificados emitidos"
+    : cantidadPendientesEmision === 1
+    ? "Emitir 1 certificado"
+    : `Emitir ${cantidadPendientesEmision} certificados`;
+
+  /**
    * Cierra el modal de Emitir y vuelve al listado.
    *
    * No se limpian configuraciones ni busquedaCurso: el listado y el texto del
@@ -374,7 +512,8 @@ const EmitirCertificados = ({ notificar }) => {
       // Sin usuario no hay emisión posible; y si ya la conocemos, no se
       // vuelve a preguntar.
       if (!curso || !usuarioDocId) return;
-      if (emisionesSesion.has(usuarioDocId)) return;
+      const clave = claveEmision(curso.id, usuarioDocId);
+      if (clave && emisionesSesion.has(clave)) return;
 
       setConsultandoEmisionUsuario(usuarioDocId);
 
@@ -386,7 +525,7 @@ const EmitirCertificados = ({ notificar }) => {
 
         // null = 404 controlado: todavía no emitido. Se registra igual para no
         // repetir la consulta cada vez que se abre el mismo preview.
-        recordarEmision(usuarioDocId, emision);
+        recordarEmision(curso.id, usuarioDocId, emision);
       } catch (e) {
         // Error real de red o servidor. No se cierra el preview: el
         // certificado se sigue viendo, sólo no sabemos si está emitido.
@@ -402,6 +541,198 @@ const EmitirCertificados = ({ notificar }) => {
     [puedePrevisualizar, curso, emisionesSesion, recordarEmision, notificar]
   );
 
+  const descargarPdfIndividual = useCallback(async (participante) => {
+    if (!curso || !estaEmitido(participante) || descargandoUsuario) return;
+    setDescargandoUsuario(participante.usuarioDocId);
+    try {
+      let emision = emisionesSesion.get(claveEmision(curso.id, participante.usuarioDocId));
+      if (!emision) {
+        emision = await obtenerEmisionVigenteCertificado(curso.id, participante.usuarioDocId);
+        recordarEmision(curso.id, participante.usuarioDocId, emision);
+      }
+      setParticipantePreview(participante);
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const elemento = document.querySelector(`.${emitir.certificado}`) || document.querySelector("[class*='certificado']");
+      if (!elemento) throw new Error("No se encontró el lienzo del certificado.");
+      const canvas = await capturarCertificado(elemento);
+      const pdf = crearPdfA4Horizontal();
+      agregarCanvasAPdf(pdf, canvas, true);
+      pdf.save(`Certificado - ${sanitizarNombreArchivo(emision?.participante?.apellidoNombre || participante.apellidoNombre)} - ${sanitizarNombreArchivo(emision?.participante?.dni || participante.dni)}.pdf`);
+    } catch (error) {
+      notificar?.("error", "No se pudo generar el PDF", error?.message || "Error inesperado.");
+    } finally {
+      setDescargandoUsuario("");
+    }
+  }, [curso, emisionesSesion, descargandoUsuario, estaEmitido, recordarEmision, notificar]);
+
+  /**
+   * Descarga el archivo ya generado y lo entrega al navegador.
+   *
+   * El objeto de Storage nunca se nombra desde acá: el backend lo lee del
+   * documento del trabajo. Lo único que viaja es cursoId y jobId.
+   */
+  const bajarArchivoPdf = useCallback(
+    async (trabajo) => {
+      if (!curso?.id || !trabajo?.jobId) return;
+
+      const blob = await descargarPdfMasivoArchivo(curso.id, trabajo.jobId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download =
+        trabajo.nombreArchivo ||
+        `Certificados - ${sanitizarNombreArchivo(curso.titulo)}.pdf`;
+      anchor.click();
+
+      URL.revokeObjectURL(url);
+    },
+    [curso]
+  );
+
+  /**
+   * Lanza la generación. No espera acá: sólo deja el trabajo registrado y
+   * abre el diálogo. El seguimiento lo hace el efecto de polling, que
+   * sobrevive a que este handler termine.
+   *
+   * Pulsar de nuevo con un trabajo en curso no duplica nada: el backend
+   * devuelve el que ya está corriendo.
+   */
+  const descargarPdfMasivo = useCallback(async () => {
+    if (!curso?.id || descargandoMasivo) return;
+
+    setDescargandoMasivo(true);
+
+    try {
+      const trabajo = await iniciarPdfMasivo(curso.id);
+
+      if (!trabajo?.jobId) {
+        throw new Error("No se pudo iniciar la generación del PDF.");
+      }
+
+      setTrabajoPdf(trabajo);
+      setDialogoPdfVisible(true);
+    } catch (error) {
+      setDescargandoMasivo(false);
+      notificar?.(
+        "error",
+        "No se pudo iniciar la descarga masiva",
+        error?.message || "Error inesperado."
+      );
+    }
+  }, [curso, descargandoMasivo, notificar]);
+
+  /**
+   * Recuperación: al abrir un curso se pregunta si tiene un trabajo vigente.
+   *
+   * La generación no vive en la pestaña. Si el administrador recargó, cerró el
+   * navegador o perdió la conexión, al volver encuentra el progreso donde
+   * estaba, o el PDF terminado listo para bajar.
+   */
+  useEffect(() => {
+    if (!curso?.id) {
+      setTrabajoPdf(null);
+      setDialogoPdfVisible(false);
+      return undefined;
+    }
+
+    let activo = true;
+
+    obtenerPdfMasivoActual(curso.id)
+      .then((trabajo) => {
+        if (!activo || !trabajo) return;
+
+        setTrabajoPdf(trabajo);
+
+        if (pdfEnCurso(trabajo)) {
+          setDescargandoMasivo(true);
+          setDialogoPdfVisible(true);
+        }
+      })
+      // Silencioso a propósito: no poder consultar un trabajo previo no es
+      // motivo para molestar al administrador que recién entra al curso.
+      .catch(() => undefined);
+
+    return () => {
+      activo = false;
+    };
+  }, [curso?.id]);
+
+  /**
+   * Polling del trabajo en curso.
+   *
+   * Vive en un efecto y no dentro del handler: así el seguimiento no depende
+   * de que una función siga viva, se limpia solo al desmontar y no puede
+   * dejar dos temporizadores encadenados. Se detiene en cuanto el trabajo
+   * termina, falla o el componente se va.
+   */
+  useEffect(() => {
+    const jobId = trabajoPdf?.jobId;
+
+    if (!curso?.id || !jobId || !pdfEnCurso(trabajoPdf)) return undefined;
+
+    let activo = true;
+    let temporizador = null;
+
+    const consultar = async () => {
+      try {
+        const actualizado = await obtenerEstadoPdfMasivo(curso.id, jobId);
+        if (!activo) return;
+
+        if (actualizado) setTrabajoPdf(actualizado);
+
+        // Reprograma sólo si sigue en curso: nada de intervalos que corren
+        // por su cuenta después de terminar.
+        if (activo && pdfEnCurso(actualizado)) {
+          temporizador = setTimeout(consultar, PDF_POLLING_MS);
+        } else if (activo) {
+          setDescargandoMasivo(false);
+        }
+      } catch (e) {
+        if (!activo) return;
+        // Un fallo puntual de red no cancela el seguimiento: se reintenta.
+        temporizador = setTimeout(consultar, PDF_POLLING_MS);
+      }
+    };
+
+    temporizador = setTimeout(consultar, PDF_POLLING_MS);
+
+    return () => {
+      activo = false;
+      if (temporizador) clearTimeout(temporizador);
+    };
+  }, [curso?.id, trabajoPdf]);
+
+  /** Descarga el PDF terminado desde el diálogo. */
+  const bajarPdfTerminado = useCallback(async () => {
+    if (!trabajoPdf || bajandoArchivoPdf) return;
+
+    setBajandoArchivoPdf(true);
+
+    try {
+      await bajarArchivoPdf(trabajoPdf);
+      setDialogoPdfVisible(false);
+    } catch (error) {
+      notificar?.(
+        "error",
+        "No se pudo descargar el PDF",
+        error?.message || "Error inesperado."
+      );
+    } finally {
+      setBajandoArchivoPdf(false);
+    }
+  }, [trabajoPdf, bajandoArchivoPdf, bajarArchivoPdf, notificar]);
+
+  /**
+   * Reintento tras un fallo. Crea un trabajo NUEVO: el que falló queda como
+   * está, con su mensaje, en lugar de sobrescribirse.
+   */
+  const reintentarPdfMasivo = useCallback(async () => {
+    setTrabajoPdf(null);
+    setDescargandoMasivo(false);
+    await descargarPdfMasivo();
+  }, [descargarPdfMasivo]);
+
   /**
    * Emite el certificado del participante.
    *
@@ -416,7 +747,8 @@ const EmitirCertificados = ({ notificar }) => {
     async (participante) => {
       if (!curso || !configuracion || !participante) return;
       if (!esEmitible(participante)) return;
-      if (emisionesSesion.get(participante.usuarioDocId)) return;
+      const clave = claveEmision(curso.id, participante.usuarioDocId);
+      if (clave && emisionesSesion.get(clave)) return;
       if (emitiendoUsuario) return;
       // Todavía no sabemos si ya existe un certificado: esperar la consulta
       // evita un 409 innecesario.
@@ -448,7 +780,7 @@ const EmitirCertificados = ({ notificar }) => {
 
         // Se guarda la emisión COMPLETA, no sólo la marca: el QR necesita
         // urlValidacion y así aparece de inmediato, sin un GET extra.
-        recordarEmision(participante.usuarioDocId, emision);
+        recordarEmision(curso.id, participante.usuarioDocId, emision);
 
         notificar?.(
           "success",
@@ -467,7 +799,7 @@ const EmitirCertificados = ({ notificar }) => {
               curso.id,
               participante.usuarioDocId
             );
-            if (existente) recordarEmision(participante.usuarioDocId, existente);
+            if (existente) recordarEmision(curso.id, participante.usuarioDocId, existente);
           } catch (errorConsulta) {
             /* si tampoco se puede consultar, queda el mensaje de error */
           }
@@ -602,6 +934,62 @@ const EmitirCertificados = ({ notificar }) => {
   );
 
   /**
+   * Emite certificados oficiales para todos los pendientes del curso.
+   *
+   * No manda la lista de participantes: sólo el cursoId. El backend reconstruye
+   * el padrón y decide a quién emitir, así que lo que esta pantalla tenga
+   * cargado —o desactualizado— no puede provocar una emisión indebida.
+   *
+   * No genera PDF. Eso es la descarga masiva, que sólo lee lo ya emitido.
+   */
+  const emitirMasivamente = useCallback(async () => {
+    if (!curso?.id || emitiendoMasivo) return;
+
+    setEmitiendoMasivo(true);
+
+    try {
+      const resultado = await emitirCertificadosMasivamente(curso.id);
+
+      setResultadoEmisionMasiva(resultado);
+      setConfirmarEmisionMasivaVisible(false);
+
+      // La verdad la tiene el backend: se recarga en vez de marcar a mano
+      // certificadoEmitido, que dejaría la pantalla creyendo cosas que quizá
+      // no ocurrieron. Después de esto los recién emitidos ya vienen con
+      // certificadoEmitido en true, sin necesidad de recargar la página.
+      await recargarAprobados();
+
+      if (resultado.errores.length) {
+        notificar?.(
+          "warn",
+          "Emisión masiva con errores",
+          `Se emitieron ${resultado.emitidos} certificados y ${resultado.errores.length} no pudieron emitirse.`
+        );
+      } else if (resultado.emitidos === 0) {
+        notificar?.(
+          "info",
+          "No había certificados pendientes",
+          "Todos los participantes elegibles ya tenían su certificado emitido."
+        );
+      } else {
+        notificar?.(
+          "success",
+          "Emisión masiva completada",
+          `Se emitieron ${resultado.emitidos} certificados.`
+        );
+      }
+    } catch (e) {
+      notificar?.(
+        "error",
+        "No se pudo completar la emisión masiva",
+        e?.message || "Error inesperado."
+      );
+    } finally {
+      setEmitiendoMasivo(false);
+    }
+  }, [curso, emitiendoMasivo, recargarAprobados, notificar]);
+
+  /**
    * Elimina la configuración de certificado del curso.
    *
    * Borra únicamente certificados/{cursoId}. El curso académico, los usuarios
@@ -711,13 +1099,42 @@ const EmitirCertificados = ({ notificar }) => {
         footer={
           <div className={styles.modalPie}>
             <p className={styles.notaGuardado}>
-              Podés previsualizar y emitir certificados individuales. La
-              generación del PDF y el QR gráfico se incorporará en la
-              siguiente etapa.
+              Podés emitir certificados individualmente o de forma masiva y
+              descargar en PDF los certificados que ya fueron emitidos.
             </p>
+
+            {/* Acción primaria. No emite al pulsarlo: abre la confirmación. */}
+            <button
+              type="button"
+              className={styles.botonPrimario}
+              onClick={() => setConfirmarEmisionMasivaVisible(true)}
+              disabled={
+                emitiendoMasivo || cargando || cantidadPendientesEmision === 0
+              }
+              title="Crea los certificados oficiales de los participantes aprobados que todavía no tienen uno. No genera el PDF."
+            >
+              {textoBotonEmisionMasiva}
+            </button>
 
             <button
               type="button"
+              className={styles.botonSecundario}
+              onClick={
+                // Con una generación en curso, el botón vuelve a abrir el
+                // progreso en vez de intentar lanzar otra. Terminada, sí
+                // inicia una nueva: el conjunto de emitidos pudo cambiar y un
+                // PDF viejo ya no lo representaría.
+                pdfEnCurso(trabajoPdf)
+                  ? () => setDialogoPdfVisible(true)
+                  : descargarPdfMasivo
+              }
+              disabled={descargandoMasivo && !pdfEnCurso(trabajoPdf)}
+              title="Genera el PDF con los certificados ya emitidos. No emite a nadie."
+            >
+              {textoBotonPdfMasivo}
+            </button>
+
+            <button
               className={emitir.botonQuitarCurso}
               onClick={quitarCurso}
               disabled={quitandoCurso || cargando}
@@ -890,6 +1307,15 @@ const EmitirCertificados = ({ notificar }) => {
 
                                   <button
                                     type="button"
+                                    className={emitir.botonPreview}
+                                    onClick={() => descargarPdfIndividual(participante)}
+                                    disabled={!estaEmitido(participante) || descargandoUsuario === participante.usuarioDocId}
+                                  >
+                                    {descargandoUsuario === participante.usuarioDocId ? "Descargando…" : "Descargar PDF"}
+                                  </button>
+
+                                  <button
+                                    type="button"
                                     className={emitir.botonQuitar}
                                     onClick={() =>
                                       quitarParticipante(participante)
@@ -897,10 +1323,10 @@ const EmitirCertificados = ({ notificar }) => {
                                     disabled={
                                       quitandoUsuario ===
                                         participante.usuarioDocId ||
-                                      estaEmitido(participante.usuarioDocId)
+                                      estaEmitido(participante)
                                     }
                                     title={
-                                      estaEmitido(participante.usuarioDocId)
+                                      estaEmitido(participante)
                                         ? MOTIVO_YA_EMITIDO
                                         : "Deja de aparecer para emitir. No borra al usuario ni su aprobación."
                                     }
@@ -962,14 +1388,23 @@ const EmitirCertificados = ({ notificar }) => {
 
                             <button
                               type="button"
+                              className={emitir.botonPreview}
+                              onClick={() => descargarPdfIndividual(participante)}
+                              disabled={!estaEmitido(participante) || descargandoUsuario === participante.usuarioDocId}
+                            >
+                              {descargandoUsuario === participante.usuarioDocId ? "Descargando…" : "Descargar PDF"}
+                            </button>
+
+                            <button
+                              type="button"
                               className={emitir.botonQuitar}
                               onClick={() => quitarParticipante(participante)}
                               disabled={
                                 quitandoUsuario === participante.usuarioDocId ||
-                                estaEmitido(participante.usuarioDocId)
+                                estaEmitido(participante)
                               }
                               title={
-                                estaEmitido(participante.usuarioDocId)
+                                estaEmitido(participante)
                                   ? MOTIVO_YA_EMITIDO
                                   : undefined
                               }
@@ -1101,14 +1536,260 @@ const EmitirCertificados = ({ notificar }) => {
             : ""
         }
         emitiendo={emitiendoUsuario === participantePreview?.usuarioDocId}
-        emitido={estaEmitido(participantePreview?.usuarioDocId)}
+        emitido={estaEmitido(participantePreview)}
         consultandoEmision={
           consultandoEmisionUsuario === participantePreview?.usuarioDocId
         }
-        emision={emisionesSesion.get(participantePreview?.usuarioDocId) || null}
+        emision={
+          curso?.id && participantePreview?.usuarioDocId
+            ? emisionesSesion.get(
+                claveEmision(curso.id, participantePreview.usuarioDocId)
+              ) || null
+            : null
+        }
         onEmitir={() => emitirParticipante(participantePreview)}
         onCerrar={() => setParticipantePreview(null)}
       />
+
+      {/* Progreso del PDF masivo. Los tiempos los calcula el Job y viajan en
+          el documento del trabajo: acá no se inventa ninguna estimación. */}
+      <Dialog
+        visible={dialogoPdfVisible}
+        onHide={() => setDialogoPdfVisible(false)}
+        modal
+        blockScroll
+        draggable={false}
+        style={{ width: "min(520px, 94vw)" }}
+        breakpoints={{ "768px": "96vw" }}
+        header={
+          pdfConError(trabajoPdf)
+            ? "No se pudo generar el PDF masivo"
+            : pdfCompletado(trabajoPdf)
+            ? "PDF masivo listo"
+            : "Generando PDF masivo"
+        }
+        footer={
+          <div className={emitir.pieConfirmacion}>
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setDialogoPdfVisible(false)}
+            >
+              {pdfEnCurso(trabajoPdf) ? "Seguir en segundo plano" : "Cerrar"}
+            </button>
+
+            {pdfConError(trabajoPdf) && (
+              <button
+                type="button"
+                className={styles.botonPrimario}
+                onClick={reintentarPdfMasivo}
+              >
+                Reintentar
+              </button>
+            )}
+
+            {pdfCompletado(trabajoPdf) && (
+              <button
+                type="button"
+                className={styles.botonPrimario}
+                onClick={bajarPdfTerminado}
+                disabled={bajandoArchivoPdf}
+              >
+                {bajandoArchivoPdf ? "Descargando…" : "Descargar PDF"}
+              </button>
+            )}
+          </div>
+        }
+      >
+        {pdfConError(trabajoPdf) ? (
+          <p className={styles.mensajeError}>
+            {trabajoPdf?.error ||
+              "La generación falló. Podés reintentarla; se creará un trabajo nuevo."}
+          </p>
+        ) : (
+          <>
+            <div
+              className={emitir.barraProgreso}
+              role="progressbar"
+              aria-valuenow={Number(trabajoPdf?.porcentaje || 0)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <span
+                className={emitir.barraProgresoRelleno}
+                style={{ width: `${Number(trabajoPdf?.porcentaje || 0)}%` }}
+              />
+            </div>
+
+            <p className={emitir.progresoCifras}>
+              <strong>{Number(trabajoPdf?.porcentaje || 0)} %</strong>
+              <span>
+                {Number(trabajoPdf?.procesados || 0)} de{" "}
+                {Number(trabajoPdf?.total || 0)} certificados
+              </span>
+            </p>
+
+            <dl className={emitir.resumenConfirmacion}>
+              <div>
+                <dt>Tiempo transcurrido</dt>
+                <dd>{formatearDuracion(trabajoPdf?.transcurridoMs)}</dd>
+              </div>
+
+              {/* El Job no informa tiempo restante hasta tener muestra
+                  suficiente; hasta entonces no se muestra la fila. */}
+              {trabajoPdf?.restanteEstimadoMs !== null &&
+                trabajoPdf?.restanteEstimadoMs !== undefined && (
+                  <div>
+                    <dt>Tiempo restante aproximado</dt>
+                    <dd>{formatearDuracion(trabajoPdf.restanteEstimadoMs)}</dd>
+                  </div>
+                )}
+
+              {formatearHora(trabajoPdf?.finalizacionEstimada) && (
+                <div>
+                  <dt>Finalización estimada</dt>
+                  <dd>{formatearHora(trabajoPdf.finalizacionEstimada)}</dd>
+                </div>
+              )}
+            </dl>
+
+            {pdfEnCurso(trabajoPdf) && (
+              <p className={styles.notaGuardado}>
+                Podés cerrar esta ventana: la generación sigue en el servidor y
+                al volver al curso vas a encontrar el progreso donde está.
+              </p>
+            )}
+          </>
+        )}
+      </Dialog>
+
+      {/* Confirmación. La emisión crea documentos irreversibles, así que nunca
+          se dispara con un solo clic. */}
+      <Dialog
+        visible={confirmarEmisionMasivaVisible}
+        onHide={() => {
+          if (emitiendoMasivo) return;
+          setConfirmarEmisionMasivaVisible(false);
+        }}
+        modal
+        blockScroll
+        closeOnEscape={!emitiendoMasivo}
+        dismissableMask={false}
+        draggable={false}
+        style={{ width: "min(520px, 94vw)" }}
+        breakpoints={{ "768px": "96vw" }}
+        header="Confirmar emisión masiva"
+        footer={
+          <div className={emitir.pieConfirmacion}>
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setConfirmarEmisionMasivaVisible(false)}
+              disabled={emitiendoMasivo}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={styles.botonPrimario}
+              onClick={emitirMasivamente}
+              disabled={emitiendoMasivo || cantidadPendientesEmision === 0}
+            >
+              {textoBotonEmisionMasiva}
+            </button>
+          </div>
+        }
+      >
+        <dl className={emitir.resumenConfirmacion}>
+          <div>
+            <dt>Curso</dt>
+            <dd>{curso?.titulo || "Sin título"}</dd>
+          </div>
+          <div>
+            <dt>Pendientes de emitir</dt>
+            <dd>{cantidadPendientesEmision}</dd>
+          </div>
+          <div>
+            <dt>Ya emitidos</dt>
+            <dd>{cantidadYaEmitidos}</dd>
+          </div>
+        </dl>
+
+        <p className={styles.notaGuardado}>
+          Se emitirán certificados oficiales para todos los participantes
+          aprobados y elegibles que todavía no tengan una emisión vigente. Cada
+          certificado tendrá su propio código de validación.
+        </p>
+      </Dialog>
+
+      {/* Resumen posterior. Se muestra siempre, incluso sin errores, para que
+          quede claro qué pasó con cada grupo. */}
+      <Dialog
+        visible={Boolean(resultadoEmisionMasiva)}
+        onHide={() => setResultadoEmisionMasiva(null)}
+        modal
+        blockScroll
+        draggable={false}
+        style={{ width: "min(560px, 94vw)" }}
+        breakpoints={{ "768px": "96vw" }}
+        header="Emisión masiva completada"
+        footer={
+          <div className={emitir.pieConfirmacion}>
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setResultadoEmisionMasiva(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        }
+      >
+        {resultadoEmisionMasiva && (
+          <>
+            <dl className={emitir.resumenConfirmacion}>
+              <div>
+                <dt>Emitidos ahora</dt>
+                <dd>{resultadoEmisionMasiva.emitidos}</dd>
+              </div>
+              <div>
+                <dt>Ya emitidos previamente</dt>
+                <dd>{resultadoEmisionMasiva.yaEmitidos}</dd>
+              </div>
+              <div>
+                <dt>Omitidos</dt>
+                <dd>
+                  {resultadoEmisionMasiva.omitidos.apartados +
+                    resultadoEmisionMasiva.omitidos.datosIncompletos +
+                    resultadoEmisionMasiva.omitidos.sinUsuario}
+                </dd>
+              </div>
+              <div>
+                <dt>Errores</dt>
+                <dd>{resultadoEmisionMasiva.errores.length}</dd>
+              </div>
+            </dl>
+
+            {resultadoEmisionMasiva.errores.length > 0 && (
+              <section className={emitir.erroresMasiva}>
+                <h3 className={emitir.erroresMasivaTitulo}>
+                  No se pudieron emitir
+                </h3>
+                <ul className={emitir.erroresMasivaLista}>
+                  {resultadoEmisionMasiva.errores.map((fallo) => (
+                    <li key={fallo.usuarioDocId}>
+                      <strong>
+                        {fallo.apellidoNombre || fallo.usuarioDocId}
+                      </strong>
+                      <span>{fallo.mensaje}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        )}
+      </Dialog>
     </>
   );
 };
