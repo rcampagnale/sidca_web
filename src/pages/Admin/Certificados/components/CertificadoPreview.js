@@ -23,7 +23,7 @@
 // apaisado normal (2000×1414), de modo que los porcentajes se leen como uno
 // espera al mirar el certificado derecho.
 
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { Dialog } from "primereact/dialog";
 import QRCode from "react-qr-code";
 
@@ -162,8 +162,6 @@ const formatearDni = (dni) => {
 /** Ancho medio de carácter en negrita, en múltiplos del cuerpo. */
 const ANCHO_CAR_NEGRITA = 0.58;
 
-const ANCHO_CAR = ANCHO_CAR_NEGRITA;
-
 /** Ancho de .nombreBox en el CSS. Debe coincidir con el de la hoja de estilos. */
 const ANCHO_CAJA_NOMBRE = 36.5;
 
@@ -209,28 +207,108 @@ const escalarUnaLinea = (texto, anchoCaja, maximo, minimo) =>
  * disponible entre las leyendas de la plantilla es de ~9%, y dos líneas
  * grandes lo desbordan pisando el renglón siguiente.
  */
-const escalarTexto = (
-  texto,
-  anchoCaja,
-  { maximoUna, pisoUna, maximoDos, minimo, anchoCar = ANCHO_CAR }
-) => {
-  const largo = String(texto ?? "").trim().length || 1;
+/**
+ * Banda reservada para el TÍTULO del curso.
+ *
+ * Medida sobre las dos plantillas: la leyenda "Participó y aprobó el curso
+ * denominado" termina en 42,57% del alto (SIDCA) / 41,80% (ITM) y la línea
+ * "Modalidad…" empieza en 49,08% / 48,94%. La intersección que sirve para
+ * ambas va de 42,6% a 48,9%; descontando un resguardo quedan 84 px de 1414,
+ * centrados en 45,76% —de ahí el `top` de .tituloBox—.
+ *
+ * El bloque crece simétrico desde ese centro (la caja lleva
+ * translateY(-50%)), así que con una, dos o tres líneas queda siempre
+ * equilibrado dentro de la banda y nunca toca las leyendas.
+ *
+ * Son las MISMAS constantes que usa certificadoPdfRenderer.ts en el backend:
+ * si se cambian acá hay que cambiarlas allá, o el PDF dejará de reproducir lo
+ * que se ve en pantalla.
+ */
+const TITULO_CUERPO_MAX = 2.3; // cqw
+const TITULO_CUERPO_MIN = 0.9; // cqw
+const TITULO_INTERLINEA = 1.1;
+const TITULO_LINEAS_MAX = 2;
+const TITULO_ALTO_MAX = 4.2; // cqw — 84 px sobre un lienzo de 2000
 
-  const unaLinea = anchoCaja / (largo * anchoCar);
+/**
+ * Ajusta el cuerpo del título midiendo el elemento REAL.
+ *
+ * Contar caracteres no alcanza: una "M" y una "i" no ocupan lo mismo, y el
+ * punto donde el navegador corta por palabras depende del texto concreto. Acá
+ * se prueba un cuerpo, se lee el alto que efectivamente ocupó y se baja hasta
+ * que entra en la banda sin pasar de tres líneas.
+ *
+ * Todo se calcula contra el ancho del contenedor, así que el resultado es el
+ * mismo en cualquier pantalla: no hay valores atados a una resolución. Un
+ * ResizeObserver lo recalcula cuando el preview cambia de tamaño.
+ */
+const useAjusteTitulo = (titulo, abierto) => {
+  const boxRef = useRef(null);
+  const textRef = useRef(null);
 
-  if (unaLinea >= pisoUna) {
-    return {
-      fontSize: `${Math.min(maximoUna, unaLinea).toFixed(2)}cqw`,
-      lineas: 1,
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const elemento = textRef.current;
+    if (!box || !elemento || !abierto) return undefined;
+
+    const ajustar = () => {
+      // offsetParent es el lienzo del certificado: la caja es absoluta y él es
+      // el ancestro posicionado.
+      const contenedor = box.offsetParent;
+      const anchoContenedor = contenedor?.clientWidth || 0;
+      if (!anchoContenedor) return;
+
+      // Cada apertura puede reutilizar el mismo nodo del diálogo. Limpiamos
+      // el cuerpo anterior antes de medir para que un título largo no deje su
+      // tamaño aplicado al siguiente curso.
+      elemento.style.fontSize = "";
+      elemento.style.lineHeight = String(TITULO_INTERLINEA);
+
+      const unidad = anchoContenedor / 100; // 1cqw en píxeles
+      const altoMaximo = box.clientHeight;
+
+      // Los títulos largos necesitan comenzar con un cuerpo más prudente;
+      // los cortos conservan el aumento visual. Después la medición real
+      // sigue ajustando dentro de la banda disponible.
+      const largoTitulo = titulo.trim().length;
+      let cuerpo = largoTitulo > 55
+        ? Math.min(TITULO_CUERPO_MAX, 0.85)
+        : TITULO_CUERPO_MAX;
+
+      // Se mide en píxeles reales para que el resultado sea exacto; el
+      // ResizeObserver mantiene la proporción al cambiar el tamaño.
+      for (;;) {
+        elemento.style.setProperty("font-size", `${cuerpo * unidad}px`, "important");
+
+        elemento.style.lineHeight = String(TITULO_INTERLINEA);
+        const alto = elemento.scrollHeight;
+        const lineas = Math.max(
+          1,
+          Math.round(alto / (cuerpo * unidad * TITULO_INTERLINEA))
+        );
+
+        if (alto <= altoMaximo + 1 && elemento.scrollWidth <= box.clientWidth + 1 && lineas <= TITULO_LINEAS_MAX) break;
+        if (cuerpo <= TITULO_CUERPO_MIN) break;
+
+        cuerpo = Math.max(TITULO_CUERPO_MIN, cuerpo - 0.05);
+      }
     };
-  }
 
-  const dosLineas = anchoCaja / ((largo / 2) * anchoCar);
+    const frame = requestAnimationFrame(ajustar);
 
-  return {
-    fontSize: `${Math.min(maximoDos, Math.max(minimo, dosLineas)).toFixed(2)}cqw`,
-    lineas: 2,
-  };
+    const contenedor = box.offsetParent;
+    if (!contenedor || typeof ResizeObserver === "undefined") return undefined;
+
+    const observador = new ResizeObserver(ajustar);
+    observador.observe(box);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observador.disconnect();
+    };
+  }, [titulo, abierto]);
+
+  return { boxRef, textRef };
 };
 
 const CertificadoPreview = ({
@@ -247,6 +325,15 @@ const CertificadoPreview = ({
   puedeEmitir = true,
   motivoNoEmitir = "",
 }) => {
+  // El título NO se estima por cantidad de caracteres: se mide el elemento
+  // real y se baja el cuerpo hasta que entra en la banda que le deja la
+  // plantilla. Ver useAjusteTitulo.
+  //
+  // Va ANTES del return temprano de abajo: los hooks tienen que ejecutarse en
+  // el mismo orden en cada render, así que no pueden quedar detrás de una
+  // salida condicional.
+  const { boxRef: tituloBoxRef, textRef: tituloTextoRef } = useAjusteTitulo(configuracion?.titulo || "—", abierto);
+
   if (!participante || !configuracion) return null;
 
   // Mientras se está emitiendo se evita el cierre accidental: ni Escape ni
@@ -294,19 +381,6 @@ const CertificadoPreview = ({
   const fecha = configuracion.fecha || "—";
   const modalidad = configuracion.modalidad || "—";
   const resolucion = configuracion.resolucion || "—";
-
-  // Primero se reduce el cuerpo; recién si aún no entra, el texto pasa a una
-  // segunda línea. Nunca hay tercera línea: el hueco de la plantilla no la
-  // admite sin pisar la leyenda siguiente.
-  // Nombre y título: una línea siempre que sea legible; dos sólo si no hay
-  // alternativa. Ambos van en negrita, de ahí el ancho de carácter mayor.
-  const tituloAjuste = escalarTexto(titulo, 66, {
-    maximoUna: 2.6,
-    pisoUna: 1.5,
-    maximoDos: 2.2,
-    minimo: 1.35,
-    anchoCar: ANCHO_CAR_NEGRITA,
-  });
 
   // El resto va SIEMPRE en una línea: los huecos de la plantilla no admiten
   // una segunda sin pisar la leyenda de al lado o la de abajo. Los anchos
@@ -473,14 +547,16 @@ const escalaResolucion = Math.min(
             {formatearDni(participante.dni)}
           </div>
 
-          {/* Debajo de "Participó y aprobó el curso denominado" */}
+          {/* Debajo de "Participó y aprobó el curso denominado".
+              Sin .unaLinea ni .dosLineas: envuelve libremente hasta tres
+              renglones y el cuerpo lo fija useAjusteTitulo tras medirlo, así
+              que no lleva fontSize inline. */}
           <div
-            className={`${styles.caja} ${styles.tituloBox} ${
-              tituloAjuste.lineas === 1 ? styles.unaLinea : styles.dosLineas
-            }`}
-            style={{ fontSize: tituloAjuste.fontSize }}
+            key={`${participante?.usuarioDocId || "participante"}-${titulo}`}
+            ref={tituloBoxRef}
+            className={styles.tituloBox}
           >
-            {titulo}
+            <div ref={tituloTextoRef} className={styles.tituloTexto}>{titulo}</div>
           </div>
 
           {/* Línea "Modalidad … , desarrollada durante los días, …" */}

@@ -54,9 +54,8 @@
 
 /* Wrapper de layout, sin contención: el certificado le da el tamaño. */
 .previewViewport {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  padding: 0;
 }
 
 .encabezado {
@@ -194,8 +193,8 @@
  * no exactamente sobre ella. */
 .caja {
   position: absolute;
-  color: #111827;
-  font-weight: 700;
+  color: #090909;
+  font-weight: 800;
   line-height: 1.15;
   overflow-wrap: break-word;
   transform: translateY(-50%);
@@ -272,11 +271,45 @@
 /* Hueco entre esa leyenda (40.7%) y la línea de Modalidad (49.9%).
    Centrado algo por encima del medio para repartir el crecimiento a dos
    líneas sin acercarse al renglón de Modalidad. */
+/* El centro pasó de 44.7% a 45.76%, que es el centro real del hueco que dejan
+   las dos leyendas impresas —"Participó y aprobó el curso denominado" arriba y
+   "Modalidad…" abajo— en AMBAS plantillas. Como la caja crece simétrica desde
+   su centro (.caja lleva translateY(-50%)), en 44.7% sólo cabía una línea: la
+   segunda se salía por arriba y pisaba la leyenda. Es el único campo que se
+   movió, y es justamente el que estamos corrigiendo.
+
+   Sin recorte de ninguna clase: el título envuelve hasta tres renglones y el
+   cuerpo lo resuelve useAjusteTitulo midiendo el elemento. */
 .tituloBox {
-  top: 44.7%;
+  position: absolute;
+  top: 42.6%;
   left: 17%;
   width: 66%;
+  height: 6.0%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  line-height: 1.1;
+  transform: none;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.tituloTexto {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  color: #090909;
+  font-weight: 900;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  line-height: 1.02;
+  font-size: 80%;
+  max-height: 100%;
+  transform: none;
 }
 
 /* --- Línea: "Modalidad ⟨MOD⟩ , desarrollada durante los días, ⟨DÍAS⟩" - */
