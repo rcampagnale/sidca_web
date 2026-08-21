@@ -19,6 +19,9 @@ import AfiliadosNuevos from "../pages/Admin/AfiliadosNuevos/AfiliadosNuevos";
 import Cursos from "../pages/Admin/Cursos/Cursos";
 import CertificadosAdmin from "../pages/Admin/Certificados/CertificadosAdmin";
 import ValidarCertificadoQr from "../pages/ValidarCertificado/ValidarCertificadoQr";
+import ValidadorCertificados from "../pages/ValidarCertificado/ValidadorCertificados";
+import ValidatorShell from "../pages/ValidarCertificado/components/ValidatorShell";
+import InicioValidador from "../pages/ValidarCertificado/InicioValidador";
 import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
 import Novedades from "../pages/Admin/Novedades/Novedades";
 import NovedadesUser from "../pages/Novedades/Novedades";
@@ -142,6 +145,62 @@ const AppRouter = () => {
           exact
           path="/validar-certificado/:cursoId/:token"
           component={ValidarCertificadoQr}
+        />
+        {/* Páginas informativas de la sesión de validación.
+
+            Van ANTES de /validar-certificados: sin `exact` en aquella, un
+            patrón más general las capturaría.
+
+            No usan PrivateRoute ni AdminRoute: esos guards miran la sesión del
+            afiliado y la del panel, no validatorAuth. La protección la aplica
+            ValidatorShell, que espera a que Firebase restaure la sesión y
+            redirige a /validar-certificados si no hay ninguna utilizable.
+
+            El contenido se reutiliza tal cual; Nosotros recibe modoValidador
+            para ocultar los accesos que pertenecen al afiliado. */}
+        {/* Inicio del validador: la misma portada de /home —imagen
+            institucional, Convenios Comercio y Convenios Hoteles—, sin la
+            lógica de cuotas del afiliado.
+
+            Ojo: la RAÍZ /validar-certificados no es el inicio, es el escáner
+            QR. La portada vive en /inicio. */}
+        <Route
+          exact
+          path="/validar-certificados/inicio"
+          component={InicioValidador}
+        />
+        <Route
+          exact
+          path="/validar-certificados/nosotros"
+          render={() => (
+            <ValidatorShell>
+              <Nosotros modoValidador />
+            </ValidatorShell>
+          )}
+        />
+        <Route
+          exact
+          path="/validar-certificados/convenios"
+          render={() => (
+            <ValidatorShell>
+              <Convenio />
+            </ValidatorShell>
+          )}
+        />
+        <Route
+          exact
+          path="/validar-certificados/contacto"
+          render={() => (
+            <ValidatorShell>
+              <Contacto />
+            </ValidatorShell>
+          )}
+        />
+
+        <Route
+          exact
+          path="/validar-certificados"
+          component={ValidadorCertificados}
         />
 
         <Route

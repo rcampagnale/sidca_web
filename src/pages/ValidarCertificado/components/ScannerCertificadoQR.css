@@ -1,0 +1,94 @@
+/* Escáner del validador.
+
+   Las medidas son las MISMAS del escáner administrativo aprobado
+   (Admin/Certificados/ValidarCertificadoQR.module.css), copiadas tal cual.
+   Ese archivo no se toca: acá sólo se replica.
+
+      .camara -> .validadorScanner
+      .mira   -> .validadorScannerGuia
+
+   La única diferencia real entre los dos es el envase: el administrativo vive
+   en una página que scrollea y este va dentro de un modal. Eso se resuelve
+   recortando el cromo del diálogo —cabecera y padding—, NUNCA la cámara: el
+   visor tiene que medir lo mismo en los dos lados. */
+
+.validadorScannerDialog {
+  /* 820 de cámara + el padding lateral reducido de abajo. */
+  width: min(880px, 96vw);
+  /* PrimeReact limita a 90vh por defecto; con 96vh la cámara a tamaño
+     completo entra sin barra de desplazamiento en 1366x768. */
+  max-height: 96vh;
+}
+
+/* Cabecera y contenido con padding ajustado. Es lo que libera el alto que la
+   cámara necesita para conservar sus 820x615 dentro del modal. */
+.validadorScannerDialog .p-dialog-header {
+  padding: 12px 16px;
+}
+
+.validadorScannerDialog .p-dialog-content {
+  padding: 12px 16px 16px;
+}
+
+/* --- Cámara: valores idénticos a .camara del administrativo -------- */
+.validadorScanner {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 4 / 3;
+  margin: 0 auto 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #111827;
+}
+
+.validadorScanner video,
+.validadorScanner video video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* --- Marco QR: valores idénticos a .mira del administrativo -------- */
+.validadorScannerGuia {
+  position: absolute;
+  top: 3%;
+  left: 5%;
+  width: 90%;
+  height: 94%;
+  transform: none;
+  border: 3px solid #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax rgba(17, 24, 39, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.validadorScannerTexto {
+  margin: 0;
+  text-align: center;
+  color: #475569;
+}
+
+.validadorScannerAviso {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  text-align: center;
+  font-weight: 600;
+}
+
+.validadorScannerError { margin-top: 10px; color: #991b1b; text-align: center; }
+.validadorScannerError p { margin: 0 0 8px; }
+.validadorScannerError button { min-height: 40px; padding: .5rem .8rem; border: 1px solid #f59e0b; border-radius: 9px; background: #fcd34d; font-weight: 700; cursor: pointer; }
+
+/* Misma regla móvil que el administrativo. */
+@media (max-width: 768px) {
+  .validadorScannerDialog {
+    width: 96vw;
+  }
+
+  .validadorScanner {
+    width: 100%;
+    max-width: none;
+  }
+}

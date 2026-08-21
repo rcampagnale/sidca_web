@@ -1,0 +1,44 @@
+/* Añadidos propios del header del validador.
+
+   La barra, el logo, la tipografía y el responsive salen de
+   privateHeader.module.scss, que NO se toca: acá sólo va lo que ese header no
+   tiene, para no arrastrar cambios a /home.
+
+   Regla de color: el texto del menú es SIEMPRE blanco, igual que en el header
+   común. El amarillo institucional se usa únicamente como subrayado del ítem
+   activo, nunca para teñir letras ni fondos: si no, la barra deja de parecer
+   una navegación y pasa a parecer una fila de botones. */
+
+/* El menú es enteramente textual, sin iconos: con un solo ítem con icono el
+   rótulo quedaba indentado respecto de los demás y el menú se veía desalineado,
+   sobre todo en el panel móvil. */
+
+/* Sección actual. Subrayado fino y nada más: el color no cambia, y el borde
+   no altera el alto de la línea, así que el menú no se mueve al navegar. */
+.activa {
+  border-bottom: 2px solid #f5b301;
+  padding-bottom: 2px;
+}
+
+/* Hover sin fondo ni cambio de color: sólo una leve atenuación. */
+.itemMenu:hover {
+  opacity: 0.85;
+}
+
+/* --- Panel móvil -------------------------------------------------- */
+
+/* Todos los ítems arrancan en la misma coordenada X: mismo ancho, sin gap ni
+   icono que corra el texto, y sin padding propio —el que corresponda lo pone
+   navUser.module.scss, igual que en el menú del afiliado—.
+   nowrap evita que un rótulo largo se parta letra por letra si el panel
+   quedara angosto. */
+.itemMovil {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+}
+
+/* Misma regla que en escritorio: se marca con el subrayado, no con el color. */
+.itemMovilActivo {
+  border-bottom: 2px solid #f5b301;
+}

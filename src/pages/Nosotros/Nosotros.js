@@ -17,7 +17,14 @@ import img10 from "../../assets/nosotros/somos10.jpg";
 import img11 from "../../assets/nosotros/somos11.png";
 import img12 from "../../assets/nosotros/somos12.png";
 
-const Nosotros = () => {
+/**
+ * `modoValidador` oculta los accesos que pertenecen a la sesión del afiliado
+ * —Turismo, Casa del docente y Predio—, que un validador no puede abrir.
+ *
+ * Es opcional y por defecto false: <Nosotros /> se comporta exactamente igual
+ * que antes en /nosotros.
+ */
+const Nosotros = ({ modoValidador = false }) => {
   const slides = [
     { url: img1, title: "img1-somos" },
     { url: img2, title: "img2-somos" },
@@ -59,30 +66,33 @@ const Nosotros = () => {
         y protegen a educadores del país y el mundo.
       </p>
 
-      {/* Botones abajo del texto */}
-      <div className={styles.btnSection}>
-        <Button
-          icon="pi pi-send"
-          /* Ícono de viajes */
-          label="Turismo"
-          className="p-button-raised p-button-warning"
-          onClick={() => history.push("/turismo")}
-        />
-        <Button
-          icon="pi pi-home"
-          /* Ícono de casa */
-          label="Casa del docente"
-          className="p-button-raised p-button-warning"
-          onClick={() => history.push("/casa-del-docente")}
-        />
-        <Button
-          icon="pi pi-map"
-          /* Ícono de predio */
-          label="Predio"
-          className="p-button-raised p-button-warning"
-          onClick={() => history.push("/predio")}
-        />
-      </div>
+      {/* Botones abajo del texto. Llevan a secciones de la sesión del
+          afiliado, así que no se muestran en modo validador. */}
+      {!modoValidador && (
+        <div className={styles.btnSection}>
+          <Button
+            icon="pi pi-send"
+            /* Ícono de viajes */
+            label="Turismo"
+            className="p-button-raised p-button-warning"
+            onClick={() => history.push("/turismo")}
+          />
+          <Button
+            icon="pi pi-home"
+            /* Ícono de casa */
+            label="Casa del docente"
+            className="p-button-raised p-button-warning"
+            onClick={() => history.push("/casa-del-docente")}
+          />
+          <Button
+            icon="pi pi-map"
+            /* Ícono de predio */
+            label="Predio"
+            className="p-button-raised p-button-warning"
+            onClick={() => history.push("/predio")}
+          />
+        </div>
+      )}
 
       {/* Carrusel */}
       <div className={styles.containerSlides}>

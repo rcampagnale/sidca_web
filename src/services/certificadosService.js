@@ -96,7 +96,7 @@ const pedir = async (ruta, opciones = {}, permitirReintento = true) => {
         MENSAJES_POR_ESTADO[respuesta.status] ||
         "No se pudo completar la operación."
     ),
-    { status: respuesta.status }
+    { status: respuesta.status, datos }
   );
 };
 
@@ -351,6 +351,96 @@ export const emitirCertificadosMasivamente = async (cursoId) => {
     },
     errores: Array.isArray(datos?.errores) ? datos.errores : [],
   };
+};
+
+/**
+ * Comprueba la autenticidad y la vigencia de un certificado emitido.
+ *
+ * Es SÓLO LECTURA: el backend no toca Firestore, únicamente lee el emitido y
+ * responde qué encontró.
+ *
+ * Del QR viajan nada más que los dos datos que identifican el documento; la
+ * URL completa no se envía. Quien decide si el certificado es auténtico es el
+ * backend, nunca el formato del código escaneado.
+ *
+ * Devuelve el objeto `validacion` con `valido`, `estado`, `participante`,
+ * `certificado` y `emitidoEn`. Un 404 —código inexistente— se propaga como
+ * error con `status: 404` para que la pantalla lo distinga de un certificado
+ * real que fue anulado.
+ */
+export const validarCertificadoQR = async (cursoId, token) => {
+  const datos = await pedir(
+    `/validar/${encodeURIComponent(cursoId)}/${encodeURIComponent(token)}`,
+    { method: "GET" }
+  );
+
+  return datos?.validacion ? { ...datos.validacion, verificacion: datos.verificacion || null } : null;
+};
+
+export const obtenerValidadoresCertificados = async () => {
+  const datos = await pedir("/admin/validadores", { method: "GET" });
+  return Array.isArray(datos?.validadores) ? datos.validadores : [];
+};
+
+export const buscarUsuariosValidadores = async (busqueda) => {
+  const datos = await pedir(`/admin/validadores/buscar?q=${encodeURIComponent(busqueda)}`, { method: "GET" });
+  return Array.isArray(datos?.usuarios) ? datos.usuarios : [];
+};
+
+export const obtenerAccesoValidadorCertificados = async (usuarioDocId) => {
+  const datos = await pedir(`/admin/validadores/${encodeURIComponent(usuarioDocId)}/acceso`, { method: "GET" });
+  return datos?.acceso || datos;
+};
+
+export const autorizarValidadorCertificados = async (usuarioDocId, body = {}) => {
+  const datos = await pedir(`/admin/validadores/${encodeURIComponent(usuarioDocId)}`, { method: "PUT", body: JSON.stringify(body) });
+  return datos?.usuario || datos;
+};
+
+export const quitarValidadorCertificados = async (usuarioDocId) => {
+  const datos = await pedir(`/admin/validadores/${encodeURIComponent(usuarioDocId)}`, { method: "DELETE" });
+  return datos;
+};
+
+export const listarRegistroInscriptosAdmin = async (cursoId) => {
+  const datos = await pedir(`/admin/registro-inscriptos/${encodeURIComponent(cursoId)}`, { method: "GET" });
+  return Array.isArray(datos?.archivos) ? datos.archivos : [];
+};
+
+export const listarRegistroInscriptosGlobalAdmin = async () => {
+  const datos = await pedir("/registro-inscriptos", { method: "GET" });
+  return Array.isArray(datos?.cursos) ? datos.cursos : [];
+};
+
+export const subirPlanillasRegistroInscriptos = async (cursoId, archivos) => {
+  if (!Array.isArray(archivos) || !archivos.length || archivos.length > 10) throw new Error("Seleccioná entre 1 y 10 planillas.");
+  const token = await obtenerIdToken();
+  const form = new FormData();
+  archivos.forEach((archivo) => form.append("archivos", archivo));
+  const response = await fetch(`${API_BASE_URL}/admin/registro-inscriptos/${encodeURIComponent(cursoId)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+  const datos = await response.json().catch(() => null);
+  if (!response.ok) throw Object.assign(new Error(datos?.error || "No se pudieron subir las planillas."), { status: response.status });
+  return Array.isArray(datos?.archivos) ? datos.archivos : [];
+};
+
+export const eliminarPlanillaRegistroInscriptos = async (cursoId, archivoId) => {
+  const datos = await pedir(`/admin/registro-inscriptos/${encodeURIComponent(cursoId)}/${encodeURIComponent(archivoId)}`, { method: "DELETE" });
+  return datos;
+};
+
+export const descargarPlanillaRegistroInscriptosAdmin = async (cursoId, archivo) => {
+  const token = await obtenerIdToken();
+  const response = await fetch(`${API_BASE_URL}/registro-inscriptos/${encodeURIComponent(cursoId)}/${encodeURIComponent(archivo.archivoId)}/descargar`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.error || "No se pudo descargar la planilla."); }
+  const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = archivo.nombreOriginal || "planilla.xlsx"; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+};
+
+/** Registra la auditoría de una validación realizada por un administrador. */
+export const registrarValidacionCertificado = async (cursoId, token) => {
+  const datos = await pedir(`/validar/${encodeURIComponent(cursoId)}/${encodeURIComponent(token)}/registrar`, {
+    method: "POST",
+  });
+  return datos?.registro || datos;
 };
 
 /**

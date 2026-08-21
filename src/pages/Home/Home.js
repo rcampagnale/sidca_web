@@ -10,17 +10,41 @@ import "./CarouselDemo.scss";
 import { Carousel } from "primereact/carousel";
 import { Button } from "primereact/button";
 
-const Home = () => {
+/**
+ * `modoValidador` reutiliza esta portada en la sesión de validación de
+ * certificados, que no es la del afiliado.
+ *
+ * Es opcional y por defecto false: <Home /> en /home se comporta exactamente
+ * igual que antes.
+ *
+ * Lo que cambia con true:
+ *   - No corre nada de cuotas ni de retornos de pago: el validador no tiene
+ *     cuotas, y procesar la query de Mercado Pago con su sesión no tendría
+ *     sentido.
+ *   - "Leer más" apunta a los convenios DENTRO del espacio del validador, para
+ *     no sacarlo a una ruta protegida por la sesión común.
+ *
+ * getNovedades() se ejecuta en los dos modos: es de donde salen los Convenios
+ * Comercio y los Convenios Hoteles.
+ */
+const Home = ({ modoValidador = false }) => {
   const dispatch = useDispatch();
   const cuotas = useSelector((state) => state.cuotas);
   const novedades = useSelector((state) => state.novedades);
   const location = useLocation();
+
+  const rutaConvenios = modoValidador
+    ? "/validar-certificados/convenios"
+    : "/convenios";
 
   useEffect(() => {
     dispatch(getNovedades());
   }, [dispatch]);
 
   useEffect(() => {
+    // Retorno de pago: sólo tiene sentido para el afiliado.
+    if (modoValidador) return;
+
     if (location.search) {
       const search = {};
 
@@ -34,9 +58,12 @@ const Home = () => {
 
       dispatch(setUserCuotas(search));
     }
-  }, [location, dispatch]);
+  }, [location, dispatch, modoValidador]);
 
   useEffect(() => {
+    // Avisos de transferencia: también son del afiliado.
+    if (modoValidador) return;
+
     if (cuotas.setTransaccion === "SUCCESS_SET") {
       Swal.fire({
         title: "Transferencia recibida",
@@ -52,7 +79,7 @@ const Home = () => {
         confirmButtonText: "Ok",
       });
     }
-  }, [cuotas.setTransaccion]);
+  }, [cuotas.setTransaccion, modoValidador]);
 
   const responsiveOptions = [
     {
@@ -119,7 +146,7 @@ const Home = () => {
         )}
 
         <footer className="nov-card__footer">
-          <a href="/convenios" className="nov-card__link">
+          <a href={rutaConvenios} className="nov-card__link">
             <Button
               label="Leer más"
               icon="pi pi-arrow-right"

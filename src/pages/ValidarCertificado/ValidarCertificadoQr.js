@@ -28,7 +28,8 @@
 // Pensada para celular: el uso principal es escanear el QR con el teléfono.
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
+import { Dialog } from "primereact/dialog";
 
 import { auth } from "../../firebase/firebase-config";
 import { validatorAuth } from "../../firebase/firebaseCertificadosValidator";
@@ -39,8 +40,12 @@ import {
   registrarActividadValidador,
   sesionValidadorExpirada,
   validarCertificadoQr,
+  registrarCursoValidado,
 } from "../../services/certificadosValidacionService";
+import { registrarValidacionCertificado } from "../../services/certificadosService";
 import styles from "./ValidarCertificadoQr.module.css";
+import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
+import ResultadoValidacionCertificado from "./components/ResultadoValidacionCertificado";
 
 /** Sólo para mostrar. El valor original no se toca. */
 const formatearDni = (dni) => {
@@ -72,6 +77,7 @@ const ETIQUETA_ESTADO = {
 
 const ValidarCertificadoQr = () => {
   const { cursoId, token: certificadoToken } = useParams();
+  const history = useHistory();
 
   // undefined = Firebase todavía no terminó de restaurar esa sesión.
   const [usuarioValidador, setUsuarioValidador] = useState(undefined);
@@ -86,6 +92,9 @@ const ValidarCertificadoQr = () => {
   const [validacion, setValidacion] = useState(null);
   const [errorValidacion, setErrorValidacion] = useState("");
   const [estadoError, setEstadoError] = useState(0);
+  const [registrando, setRegistrando] = useState(false);
+  const [registrado, setRegistrado] = useState(false);
+  const [registroError, setRegistroError] = useState("");
 
   /** Origen de la sesión con la que se validó: "validador" | "principal". */
   const [origenSesion, setOrigenSesion] = useState("");
@@ -124,6 +133,8 @@ const ValidarCertificadoQr = () => {
       setErrorValidacion("");
       setEstadoError(0);
       setValidacion(null);
+      setRegistrado(false);
+      setRegistroError("");
       setOrigenSesion(origen);
 
       try {
@@ -209,6 +220,56 @@ const ValidarCertificadoQr = () => {
     if (usuarioValidador) setPrincipalRechazada(false);
   }, [usuarioValidador]);
 
+  // El resultado de un QR directo se entrega a la pantalla operativa. Se
+  // transporta el snapshot ya resuelto: la ruta destino no vuelve a consultar.
+  useEffect(() => {
+    if (!validacion || validando) return;
+    const estadoActual = String(validacion.estado || "").toLowerCase();
+    const tipo = validacion.valido === true && estadoActual === "vigente"
+      ? "vigente"
+      : estadoActual === "anulado"
+      ? "anulado"
+      : estadoActual === "reemplazado"
+      ? "reemplazado"
+      : "desconocido";
+    const certificadoActual = validacion.certificado || {};
+    const participanteActual = validacion.participante || {};
+    const presentacion = {
+      clase: tipo === "vigente" ? "resultadoValido" : "resultadoReemplazado",
+      icono: tipo === "vigente" ? "✓" : "!",
+      titulo: tipo === "vigente" ? "CERTIFICADO VÁLIDO" : "CERTIFICADO NO VIGENTE",
+      detalle: tipo === "vigente"
+        ? "Este certificado fue emitido por el sistema de certificación SIDCA y se encuentra vigente."
+        : `Este certificado fue emitido por SIDCA, pero su estado actual es ${ETIQUETA_ESTADO[estadoActual] || estadoActual.toUpperCase()}.`,
+    };
+    const filas = [
+      ["Participante", participanteActual.apellidoNombre || "—"],
+      ["DNI", formatearDni(participanteActual.dni)],
+      ["Capacitación", certificadoActual.titulo || certificadoActual.cursoTitulo || "—"],
+      ["Resolución", certificadoActual.resolucion || "—"],
+      ["Modalidad", certificadoActual.modalidad || "—"],
+      ["Carga horaria", certificadoActual.cargaHoraria || "—"],
+      ["Período", certificadoActual.dias || "—"],
+      ["Fecha del certificado", certificadoActual.fecha || "—"],
+      ["Fecha de emisión", formatearFechaEmision(validacion.emitidoEn)],
+      ["Estado", ETIQUETA_ESTADO[estadoActual] || estadoActual.toUpperCase() || "—"],
+      ["Institución", certificadoActual.institucionCertificado || "SIDCA — Sindicato de Docentes de Catamarca"],
+    ];
+    history.replace({
+      pathname: "/validar-certificados",
+      state: {
+        resultadoValidacion: {
+          resultado: { tipo, validacion },
+          cursoId,
+          token: certificadoToken,
+          presentacion,
+          filas,
+          registroInfo: validacion.registroCurso || null,
+        },
+      },
+    });
+  }, [certificadoToken, cursoId, history, validacion, validando]);
+
   const manejarIngreso = async (evento) => {
     evento.preventDefault();
 
@@ -223,6 +284,37 @@ const ValidarCertificadoQr = () => {
       setErrorLogin("No pudimos ingresar. Revisá el correo y la contraseña.");
     } finally {
       setIngresando(false);
+    }
+  };
+
+  const registrarCurso = async () => {
+    const datos = validacion;
+    if (!datos?.cursoId || !datos?.token || registrando || registrado) return;
+    const curso = datos.certificado?.titulo || datos.certificado?.cursoTitulo || "Sin título";
+    const fecha = datos.certificado?.fecha || "Sin fecha";
+    if (!window.confirm(`Vas a registrar el curso:\n\n${curso}\n\nFecha del certificado: ${fecha}\n\n¿Confirmás el registro?`)) return;
+    if (origenSesion === "validador" && !validatorAuth.currentUser) {
+      setRegistroError("La sesión del validador no está disponible.");
+      return;
+    }
+    setRegistrando(true);
+    setRegistroError("");
+    try {
+      const registro = origenSesion === "principal"
+        ? await registrarValidacionCertificado(datos.cursoId, datos.token)
+        : await registrarCursoValidado(datos.cursoId, datos.token, {
+            idToken: await validatorAuth.currentUser.getIdToken(true),
+          });
+      setRegistrado(true);
+      setValidacion((actual) => ({ ...actual, registroCurso: registro }));
+    } catch (e) {
+      if (e?.status === 409) {
+        setValidacion((actual) => ({ ...actual, registroCurso: e?.datos?.registro || e?.datos?.validacion || null }));
+      } else {
+        setRegistroError(e?.message || "Error inesperado.");
+      }
+    } finally {
+      setRegistrando(false);
     }
   };
 
@@ -326,10 +418,13 @@ const ValidarCertificadoQr = () => {
   const estado = String(validacion?.estado || "").toLowerCase();
   const participante = validacion?.participante || {};
   const certificado = validacion?.certificado || {};
+  const registroInfo = validacion?.registroCurso || null;
 
   return (
-    <div className={styles.pagina}>
-      <div className={styles.tarjeta}>
+    <>
+      <ValidatorHeader origenSesion={origenSesion} onSalir={cerrarSesionValidador} />
+      <div className={styles.pagina}>
+       <div className={styles.tarjeta}>
         {encabezado}
 
         {validando && (
@@ -367,7 +462,23 @@ const ValidarCertificadoQr = () => {
             </div>
           )}
 
-        {!validando && validacion && (
+        {!validando && validacion && <ResultadoValidacionCertificado
+          resultado={{ tipo: validacion.valido ? "vigente" : "reemplazado" }}
+          presentacion={{ clase: validacion.valido ? "resultadoValido" : "resultadoReemplazado", icono: validacion.valido ? "✓" : "!", titulo: validacion.valido ? "CERTIFICADO VÁLIDO" : "CERTIFICADO NO VIGENTE", detalle: validacion.valido ? "Este certificado fue emitido por el sistema de certificación SIDCA y se encuentra vigente." : `Este certificado fue emitido por SIDCA, pero su estado actual es ${ETIQUETA_ESTADO[estado] || estado.toUpperCase()}.` }}
+          filas={[["Participante", participante.apellidoNombre || "—"], ["DNI", formatearDni(participante.dni)], ["Capacitación", certificado.titulo || certificado.cursoTitulo || "—"], ["Resolución", certificado.resolucion || "—"], ["Modalidad", certificado.modalidad || "—"], ["Carga horaria", certificado.cargaHoraria || "—"], ["Período", certificado.dias || "—"], ["Fecha del certificado", certificado.fecha || "—"], ["Fecha de emisión", formatearFechaEmision(validacion.emitidoEn)], ["Estado", ETIQUETA_ESTADO[estado] || estado.toUpperCase() || "—"], ["Institución", certificado.institucionCertificado || "SIDCA — Sindicato de Docentes de Catamarca"]]}
+          onEscanearOtro={() => history.replace("/validar-certificados", { autoOpenScanner: true })}
+          onCerrar={() => history.replace("/validar-certificados/inicio")}
+          onRegistrarCurso={validacion.valido ? registrarCurso : undefined}
+          registrado={registrado || Boolean(registroInfo)}
+          registrando={registrando}
+          registroInfo={registroInfo ? {
+            usuario: registroInfo.usuarioNombre || registroInfo.email || registroInfo.registradoPorNombre || "otro usuario",
+            fecha: registroInfo.fecha || registroInfo.registradoEn || "una fecha anterior",
+          } : null}
+          registroError={registroError}
+        />}
+        {false && !validando && validacion && (
+          <Dialog header="Resultado de validación" visible modal closable onHide={() => history.replace("/validar-certificados/inicio")} className={styles.dialogoResultado}>
           <>
             {validacion.valido ? (
               <div className={styles.bloqueValido}>
@@ -461,7 +572,21 @@ const ValidarCertificadoQr = () => {
                 </dd>
               </div>
             </dl>
+            {validacion.verificacion && (
+              <section className={styles.auditoria}>
+                <strong>VALIDACIÓN REALIZADA POR</strong>
+                <span>{validacion.verificacion.validador?.nombre || "—"}</span>
+                <span>{validacion.verificacion.validador?.email || "—"}</span>
+                <strong>FECHA Y HORA DE VALIDACIÓN</strong>
+                <span>{formatearFechaEmision(validacion.verificacion.validadoEn)}</span>
+              </section>
+            )}
+            <div className={styles.accionesDialogo}>
+              <button type="button" className={styles.botonPrimario} onClick={() => history.push("/validar-certificados")}>Validar otro certificado</button>
+              <button type="button" className={styles.botonSecundario} onClick={() => history.replace("/validar-certificados/inicio")}>Ir al inicio</button>
+            </div>
           </>
+          </Dialog>
         )}
 
         <div className={styles.pie}>
@@ -498,8 +623,9 @@ const ValidarCertificadoQr = () => {
             </button>
           )}
         </div>
+       </div>
       </div>
-    </div>
+    </>
   );
 };
 

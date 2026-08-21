@@ -1,0 +1,15 @@
+/* Contenedor de las páginas del validador.
+
+   El scroll vertical lo maneja el documento, no un contenedor interno: nada
+   de height: 100vh ni de overflow hidden acá, que es lo que suele cortar una
+   página larga y obligar a un scroll anidado.
+
+   min-height y no height: la página ocupa al menos el alto libre bajo el
+   header —60px, el alto de la barra— pero crece todo lo que haga falta. */
+.contenido {
+  min-height: calc(100vh - 60px);
+  height: auto;
+  overflow: visible;
+  /* Evita que un hijo con ancho fijo genere desplazamiento horizontal. */
+  max-width: 100%;
+}

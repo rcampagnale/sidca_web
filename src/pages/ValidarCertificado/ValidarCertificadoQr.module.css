@@ -16,6 +16,16 @@
   box-sizing: border-box;
 }
 
+.dialogoResultado { width: min(1050px, 94vw); max-height: 90vh; }
+.auditoria { display: grid; gap: .35rem; margin-top: 1.25rem; padding: 1rem; border: 1px solid #dbe3ef; border-radius: 12px; background: #f8fafc; }
+.auditoria strong { color: #1d4f91; font-size: .78rem; letter-spacing: .04em; }
+.accionesDialogo { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .dialogoResultado { width: 96vw; max-height: 92vh; }
+  .accionesDialogo { flex-direction: column; }
+  .accionesDialogo button { width: 100%; }
+}
+
 .tarjeta {
   width: 100%;
   max-width: 560px;

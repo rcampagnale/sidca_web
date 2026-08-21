@@ -42,14 +42,18 @@ import InstitucionCertificado, {
   normalizarInstitucion,
 } from "./InstitucionCertificado";
 import SelectorCurso from "./SelectorCurso";
+import ValidarCertificadoQR from "./ValidarCertificadoQR";
+import ValidadoresCertificados from "./ValidadoresCertificados";
+import RegistroInscriptos from "./RegistroInscriptos";
 import styles from "./CertificadosAdmin.module.css";
 
 const SECCIONES = [
   { id: "configurar", label: "Configurar", habilitada: true },
   { id: "emitir", label: "Emitir", habilitada: true },
   { id: "emitidos", label: "Emitidos", habilitada: false },
-  { id: "validadores", label: "Validadores", habilitada: false },
-  { id: "validar", label: "Validar QR", habilitada: false },
+  { id: "validadores", label: "Validadores", habilitada: true },
+  { id: "registro", label: "Registro Inscriptos", habilitada: true },
+  { id: "validar", label: "Validar QR", habilitada: true },
 ];
 
 const FORM_VACIO = {
@@ -385,6 +389,10 @@ const CertificadosAdmin = () => {
         )}
 
         {seccion === "emitir" && <EmitirCertificados notificar={notificar} />}
+
+        {seccion === "validar" && <ValidarCertificadoQR notificar={notificar} />}
+        {seccion === "validadores" && <ValidadoresCertificados notificar={notificar} />}
+        {seccion === "registro" && <RegistroInscriptos notificar={notificar} />}
       </div>
     </div>
   );

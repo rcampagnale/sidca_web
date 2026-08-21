@@ -284,7 +284,9 @@ export const validarCertificadoQr = async (
     datos = null;
   }
 
-  if (respuesta.ok) return datos?.validacion || null;
+  if (respuesta.ok) {
+    return datos?.validacion ? { ...datos.validacion, verificacion: datos.verificacion || null } : null;
+  }
 
   if (respuesta.status === 401 && permitirReintento) {
     return validarCertificadoQr(cursoId, certificadoToken, {
@@ -299,4 +301,33 @@ export const validarCertificadoQr = async (
       "No se pudo validar el certificado.",
     respuesta.status
   );
+};
+
+/** Registra el curso usando la misma sesión autorizada que validó el QR. */
+export const registrarCursoValidado = async (
+  cursoId,
+  certificadoToken,
+  { usuarioFirebase, idToken: idTokenInicial, permitirReintento = true } = {}
+) => {
+  if (!API_BASE_URL) throw new Error("Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env.");
+  if (!usuarioFirebase && !idTokenInicial) throw errorValidacion("La sesión del validador no está disponible.", 401);
+
+  const firebaseIdToken = idTokenInicial || await usuarioFirebase.getIdToken(!permitirReintento);
+  const ruta = `/validar/${encodeURIComponent(cursoId)}/${encodeURIComponent(certificadoToken)}/registrar`;
+  let respuesta;
+  try {
+    respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${firebaseIdToken}` },
+    });
+  } catch (error) {
+    throw new Error("No se pudo conectar con el servidor de SIDCA. Revisá tu conexión.");
+  }
+  let datos = null;
+  try { datos = await respuesta.json(); } catch (error) { datos = null; }
+  if (respuesta.ok) return datos?.registro || datos;
+  if (respuesta.status === 401 && permitirReintento) {
+    return registrarCursoValidado(cursoId, certificadoToken, { usuarioFirebase, idToken: idTokenInicial, permitirReintento: false });
+  }
+  throw Object.assign(new Error(datos?.error || "No se pudo registrar el curso."), { status: respuesta.status, datos });
 };
