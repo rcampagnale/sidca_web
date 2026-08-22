@@ -528,3 +528,334 @@
   font-size: 1.35rem;
   color: #111827;
 }
+
+/* ============================================================
+   CONDICIÓN SINDICAL — columna Afiliado
+   ============================================================ */
+
+/* Chip compacto, del mismo peso visual que el de Estado, para que la fila no
+   se desbalancee al agregar una columna. */
+.afiliacion {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Habilitado: cotizante y adherente en condiciones. */
+.afiliacionOk {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+/* Bloqueado: adherente no habilitado. Rojo suave, no alarma. */
+.afiliacionBloqueada {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* Sin poder verificar. Gris: no es un error del participante. */
+.afiliacionNeutra {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+/* En la tarjeta móvil el motivo va escrito: un botón apagado sin explicación
+   no le dice nada a quien administra. */
+.tarjetaAviso {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #b45309;
+  overflow-wrap: anywhere;
+}
+
+/* La columna nueva no puede empujar la tabla hasta provocar desplazamiento
+   horizontal: el chip no se parte y la celda se ajusta a su contenido. */
+.tabla td:nth-child(4),
+.tabla th:nth-child(4) {
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* ============================================================
+   INDICADORES DE AFILIACIÓN — segunda fila
+   ============================================================ */
+
+/* Grilla propia, separada de .indicadores: mezclar las siete tarjetas en el
+   grid de cuatro columnas dejaría la segunda fila en 4 + 3, desbalanceada.
+
+   Móvil: dos columnas, y Cotizantes ocupa el ancho completo debajo.
+   Desde 768px: tres columnas iguales. */
+.indicadoresAfiliacion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.indicadoresAfiliacion > :last-child {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 768px) {
+  .indicadoresAfiliacion {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Con tres columnas cada tarjeta ocupa la suya. */
+  .indicadoresAfiliacion > :last-child {
+    grid-column: auto;
+  }
+}
+
+/* Con muy poco ancho las etiquetas de dos palabras no entran en media
+   columna: una sola por fila antes que texto apretado. */
+@media (max-width: 360px) {
+  .indicadoresAfiliacion {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Acentos. Sobrios: fondo casi blanco y el color sólo en el borde izquierdo y
+   en el número, para que la tarjeta no compita con la tabla. */
+.indicadorNoHabilitado {
+  border-color: #fecaca;
+  border-left: 3px solid #dc2626;
+  background: #fffafa;
+}
+
+.indicadorNoHabilitado .indicadorNumero {
+  color: #b91c1c;
+}
+
+.indicadorHabilitado {
+  border-color: #bbf7d0;
+  border-left: 3px solid #16a34a;
+  background: #fafffb;
+}
+
+.indicadorHabilitado .indicadorNumero {
+  color: #15803d;
+}
+
+.indicadorCotizante {
+  border-color: #bbf7d0;
+  border-left: 3px solid #16a34a;
+  background: #fafffb;
+}
+
+.indicadorCotizante .indicadorNumero {
+  color: #15803d;
+}
+
+/* La etiqueta puede ocupar dos renglones sin que la tarjeta crezca de más ni
+   provoque desplazamiento horizontal. */
+.indicadoresAfiliacion .indicadorEtiqueta {
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+/* ============================================================
+   DESCARGA POR SEGMENTOS GEOGRÁFICOS
+
+   Ocho tarjetas dentro de un diálogo. Una sola columna en el teléfono, dos
+   desde tablet y tres en escritorio: con ocho tarjetas, tres columnas dejan
+   el bloque en tres renglones sin obligar a estirar el diálogo a lo ancho.
+   ============================================================ */
+
+.dialogoSegmentos {
+  width: min(980px, 96vw);
+  max-width: calc(100vw - 16px);
+}
+
+.dialogoSegmentos :global(.p-dialog-content) {
+  max-height: calc(100vh - 190px);
+  max-height: calc(100dvh - 190px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dialogoSegmentos :global(.p-dialog-footer) {
+  overflow-x: hidden;
+}
+
+.segmentosSubtitulo {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.segmentosGrilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .segmentosGrilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .segmentosGrilla {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.segmentoTarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* min-width: 0 para que un nombre de departamento largo se corte en vez de
+     ensanchar la columna y provocar desplazamiento horizontal. */
+  min-width: 0;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.segmentoEncabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.segmentoNombre {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+  overflow-wrap: break-word;
+}
+
+.segmentoDepartamentos {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #64748b;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.segmentoCifras {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.segmentoCifras > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.segmentoCifras dt {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: #4b5563;
+  overflow-wrap: break-word;
+}
+
+.segmentoCifras dd {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Los adherentes no habilitados no son un error, pero sí lo que explica la
+   diferencia entre la planilla y el PDF: se marcan sin alarmar. */
+.segmentoCifraAviso {
+  color: #b91c1c;
+}
+
+.segmentoError {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #991b1b;
+  overflow-wrap: break-word;
+}
+
+.segmentoAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Los botones ocupan el ancho de la tarjeta y se apilan: el texto del botón
+   que está generando es largo —"Generando 34 de 125 — 27 %"— y no entra al
+   lado de otro. */
+.segmentoAcciones > * {
+  flex: 1 1 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+@media (max-width: 639px) {
+  .dialogoSegmentos {
+    width: calc(100vw - 16px);
+    max-width: none;
+    margin: 8px;
+  }
+
+  .dialogoSegmentos :global(.p-dialog-content) {
+    max-height: calc(100vh - 176px);
+    max-height: calc(100dvh - 176px);
+    padding: 12px;
+  }
+
+  .dialogoSegmentos :global(.p-dialog-footer) {
+    padding: 10px 12px;
+  }
+
+  .dialogoSegmentos .pieConfirmacion {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .dialogoSegmentos .pieConfirmacion > * {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  .segmentoTarjeta {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .segmentoCifras > div {
+    align-items: flex-start;
+  }
+
+  .segmentoCifras dt {
+    min-width: 0;
+  }
+
+  .segmentoAcciones {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .segmentoAcciones > * {
+    width: 100%;
+    min-height: 44px;
+  }
+}

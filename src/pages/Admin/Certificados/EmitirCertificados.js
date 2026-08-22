@@ -45,6 +45,12 @@ import {
   obtenerEstadoPdfMasivo,
   obtenerPdfMasivoActual,
   descargarPdfMasivo as descargarPdfMasivoArchivo,
+  obtenerSegmentosPdf,
+  iniciarPdfSegmento,
+  obtenerEstadoPdfSegmento,
+  obtenerPdfSegmentoActual,
+  descargarPdfSegmento as descargarPdfSegmentoArchivo,
+  obtenerDatosExcelSegmento,
   reincluirUsuarioEmision,
 } from "../../../services/certificadosService";
 import CertificadoPreview from "./components/CertificadoPreview";
@@ -78,10 +84,16 @@ const claveEmision = (cursoId, usuarioDocId) => {
 };
 
 /** Sólo para mostrar. El DNI almacenado no se modifica. */
-const formatearDni = (dni) => {
+/**
+ * DNI tal como se muestra en esta pantalla: sólo dígitos, sin separadores.
+ *
+ * Acá se busca y se copia el número para pegarlo en otros sistemas, y los
+ * puntos estorban en las dos cosas. El DNI almacenado no se toca: esto es
+ * presentación.
+ */
+const mostrarDni = (dni) => {
   const limpio = String(dni || "").replace(/\D/g, "");
-  if (!limpio) return "—";
-  return limpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return limpio || "—";
 };
 
 const ETIQUETA_ESTADO = {
@@ -152,6 +164,78 @@ const formatearHora = (valor) => {
     fecha.getMinutes()
   ).padStart(2, "0")} hs`;
 };
+
+/* ============================================================
+   CONDICIÓN SINDICAL
+   ============================================================ */
+
+/**
+ * ¿Puede emitirse o descargarse el certificado de este participante?
+ *
+ * Lo decide el backend, que resuelve la condición contra el padrón con la
+ * misma regla que Admin → Adherentes → Estado. Acá sólo se lee el resultado:
+ * esto es interfaz, no autorización. El backend vuelve a comprobarlo antes de
+ * escribir, así que deshabilitar el botón es una cortesía, no la barrera.
+ *
+ * Ante la ausencia del dato se asume NO habilitado: es más seguro bloquear de
+ * más y que el administrador pregunte, que habilitar por un campo que no llegó.
+ */
+const afiliacionHabilitada = (participante) =>
+  participante?.afiliacion?.habilitadoCertificado === true;
+
+/**
+ * Peso de un participante en el orden de la lista. Menor va primero.
+ *
+ *   0 — Adherente no habilitado: es el único que requiere una gestión antes
+ *       de poder certificar, así que encabeza.
+ *   1 — Adherente habilitado.
+ *   2 — Cotizante.
+ *   3 — No verificado, sin usuario asociado y cualquier caso restante: van al
+ *       final porque no hay nada que hacer con ellos desde acá.
+ *
+ * Se mira el modelo estructurado, nunca la etiqueta visible: comparar contra
+ * el texto "Adherente · No habilitado" ataría el orden a una cadena de la
+ * interfaz, que puede cambiar por razones de redacción. La condición sigue
+ * decidiéndola el backend; acá sólo se lee para ordenar.
+ */
+const prioridadAfiliacion = (participante) => {
+  const tipo = participante?.afiliacion?.tipo;
+  const habilitado = participante?.afiliacion?.habilitadoCertificado === true;
+
+  if (tipo === "adherente") return habilitado ? 1 : 0;
+  if (tipo === "cotizante") return 2;
+
+  return 3;
+};
+
+/** Clase del chip según el tipo y el estado. */
+const CLASE_AFILIACION = {
+  cotizante: emitir.afiliacionOk,
+  adherenteHabilitado: emitir.afiliacionOk,
+  adherenteBloqueado: emitir.afiliacionBloqueada,
+  no_verificada: emitir.afiliacionNeutra,
+};
+
+const claseAfiliacion = (afiliacion) => {
+  if (!afiliacion) return emitir.afiliacionNeutra;
+  if (afiliacion.tipo === "cotizante") return CLASE_AFILIACION.cotizante;
+  if (afiliacion.tipo === "adherente") {
+    return afiliacion.habilitadoCertificado
+      ? CLASE_AFILIACION.adherenteHabilitado
+      : CLASE_AFILIACION.adherenteBloqueado;
+  }
+  return CLASE_AFILIACION.no_verificada;
+};
+
+/** Chip de la columna Afiliado. La etiqueta viene armada del backend. */
+const ChipAfiliacion = ({ afiliacion }) => (
+  <span
+    className={`${emitir.afiliacion} ${claseAfiliacion(afiliacion)}`}
+    title={afiliacion?.motivoBloqueo || undefined}
+  >
+    {afiliacion?.etiqueta || "No verificado"}
+  </span>
+);
 
 /**
  * Un registro es gestionable sólo si su usuario existe realmente.
@@ -249,6 +333,21 @@ const EmitirCertificados = ({ notificar }) => {
   const [trabajoPdf, setTrabajoPdf] = useState(null);
   const [dialogoPdfVisible, setDialogoPdfVisible] = useState(false);
   const [bajandoArchivoPdf, setBajandoArchivoPdf] = useState(false);
+
+  // Descarga por segmentos geográficos.
+  //
+  // Los ocho segmentos y sus contadores los define el BACKEND: acá no hay
+  // ninguna lista de departamentos. `trabajosSegmento` guarda el documento del
+  // trabajo de cada segmento —igual que trabajoPdf, pero uno por segmento—,
+  // porque la generación vive en el servidor y tiene que sobrevivir a un F5.
+  const [dialogoSegmentosVisible, setDialogoSegmentosVisible] = useState(false);
+  const [segmentos, setSegmentos] = useState([]);
+  const [cargandoSegmentos, setCargandoSegmentos] = useState(false);
+  const [errorSegmentos, setErrorSegmentos] = useState("");
+  const [trabajosSegmento, setTrabajosSegmento] = useState(() => ({}));
+  const [segmentoIniciando, setSegmentoIniciando] = useState("");
+  const [segmentoBajando, setSegmentoBajando] = useState("");
+  const [segmentoExcel, setSegmentoExcel] = useState("");
 
   // Emisión masiva. Crea certificados oficiales; no tiene nada que ver con la
   // descarga masiva, que sólo lee lo que ya está emitido.
@@ -405,21 +504,95 @@ const EmitirCertificados = ({ notificar }) => {
     [limpiar, notificar]
   );
 
-  // Filtrado en memoria: no se vuelve a consultar el backend por cada tecla.
+  /**
+   * Filtrado y orden de la lista visible.
+   *
+   * El filtrado es en memoria: no se vuelve a consultar el backend por cada
+   * tecla. El DNI se compara dígito contra dígito en los DOS lados, así que
+   * buscar 32628508 encuentra al participante aunque el dato almacenado
+   * tuviera puntos.
+   *
+   * Orden por condición de afiliación —ver prioridadAfiliacion—: adherentes
+   * no habilitados, adherentes habilitados, cotizantes y por último los que no
+   * se pudieron verificar. Dentro de cada grupo, alfabético por apellido y
+   * nombre. El orden se mantiene también con el buscador activo.
+   *
+   * Se copia antes de ordenar: `participantes` es estado de React y .sort()
+   * ordena en el lugar, así que ordenarlo directamente lo mutaría.
+   */
   const visibles = useMemo(() => {
     const termino = normalizar(busqueda);
-    if (!termino) return participantes;
-
     const soloDigitos = termino.replace(/\D/g, "");
 
-    return participantes.filter((participante) => {
-      if (normalizar(participante.apellidoNombre).includes(termino)) return true;
-      if (soloDigitos && String(participante.dni || "").includes(soloDigitos)) {
-        return true;
-      }
-      return false;
+    const filtrados = !termino
+      ? participantes
+      : participantes.filter((participante) => {
+          if (normalizar(participante.apellidoNombre).includes(termino)) {
+            return true;
+          }
+
+          const dniParticipante = String(participante.dni || "").replace(
+            /\D/g,
+            ""
+          );
+
+          return Boolean(soloDigitos) && dniParticipante.includes(soloDigitos);
+        });
+
+    return [...filtrados].sort((a, b) => {
+      const prioridadA = prioridadAfiliacion(a);
+      const prioridadB = prioridadAfiliacion(b);
+
+      if (prioridadA !== prioridadB) return prioridadA - prioridadB;
+
+      return String(a.apellidoNombre || "").localeCompare(
+        String(b.apellidoNombre || ""),
+        "es",
+        { sensitivity: "base" }
+      );
     });
   }, [participantes, busqueda]);
+
+  /**
+   * Reparto por condición sindical, para los indicadores de arriba.
+   *
+   * Se cuenta sobre `participantes`, NO sobre `visibles`: los indicadores
+   * resumen el curso, no la búsqueda. Si se calcularan sobre la lista filtrada,
+   * escribir un DNI en el buscador los dejaría casi todos en cero y el
+   * administrador perdería de vista cuánta gente tiene pendiente de revisar.
+   *
+   * Tampoco entran los apartados: ya tienen su propio indicador (Excluidos) y
+   * están fuera del flujo de emisión, así que sumarlos acá haría que los
+   * números no cerraran contra la tabla.
+   *
+   * Los "no verificado" y los "sin usuario asociado" no suman a ninguno de los
+   * tres: aparecen en la tabla, pero no son ni adherentes ni cotizantes.
+   */
+  const resumenAfiliacion = useMemo(
+    () =>
+      participantes.reduce(
+        (acumulado, participante) => {
+          const tipo = participante?.afiliacion?.tipo;
+          const habilitado =
+            participante?.afiliacion?.habilitadoCertificado === true;
+
+          if (tipo === "adherente") {
+            if (habilitado) acumulado.adherentesHabilitados += 1;
+            else acumulado.adherentesNoHabilitados += 1;
+          } else if (tipo === "cotizante") {
+            acumulado.cotizantes += 1;
+          }
+
+          return acumulado;
+        },
+        {
+          adherentesNoHabilitados: 0,
+          adherentesHabilitados: 0,
+          cotizantes: 0,
+        }
+      ),
+    [participantes]
+  );
 
   /**
    * Participantes a los que la emisión masiva les crearía un certificado.
@@ -455,12 +628,6 @@ const EmitirCertificados = ({ notificar }) => {
       ).length,
     [participantes]
   );
-
-  // El botón refleja el trabajo real, no un contador local: después de un F5
-  // vuelve a decir el porcentaje que va.
-  const textoBotonPdfMasivo = pdfEnCurso(trabajoPdf)
-    ? `Generando PDF… ${Number(trabajoPdf?.porcentaje || 0)} %`
-    : "Descarga masiva PDF";
 
   const textoBotonEmisionMasiva = emitiendoMasivo
     ? "Emitiendo certificados…"
@@ -733,6 +900,286 @@ const EmitirCertificados = ({ notificar }) => {
     await descargarPdfMasivo();
   }, [descargarPdfMasivo]);
 
+  // ==========================================================
+  // DESCARGA POR SEGMENTOS GEOGRÁFICOS
+  // ==========================================================
+
+  /**
+   * Trae los ocho segmentos con sus contadores.
+   *
+   * Siempre son ocho, incluso los que están en cero: un segmento que
+   * desapareciera de la lista se leería como "no existe" y no como "vacío".
+   */
+  const cargarSegmentos = useCallback(async () => {
+    if (!curso?.id) return;
+
+    setCargandoSegmentos(true);
+    setErrorSegmentos("");
+
+    try {
+      const lista = await obtenerSegmentosPdf(curso.id);
+      setSegmentos(Array.isArray(lista) ? lista : []);
+
+      // Trabajo vigente de cada segmento. Se piden en paralelo y el mapa se
+      // arma de una sola vez: así al reabrir el diálogo aparecen los PDF que
+      // ya estaban listos y los que siguen generándose.
+      const trabajos = await Promise.all(
+        (lista || []).map(async (segmento) => {
+          try {
+            return [
+              segmento.id,
+              await obtenerPdfSegmentoActual(curso.id, segmento.id),
+            ];
+          } catch {
+            return [segmento.id, null];
+          }
+        })
+      );
+
+      setTrabajosSegmento(Object.fromEntries(trabajos.filter(([, t]) => t)));
+    } catch (e) {
+      setErrorSegmentos(e?.message || "No se pudieron cargar los segmentos.");
+    } finally {
+      setCargandoSegmentos(false);
+    }
+  }, [curso?.id]);
+
+  const abrirDialogoSegmentos = useCallback(() => {
+    setDialogoSegmentosVisible(true);
+    cargarSegmentos();
+  }, [cargarSegmentos]);
+
+  /**
+   * Lanza la generación de UN segmento.
+   *
+   * Nunca se generan los ocho juntos: cada PDF sale de un clic explícito. Ocho
+   * ejecuciones simultáneas del Job serían ocho veces el trabajo y, sobre
+   * todo, nadie las pidió.
+   */
+  const generarPdfSegmento = useCallback(
+    async (segmentoId) => {
+      if (!curso?.id || segmentoIniciando) return;
+
+      setSegmentoIniciando(segmentoId);
+
+      try {
+        const trabajo = await iniciarPdfSegmento(curso.id, segmentoId);
+
+        if (!trabajo?.jobId) {
+          throw new Error("No se pudo iniciar la generación del PDF.");
+        }
+
+        setTrabajosSegmento((previos) => ({
+          ...previos,
+          [segmentoId]: trabajo,
+        }));
+      } catch (e) {
+        notificar?.(
+          "error",
+          "No se pudo iniciar la generación",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setSegmentoIniciando("");
+      }
+    },
+    [curso?.id, segmentoIniciando, notificar]
+  );
+
+  const bajarPdfSegmento = useCallback(
+    async (segmentoId) => {
+      const trabajo = trabajosSegmento[segmentoId];
+      if (!curso?.id || !trabajo?.jobId || segmentoBajando) return;
+
+      setSegmentoBajando(segmentoId);
+
+      try {
+        const blob = await descargarPdfSegmentoArchivo(
+          curso.id,
+          segmentoId,
+          trabajo.jobId
+        );
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download =
+          trabajo.nombreArchivo || `Certificados_${segmentoId}.pdf`;
+        anchor.click();
+
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        notificar?.(
+          "error",
+          "No se pudo descargar el PDF",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setSegmentoBajando("");
+      }
+    },
+    [curso?.id, trabajosSegmento, segmentoBajando, notificar]
+  );
+
+  /**
+   * Planilla de control del segmento.
+   *
+   * Incluye a TODOS los identificados del segmento —cotizantes, adherentes
+   * habilitados y adherentes NO habilitados—, así que normalmente tiene más
+   * filas que páginas tiene el PDF. Eso es justamente el punto: sirve para ver
+   * quién quedó afuera y por qué.
+   *
+   * El backend entrega las filas ya resueltas y ordenadas; acá sólo se vuelcan
+   * a una hoja. El DNI va como TEXTO explícito porque Excel, librado a su
+   * criterio, convierte los números largos a notación científica.
+   */
+  const descargarExcelSegmento = useCallback(
+    async (segmento) => {
+      if (!curso?.id || segmentoExcel) return;
+
+      setSegmentoExcel(segmento.id);
+
+      try {
+        const datos = await obtenerDatosExcelSegmento(curso.id, segmento.id);
+        const filas = Array.isArray(datos?.filas) ? datos.filas : [];
+
+        if (!filas.length) {
+          notificar?.(
+            "advertencia",
+            "Sin participantes",
+            "Este segmento no tiene participantes identificados."
+          );
+          return;
+        }
+
+        const XLSX = await import("xlsx");
+
+        const hoja = XLSX.utils.json_to_sheet(
+          filas.map((fila) => ({
+            "Apellido y nombre": fila.apellidoNombre,
+            DNI: fila.dni,
+            Adherente: fila.adherente,
+            EstadoAfiliado: fila.estadoAfiliado,
+            Departamento: fila.departamento,
+          })),
+          {
+            header: [
+              "Apellido y nombre",
+              "DNI",
+              "Adherente",
+              "EstadoAfiliado",
+              "Departamento",
+            ],
+          }
+        );
+
+        // Columna B como texto, celda por celda. json_to_sheet ya la tipa como
+        // cadena, pero se fuerza igual: si un día llegara un DNI numérico, la
+        // planilla seguiría mostrando los ocho dígitos completos.
+        filas.forEach((fila, indice) => {
+          const celda = hoja[XLSX.utils.encode_cell({ c: 1, r: indice + 1 })];
+          if (celda) {
+            celda.t = "s";
+            celda.v = String(fila.dni || "");
+            celda.z = "@";
+          }
+        });
+
+        hoja["!cols"] = [
+          { wch: 38 },
+          { wch: 14 },
+          { wch: 12 },
+          { wch: 20 },
+          { wch: 30 },
+        ];
+
+        const libro = XLSX.utils.book_new();
+        const nombreSegmento = String(
+          datos?.segmentoNombre || segmento.nombre || ""
+        );
+
+        // Excel no admite nombres de hoja de más de 31 caracteres.
+        XLSX.utils.book_append_sheet(libro, hoja, nombreSegmento.slice(0, 31));
+
+        XLSX.writeFile(
+          libro,
+          `Control_Certificados_${sanitizarNombreArchivo(
+            nombreSegmento
+          ).replace(/\s+/g, "_")}.xlsx`
+        );
+      } catch (e) {
+        notificar?.(
+          "error",
+          "No se pudo generar la planilla",
+          e?.message || "Error inesperado."
+        );
+      } finally {
+        setSegmentoExcel("");
+      }
+    },
+    [curso?.id, segmentoExcel, notificar]
+  );
+
+  /**
+   * Polling de los segmentos que están generándose.
+   *
+   * Un solo temporizador para todos: cada vuelta consulta sólo los que siguen
+   * en curso y se apaga cuando no queda ninguno. Mismo criterio que el polling
+   * del PDF masivo —vive en un efecto y se limpia al desmontar—, pero sin
+   * encadenar un temporizador por tarjeta.
+   */
+  useEffect(() => {
+    const enCurso = Object.entries(trabajosSegmento)
+      .filter(([, trabajo]) => pdfEnCurso(trabajo))
+      .map(([segmentoId, trabajo]) => [segmentoId, trabajo.jobId]);
+
+    if (!curso?.id || !dialogoSegmentosVisible || !enCurso.length) {
+      return undefined;
+    }
+
+    let activo = true;
+    let temporizador = null;
+
+    const consultar = async () => {
+      try {
+        const actualizados = await Promise.all(
+          enCurso.map(async ([segmentoId, jobId]) => {
+            try {
+              return [
+                segmentoId,
+                await obtenerEstadoPdfSegmento(curso.id, segmentoId, jobId),
+              ];
+            } catch {
+              return [segmentoId, null];
+            }
+          })
+        );
+
+        if (!activo) return;
+
+        setTrabajosSegmento((previos) => {
+          const siguiente = { ...previos };
+          actualizados.forEach(([segmentoId, trabajo]) => {
+            if (trabajo) siguiente[segmentoId] = trabajo;
+          });
+          return siguiente;
+        });
+      } finally {
+        // Se reprograma pase lo que pase: un fallo puntual de red no cancela
+        // el seguimiento. El efecto vuelve a evaluarse con los trabajos ya
+        // actualizados y se apaga solo cuando ninguno sigue en curso.
+        if (activo) temporizador = setTimeout(consultar, PDF_POLLING_MS);
+      }
+    };
+
+    temporizador = setTimeout(consultar, PDF_POLLING_MS);
+
+    return () => {
+      activo = false;
+      if (temporizador) clearTimeout(temporizador);
+    };
+  }, [curso?.id, dialogoSegmentosVisible, trabajosSegmento]);
+
   /**
    * Emite el certificado del participante.
    *
@@ -756,7 +1203,7 @@ const EmitirCertificados = ({ notificar }) => {
 
       const confirmado = window.confirm(
         `¿Emitir el certificado de "${participante.apellidoNombre}"?\n\n` +
-          `DNI: ${formatearDni(participante.dni)}\n\n` +
+          `DNI: ${mostrarDni(participante.dni)}\n\n` +
           "Esta acción registrará un certificado oficial SIDCA para esta capacitación.\n\n" +
           "Todavía no se generará el PDF ni la descarga; en esta etapa se registrará " +
           "la emisión y su código de validación.\n\n¿Continuar?"
@@ -1116,22 +1563,16 @@ const EmitirCertificados = ({ notificar }) => {
               {textoBotonEmisionMasiva}
             </button>
 
+            {/* Reemplaza a la descarga masiva diaria. Un PDF con mil
+                certificados no se puede repartir; ocho por región, sí. */}
             <button
               type="button"
               className={styles.botonSecundario}
-              onClick={
-                // Con una generación en curso, el botón vuelve a abrir el
-                // progreso en vez de intentar lanzar otra. Terminada, sí
-                // inicia una nueva: el conjunto de emitidos pudo cambiar y un
-                // PDF viejo ya no lo representaría.
-                pdfEnCurso(trabajoPdf)
-                  ? () => setDialogoPdfVisible(true)
-                  : descargarPdfMasivo
-              }
-              disabled={descargandoMasivo && !pdfEnCurso(trabajoPdf)}
-              title="Genera el PDF con los certificados ya emitidos. No emite a nadie."
+              onClick={abrirDialogoSegmentos}
+              disabled={cargando}
+              title="Genera y descarga los certificados ya emitidos, agrupados por departamento. No emite a nadie."
             >
-              {textoBotonPdfMasivo}
+              Descarga por segmentos
             </button>
 
             <button
@@ -1189,6 +1630,46 @@ const EmitirCertificados = ({ notificar }) => {
                 {resumen.excluidos}
               </span>
               <span className={emitir.indicadorEtiqueta}>Excluidos</span>
+            </div>
+          </div>
+
+          {/* Segunda fila: reparto por condición sindical.
+              Va en su propia grilla y no dentro de la anterior: con siete
+              tarjetas en un grid de cuatro columnas, la segunda fila quedaría
+              de 4 + 3 y desbalanceada. */}
+          <div className={emitir.indicadoresAfiliacion}>
+            {/* El más importante para operar: son los que hay que revisar
+                antes de emitir. Se distingue con un acento, no con una alerta:
+                mismo tamaño que las demás. */}
+            <div
+              className={`${emitir.indicador} ${emitir.indicadorNoHabilitado}`}
+            >
+              <span className={emitir.indicadorNumero}>
+                {resumenAfiliacion.adherentesNoHabilitados}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>
+                Adherentes no habilitados
+              </span>
+            </div>
+
+            <div
+              className={`${emitir.indicador} ${emitir.indicadorHabilitado}`}
+            >
+              <span className={emitir.indicadorNumero}>
+                {resumenAfiliacion.adherentesHabilitados}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>
+                Adherentes habilitados
+              </span>
+            </div>
+
+            <div
+              className={`${emitir.indicador} ${emitir.indicadorCotizante}`}
+            >
+              <span className={emitir.indicadorNumero}>
+                {resumenAfiliacion.cotizantes}
+              </span>
+              <span className={emitir.indicadorEtiqueta}>Cotizantes</span>
             </div>
           </div>
 
@@ -1268,6 +1749,7 @@ const EmitirCertificados = ({ notificar }) => {
                           <th>Apellido y nombre</th>
                           <th>DNI</th>
                           <th>Estado</th>
+                          <th>Afiliado</th>
                           <th>Acciones</th>
                         </tr>
                       </thead>
@@ -1277,7 +1759,7 @@ const EmitirCertificados = ({ notificar }) => {
                             <td className={emitir.celdaNombre}>
                               {participante.apellidoNombre || "—"}
                             </td>
-                            <td>{formatearDni(participante.dni)}</td>
+                            <td>{mostrarDni(participante.dni)}</td>
                             <td>
                               <span
                                 className={`${emitir.estado} ${
@@ -1287,6 +1769,9 @@ const EmitirCertificados = ({ notificar }) => {
                                 {ETIQUETA_ESTADO[participante.estado] ||
                                   participante.estado}
                               </span>
+                            </td>
+                            <td>
+                              <ChipAfiliacion afiliacion={participante.afiliacion} />
                             </td>
                             <td>
                               {esGestionable(participante) ? (
@@ -1309,7 +1794,18 @@ const EmitirCertificados = ({ notificar }) => {
                                     type="button"
                                     className={emitir.botonPreview}
                                     onClick={() => descargarPdfIndividual(participante)}
-                                    disabled={!estaEmitido(participante) || descargandoUsuario === participante.usuarioDocId}
+                                    disabled={
+                                      !estaEmitido(participante) ||
+                                      !afiliacionHabilitada(participante) ||
+                                      descargandoUsuario === participante.usuarioDocId
+                                    }
+                                    title={
+                                      estaEmitido(participante) &&
+                                      !afiliacionHabilitada(participante)
+                                        ? participante.afiliacion?.motivoBloqueo ||
+                                          "No habilitado para descargar certificados."
+                                        : undefined
+                                    }
                                   >
                                     {descargandoUsuario === participante.usuarioDocId ? "Descargando…" : "Descargar PDF"}
                                   </button>
@@ -1363,7 +1859,7 @@ const EmitirCertificados = ({ notificar }) => {
                         </span>
 
                         <span className={emitir.tarjetaDato}>
-                          DNI: {formatearDni(participante.dni)}
+                          DNI: {mostrarDni(participante.dni)}
                         </span>
 
                         <span
@@ -1374,6 +1870,17 @@ const EmitirCertificados = ({ notificar }) => {
                           {ETIQUETA_ESTADO[participante.estado] ||
                             participante.estado}
                         </span>
+
+                        <ChipAfiliacion afiliacion={participante.afiliacion} />
+
+                        {/* El motivo se explica en texto, no sólo con el botón
+                            apagado: si no, no hay forma de saber por qué. */}
+                        {!afiliacionHabilitada(participante) && (
+                          <span className={emitir.tarjetaAviso}>
+                            {participante.afiliacion?.motivoBloqueo ||
+                              "No habilitado para emitir certificados."}
+                          </span>
+                        )}
 
                         {esGestionable(participante) ? (
                           <div className={emitir.acciones}>
@@ -1390,7 +1897,18 @@ const EmitirCertificados = ({ notificar }) => {
                               type="button"
                               className={emitir.botonPreview}
                               onClick={() => descargarPdfIndividual(participante)}
-                              disabled={!estaEmitido(participante) || descargandoUsuario === participante.usuarioDocId}
+                              disabled={
+                                !estaEmitido(participante) ||
+                                !afiliacionHabilitada(participante) ||
+                                descargandoUsuario === participante.usuarioDocId
+                              }
+                              title={
+                                estaEmitido(participante) &&
+                                !afiliacionHabilitada(participante)
+                                  ? participante.afiliacion?.motivoBloqueo ||
+                                    "No habilitado para descargar certificados."
+                                  : undefined
+                              }
                             >
                               {descargandoUsuario === participante.usuarioDocId ? "Descargando…" : "Descargar PDF"}
                             </button>
@@ -1458,7 +1976,7 @@ const EmitirCertificados = ({ notificar }) => {
                         <td className={emitir.celdaNombre}>
                           {participante.apellidoNombre || "—"}
                         </td>
-                        <td>{formatearDni(participante.dni)}</td>
+                        <td>{mostrarDni(participante.dni)}</td>
                         <td>
                           <span
                             className={`${emitir.estado} ${emitir.estadoApartado}`}
@@ -1496,7 +2014,7 @@ const EmitirCertificados = ({ notificar }) => {
                     </span>
 
                     <span className={emitir.tarjetaDato}>
-                      DNI: {formatearDni(participante.dni)}
+                      DNI: {mostrarDni(participante.dni)}
                     </span>
 
                     <span className={`${emitir.estado} ${emitir.estadoApartado}`}>
@@ -1529,10 +2047,20 @@ const EmitirCertificados = ({ notificar }) => {
         abierto={Boolean(participantePreview)}
         participante={participantePreview}
         configuracion={configuracion}
-        puedeEmitir={esEmitible(participantePreview)}
+        /* La condición de afiliación SE SUMA a las que ya existían: datos
+           incompletos, ya emitido, configuración y pedido en curso siguen
+           valiendo igual. El preview en sí no se bloquea —mirar no es
+           emitir—, sólo el botón que crea el certificado. */
+        puedeEmitir={
+          esEmitible(participantePreview) &&
+          afiliacionHabilitada(participantePreview)
+        }
         motivoNoEmitir={
           participantePreview?.estado === "datos_incompletos"
             ? MOTIVO_DATOS_INCOMPLETOS
+            : !afiliacionHabilitada(participantePreview)
+            ? participantePreview?.afiliacion?.motivoBloqueo ||
+              "No se pudo verificar la condición de afiliación."
             : ""
         }
         emitiendo={emitiendoUsuario === participantePreview?.usuarioDocId}
@@ -1550,6 +2078,191 @@ const EmitirCertificados = ({ notificar }) => {
         onEmitir={() => emitirParticipante(participantePreview)}
         onCerrar={() => setParticipantePreview(null)}
       />
+
+      {/* Descarga por segmentos geográficos.
+
+          Ocho tarjetas, un PDF por clic. Nunca se generan todas juntas: cada
+          generación es una ejecución del Job, y ocho simultáneas serían ocho
+          veces el trabajo sin que nadie las haya pedido. */}
+      <Dialog
+        visible={dialogoSegmentosVisible}
+        onHide={() => setDialogoSegmentosVisible(false)}
+        modal
+        blockScroll
+        draggable={false}
+        className={emitir.dialogoSegmentos}
+        breakpoints={{ "1024px": "96vw", "768px": "96vw" }}
+        header="Descarga de certificados por segmentos"
+        footer={
+          <div className={emitir.pieConfirmacion}>
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setDialogoSegmentosVisible(false)}
+            >
+              Cerrar
+            </button>
+
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={cargarSegmentos}
+              disabled={cargandoSegmentos}
+            >
+              {cargandoSegmentos ? "Actualizando…" : "Actualizar"}
+            </button>
+          </div>
+        }
+      >
+        <p className={emitir.segmentosSubtitulo}>
+          Generá y descargá los certificados agrupados por departamento.
+        </p>
+
+        {errorSegmentos ? (
+          <p className={styles.mensajeError}>{errorSegmentos}</p>
+        ) : cargandoSegmentos && !segmentos.length ? (
+          <p className={styles.notaGuardado}>Cargando segmentos…</p>
+        ) : (
+          <div className={emitir.segmentosGrilla}>
+            {segmentos.map((segmento) => {
+              const trabajo = trabajosSegmento[segmento.id] || null;
+              const enCurso = pdfEnCurso(trabajo);
+              const listo = pdfCompletado(trabajo);
+              const fallo = pdfConError(trabajo);
+
+              // Un segmento sin certificados descargables no tiene PDF que
+              // generar. La planilla, en cambio, sigue teniendo sentido: es
+              // justamente donde se ve por qué no hay ninguno.
+              const sinCertificados =
+                Number(segmento.certificadosDescargables || 0) === 0;
+
+              const iniciando = segmentoIniciando === segmento.id;
+
+              return (
+                <article key={segmento.id} className={emitir.segmentoTarjeta}>
+                  <header className={emitir.segmentoEncabezado}>
+                    <h4 className={emitir.segmentoNombre}>{segmento.nombre}</h4>
+
+                    <p className={emitir.segmentoDepartamentos}>
+                      {segmento.departamentos?.length
+                        ? segmento.departamentos.join(" · ")
+                        : "Departamento sin cargar o no reconocido"}
+                    </p>
+                  </header>
+
+                  <dl className={emitir.segmentoCifras}>
+                    <div>
+                      <dt>Participantes</dt>
+                      <dd>{Number(segmento.participantes || 0)}</dd>
+                    </div>
+
+                    <div>
+                      <dt>Certificados descargables</dt>
+                      <dd>{Number(segmento.certificadosDescargables || 0)}</dd>
+                    </div>
+
+                    <div>
+                      <dt>Adherentes no habilitados</dt>
+                      <dd className={emitir.segmentoCifraAviso}>
+                        {Number(segmento.adherentesNoHabilitados || 0)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {fallo && (
+                    <p className={emitir.segmentoError}>
+                      {trabajo?.error ||
+                        "La generación falló. Podés volver a intentarla."}
+                    </p>
+                  )}
+
+                  {enCurso && (
+                    <div
+                      className={emitir.barraProgreso}
+                      role="progressbar"
+                      aria-valuenow={Number(trabajo?.porcentaje || 0)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <span
+                        className={emitir.barraProgresoRelleno}
+                        style={{ width: `${Number(trabajo?.porcentaje || 0)}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className={emitir.segmentoAcciones}>
+                    {listo ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.botonPrimario}
+                          onClick={() => bajarPdfSegmento(segmento.id)}
+                          disabled={segmentoBajando === segmento.id}
+                        >
+                          {segmentoBajando === segmento.id
+                            ? "Descargando…"
+                            : "Descargar PDF"}
+                        </button>
+
+                        {/* Regenerar existe porque el conjunto de emitidos
+                            cambia: un PDF de ayer ya no lo representa. */}
+                        <button
+                          type="button"
+                          className={styles.botonSecundario}
+                          onClick={() => generarPdfSegmento(segmento.id)}
+                          disabled={iniciando || sinCertificados}
+                        >
+                          {iniciando ? "Iniciando…" : "Regenerar"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.botonPrimario}
+                        onClick={() => generarPdfSegmento(segmento.id)}
+                        disabled={enCurso || iniciando || sinCertificados}
+                        title={
+                          sinCertificados
+                            ? "No hay certificados emitidos y habilitados en este segmento."
+                            : undefined
+                        }
+                      >
+                        {enCurso
+                          ? `Generando ${Number(
+                              trabajo?.procesados || 0
+                            )} de ${Number(trabajo?.total || 0)} — ${Number(
+                              trabajo?.porcentaje || 0
+                            )} %`
+                          : sinCertificados
+                          ? "Sin certificados disponibles"
+                          : fallo
+                          ? "Reintentar PDF"
+                          : "Generar PDF"}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className={styles.botonSecundario}
+                      onClick={() => descargarExcelSegmento(segmento)}
+                      disabled={
+                        segmentoExcel === segmento.id ||
+                        Number(segmento.participantes || 0) === 0
+                      }
+                      title="Planilla de control: incluye también a los adherentes no habilitados, que no salen en el PDF."
+                    >
+                      {segmentoExcel === segmento.id
+                        ? "Generando…"
+                        : "Descargar Excel"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </Dialog>
 
       {/* Progreso del PDF masivo. Los tiempos los calcula el Job y viajan en
           el documento del trabajo: acá no se inventa ninguna estimación. */}

@@ -529,3 +529,85 @@ export const descargarPdfMasivo = async (cursoId, jobId) => {
 
   return response.blob();
 };
+
+// ============================================================
+// DESCARGA POR SEGMENTOS GEOGRÁFICOS
+//
+// La definición de los segmentos NO vive acá: la entrega el backend en
+// /segmentos. Duplicar el mapa de departamentos en el frontend garantizaría
+// que un día las dos copias dejen de coincidir.
+// ============================================================
+
+/** Los ocho segmentos con sus contadores. Siempre vienen los ocho. */
+export const obtenerSegmentosPdf = async (cursoId) =>
+  (
+    await pedir(
+      `/admin/pdf-segmentado/${encodeURIComponent(cursoId)}/segmentos`,
+      { method: "GET" }
+    )
+  )?.segmentos || [];
+
+export const iniciarPdfSegmento = async (cursoId, segmentoId) =>
+  (
+    await pedir(
+      `/admin/pdf-segmentado/${encodeURIComponent(
+        cursoId
+      )}/${encodeURIComponent(segmentoId)}/iniciar`,
+      { method: "POST" }
+    )
+  )?.trabajo || null;
+
+export const obtenerEstadoPdfSegmento = async (cursoId, segmentoId, jobId) =>
+  (
+    await pedir(
+      `/admin/pdf-segmentado/${encodeURIComponent(
+        cursoId
+      )}/${encodeURIComponent(segmentoId)}/${encodeURIComponent(jobId)}`,
+      { method: "GET" }
+    )
+  )?.trabajo || null;
+
+export const obtenerPdfSegmentoActual = async (cursoId, segmentoId) =>
+  (
+    await pedir(
+      `/admin/pdf-segmentado/${encodeURIComponent(
+        cursoId
+      )}/${encodeURIComponent(segmentoId)}/actual`,
+      { method: "GET" }
+    )
+  )?.trabajo || null;
+
+/** Filas ya resueltas de la planilla de control. El Excel se arma en el navegador. */
+export const obtenerDatosExcelSegmento = async (cursoId, segmentoId) =>
+  pedir(
+    `/admin/pdf-segmentado/${encodeURIComponent(cursoId)}/${encodeURIComponent(
+      segmentoId
+    )}/excel`,
+    { method: "GET" }
+  );
+
+/** Igual que descargarPdfMasivo: binario, mismo ID Token, mismo trato de errores. */
+export const descargarPdfSegmento = async (cursoId, segmentoId, jobId) => {
+  const token = await obtenerIdToken();
+  const response = await fetch(
+    `${API_BASE_URL}/admin/pdf-segmentado/${encodeURIComponent(
+      cursoId
+    )}/${encodeURIComponent(segmentoId)}/${encodeURIComponent(
+      jobId
+    )}/descargar`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!response.ok) {
+    const detalle = await response.json().catch(() => null);
+
+    throw new Error(
+      detalle?.error ||
+        (response.status === 409
+          ? "El PDF de este segmento todavía no está disponible."
+          : `No se pudo descargar el PDF (error ${response.status}).`)
+    );
+  }
+
+  return response.blob();
+};
