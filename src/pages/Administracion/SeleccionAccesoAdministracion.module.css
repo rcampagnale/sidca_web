@@ -1,0 +1,183 @@
+.pagina {
+  min-height: calc(100vh - 60px - 100px);
+  box-sizing: border-box;
+  padding: 22px 24px 28px;
+  color: var(--sidca-institutional-text);
+  background: var(--sidca-institutional-page-background);
+}
+
+.contenido {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+}
+
+.regresar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  min-height: 38px;
+  margin: 24px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  color: var(--sidca-institutional-text);
+  background: rgba(0, 0, 0, 0.14);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.regresar:hover {
+  border-color: rgba(245, 184, 36, 0.75);
+  background: rgba(245, 184, 36, 0.14);
+}
+
+.encabezado {
+  max-width: 760px;
+  margin: 12px auto 26px;
+  text-align: center;
+}
+
+.logo {
+  width: min(190px, 48vw);
+  height: auto;
+  margin-bottom: 12px;
+  filter: brightness(0) invert(1);
+}
+
+.etiqueta,
+.tarjetaEtiqueta {
+  display: block;
+  color: #f5b824;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.encabezado h1 {
+  margin: 8px 0 10px;
+  color: #fff;
+  font-size: clamp(1.75rem, 3.3vw, 2.7rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.encabezado p {
+  max-width: 680px;
+  margin: 0 auto;
+  color: var(--sidca-institutional-muted);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.tarjeta {
+  display: flex;
+  gap: 0;
+  min-height: 236px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.tarjeta:hover {
+  transform: translateY(-4px);
+  border-color: rgba(245, 184, 36, 0.75);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.tarjetaContenido {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.tarjeta h2 {
+  margin: 10px 0 12px;
+  color: #fff;
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  line-height: 1.15;
+}
+
+.tarjeta p {
+  flex: 1;
+  margin: 0 0 24px;
+  color: var(--sidca-institutional-muted);
+  line-height: 1.5;
+}
+
+.tarjeta button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: 1px solid var(--sidca-institutional-gold);
+  border-radius: 10px;
+  color: var(--sidca-institutional-green-deep);
+  background: var(--sidca-institutional-gold);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.tarjeta button:hover {
+  background: var(--sidca-institutional-gold-bright);
+  transform: translateX(2px);
+}
+
+@media (max-width: 700px) {
+  .pagina {
+    min-height: calc(100vh - 56px);
+    padding: 18px 16px 42px;
+  }
+
+  .encabezado {
+    margin: 18px auto 24px;
+  }
+
+  .logo {
+    width: 158px;
+    margin-bottom: 14px;
+  }
+
+  .tarjetas {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .tarjeta {
+    min-height: 0;
+    padding: 24px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tarjeta {
+    display: block;
+  }
+
+  .tarjeta button {
+    width: 100%;
+    justify-content: center;
+  }
+}

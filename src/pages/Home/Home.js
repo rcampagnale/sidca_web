@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import styles from "./home.module.scss";
+import "../../styles/institutional.css";
 import logo from "../../assets/img/somos3.jpg";
 import { useDispatch, useSelector } from "react-redux";
 import { setUserCuotas } from "../../redux/reducers/cuotas/actions";
@@ -188,7 +189,11 @@ const Home = ({ modoValidador = false }) => {
   };
 
   return (
-    <div className={styles.componentContainer}>
+    <div
+      className={`${styles.componentContainer} ${
+        modoValidador ? styles.validadorHome : ""
+      }`}
+    >
       {/* Portada */}
       <div className={styles.container}>
         <div className={styles.container__imgContainer}>

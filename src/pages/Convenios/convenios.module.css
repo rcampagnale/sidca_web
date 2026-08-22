@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   width: 100%;
-  background: #f5f6fa;
+  background: var(--sidca-institutional-page-background);
   display: flex;
   justify-content: center;
 }
@@ -16,7 +16,7 @@
 
 .titleBox {
   padding: 14px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
   margin-bottom: 12px;
   text-align: center;
 }
@@ -24,21 +24,21 @@
 .title {
   font-size: clamp(1.75rem, 4vw, 2.2rem);
   font-weight: 800;
-  color: #111;
+  color: #fff;
   margin: 0;
 }
 
 .intro {
   margin: 8px 0 18px;
-  background: #ffffff;
+  background: transparent;
   border-radius: 12px;
   padding: 18px 20px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   line-height: 1.75;
   text-align: justify;
   text-align-last: left;
-  color: #333;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  color: var(--sidca-institutional-muted);
+  box-shadow: none;
 }
 
 .carouselWrap {

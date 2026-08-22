@@ -10,6 +10,7 @@ import { Tag } from "primereact/tag";
 import { Dropdown } from "primereact/dropdown";
 
 import styles from "./convenios.module.css";
+import "../../styles/institutional.css";
 
 // Imágenes locales del carrusel
 import convenio1 from "../../assets/convenio/convenio1.jpg";

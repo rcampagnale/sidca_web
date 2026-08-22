@@ -1,6 +1,7 @@
 // src/pages/LoginUser/LoginUser.js
 import React, { useEffect, useState } from "react";
 import styles from "./styles.module.css";
+import "../../styles/institutional.css";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "../../hooks/useForm";
 import { authenticateUser } from "../../redux/reducers/user/actions";

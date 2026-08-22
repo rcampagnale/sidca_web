@@ -89,3 +89,138 @@
     width: 100%;
   }
 }
+
+/* PresentaciÃ³n institucional del acceso. El formulario y sus clases de
+   autenticaciÃ³n se mantienen; estas reglas sÃ³lo cambian su contenedor visual. */
+.visibleContent {
+  position: relative;
+  display: block;
+  min-height: calc(100vh - 60px - 100px);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 28px 20px;
+  color: var(--sidca-institutional-text);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(245, 184, 36, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 82%, rgba(245, 184, 36, 0.1), transparent 32%),
+    var(--sidca-institutional-green);
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  min-height: 38px;
+  margin: 18px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  color: var(--sidca-institutional-text);
+  background: rgba(0, 0, 0, 0.14);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  border-color: rgba(245, 184, 36, 0.75);
+  background: rgba(245, 184, 36, 0.14);
+}
+
+.container {
+  width: min(520px, 100%);
+  height: auto;
+  display: block;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 30px 34px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+}
+
+.formAdmin {
+  width: 100%;
+  text-align: left;
+}
+
+.loginBrand {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: var(--sidca-institutional-green);
+  text-align: center;
+}
+
+.loginBrand img {
+  width: 160px;
+  height: auto;
+  filter: brightness(0.35) saturate(1.2);
+}
+
+.loginBrand span {
+  color: #a86809;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.loginBrand strong {
+  color: #536070;
+  font-size: 0.98rem;
+}
+
+.title {
+  margin: 0;
+  color: var(--sidca-institutional-green-deep);
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  text-align: center;
+}
+
+.subtitle {
+  margin: 10px auto 24px;
+  max-width: 38rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.inputForm {
+  border-radius: 10px !important;
+}
+
+.labelForm {
+  color: #536070 !important;
+}
+
+.submitButton {
+  min-height: 48px;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--sidca-institutional-gold) !important;
+  color: var(--sidca-institutional-green-deep) !important;
+  font-weight: 800;
+}
+
+@media only screen and (max-width: 600px) {
+  .visibleContent {
+    min-height: calc(100vh - 58px - 100px);
+    padding: 18px 14px 28px;
+  }
+
+  .container {
+    margin-top: 0;
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+  .backButton {
+    margin-top: 16px;
+  }
+}

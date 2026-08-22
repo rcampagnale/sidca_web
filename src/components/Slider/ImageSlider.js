@@ -1,4 +1,5 @@
 import { useState } from "react";
+import styles from "./ImageSlider.module.css";
 
 const slideStyles = {
     width: "100%",
@@ -71,15 +72,15 @@ const ImageSlider = ({ slides }) => {
     return (
         <div style={sliderStyles}>
             <div>
-                <div onClick={goToPrevious} style={leftArrowStyles}>
+                <div className={styles.leftArrow} onClick={goToPrevious} style={leftArrowStyles}>
                     ❰
                 </div>
-                <div onClick={goToNext} style={rightArrowStyles}>
+                <div className={styles.rightArrow} onClick={goToNext} style={rightArrowStyles}>
                     ❱
                 </div>
             </div>
             <div style={slideStylesWidthBackground}></div>
-            <div style={dotsContainerStyles}>
+            <div className={styles.dots} style={dotsContainerStyles}>
                 {slides.map((slide, slideIndex) => (
                     <div
                         style={dotStyle}

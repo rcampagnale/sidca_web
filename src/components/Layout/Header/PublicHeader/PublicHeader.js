@@ -36,6 +36,13 @@ const PublicHeader = () => {
 
   const pathname = location.pathname.toLowerCase();
 
+  const esAccesoInstitucional =
+    pathname === "/administracion" ||
+    pathname === "/admin/login" ||
+    pathname === "/validar-certificados" ||
+    pathname.startsWith("/validar-certificados/") ||
+    pathname.startsWith("/validar-certificado/");
+
   const esLoginComercio = pathname === "/comercio-login";
   const esPaginaComercio = pathname === "/comercio";
   const esSectorComercio = esLoginComercio || esPaginaComercio;
@@ -85,7 +92,7 @@ const PublicHeader = () => {
   };
 
   const irAdmin = () => {
-    history.push("/admin");
+    history.push("/administracion");
   };
 
   const navegarAfiliado = (path) => {
@@ -137,6 +144,13 @@ const PublicHeader = () => {
 
   const renderMenuPublico = () => {
     if (pathname === "/reserva-casa-docente") return null;
+    if (esAccesoInstitucional) {
+      return (
+        <ul className={styles.headerNav}>
+          <li onClick={irComercio}>Comercio</li>
+        </ul>
+      );
+    }
     return (
       <ul className={styles.headerNav}>
         <li onClick={irComercio}>Comercio</li>
@@ -164,7 +178,9 @@ const PublicHeader = () => {
 
   return (
     <header className={styles.header}>
-      <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
+      {!esAccesoInstitucional && (
+        <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
+      )}
 
       {esLoginComercio
         ? null

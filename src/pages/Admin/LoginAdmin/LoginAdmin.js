@@ -10,6 +10,8 @@ import {
   consumirMotivoCierre,
 } from '../../../utils/adminSession';
 import styles from './styles.module.css';
+import logo from '../../../assets/img/logo-01.png';
+import '../../../styles/institutional.css';
 
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
@@ -70,7 +72,15 @@ const LoginAdmin = () => {
     <div className={styles.visibleContent}>
       <div className={styles.container}>
         <form onSubmit={handleSubmit} className={styles.formAdmin}>
-          <h2 className={styles.title}>Administradores</h2>
+          <div className={styles.loginBrand}>
+            <img src={logo} alt="SiDCa" />
+            <span>SIDCA</span>
+            <strong>Bienvenido</strong>
+          </div>
+          <h2 className={styles.title}>Administrador de SiDCa</h2>
+          <p className={styles.subtitle}>
+            Ingresá con tus credenciales para acceder al sistema de administración de SiDCa.
+          </p>
 
           {avisoCierre && (
             <div
@@ -136,6 +146,14 @@ const LoginAdmin = () => {
           />
         </form>
       </div>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => history.push('/administracion')}
+      >
+        <i className="pi pi-arrow-left" aria-hidden="true" />
+        Regresar
+      </button>
     </div>
   );
 };

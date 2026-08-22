@@ -1,0 +1,31 @@
+.leftArrow,
+.rightArrow {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@media (max-width: 850px) {
+  .leftArrow,
+  .rightArrow {
+    left: 8px !important;
+    right: auto !important;
+    font-size: 34px !important;
+    color: #fff !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+  }
+
+  .rightArrow {
+    left: auto !important;
+    right: 8px !important;
+  }
+}
+
+.dots {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+@media (max-width: 850px) {
+  .dots {
+    padding: 0 28px;
+  }
+}

@@ -5,3 +5,119 @@
 @media(max-width:640px){.aprobadosPanel{padding:18px}.aprobadosEncabezado,.aprobadosCursoHeader{align-items:stretch;flex-direction:column}.aprobadosEncabezado .accion{width:100%}.aprobadosAcciones{display:grid;grid-template-columns:1fr;justify-content:stretch}.aprobadosCursoHeader .accion,.aprobadosAcciones .accionSecundaria{width:100%}.aprobadosEncabezadoFila{display:none}.aprobadoFila{grid-template-columns:1fr;gap:5px}.aprobadoFila span:last-child::before{content:"Departamento: ";font-weight:800;color:#64748b}.selectorVistas button{min-height:48px}}
 .aprobadosDetalle .aprobadosBusqueda{margin-bottom:18px}
 @media(max-width:640px){.aprobadoFila span:nth-child(2)::before{content:"DNI: ";font-weight:800;color:#64748b}}
+
+/* Acceso institucional: conserva la autenticaciÃ³n propia del validador y
+   unifica solamente su presentaciÃ³n con el resto de los accesos SiDCa. */
+.pagina {
+  min-height: 100vh;
+  padding: 84px 20px 40px;
+  background: var(--sidca-institutional-page-background);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tarjeta {
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+}
+
+.tarjetaAcceso {
+  width: min(520px, 92vw);
+  padding: 30px 34px;
+  border-radius: 20px;
+}
+
+.encabezadoAcceso {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.encabezadoAcceso .marca {
+  display: block;
+}
+
+.encabezadoAcceso h1 {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.encabezadoAcceso p {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.logoAcceso {
+  display: block;
+  width: min(160px, 46vw);
+  height: auto;
+  margin: 0 auto 10px;
+  filter: brightness(0.35) saturate(1.2);
+}
+
+.bienvenida {
+  margin: 7px 0 0;
+  color: #a86809 !important;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.subtituloAcceso {
+  max-width: 34rem;
+  margin: 8px auto 0 !important;
+  color: #64748b !important;
+  font-size: 0.9rem !important;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.loginBloque {
+  margin-top: 22px;
+  background: #f8fafc;
+}
+
+.loginBloque h2 {
+  color: var(--sidca-institutional-green-deep);
+}
+
+.loginBloque button {
+  background: var(--sidca-institutional-gold);
+  color: var(--sidca-institutional-green-deep);
+}
+
+.botonRegresarAcceso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  min-height: 38px;
+  margin: 24px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.14) !important;
+  color: var(--sidca-institutional-text) !important;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.botonRegresarAcceso:hover {
+  border-color: rgba(245, 184, 36, 0.75) !important;
+  background: rgba(245, 184, 36, 0.14) !important;
+}
+
+@media (max-width: 640px) {
+  .pagina {
+    padding: 74px 12px 30px;
+  }
+
+  .tarjetaAcceso {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+}

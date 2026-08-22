@@ -16,6 +16,20 @@
   box-sizing: border-box;
 }
 
+/* La portada reutilizada dentro de Gestión de certificados comparte el
+   fondo institucional del validador; /home del afiliado conserva su estilo. */
+.validadorHome {
+  min-height: 100vh;
+  /* The validator shell already accounts for the header; avoid the
+     generic Home top margin, which created a white strip below it. */
+  margin-top: 0;
+  background: var(--sidca-institutional-page-background);
+}
+
+.validadorHome .h1 {
+  color: #fff;
+}
+
 /* =========================
    Portada / Hero
    ========================= */

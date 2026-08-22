@@ -1,5 +1,6 @@
 import React from "react";
 import styles from "./styles.module.css";
+import "../../styles/institutional.css";
 import { Button } from "primereact/button";
 import { useHistory } from "react-router-dom";
 import ImageSlider from "../../components/Slider/ImageSlider";

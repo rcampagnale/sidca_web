@@ -1,0 +1,12 @@
+:root {
+  --sidca-institutional-green: #123b3a;
+  --sidca-institutional-green-deep: #0d2d2c;
+  --sidca-institutional-gold: #f5b824;
+  --sidca-institutional-gold-bright: #ffd15a;
+  --sidca-institutional-text: #f4faf8;
+  --sidca-institutional-muted: #c9ddd8;
+  --sidca-institutional-page-background:
+    radial-gradient(circle at 12% 12%, rgba(245, 184, 36, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 82%, rgba(245, 184, 36, 0.1), transparent 32%),
+    var(--sidca-institutional-green);
+}

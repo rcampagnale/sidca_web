@@ -65,6 +65,7 @@ import PagoResultado from "../pages/GestionPagos/PagoResultado";
 // Página pública Comercio
 import Comercio from "../pages/Comercio/comercio";
 import ComercioLogin from "../pages/Comercio/ComercioLogin";
+import SeleccionAccesoAdministracion from "../pages/Administracion/SeleccionAccesoAdministracion";
 
 // Oficina de Gestión - Administrador
 import OficinaGestionAdmin from "../pages/Admin/OficinaGestion/OficinaGestionAdmin";
@@ -237,6 +238,14 @@ const AppRouter = () => {
         {/* LOGIN EXCLUSIVO PARA COMERCIO */}
         <PublicRoute
           exact
+          path="/administracion"
+          component={SeleccionAccesoAdministracion}
+          allowAuthenticated={true}
+          fullBleed
+        />
+
+        <PublicRoute
+          exact
           path="/comercio-login"
           component={ComercioLogin}
           allowAuthenticated={true}
@@ -346,7 +355,12 @@ const AppRouter = () => {
             ADMIN
         =========================== */}
 
-        <PublicRoute exact path="/admin/login" component={LoginAdmin} />
+        <PublicRoute
+          exact
+          path="/admin/login"
+          component={LoginAdmin}
+          fullBleed
+        />
 
         <AdminRoute exact path="/admin" component={Admin} />
 
