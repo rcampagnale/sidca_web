@@ -23,7 +23,7 @@
 // apaisado normal (2000×1414), de modo que los porcentajes se leen como uno
 // espera al mirar el certificado derecho.
 
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Dialog } from "primereact/dialog";
 import QRCode from "react-qr-code";
 
@@ -225,10 +225,12 @@ const escalarUnaLinea = (texto, anchoCaja, maximo, minimo) =>
  * que se ve en pantalla.
  */
 const TITULO_CUERPO_MAX = 2.3; // cqw
-const TITULO_CUERPO_MIN = 0.9; // cqw
+const TITULO_CUERPO_MIN = 1.05; // cqw: piso legible para títulos largos
 const TITULO_INTERLINEA = 1.1;
-const TITULO_LINEAS_MAX = 2;
-const TITULO_ALTO_MAX = 4.2; // cqw — 84 px sobre un lienzo de 2000
+const TITULO_LINEAS_MAX = 3;
+const TITULO_ALTO_MAX = 8.2; // % de alto disponible para el bloque dinámico
+const TITULO_ALTO_MIN = 5.2; // conserva el diseño compacto para una línea
+const TITULO_DESPLAZAMIENTO_POR_LINEA = 1.8; // % de alto del certificado
 
 /**
  * Ajusta el cuerpo del título midiendo el elemento REAL.
@@ -245,11 +247,21 @@ const TITULO_ALTO_MAX = 4.2; // cqw — 84 px sobre un lienzo de 2000
 const useAjusteTitulo = (titulo, abierto) => {
   const boxRef = useRef(null);
   const textRef = useRef(null);
+  const [layout, setLayout] = useState({
+    lineas: 1,
+    altura: TITULO_ALTO_MIN,
+    desplazamiento: 0,
+  });
 
   useLayoutEffect(() => {
     const box = boxRef.current;
     const elemento = textRef.current;
     if (!box || !elemento || !abierto) return undefined;
+
+    // Cada certificado parte de la banda compacta. Así un título de dos o
+    // tres líneas del certificado anterior nunca se reutiliza durante la
+    // medición del siguiente.
+    setLayout({ lineas: 1, altura: TITULO_ALTO_MIN, desplazamiento: 0 });
 
     const ajustar = () => {
       // offsetParent es el lienzo del certificado: la caja es absoluta y él es
@@ -265,15 +277,17 @@ const useAjusteTitulo = (titulo, abierto) => {
       elemento.style.lineHeight = String(TITULO_INTERLINEA);
 
       const unidad = anchoContenedor / 100; // 1cqw en píxeles
-      const altoMaximo = box.clientHeight;
+      // La altura disponible no depende de la altura anterior de la caja: si
+      // la usamos como límite, un título largo queda atrapado en el tamaño
+      // aplicado al curso anterior. La banda admite hasta tres renglones y el
+      // contenido que sigue se desplaza con la cantidad real de líneas.
+      const altoMaximo = contenedor.clientHeight * (TITULO_ALTO_MAX / 100);
 
       // Los títulos largos necesitan comenzar con un cuerpo más prudente;
       // los cortos conservan el aumento visual. Después la medición real
       // sigue ajustando dentro de la banda disponible.
-      const largoTitulo = titulo.trim().length;
-      let cuerpo = largoTitulo > 55
-        ? Math.min(TITULO_CUERPO_MAX, 0.85)
-        : TITULO_CUERPO_MAX;
+      let cuerpo = TITULO_CUERPO_MAX;
+      let ultimaMedida = { alto: 0, lineas: 1 };
 
       // Se mide en píxeles reales para que el resultado sea exacto; el
       // ResizeObserver mantiene la proporción al cambiar el tamaño.
@@ -286,12 +300,39 @@ const useAjusteTitulo = (titulo, abierto) => {
           1,
           Math.round(alto / (cuerpo * unidad * TITULO_INTERLINEA))
         );
+        ultimaMedida = { alto, lineas };
 
-        if (alto <= altoMaximo + 1 && elemento.scrollWidth <= box.clientWidth + 1 && lineas <= TITULO_LINEAS_MAX) break;
+        if (
+          alto <= altoMaximo + 1 &&
+          elemento.scrollWidth <= box.clientWidth + 1 &&
+          lineas <= TITULO_LINEAS_MAX
+        ) {
+          break;
+        }
         if (cuerpo <= TITULO_CUERPO_MIN) break;
 
         cuerpo = Math.max(TITULO_CUERPO_MIN, cuerpo - 0.05);
       }
+
+      const altura = Math.min(
+        TITULO_ALTO_MAX,
+        Math.max(
+          TITULO_ALTO_MIN,
+          ultimaMedida.lineas * 2.1 + 1.4,
+          (ultimaMedida.alto / contenedor.clientHeight) * 100 + 1.2
+        )
+      );
+      const desplazamiento = Math.min(
+        3.8,
+        Math.max(0, (ultimaMedida.lineas - 1) * TITULO_DESPLAZAMIENTO_POR_LINEA)
+      );
+      setLayout((anterior) =>
+        anterior.lineas === ultimaMedida.lineas &&
+        anterior.altura === altura &&
+        anterior.desplazamiento === desplazamiento
+          ? anterior
+          : { lineas: ultimaMedida.lineas, altura, desplazamiento }
+      );
     };
 
     const frame = requestAnimationFrame(ajustar);
@@ -308,7 +349,7 @@ const useAjusteTitulo = (titulo, abierto) => {
     };
   }, [titulo, abierto]);
 
-  return { boxRef, textRef };
+  return { boxRef, textRef, layout };
 };
 
 const CertificadoPreview = ({
@@ -332,7 +373,11 @@ const CertificadoPreview = ({
   // Va ANTES del return temprano de abajo: los hooks tienen que ejecutarse en
   // el mismo orden en cada render, así que no pueden quedar detrás de una
   // salida condicional.
-  const { boxRef: tituloBoxRef, textRef: tituloTextoRef } = useAjusteTitulo(configuracion?.titulo || "—", abierto);
+  const {
+    boxRef: tituloBoxRef,
+    textRef: tituloTextoRef,
+    layout: tituloLayout,
+  } = useAjusteTitulo(configuracion?.titulo || "—", abierto);
 
   if (!participante || !configuracion) return null;
 
@@ -404,15 +449,11 @@ const fsDni = escalarUnaLinea(
 // Modalidad, carga horaria y fecha siguen compartiendo un tamaño
 // equilibrado según el espacio disponible.
 // DÍAS ya no participa de este cálculo porque tendrá el mismo tamaño que DNI.
-const cuerpoDatos = Math.min(
-  cuerpoUnaLinea(modalidad, 12.5, 2.1, 1.3),
-  cuerpoUnaLinea(cargaHoraria, 23.5, 2.1, 1.3),
-  cuerpoUnaLinea(fecha, 21, 2.1, 1.3)
-);
+const cuerpoModalidad = cuerpoUnaLinea(modalidad, 19, 2.35, 1.5);
+const cuerpoCarga = cuerpoUnaLinea(cargaHoraria, 23.5, 2.35, 1.5);
+const cuerpoFecha = cuerpoUnaLinea(fecha, 21, 2.1, 1.3);
 
-const fsDatos = `${cuerpoDatos.toFixed(2)}cqw`;
-
-const fsModalidad = fsDatos;
+const fsModalidad = `${cuerpoModalidad.toFixed(2)}cqw`;
 
 // El rango de días usa exactamente el mismo tamaño que el DNI.
 const fsDias = fsDni;
@@ -438,8 +479,8 @@ const anchoNombreNecesario =
 
 const escalaNombre = Math.min(1, ANCHO_CAJA_NOMBRE / anchoNombreNecesario);
 
-const fsCarga = fsDatos;
-const fsFecha = fsDatos;
+const fsCarga = `${cuerpoCarga.toFixed(2)}cqw`;
+const fsFecha = `${cuerpoFecha.toFixed(2)}cqw`;
 
 // Resolución: mismo principio que nombre y días. Conserva un cuerpo legible y,
 // si el texto no entra en su caja, se comprime en horizontal en lugar de
@@ -516,7 +557,11 @@ const escalaResolucion = Math.min(
           entre el encabezado y el pie, y el certificado se dimensiona contra
           él. No afecta nada del diseño interno. */}
       <div className={styles.previewViewport}>
-      <div className={`${styles.certificado} ${styles.previewOnly}`}>
+      <div
+        className={`${styles.certificado} ${styles.previewOnly} ${
+          institucionCertificado === "itm" ? styles.certificadoItm : ""
+        }`}
+      >
         <img
           src={fuentePlantilla}
           alt=""
@@ -524,7 +569,12 @@ const escalaResolucion = Math.min(
           className={styles.plantilla}
         />
 
-        <div className={styles.overlay}>
+        <div
+          className={styles.overlay}
+          style={{
+            "--titulo-desplazamiento": `${tituloLayout.desplazamiento}%`,
+          }}
+        >
           {/* Línea "Que el/la Profesor/a … , D.N.I Nº …" */}
           <div
             className={`${styles.caja} ${styles.nombreBox}`}
@@ -555,6 +605,9 @@ const escalaResolucion = Math.min(
             key={`${participante?.usuarioDocId || "participante"}-${titulo}`}
             ref={tituloBoxRef}
             className={styles.tituloBox}
+            style={{
+              "--titulo-alto": `${tituloLayout.altura}%`,
+            }}
           >
             <div ref={tituloTextoRef} className={styles.tituloTexto}>{titulo}</div>
           </div>
