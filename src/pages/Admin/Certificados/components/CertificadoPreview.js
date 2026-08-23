@@ -226,6 +226,9 @@ const escalarUnaLinea = (texto, anchoCaja, maximo, minimo) =>
  */
 const TITULO_CUERPO_MAX = 2.3; // cqw
 const TITULO_CUERPO_MIN = 1.05; // cqw: piso legible para títulos largos
+// Sólo aplica al preview móvil; la captura PDF conserva la escala de escritorio.
+const TITULO_MOVIL_CUERPO_MAX = 1.55; // cqw
+const TITULO_MOVIL_CUERPO_MIN = 0.82; // cqw
 const TITULO_INTERLINEA = 1.1;
 const TITULO_LINEAS_MAX = 3;
 const TITULO_ALTO_MAX = 8.2; // % de alto disponible para el bloque dinámico
@@ -286,7 +289,19 @@ const useAjusteTitulo = (titulo, abierto) => {
       // Los títulos largos necesitan comenzar con un cuerpo más prudente;
       // los cortos conservan el aumento visual. Después la medición real
       // sigue ajustando dentro de la banda disponible.
-      let cuerpo = TITULO_CUERPO_MAX;
+      const esCapturaPdf = Boolean(elemento.closest("[data-pdf-capture]"));
+      const esPreviewMovil =
+        !esCapturaPdf &&
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches;
+      const cuerpoMaximo = esPreviewMovil
+        ? TITULO_MOVIL_CUERPO_MAX
+        : TITULO_CUERPO_MAX;
+      const cuerpoMinimo = esPreviewMovil
+        ? TITULO_MOVIL_CUERPO_MIN
+        : TITULO_CUERPO_MIN;
+
+      let cuerpo = cuerpoMaximo;
       let ultimaMedida = { alto: 0, lineas: 1 };
 
       // Se mide en píxeles reales para que el resultado sea exacto; el
@@ -309,9 +324,9 @@ const useAjusteTitulo = (titulo, abierto) => {
         ) {
           break;
         }
-        if (cuerpo <= TITULO_CUERPO_MIN) break;
+        if (cuerpo <= cuerpoMinimo) break;
 
-        cuerpo = Math.max(TITULO_CUERPO_MIN, cuerpo - 0.05);
+        cuerpo = Math.max(cuerpoMinimo, cuerpo - 0.05);
       }
 
       const altura = Math.min(
