@@ -49,8 +49,14 @@ const ScannerCertificadoQR = ({ abierto, onCodigoValido, onCancelar }) => {
       <div className="validadorScanner">
         <QrReader
           onResult={leer}
-          scanDelay={400}
-          constraints={{ facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }}
+          // 400ms->120ms: el bloqueo por ref (bloqueada.current) ya impide
+          // procesar un segundo QR después de uno válido, así que bajar el
+          // intervalo no puede disparar doble lectura, sólo detecta antes.
+          // Resolución 1280x720->960x540: de sobra para leer un QR y arranca
+          // la cámara más rápido en equipos modestos; "ideal" deja que el
+          // navegador negocie si el dispositivo no la soporta.
+          scanDelay={120}
+          constraints={{ facingMode: { ideal: "environment" }, width: { ideal: 960 }, height: { ideal: 540 } }}
           containerStyle={{ width: "100%" }}
           videoContainerStyle={{ width: "100%", height: "100%" }}
           videoStyle={{ objectFit: "cover" }}

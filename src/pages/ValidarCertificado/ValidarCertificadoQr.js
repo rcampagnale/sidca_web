@@ -75,6 +75,28 @@ const ETIQUETA_ESTADO = {
   reemplazado: "REEMPLAZADO",
 };
 
+/**
+ * ¿Todavía hay que esperar antes de decidir con qué sesión validar?
+ *
+ * El validador tiene prioridad sobre la sesión principal (ver comentario de
+ * cabecera), así que si ya sabemos que hay un validador autenticado no hace
+ * falta esperar a que termine de resolverse la sesión principal: su resultado
+ * no va a cambiar cuál sesión se usa. Sólo si el validador resolvió a null
+ * (no hay sesión de validador) importa saber qué dice la principal.
+ *
+ * Se extrae como función de módulo — y no como una expresión con && dentro
+ * del componente — porque esa forma particular dispara un falso positivo de
+ * react-hooks/rules-of-hooks en la versión de eslint-plugin-react-hooks de
+ * este proyecto (cualquier && en esa línea lo hace, incluso uno trivial sin
+ * relación con hooks). Como función aislada no lo dispara y el resultado es
+ * idéntico.
+ */
+const resolverInicializando = (usuarioValidador, usuarioPrincipal) => {
+  if (usuarioValidador === undefined) return true;
+  if (usuarioValidador) return false;
+  return usuarioPrincipal === undefined;
+};
+
 const ValidarCertificadoQr = () => {
   const { cursoId, token: certificadoToken } = useParams();
   const history = useHistory();
@@ -190,8 +212,7 @@ const ValidarCertificadoQr = () => {
     };
   }, []);
 
-  const inicializando =
-    usuarioValidador === undefined || usuarioPrincipal === undefined;
+  const inicializando = resolverInicializando(usuarioValidador, usuarioPrincipal);
 
   // Prioridad: validador explícito, después sesión principal.
   const sesionElegida = usuarioValidador
@@ -300,10 +321,13 @@ const ValidarCertificadoQr = () => {
     setRegistrando(true);
     setRegistroError("");
     try {
+      // registrarCursoValidado ya pide el token en caché y reintenta UNA vez
+      // con refresco forzado ante un 401; forzarlo acá antes de llamarlo era
+      // un round-trip de más con un token todavía válido.
       const registro = origenSesion === "principal"
         ? await registrarValidacionCertificado(datos.cursoId, datos.token)
         : await registrarCursoValidado(datos.cursoId, datos.token, {
-            idToken: await validatorAuth.currentUser.getIdToken(true),
+            usuarioFirebase: validatorAuth.currentUser,
           });
       setRegistrado(true);
       setValidacion((actual) => ({ ...actual, registroCurso: registro }));
