@@ -1062,6 +1062,55 @@
   overflow-wrap: anywhere;
 }
 
+/* El color general de una persona se obtiene en memoria desde sus cargos.
+   Conserva un fondo blanco para no confundirse con el detalle de cada registro. */
+.respuestaGeneralVerde {
+  border-color: #bbf7d0;
+  border-left: 5px solid #22c55e;
+}
+
+.respuestaGeneralAmarilla {
+  border-color: #fde68a;
+  border-left: 5px solid #f59e0b;
+}
+
+.respuestaGeneralRoja {
+  border-color: #fecaca;
+  border-left: 5px solid #ef4444;
+}
+
+.tagEstadoGeneral {
+  border: 1px solid transparent;
+  font-weight: 800;
+}
+
+.tagEstadoGeneralVerde {
+  color: #166534 !important;
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+}
+
+.tagEstadoGeneralAmarillo {
+  color: #92400e !important;
+  background: #fef3c7 !important;
+  border-color: #fcd34d !important;
+}
+
+.tagEstadoGeneralRojo {
+  color: #991b1b !important;
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+
+.desgloseEstadoRegistros {
+  display: block;
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 /* ===========================
    DETALLE RESPUESTA
    =========================== */
@@ -1093,6 +1142,121 @@
 .detalleMeta span {
   color: #475569;
   overflow-wrap: anywhere;
+}
+
+.resumenEstadosRegistros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resumenEstadoRegistro,
+.estadoRegistroSimple,
+.estadoRegistroNeutro,
+.selloRegistro {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.resumenEstadoRegistro,
+.estadoRegistroSimple,
+.estadoRegistroNeutro {
+  padding: 5px 10px;
+}
+
+.estadoRegistroNeutro {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.registroAgrupadoCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+}
+
+.registroAgrupadoVerde {
+  border-color: #86efac;
+  border-left: 5px solid #22c55e;
+  background: #f0fdf4;
+}
+
+.registroAgrupadoAmarillo {
+  border-color: #f6d365;
+  border-left: 5px solid #f59e0b;
+  background: #fffbeb;
+}
+
+.registroAgrupadoRojo {
+  border-color: #fecaca;
+  border-left: 5px solid #ef4444;
+  background: #fef2f2;
+}
+
+.registroAgrupadoHeader {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.registroAgrupadoHeader > strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.selloRegistro {
+  justify-content: center;
+  padding: 6px 11px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.selloRegistro i {
+  flex: 0 0 auto;
+}
+
+.selloRegistroVerde {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.selloRegistroAmarillo {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.selloRegistroRojo {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.registroAgrupadoCard .detalleCampos {
+  margin-top: 0;
+}
+
+.registroAgrupadoCard .detalleCampo {
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .detalleCampos {
@@ -1307,6 +1471,160 @@
 .selectedInfo small {
   color: #15803d;
   overflow-wrap: anywhere;
+}
+
+/* ===========================
+   PREVISUALIZACIÓN DE IMPORTACIÓN EXCEL
+   =========================== */
+
+.excelSelectActions {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.excelSelectActions :global(.p-button) {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.excelImportPreview {
+  display: grid;
+  gap: 18px;
+  align-items: stretch;
+  padding: 24px;
+  border-color: #bbf7d0;
+  background:
+    radial-gradient(circle at top right, rgba(187, 247, 208, 0.5), transparent 32%),
+    #f5fdf7;
+}
+
+.excelPreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #d9f5e1;
+}
+
+.excelPreviewHeader > div {
+  min-width: 0;
+}
+
+.excelPreviewEyebrow {
+  display: inline-flex;
+  margin-bottom: 4px;
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.excelPreviewHeader h3 {
+  margin: 0;
+  color: #153126;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.excelPreviewHeader p {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: #4e6d5b;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.excelPreviewStatus {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #166534;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.excelImportPreview .metaGrid {
+  margin: 0;
+}
+
+.excelPreviewMetrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.excelPreviewMetrics .metaItem {
+  min-height: 112px;
+  padding: 15px 16px;
+  border-color: #dce7df;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.excelPreviewMetrics .metaItem strong {
+  color: #14532d;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.excelPreviewMapping {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.excelPreviewMapping .metaItem {
+  padding: 16px;
+  border-color: #d4e6d9;
+  background: #ffffff;
+}
+
+.excelPreviewMapping .metaItem strong {
+  color: #14532d;
+  font-size: 1rem;
+}
+
+.excelPreviewFeedback {
+  display: grid;
+  gap: 10px;
+}
+
+.excelPreviewFeedback :global(.p-message) {
+  width: 100%;
+  margin: 0;
+  border-radius: 12px;
+}
+
+.excelPreviewFeedback :global(.p-progressbar) {
+  height: 10px;
+  border-radius: 999px;
+}
+
+.excelPreviewFeedback p {
+  margin: 0;
+  color: #166534;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.excelPreviewActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid #d9f5e1;
+}
+
+.excelPreviewActions :global(.p-button) {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 850;
 }
 
 /* ===========================
@@ -1566,6 +1884,17 @@
     grid-template-columns: 1fr;
   }
 
+  .registroAgrupadoHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .selloRegistro,
+  .estadoRegistroSimple,
+  .estadoRegistroNeutro {
+    width: 100%;
+  }
+
   .previewExcelTable table {
     min-width: 680px;
   }
@@ -1635,5 +1964,216 @@
 
   .tagGroup :global(.p-tag) {
     justify-content: center;
+  }
+}
+
+@media (max-width: 1100px) {
+  .excelPreviewMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .excelImportPreview {
+    gap: 14px;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .excelPreviewHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+
+  .excelPreviewStatus {
+    align-self: flex-start;
+  }
+
+  .excelPreviewMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .excelPreviewMetrics .metaItem,
+  .excelPreviewMapping .metaItem {
+    min-height: 0;
+    padding: 13px;
+  }
+
+  .excelPreviewMapping {
+    grid-template-columns: 1fr;
+  }
+
+  .excelPreviewActions {
+    flex-direction: column-reverse;
+    gap: 10px;
+    padding-top: 14px;
+  }
+
+  .excelPreviewActions :global(.p-button),
+  .excelSelectActions :global(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .excelPreviewMetrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================
+   CONFIGURACIÓN DE COLOR POR CAMPO
+
+   Cada columna del Excel puede elegir tipo y, opcionalmente, la regla que
+   determina el color de la tarjeta en la consulta pública. En escritorio los
+   controles se acomodan en fila; en celular se apilan a ancho completo para
+   que nunca aparezca scroll horizontal.
+   =========================== */
+
+.campoOpciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+.campoOpcion {
+  display: grid;
+  flex: 1 1 190px;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.campoOpcion > span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* El Dropdown de PrimeReact no encoge solo dentro de un flex item. */
+.campoOpcion :global(.p-dropdown) {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Configuración visual del sello dentro del diálogo "Color de tarjetas".
+   Usa una sola columna para evitar que el título o los textos se compriman
+   como ocurría al heredar la grilla de las tarjetas genéricas. */
+.colorTarjetasDialog {
+  width: min(720px, 94vw);
+  max-width: 94vw;
+}
+
+.colorTarjetasDialog :global(.p-dialog-content) {
+  overflow-x: hidden;
+}
+
+.selloConfigCard {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.selloConfigTitle {
+  width: 100%;
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.selloConfigHelp {
+  display: block;
+  width: 100%;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.selloConfigToggle {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.selloConfigToggle label {
+  color: #1e293b;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.selloConfigFields {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.selloTextField {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.selloTextField label {
+  display: block;
+  margin: 0;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.selloTextField :global(.p-inputtext),
+.selloTextField :global(.p-inputtextarea) {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .colorTarjetasDialog {
+    width: calc(100vw - 24px);
+    max-width: none;
+  }
+
+  .campoOpciones {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .campoOpcion {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .selloConfigCard {
+    padding: 1rem;
+    gap: 0.85rem;
+  }
+
+  .selloConfigToggle {
+    align-items: flex-start;
   }
 }

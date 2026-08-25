@@ -8,6 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
 import { InputSwitch } from "primereact/inputswitch";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
@@ -40,6 +41,18 @@ import {
   textoPlanoAHtml,
   sanearHtmlBasico,
 } from "./richTextUtils";
+
+import {
+  COLOR_INICIAL_NO,
+  COLOR_INICIAL_SI,
+  MODO_COLOR,
+  OPCIONES_COLOR,
+  OPCIONES_MODO_COLOR,
+  construirConfiguracionSello,
+  construirConfiguracionTarjeta,
+  obtenerConfiguracionSello,
+  obtenerReglasTarjeta,
+} from "../../services/configuracionVisualService";
 
 const RUTA_PUBLICA_FORMULARIO = "/oficina-gestion/formulario";
 
@@ -118,6 +131,15 @@ const GestionarFormulariosGestion = () => {
   const [formularioPreview, setFormularioPreview] = useState(null);
   const [procesandoId, setProcesandoId] = useState(null);
 
+  // Configuración de color de tarjetas. Se edita aparte del formulario porque
+  // es presentación: no toca la estructura de columnas ni las respuestas, y
+  // por eso puede cambiarse en un formulario ya publicado y con datos.
+  const [formularioColor, setFormularioColor] = useState(null);
+  const [reglasColor, setReglasColor] = useState([]);
+  const [selloHabilitado, setSelloHabilitado] = useState(false);
+  const [textosSello, setTextosSello] = useState({ verde: "", amarillo: "", rojo: "" });
+  const [guardandoColor, setGuardandoColor] = useState(false);
+
   const [formularioEditando, setFormularioEditando] = useState(null);
   const [editTitulo, setEditTitulo] = useState("");
   const [editDescripcion, setEditDescripcion] = useState("");
@@ -140,6 +162,19 @@ const GestionarFormulariosGestion = () => {
       "—"
     );
   };
+
+  const obtenerTipoFormulario = (formulario) => {
+    const esExcelAgrupado =
+      formulario?.tipoFormulario === "consulta_excel_agrupada" ||
+      formulario?.configuracionExcel?.habilitado;
+    return esExcelAgrupado ? "Excel agrupado" : "Manual";
+  };
+
+  const obtenerIdentificadorFormulario = (formulario) =>
+    formulario?.configuracionExcel?.columnaAgrupacion?.label ||
+    formulario?.configuracionExcel?.columnaAgrupacion?.sourceHeader ||
+    formulario?.campos?.find((campo) => campo.tipo === "validacion_dni")?.label ||
+    "—";
 
   const formularioTieneValidacionDni = (formulario) => {
     return Boolean(
@@ -311,6 +346,140 @@ const GestionarFormulariosGestion = () => {
       "_blank",
       "noopener,noreferrer"
     );
+  };
+
+  /**
+   * Abre el editor de colores con lo que el formulario ya tiene guardado.
+   * Un formulario sin `configuracionVisual` abre en "Sin color", que es
+   * exactamente su comportamiento actual.
+   */
+  const abrirConfiguracionColor = (formulario) => {
+    setFormularioColor(formulario);
+    // Lee tanto reglas nuevas como la forma legacy de una sola regla.
+    setReglasColor(obtenerReglasTarjeta(formulario));
+    const sello = obtenerConfiguracionSello(formulario);
+    setSelloHabilitado(sello.habilitado);
+    setTextosSello(sello.textos);
+  };
+
+  const cerrarConfiguracionColor = () => {
+    if (guardandoColor) return;
+    setFormularioColor(null);
+  };
+
+  /** Columnas del formulario, para elegir cuál gobierna el color. */
+  const columnasDelFormulario = (formulario) =>
+    [...(formulario?.configuracionExcel?.camposSeleccionados || [])].sort(
+      (a, b) => Number(a.orden || 0) - Number(b.orden || 0)
+    );
+
+  const agregarReglaColor = () => {
+    const campo = columnasDelFormulario(formularioColor).find(
+      (item) => !reglasColor.some((regla) => regla.campoKey === item.key)
+    );
+
+    if (!campo) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Sin campos disponibles",
+        detail: "Todos los campos del formulario ya tienen una regla o no hay campos para configurar.",
+        life: 4000,
+      });
+      return;
+    }
+
+    setReglasColor((actuales) => [...actuales, {
+      campoKey: campo.key,
+      campoLabel: campo.label,
+      modo: MODO_COLOR.SEMAFORO_SI_NO,
+      reglas: { si: COLOR_INICIAL_SI, no: COLOR_INICIAL_NO },
+    }]);
+  };
+
+  const actualizarReglaColor = (campoKey, cambios) => {
+    setReglasColor((actuales) => actuales.map((regla) => {
+      if (regla.campoKey !== campoKey) return regla;
+      const siguiente = { ...regla, ...cambios };
+      if (cambios.reglas) return siguiente;
+      if (cambios.modo === MODO_COLOR.SEMAFORO_SI_NO) {
+        return {
+          ...siguiente,
+          modo: MODO_COLOR.SEMAFORO_SI_NO,
+          reglas: regla.reglas || { si: COLOR_INICIAL_SI, no: COLOR_INICIAL_NO },
+        };
+      }
+      return {
+        ...siguiente,
+        modo: MODO_COLOR.COLOR_SI_TIENE_VALOR,
+        color: cambios.modo,
+      };
+    }));
+  };
+
+  const actualizarCampoRegla = (campoKey, nuevoCampoKey) => {
+    const campo = columnasDelFormulario(formularioColor).find((item) => item.key === nuevoCampoKey);
+    if (!campo) return;
+    setReglasColor((actuales) => actuales.map((regla) =>
+      regla.campoKey === campoKey
+        ? { ...regla, campoKey: campo.key, campoLabel: campo.label }
+        : regla
+    ));
+  };
+
+  const quitarReglaColor = (campoKey) => {
+    setReglasColor((actuales) => actuales.filter((regla) => regla.campoKey !== campoKey));
+  };
+
+  /**
+   * Guarda SÓLO `configuracionVisual` sobre el documento del formulario.
+   *
+   * updateDoc con esa única clave: no se tocan las columnas, ni los campos, ni
+   * ninguna de las respuestas ya importadas.
+   */
+  const guardarConfiguracionColor = async () => {
+    if (!formularioColor) return;
+
+    setGuardandoColor(true);
+
+    try {
+      await updateDoc(doc(db, "oficina_gestion_formularios", formularioColor.id), {
+        configuracionVisual: {
+          tarjeta: construirConfiguracionTarjeta({
+            reglasCampos: reglasColor,
+          }),
+          detalle: {
+            selloEstado: construirConfiguracionSello({
+              habilitado: selloHabilitado,
+              textos: textosSello,
+            }),
+          },
+        },
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Colores actualizados",
+        detail: reglasColor.length
+          ? `${reglasColor.length} regla(s) de color actualizada(s).`
+          : "Las tarjetas vuelven a mostrarse sin color.",
+        life: 4500,
+      });
+
+      setFormularioColor(null);
+      await cargarFormularios();
+    } catch (error) {
+      console.error("Error al guardar la configuración de color:", error);
+
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo guardar",
+        detail: "Intentá nuevamente.",
+        life: 5000,
+      });
+    } finally {
+      setGuardandoColor(false);
+    }
   };
 
   const cambiarPublicacion = async (formulario, publicar) => {
@@ -1093,6 +1262,9 @@ const GestionarFormulariosGestion = () => {
 
             const cantidadCampos =
               formulario.cantidadCampos || formulario.campos?.length || 0;
+            const tipoFormulario = obtenerTipoFormulario(formulario);
+            const identificadorFormulario = obtenerIdentificadorFormulario(formulario);
+            const idCorto = String(formulario.id || "").slice(0, 8).toUpperCase() || "—";
 
             return (
               <article key={formulario.id} className={styles.manageCard}>
@@ -1134,6 +1306,24 @@ const GestionarFormulariosGestion = () => {
                 </div>
 
                 <div className={styles.metaGrid}>
+                  <div className={styles.metaItem}>
+                    <span>Tipo</span>
+
+                    <strong>{tipoFormulario}</strong>
+                  </div>
+
+                  <div className={styles.metaItem}>
+                    <span>Identificador</span>
+
+                    <strong>{identificadorFormulario}</strong>
+                  </div>
+
+                  <div className={styles.metaItem}>
+                    <span>ID corto</span>
+
+                    <strong>{idCorto}</strong>
+                  </div>
+
                   <div className={styles.metaItem}>
                     <span>Código del formulario</span>
 
@@ -1245,6 +1435,19 @@ const GestionarFormulariosGestion = () => {
                       severity="info"
                       outlined
                       onClick={() => abrirEditorFormulario(formulario)}
+                    />
+                  )}
+
+                  {/* Disponible también con el formulario publicado y con
+                      datos: cambia sólo la presentación, no la estructura ni
+                      las respuestas. */}
+                  {obtenerTipoFormulario(formulario) === "Excel agrupado" && (
+                    <Button
+                      label="Configurar colores"
+                      icon="pi pi-palette"
+                      severity="warning"
+                      outlined
+                      onClick={() => abrirConfiguracionColor(formulario)}
                     />
                   )}
 
@@ -1768,6 +1971,140 @@ const GestionarFormulariosGestion = () => {
                 outlined
                 onClick={cerrarEditor}
                 disabled={guardandoEdicion}
+              />
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* Color de las tarjetas de la consulta pública.
+
+          Escribe únicamente `configuracionVisual` sobre el formulario: no
+          toca sus columnas ni ninguna de sus respuestas importadas, así que
+          se puede cambiar cuantas veces haga falta sin reimportar el Excel. */}
+      <Dialog
+        header="Color de tarjetas"
+        visible={Boolean(formularioColor)}
+        className={styles.colorTarjetasDialog}
+        style={{ width: "min(720px, 94vw)", maxWidth: "94vw" }}
+        modal
+        closable={!guardandoColor}
+        closeOnEscape={!guardandoColor}
+        onHide={cerrarConfiguracionColor}
+      >
+        {formularioColor && (
+          <div className={styles.formGrid}>
+            <p>
+              Configurá una o varias reglas para <strong>{formularioColor.titulo || "este formulario"}</strong>.
+              Los datos importados no se modifican: las tarjetas se recalculan al mostrarse.
+            </p>
+
+            <strong>Reglas configuradas</strong>
+            {reglasColor.map((regla, index) => (
+              <div className={styles.respuestaCard} key={regla.campoKey}>
+                <div className={styles.manageActions}>
+                  <strong>Regla {index + 1}</strong>
+                  <Button label="Quitar" icon="pi pi-trash" severity="danger" text onClick={() => quitarReglaColor(regla.campoKey)} disabled={guardandoColor} />
+                </div>
+                <div className={styles.formRow}>
+                  <label>Campo</label>
+                  <Dropdown
+                    value={regla.campoKey}
+                    options={columnasDelFormulario(formularioColor)
+                      .filter((campo) => campo.key === regla.campoKey || !reglasColor.some((item) => item.campoKey === campo.key))
+                      .map((campo) => ({ label: campo.label, value: campo.key }))}
+                    onChange={(event) => actualizarCampoRegla(regla.campoKey, event.value)}
+                    filter
+                    disabled={guardandoColor}
+                  />
+                </div>
+                <div className={styles.formRow}>
+                  <label>Color de tarjeta</label>
+                  <Dropdown
+                    value={regla.modo === MODO_COLOR.COLOR_SI_TIENE_VALOR ? regla.color : regla.modo}
+                    options={OPCIONES_MODO_COLOR.filter((opcion) => opcion.value !== MODO_COLOR.SIN_COLOR)}
+                    onChange={(event) => actualizarReglaColor(regla.campoKey, { modo: event.value })}
+                    disabled={guardandoColor}
+                  />
+                </div>
+                {regla.modo === MODO_COLOR.SEMAFORO_SI_NO && (
+                  <>
+                    <div className={styles.formRow}>
+                      <label>Valor SI</label>
+                      <Dropdown value={regla.reglas?.si || COLOR_INICIAL_SI} options={OPCIONES_COLOR} onChange={(event) => actualizarReglaColor(regla.campoKey, { reglas: { ...regla.reglas, si: event.value } })} disabled={guardandoColor} />
+                    </div>
+                    <div className={styles.formRow}>
+                      <label>Valor NO</label>
+                      <Dropdown value={regla.reglas?.no || COLOR_INICIAL_NO} options={OPCIONES_COLOR} onChange={(event) => actualizarReglaColor(regla.campoKey, { reglas: { ...regla.reglas, no: event.value } })} disabled={guardandoColor} />
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+
+            <Button label="Agregar regla" icon="pi pi-plus" severity="warning" outlined onClick={agregarReglaColor} disabled={guardandoColor} />
+
+            <section className={styles.selloConfigCard}>
+              <h3 className={styles.selloConfigTitle}>Sello en el detalle</h3>
+              <p className={styles.selloConfigHelp}>
+                El sello usa el color final de la tarjeta y no modifica las respuestas importadas.
+              </p>
+              <div className={styles.selloConfigToggle}>
+                <InputSwitch
+                  inputId="sello-estado-detalle"
+                  checked={selloHabilitado}
+                  onChange={(event) => setSelloHabilitado(Boolean(event.value))}
+                  disabled={guardandoColor}
+                />
+                <label htmlFor="sello-estado-detalle">Mostrar sello de estado</label>
+              </div>
+              {selloHabilitado && (
+                <div className={styles.selloConfigFields}>
+                  <div className={styles.selloTextField}>
+                    <label>Texto para verde</label>
+                    <InputText
+                      value={textosSello.verde}
+                      onChange={(event) => setTextosSello((actual) => ({ ...actual, verde: event.target.value }))}
+                      disabled={guardandoColor}
+                    />
+                  </div>
+                  <div className={styles.selloTextField}>
+                    <label>Texto para amarillo</label>
+                    <InputText
+                      value={textosSello.amarillo}
+                      onChange={(event) => setTextosSello((actual) => ({ ...actual, amarillo: event.target.value }))}
+                      disabled={guardandoColor}
+                    />
+                  </div>
+                  <div className={styles.selloTextField}>
+                    <label>Texto para rojo</label>
+                    <InputTextarea
+                      value={textosSello.rojo}
+                      rows={2}
+                      autoResize
+                      onChange={(event) => setTextosSello((actual) => ({ ...actual, rojo: event.target.value }))}
+                      disabled={guardandoColor}
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <div className={styles.manageActions}>
+              <Button
+                label="Cancelar"
+                outlined
+                onClick={cerrarConfiguracionColor}
+                disabled={guardandoColor}
+              />
+
+              <Button
+                label="Guardar"
+                icon="pi pi-check"
+                severity="success"
+                onClick={guardarConfiguracionColor}
+                loading={guardandoColor}
+                disabled={guardandoColor}
               />
             </div>
           </div>

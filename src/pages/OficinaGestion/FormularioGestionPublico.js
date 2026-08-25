@@ -35,6 +35,7 @@ import {
 } from "../../components/OficinaGestion/departamentos";
 
 import styles from "./FormularioGestionPublico.module.css";
+import ConsultaExcelAgrupada from "../../components/OficinaGestion/ConsultaExcelAgrupada";
 
 const OPCIONES_SI_NO = [
   { label: "Sí", value: "Sí" },
@@ -2356,6 +2357,10 @@ const FormularioGestionPublico = () => {
         </section>
       </main>
     );
+  }
+
+  if (formulario?.tipoFormulario === "consulta_excel_agrupada") {
+    return <ConsultaExcelAgrupada formulario={formulario} formularioId={id} />;
   }
 
   if (soloConsultaDni && respuestaRegistrada && verDetalleRespuesta) {

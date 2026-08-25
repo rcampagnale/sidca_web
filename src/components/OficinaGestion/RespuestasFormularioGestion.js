@@ -28,7 +28,65 @@ import {
 import { getDownloadURL, ref as storageRef } from "firebase/storage";
 import { db, storage } from "../../firebase/firebase-config";
 
+import {
+  AFILIACION_ESTADO,
+  camposAfiliacionParaRespuesta,
+  estadoAfiliacionDeRespuesta,
+  etiquetaAfiliacion,
+  normalizarDniAfiliacion,
+  resumirVerificacion,
+  textoAfiliacionParaExcel,
+  verificarAfiliacionesPorDni,
+} from "../../services/verificacionAfiliacionService";
+import {
+  COLOR_TARJETA,
+  obtenerSelloPorColor,
+  resolverColorRegistro,
+  resolverEstadoGeneralPersona,
+} from "../../services/configuracionVisualService";
+
 import styles from "../../pages/Admin/OficinaGestion/OficinaGestionAdmin.module.css";
+
+const CLASE_REGISTRO_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "registroAgrupadoVerde",
+  [COLOR_TARJETA.AMARILLO]: "registroAgrupadoAmarillo",
+  [COLOR_TARJETA.ROJO]: "registroAgrupadoRojo",
+};
+
+const CLASE_SELLO_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "selloRegistroVerde",
+  [COLOR_TARJETA.AMARILLO]: "selloRegistroAmarillo",
+  [COLOR_TARJETA.ROJO]: "selloRegistroRojo",
+};
+
+const CLASE_RESPUESTA_GENERAL_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "respuestaGeneralVerde",
+  [COLOR_TARJETA.AMARILLO]: "respuestaGeneralAmarilla",
+  [COLOR_TARJETA.ROJO]: "respuestaGeneralRoja",
+};
+
+const CLASE_TAG_GENERAL_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "tagEstadoGeneralVerde",
+  [COLOR_TARJETA.AMARILLO]: "tagEstadoGeneralAmarillo",
+  [COLOR_TARJETA.ROJO]: "tagEstadoGeneralRojo",
+};
+
+const ICONO_ESTADO_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "pi pi-check-circle",
+  [COLOR_TARJETA.AMARILLO]: "pi pi-clock",
+  [COLOR_TARJETA.ROJO]: "pi pi-times-circle",
+};
+
+const ETIQUETA_ESTADO_POR_COLOR = {
+  [COLOR_TARJETA.VERDE]: "Verde",
+  [COLOR_TARJETA.AMARILLO]: "Amarillo",
+  [COLOR_TARJETA.ROJO]: "Rojo",
+};
+
+const clasesConEstado = (claseBase, claseColor) =>
+  [claseBase, claseColor ? styles[claseColor] : null]
+    .filter(Boolean)
+    .join(" ");
 
 const RespuestasFormularioGestion = () => {
   const toast = useRef(null);
@@ -44,6 +102,13 @@ const RespuestasFormularioGestion = () => {
   const [procesandoId, setProcesandoId] = useState(null);
   const [descargandoZip, setDescargandoZip] = useState(false);
   const [procesandoEdicionMasiva, setProcesandoEdicionMasiva] = useState(false);
+
+  // Verificación de afiliación. `preview` guarda el resultado ya calculado
+  // para poder mostrarlo y confirmarlo sin volver a consultar el padrón.
+  const [verificandoAfiliacion, setVerificandoAfiliacion] = useState(false);
+  const [guardandoAfiliacion, setGuardandoAfiliacion] = useState(false);
+  const [progresoAfiliacion, setProgresoAfiliacion] = useState(0);
+  const [previewAfiliacion, setPreviewAfiliacion] = useState(null);
 
   const opcionesFormularios = useMemo(() => {
     return formularios.map((formulario) => ({
@@ -272,6 +337,7 @@ const RespuestasFormularioGestion = () => {
 
   const obtenerValorRespuesta = (respuesta, posiblesClaves = []) => {
     const datos = respuesta?.respuestas || {};
+    const datosPersona = respuesta?.datosPersona || {};
 
     for (const clave of posiblesClaves) {
       if (respuesta?.[clave] !== undefined && respuesta?.[clave] !== null) {
@@ -280,6 +346,10 @@ const RespuestasFormularioGestion = () => {
 
       if (datos?.[clave] !== undefined && datos?.[clave] !== null) {
         return datos[clave];
+      }
+
+      if (datosPersona?.[clave] !== undefined && datosPersona?.[clave] !== null) {
+        return datosPersona[clave];
       }
     }
 
@@ -294,6 +364,17 @@ const RespuestasFormularioGestion = () => {
 
       if (claveEncontrada) return datos[claveEncontrada];
     }
+
+    const clavePersonaEncontrada = posiblesClaves
+      .map((claveBuscada) => normalizarTexto(claveBuscada))
+      .map((claveNormalizada) =>
+        Object.keys(datosPersona).find(
+          (key) => normalizarTexto(key) === claveNormalizada
+        )
+      )
+      .find(Boolean);
+
+    if (clavePersonaEncontrada) return datosPersona[clavePersonaEncontrada];
 
     return "";
   };
@@ -869,6 +950,9 @@ const RespuestasFormularioGestion = () => {
       Apellido: datosPrincipales.apellido,
       Nombre: datosPrincipales.nombre,
       DNI: datosPrincipales.dni,
+      // SI / NO / SIN VERIFICAR. Nunca `esAfiliado ? "SI" : "NO"`: eso
+      // convertiría un campo ausente —todavía sin verificar— en un "NO".
+      Afiliado: textoAfiliacionParaExcel(respuesta),
       Departamento: datosPrincipales.departamento,
       "Presentó documentación": datosPrincipales.presentoDocumentacion,
       "Cantidad de archivos adjuntos": adjuntos.length,
@@ -1357,6 +1441,116 @@ const RespuestasFormularioGestion = () => {
     });
   };
 
+  // ==========================================================
+  // VERIFICACIÓN DE AFILIACIÓN
+  //
+  // Dos pasos separados a propósito: primero se calcula y se muestra el
+  // resultado, y sólo después de confirmarlo se escribe en Firestore. Así el
+  // administrador ve contra qué números está aceptando.
+  // ==========================================================
+
+  /** DNI de una respuesta agrupada. El identificador es la fuente canónica. */
+  const dniDeRespuesta = (respuesta) =>
+    respuesta?.identificador ||
+    respuesta?.dni ||
+    obtenerDatosPrincipales(respuesta).dni ||
+    "";
+
+  const verificarAfiliacionFormulario = async () => {
+    if (!formularioSeleccionado || respuestas.length === 0) return;
+
+    setVerificandoAfiliacion(true);
+    setPreviewAfiliacion(null);
+
+    try {
+      const dnis = respuestas.map(dniDeRespuesta);
+      const verificaciones = await verificarAfiliacionesPorDni(dnis);
+      const resumen = resumirVerificacion(dnis, verificaciones);
+
+      setPreviewAfiliacion({ verificaciones, resumen });
+    } catch (error) {
+      console.error("Error al verificar afiliación:", error);
+
+      // Un fallo NO se traduce en "no afiliado": no se toca ninguna respuesta.
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo completar la verificación de afiliación",
+        detail: "No se realizaron cambios.",
+        life: 6000,
+      });
+    } finally {
+      setVerificandoAfiliacion(false);
+    }
+  };
+
+  const guardarVerificacionAfiliacion = async () => {
+    if (!previewAfiliacion || !formularioSeleccionado) return;
+
+    const { verificaciones } = previewAfiliacion;
+
+    setGuardandoAfiliacion(true);
+    setProgresoAfiliacion(0);
+
+    try {
+      const tamañoLote = 400;
+
+      for (let i = 0; i < respuestas.length; i += tamañoLote) {
+        const lote = respuestas.slice(i, i + tamañoLote);
+        const batch = writeBatch(db);
+        let operaciones = 0;
+
+        lote.forEach((respuesta) => {
+          if (!respuesta?.id) return;
+
+          const dni = normalizarDniAfiliacion(dniDeRespuesta(respuesta));
+          const verificacion = verificaciones.get(dni);
+
+          // Sin verificación para ese DNI no se escribe nada: la respuesta
+          // conserva su estado anterior en lugar de quedar marcada por
+          // omisión.
+          if (!verificacion) return;
+
+          batch.update(doc(db, "oficina_gestion_respuestas", respuesta.id), {
+            ...camposAfiliacionParaRespuesta(verificacion),
+            afiliacionVerificadaAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+          operaciones += 1;
+        });
+
+        if (operaciones > 0) await batch.commit();
+
+        setProgresoAfiliacion(
+          Math.round(
+            (Math.min(i + tamañoLote, respuestas.length) / respuestas.length) * 100
+          )
+        );
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Verificación guardada",
+        detail: `${previewAfiliacion.resumen.afiliados} afiliado(s) y ${previewAfiliacion.resumen.noAfiliados} no afiliado(s) sobre ${previewAfiliacion.resumen.analizados} persona(s).`,
+        life: 6000,
+      });
+
+      setPreviewAfiliacion(null);
+      await cargarRespuestas(formularioSeleccionado);
+    } catch (error) {
+      console.error("Error al guardar la verificación de afiliación:", error);
+
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo guardar la verificación",
+        detail: "Es posible que sólo una parte de las respuestas se haya actualizado. Volvé a ejecutar la verificación.",
+        life: 7000,
+      });
+    } finally {
+      setGuardandoAfiliacion(false);
+      setProgresoAfiliacion(0);
+    }
+  };
+
   const eliminarRespuesta = async (respuesta) => {
     if (!respuesta?.id) return;
 
@@ -1411,6 +1605,14 @@ const RespuestasFormularioGestion = () => {
     return respuestas.filter((respuesta) => {
       const principales = obtenerDatosPrincipales(respuesta);
       const origen = obtenerOrigenRespuesta(respuesta);
+      const estadoGeneral = resolverEstadoGeneralPersona(
+        respuesta,
+        formularioActual?.configuracionVisual
+      );
+      const selloEstado = obtenerSelloPorColor(
+        estadoGeneral,
+        formularioActual?.configuracionVisual
+      );
 
       const textoBuscable = [
         respuesta.id,
@@ -1425,6 +1627,13 @@ const RespuestasFormularioGestion = () => {
         principales.departamento,
         principales.presentoDocumentacion,
         obtenerResumenRespuesta(respuesta),
+        respuesta.identificador,
+        // Hace buscable "afiliado" / "no afiliado" / "sin verificar". Ojo con
+        // el orden: "afiliado" es subcadena de "no afiliado", así que buscar
+        // "afiliado" trae ambos y "no afiliado" trae sólo los negativos.
+        etiquetaAfiliacion(respuesta),
+        estadoGeneral || "sin estado",
+        selloEstado?.texto || "",
         aTextoBusqueda(respuesta.respuestas),
         aTextoBusqueda(respuesta.respuestasPorCampo),
         aTextoBusqueda(respuesta.archivos),
@@ -1432,7 +1641,164 @@ const RespuestasFormularioGestion = () => {
 
       return normalizarTexto(textoBuscable).includes(termino);
     });
-  }, [respuestas, busquedaRespuestas]);
+  }, [respuestas, busquedaRespuestas, formularioActual]);
+
+  const esFormularioAgrupado = Boolean(
+    formularioActual?.tipoFormulario === "consulta_excel_agrupada" ||
+      formularioActual?.configuracionExcel?.habilitado
+  );
+
+  /**
+   * Totales de afiliación del formulario.
+   *
+   * Se calcula sobre las respuestas YA cargadas en memoria: abrir la pantalla
+   * no vuelve a consultar usuarios ni nuevoAfiliado. Sólo cambia cuando se
+   * recargan las respuestas.
+   */
+  const resumenAfiliacionFormulario = useMemo(() => {
+    let afiliados = 0;
+    let noAfiliados = 0;
+    let sinVerificar = 0;
+
+    respuestas.forEach((respuesta) => {
+      const estado = estadoAfiliacionDeRespuesta(respuesta);
+      if (estado === AFILIACION_ESTADO.AFILIADO) afiliados += 1;
+      else if (estado === AFILIACION_ESTADO.NO_AFILIADO) noAfiliados += 1;
+      else sinVerificar += 1;
+    });
+
+    return { afiliados, noAfiliados, sinVerificar };
+  }, [respuestas]);
+
+  const resumenEstadoVisualFormulario = useMemo(() => {
+    const conteos = {
+      [COLOR_TARJETA.VERDE]: 0,
+      [COLOR_TARJETA.AMARILLO]: 0,
+      [COLOR_TARJETA.ROJO]: 0,
+    };
+
+    respuestas.forEach((respuesta) => {
+      const color = resolverEstadoGeneralPersona(
+        respuesta,
+        formularioActual?.configuracionVisual
+      );
+      if (color) conteos[color] += 1;
+    });
+
+    return conteos;
+  }, [respuestas, formularioActual]);
+
+  const renderDetalleAgrupado = (respuesta) => {
+    const campos = [...(respuesta.camposSeleccionados || formularioActual?.configuracionExcel?.camposSeleccionados || [])].sort(
+      (a, b) => Number(a.orden || 0) - Number(b.orden || 0)
+    );
+    const persona = respuesta.datosPersona || {};
+    const registros = respuesta.registros || [];
+    const registrosConEstado = registros.map((registro, index) => {
+      // Algunas columnas de la regla pueden provenir de datosPersona. La
+      // combinación sólo se usa para el cálculo visual; no altera lo
+      // almacenado ni la información mostrada del registro.
+      const registroCompleto = { ...persona, ...registro };
+      const color = resolverColorRegistro(
+        registroCompleto,
+        formularioActual?.configuracionVisual
+      );
+      const sello = obtenerSelloPorColor(
+        color,
+        formularioActual?.configuracionVisual
+      );
+
+      return { registro, index, color, sello };
+    });
+    const conteosEstado = registrosConEstado.reduce(
+      (conteos, { color }) => {
+        if (color) conteos[color] = (conteos[color] || 0) + 1;
+        return conteos;
+      },
+      {}
+    );
+
+    return (
+      <div className={styles.detalleRespuesta}>
+        <div className={styles.detalleMeta}>
+          <strong>Identificador:</strong>
+          <span>{respuesta.identificador || respuesta.dni || "—"}</span>
+        </div>
+        <div className={styles.detalleMeta}>
+          <strong>Cantidad de registros:</strong>
+          <span>{respuesta.cantidadRegistros || registros.length}</span>
+        </div>
+        {Object.keys(conteosEstado).length > 0 && (
+          <div className={styles.resumenEstadosRegistros} aria-label="Resumen de estados visuales">
+            {Object.entries(conteosEstado).map(([color, cantidad]) => (
+              <span
+                className={clasesConEstado(
+                  styles.resumenEstadoRegistro,
+                  CLASE_SELLO_POR_COLOR[color]
+                )}
+                key={color}
+              >
+                {cantidad} {ETIQUETA_ESTADO_POR_COLOR[color]}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className={styles.respuestasList}>
+          {registrosConEstado.map(({ registro, index, color, sello }) => (
+            <article
+              className={clasesConEstado(
+                styles.registroAgrupadoCard,
+                CLASE_REGISTRO_POR_COLOR[color]
+              )}
+              key={`${respuesta.id}-detalle-${index}`}
+            >
+              <div className={styles.registroAgrupadoHeader}>
+                <strong>Registro {index + 1}</strong>
+                {sello ? (
+                  <span
+                    className={clasesConEstado(
+                      styles.selloRegistro,
+                      CLASE_SELLO_POR_COLOR[sello.color]
+                    )}
+                  >
+                    <i className={ICONO_ESTADO_POR_COLOR[sello.color]} aria-hidden="true" />
+                    {sello.texto}
+                  </span>
+                ) : color ? (
+                  <span
+                    className={clasesConEstado(
+                      styles.estadoRegistroSimple,
+                      CLASE_SELLO_POR_COLOR[color]
+                    )}
+                  >
+                    {ETIQUETA_ESTADO_POR_COLOR[color]}
+                  </span>
+                ) : (
+                  <span className={styles.estadoRegistroNeutro}>Sin estado visual</span>
+                )}
+              </div>
+              <div className={styles.detalleCampos}>
+                {campos.map((campo) => {
+                  const valor =
+                    campo.tipo === "IDENTIFICADOR"
+                      ? respuesta.identificador
+                      : campo.tipo === "DATO_PERSONA"
+                      ? persona[campo.key]
+                      : registro[campo.key];
+                  return (
+                    <div className={styles.detalleCampo} key={campo.key}>
+                      <strong>{campo.label}</strong>
+                      <span>{renderValorDetalle(valor || "—")}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.formWrapper}>
@@ -1480,6 +1846,26 @@ const RespuestasFormularioGestion = () => {
             }
             loading={procesandoEdicionMasiva}
           />
+
+          {/* Sólo en formularios Excel agrupados: los manuales no tienen un
+              DNI por respuesta contra el cual verificar. */}
+          {esFormularioAgrupado && (
+            <Button
+              label="Verificar afiliación"
+              icon="pi pi-id-card"
+              severity="help"
+              outlined
+              onClick={verificarAfiliacionFormulario}
+              disabled={
+                !formularioSeleccionado ||
+                loadingRespuestas ||
+                respuestas.length === 0 ||
+                verificandoAfiliacion ||
+                guardandoAfiliacion
+              }
+              loading={verificandoAfiliacion}
+            />
+          )}
 
           <Button
             label="Descargar todo"
@@ -1591,6 +1977,55 @@ const RespuestasFormularioGestion = () => {
               }`}
               severity="info"
             />
+
+            {/* Sólo para formularios Excel agrupados, y sólo una vez que
+                existe alguna verificación: antes no hay nada que informar. */}
+            {esFormularioAgrupado &&
+              resumenAfiliacionFormulario.afiliados +
+                resumenAfiliacionFormulario.noAfiliados >
+                0 && (
+                <>
+                  <Tag
+                    value={`${resumenAfiliacionFormulario.afiliados} afiliado${
+                      resumenAfiliacionFormulario.afiliados === 1 ? "" : "s"
+                    }`}
+                    severity="success"
+                  />
+
+                  <Tag
+                    value={`${resumenAfiliacionFormulario.noAfiliados} no afiliado${
+                      resumenAfiliacionFormulario.noAfiliados === 1 ? "" : "s"
+                    }`}
+                    severity="danger"
+                  />
+
+                  {resumenAfiliacionFormulario.sinVerificar > 0 && (
+                    <Tag
+                      value={`${resumenAfiliacionFormulario.sinVerificar} sin verificar`}
+                      severity="secondary"
+                    />
+                  )}
+                </>
+              )}
+
+            {esFormularioAgrupado &&
+              Object.entries(resumenEstadoVisualFormulario).map(([color, cantidad]) =>
+                cantidad > 0 ? (
+                  <Tag
+                    className={clasesConEstado(
+                      styles.tagEstadoGeneral,
+                      CLASE_TAG_GENERAL_POR_COLOR[color]
+                    )}
+                    key={"resumen-estado-" + color}
+                    value={
+                      String(cantidad) +
+                      " " +
+                      ETIQUETA_ESTADO_POR_COLOR[color].toLowerCase() +
+                      (cantidad === 1 ? "" : "s")
+                    }
+                  />
+                ) : null
+              )}
           </div>
         </div>
       )}
@@ -1658,6 +2093,102 @@ const RespuestasFormularioGestion = () => {
             const edicionHabilitada = Boolean(
               respuesta.edicionAfiliadoHabilitada
             );
+
+            if (esFormularioAgrupado) {
+              const datos = obtenerDatosPrincipales(respuesta);
+              const etiquetaIdentificador =
+                formularioActual?.configuracionExcel?.columnaAgrupacion?.label ||
+                "Identificador";
+              const estadoGeneral = resolverEstadoGeneralPersona(
+                respuesta,
+                formularioActual?.configuracionVisual
+              );
+              const selloEstado = obtenerSelloPorColor(
+                estadoGeneral,
+                formularioActual?.configuracionVisual
+              );
+              const conteoRegistros = (respuesta.registros || []).reduce(
+                (conteos, registro) => {
+                  const color = resolverColorRegistro(
+                    { ...(respuesta.datosPersona || {}), ...registro },
+                    formularioActual?.configuracionVisual
+                  );
+                  if (color) conteos[color] += 1;
+                  return conteos;
+                },
+                {
+                  [COLOR_TARJETA.VERDE]: 0,
+                  [COLOR_TARJETA.AMARILLO]: 0,
+                  [COLOR_TARJETA.ROJO]: 0,
+                }
+              );
+              return (
+                <article
+                  key={respuesta.id}
+                  className={clasesConEstado(
+                    styles.respuestaCard,
+                    CLASE_RESPUESTA_GENERAL_POR_COLOR[estadoGeneral]
+                  )}
+                >
+                  <div>
+                    <div className={styles.respuestaHeader}>
+                      <strong>{datos.apellido}, {datos.nombre}</strong>
+                      <span>{formatearFecha(respuesta.updatedAt || respuesta.createdAt)}</span>
+                    </div>
+                    <p>{etiquetaIdentificador}: {respuesta.identificador || datos.dni} · {respuesta.cantidadRegistros || respuesta.registros?.length || 0} registro(s)</p>
+                    <div className={styles.tagGroup}>
+                      <Tag value="Excel agrupado" severity="warning" />
+                      <Tag value={`Origen: ${obtenerOrigenRespuesta(respuesta).label}`} severity="info" />
+                      {/* NO AFILIADO tiene que saltar a la vista; SIN
+                          VERIFICAR va en gris para no confundirse con una
+                          respuesta negativa. */}
+                      <Tag
+                        value={etiquetaAfiliacion(respuesta)}
+                        severity={
+                          estadoAfiliacionDeRespuesta(respuesta) === AFILIACION_ESTADO.AFILIADO
+                            ? "success"
+                            : estadoAfiliacionDeRespuesta(respuesta) === AFILIACION_ESTADO.NO_AFILIADO
+                            ? "danger"
+                            : "secondary"
+                        }
+                      />
+
+                      {estadoGeneral && (
+                        <Tag
+                          className={clasesConEstado(
+                            styles.tagEstadoGeneral,
+                            CLASE_TAG_GENERAL_POR_COLOR[estadoGeneral]
+                          )}
+                          value={
+                            selloEstado?.texto ||
+                            ETIQUETA_ESTADO_POR_COLOR[estadoGeneral].toUpperCase()
+                          }
+                        />
+                      )}
+                    </div>
+
+                    {Object.values(conteoRegistros).some(Boolean) && (
+                      <small className={styles.desgloseEstadoRegistros}>
+                        {Object.entries(conteoRegistros)
+                          .filter(([, cantidad]) => cantidad > 0)
+                          .map(
+                            ([color, cantidad]) =>
+                              String(cantidad) +
+                              " " +
+                              ETIQUETA_ESTADO_POR_COLOR[color].toLowerCase() +
+                              (cantidad === 1 ? "" : "s")
+                          )
+                          .join(" · ")}
+                      </small>
+                    )}
+                  </div>
+                  <div className={styles.manageActions}>
+                    <Button label="Ver registros" icon="pi pi-eye" severity="info" outlined onClick={() => setRespuestaDetalle(respuesta)} />
+                    <Button label="Eliminar" icon="pi pi-trash" severity="danger" outlined loading={procesandoId === respuesta.id} onClick={() => confirmarEliminarRespuesta(respuesta)} />
+                  </div>
+                </article>
+              );
+            }
 
             return (
               <article key={respuesta.id} className={styles.respuestaCard}>
@@ -1748,7 +2279,7 @@ const RespuestasFormularioGestion = () => {
 
       <Dialog
         header="Detalle de respuesta"
-        visible={Boolean(respuestaDetalle)}
+        visible={Boolean(respuestaDetalle) && !esFormularioAgrupado}
         style={{ width: "760px", maxWidth: "95vw" }}
         modal
         onHide={() => setRespuestaDetalle(null)}
@@ -1865,6 +2396,95 @@ const RespuestasFormularioGestion = () => {
               />
             </div>
           </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        header="Registros de la persona"
+        visible={Boolean(respuestaDetalle) && esFormularioAgrupado}
+        style={{ width: "960px", maxWidth: "95vw" }}
+        modal
+        onHide={() => setRespuestaDetalle(null)}
+      >
+        {respuestaDetalle && renderDetalleAgrupado(respuestaDetalle)}
+      </Dialog>
+
+      {/* Confirmación de la verificación de afiliación. Se muestran los
+          números ANTES de escribir: nada se guarda sin que el administrador
+          vea contra qué está aceptando. */}
+      <Dialog
+        header="Verificación de afiliación"
+        visible={Boolean(previewAfiliacion)}
+        style={{ width: "560px", maxWidth: "95vw" }}
+        modal
+        closable={!guardandoAfiliacion}
+        closeOnEscape={!guardandoAfiliacion}
+        onHide={() => {
+          if (guardandoAfiliacion) return;
+          setPreviewAfiliacion(null);
+        }}
+      >
+        {previewAfiliacion && (
+          <>
+            <p>
+              Se verificaron{" "}
+              <strong>{previewAfiliacion.resumen.analizados}</strong> persona(s)
+              contra los registros de afiliados de SIDCA (usuarios y
+              nuevoAfiliado).
+            </p>
+
+            <div className={styles.metaGrid}>
+              <div className={styles.metaItem}>
+                <span>Personas analizadas</span>
+                <strong>{previewAfiliacion.resumen.analizados}</strong>
+              </div>
+
+              <div className={styles.metaItem}>
+                <span>Afiliados</span>
+                <strong>{previewAfiliacion.resumen.afiliados}</strong>
+              </div>
+
+              <div className={styles.metaItem}>
+                <span>No afiliados</span>
+                <strong>{previewAfiliacion.resumen.noAfiliados}</strong>
+              </div>
+
+              <div className={styles.metaItem}>
+                <span>De los cuales, bajas</span>
+                <strong>{previewAfiliacion.resumen.bajas}</strong>
+              </div>
+            </div>
+
+            <small style={{ display: "block", marginTop: "0.75rem" }}>
+              «Bajas» son personas que sí figuran en el padrón pero con todos
+              sus registros en <code>activo = false</code>. El resto de los no
+              afiliados no aparece en ninguna de las dos colecciones.
+            </small>
+
+            {guardandoAfiliacion && (
+              <p style={{ marginTop: "0.75rem" }}>
+                Actualizando afiliación… {progresoAfiliacion}%
+              </p>
+            )}
+
+            <div className={styles.manageActions} style={{ marginTop: "1rem" }}>
+              <Button
+                label="Cancelar"
+                outlined
+                onClick={() => setPreviewAfiliacion(null)}
+                disabled={guardandoAfiliacion}
+              />
+
+              <Button
+                label="Guardar verificación"
+                icon="pi pi-check"
+                severity="success"
+                onClick={guardarVerificacionAfiliacion}
+                loading={guardandoAfiliacion}
+                disabled={guardandoAfiliacion}
+              />
+            </div>
+          </>
         )}
       </Dialog>
     </div>
