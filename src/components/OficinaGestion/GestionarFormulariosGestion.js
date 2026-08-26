@@ -27,7 +27,14 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
-import { db } from "../../firebase/firebase-config";
+import {
+  deleteObject,
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes,
+} from "firebase/storage";
+
+import { db, storage } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/OficinaGestion/OficinaGestionAdmin.module.css";
 
 import {
@@ -58,6 +65,25 @@ const RUTA_PUBLICA_FORMULARIO = "/oficina-gestion/formulario";
 
 const ARCHIVOS_DEFAULT =
   ".pdf,.doc,.docx,.png,.jpg,.jpeg,.rar,.zip,image/png,image/jpeg";
+
+const ARCHIVOS_DESCARGABLES_ACCEPT =
+  ".pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls,.zip,.rar,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
+
+const limpiarNombreArchivoDescarga = (nombre) => {
+  return String(nombre || "archivo")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w.-]+/g, "_");
+};
+
+const formatBytes = (bytes = 0) => {
+  const size = Number(bytes || 0);
+
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+};
 
 const TIPOS_CAMPO = [
   { label: "Validación por DNI", value: "validacion_dni" },
@@ -125,6 +151,7 @@ const campoInicial = {
 
 const GestionarFormulariosGestion = () => {
   const toast = useRef(null);
+  const archivoDescargaInputRef = useRef(null);
 
   const [formularios, setFormularios] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -151,6 +178,12 @@ const GestionarFormulariosGestion = () => {
     setEditPermitirMultiplesRespuestasPorDni,
   ] = useState(false);
   const [editCampos, setEditCampos] = useState([{ ...campoInicial }]);
+  const [editArchivoDescargaFormulario, setEditArchivoDescargaFormulario] =
+    useState(null);
+  const [
+    editDescripcionArchivoDescargaFormulario,
+    setEditDescripcionArchivoDescargaFormulario,
+  ] = useState("");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const obtenerCodigoFormulario = (formulario) => {
@@ -703,6 +736,10 @@ const GestionarFormulariosGestion = () => {
         : Boolean(formulario.permitirMultiplesRespuestasPorDni)
     );
     setEditCampos(camposNormalizados);
+    setEditArchivoDescargaFormulario(null);
+    setEditDescripcionArchivoDescargaFormulario(
+      formulario.archivoDescargaFormulario?.descripcion || ""
+    );
   };
 
   const cerrarEditor = () => {
@@ -716,6 +753,12 @@ const GestionarFormulariosGestion = () => {
     setEditSoloConsultaDni(false);
     setEditPermitirMultiplesRespuestasPorDni(false);
     setEditCampos([{ ...campoInicial }]);
+    setEditArchivoDescargaFormulario(null);
+    setEditDescripcionArchivoDescargaFormulario("");
+
+    if (archivoDescargaInputRef.current) {
+      archivoDescargaInputRef.current.value = "";
+    }
   };
 
   const agregarCampoEdicion = () => {
@@ -963,6 +1006,29 @@ const GestionarFormulariosGestion = () => {
     });
   };
 
+  const subirArchivoDescargaFormularioEditado = async (formularioId) => {
+    if (!editArchivoDescargaFormulario) return null;
+
+    const safeName = limpiarNombreArchivoDescarga(
+      editArchivoDescargaFormulario.name
+    );
+    const path = `oficina_gestion/formularios/${formularioId}/archivo_descarga/${Date.now()}_${safeName}`;
+    const refArchivo = storageRef(storage, path);
+
+    await uploadBytes(refArchivo, editArchivoDescargaFormulario);
+
+    const url = await getDownloadURL(refArchivo);
+
+    return {
+      nombre: editArchivoDescargaFormulario.name,
+      tipo: editArchivoDescargaFormulario.type || "",
+      size: editArchivoDescargaFormulario.size || 0,
+      path,
+      url,
+      descripcion: editDescripcionArchivoDescargaFormulario.trim(),
+    };
+  };
+
   const guardarEdicionFormulario = async () => {
     if (!formularioEditando?.id) return;
 
@@ -981,6 +1047,18 @@ const GestionarFormulariosGestion = () => {
       const descripcionTextoPlano = htmlATextoPlano(
         descripcionHtmlNormalizada
       );
+      const archivoDescargaAnterior =
+        formularioEditando.archivoDescargaFormulario || null;
+      const archivoDescargaNuevo =
+        await subirArchivoDescargaFormularioEditado(formularioEditando.id);
+      const archivoDescargaFormulario = archivoDescargaNuevo
+        ? archivoDescargaNuevo
+        : archivoDescargaAnterior
+          ? {
+              ...archivoDescargaAnterior,
+              descripcion: editDescripcionArchivoDescargaFormulario.trim(),
+            }
+          : null;
 
       const requiereValidacionDni =
         editSoloConsultaDni ||
@@ -1006,9 +1084,25 @@ const GestionarFormulariosGestion = () => {
           requiereValidacionDni,
           campos: camposNormalizados,
           cantidadCampos: camposNormalizados.length,
+          archivoDescargaFormulario,
           updatedAt: serverTimestamp(),
         }
       );
+
+      if (
+        archivoDescargaNuevo &&
+        archivoDescargaAnterior?.path &&
+        archivoDescargaAnterior.path !== archivoDescargaNuevo.path
+      ) {
+        try {
+          await deleteObject(storageRef(storage, archivoDescargaAnterior.path));
+        } catch (error) {
+          console.warn(
+            "El formulario se actualizó, pero no se pudo eliminar el archivo anterior.",
+            error
+          );
+        }
+      }
 
       toast.current?.show({
         severity: "success",
@@ -1695,6 +1789,107 @@ const GestionarFormulariosGestion = () => {
                   }
                   disabled={guardandoEdicion || editSoloConsultaDni}
                 />
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Archivo descargable para el afiliado</label>
+
+                {formularioEditando.archivoDescargaFormulario?.url && (
+                  <div className={styles.selectedInfo}>
+                    <div>
+                      <strong>Archivo actualmente cargado</strong>
+
+                      <p>
+                        {formularioEditando.archivoDescargaFormulario.nombre ||
+                          "Archivo descargable"}
+                        {formularioEditando.archivoDescargaFormulario.size
+                          ? ` — ${formatBytes(
+                              formularioEditando.archivoDescargaFormulario.size
+                            )}`
+                          : ""}
+                      </p>
+
+                      <a
+                        href={formularioEditando.archivoDescargaFormulario.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Ver archivo actual
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={archivoDescargaInputRef}
+                  type="file"
+                  accept={ARCHIVOS_DESCARGABLES_ACCEPT}
+                  disabled={guardandoEdicion}
+                  onChange={(e) =>
+                    setEditArchivoDescargaFormulario(e.target.files?.[0] || null)
+                  }
+                />
+
+                {editArchivoDescargaFormulario ? (
+                  <div className={styles.selectedInfo}>
+                    <div>
+                      <strong>Nuevo archivo seleccionado</strong>
+
+                      <p>
+                        {editArchivoDescargaFormulario.name} — {formatBytes(
+                          editArchivoDescargaFormulario.size
+                        )}
+                      </p>
+
+                      <small>
+                        Al guardar, este archivo reemplazará al actualmente
+                        cargado.
+                      </small>
+                    </div>
+
+                    <Button
+                      label="Quitar"
+                      icon="pi pi-times"
+                      severity="danger"
+                      outlined
+                      type="button"
+                      onClick={() => {
+                        setEditArchivoDescargaFormulario(null);
+
+                        if (archivoDescargaInputRef.current) {
+                          archivoDescargaInputRef.current.value = "";
+                        }
+                      }}
+                      disabled={guardandoEdicion}
+                    />
+                  </div>
+                ) : (
+                  <small className={styles.helpText}>
+                    {formularioEditando.archivoDescargaFormulario?.url
+                      ? "Seleccioná un archivo solo si necesitás reemplazar el actual."
+                      : "Opcional. Podés adjuntar PDF, Word, imagen, Excel o comprimido para descargar desde el formulario público."}
+                  </small>
+                )}
+              </div>
+
+              <div className={styles.formRow}>
+                <label>Descripción del archivo descargable</label>
+
+                <InputTextarea
+                  value={editDescripcionArchivoDescargaFormulario}
+                  onChange={(e) =>
+                    setEditDescripcionArchivoDescargaFormulario(e.target.value)
+                  }
+                  rows={3}
+                  autoResize
+                  placeholder="Ej: Descargá este archivo, completalo, firmalo y luego adjuntalo en formato PDF."
+                  disabled={guardandoEdicion}
+                />
+
+                <small className={styles.helpText}>
+                  Este texto se mostrará junto al botón de descarga en el
+                  formulario público.
+                </small>
               </div>
             </div>
 

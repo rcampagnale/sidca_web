@@ -402,6 +402,24 @@
   max-width: 100%;
 }
 
+.currentFileNotice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
 .fileButton,
 .fileButtonAlt {
   display: inline-flex;
@@ -478,8 +496,25 @@
 }
 
 .fileItem a {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.fileItem a:hover {
+  background: #dbeafe;
+  text-decoration: none;
 }
 
 .fileItem button {
@@ -1197,6 +1232,16 @@
 
   .fileItem button {
     width: 100%;
+  }
+
+  .fileItem a {
+    width: 100%;
+  }
+
+  .currentFileNotice {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 
   .successCard,
