@@ -1738,7 +1738,7 @@
   }
 
   .manageActions :global(.p-button) {
-    flex: 1 1 220px;
+    flex: 1 1 180px;
     justify-content: center;
   }
 }
@@ -1952,10 +1952,28 @@
   .manageActions {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
   .manageActions :global(.p-button) {
+    /* Anula el flex-basis horizontal del breakpoint de tablet: al apilarse,
+       ese valor pasaría a ser altura y generaría botones gigantes. */
+    flex: 0 0 auto;
     width: 100%;
+    min-height: 46px;
+    height: auto;
+    padding: 0.75rem 1rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .manageActions :global(.p-button .p-button-label) {
+    flex: 0 1 auto;
+    white-space: normal;
+    line-height: 1.2;
   }
 
   .tagGroup {
@@ -2152,6 +2170,31 @@
   min-width: 0;
 }
 
+/* Confirmación de borrado: contenido contenido también en pantallas angostas. */
+.confirmDialogGestion {
+  width: calc(100vw - 32px);
+  max-width: 560px;
+}
+
+.confirmDialogGestion :global(.p-dialog-content),
+.confirmDialogGestion :global(.p-confirm-dialog-message) {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.confirmDialogGestion :global(.p-dialog-footer) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.confirmDialogGestion :global(.p-dialog-footer .p-button) {
+  margin: 0;
+}
+
 @media (max-width: 640px) {
   .colorTarjetasDialog {
     width: calc(100vw - 24px);
@@ -2175,5 +2218,14 @@
 
   .selloConfigToggle {
     align-items: flex-start;
+  }
+
+  .confirmDialogGestion :global(.p-dialog-footer) {
+    justify-content: stretch;
+  }
+
+  .confirmDialogGestion :global(.p-dialog-footer .p-button) {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 }

@@ -396,6 +396,23 @@ const obtenerValorPorClaves = (respuestas, claves = []) => {
   return "";
 };
 
+// Para datos personales no se debe usar la búsqueda flexible de arriba: por
+// ejemplo, "Nombre del cargo" no representa el nombre de la persona.
+const obtenerValorPorClavesExactas = (respuestas, claves = []) => {
+  const entries = Object.entries(respuestas || {});
+
+  for (const clave of claves) {
+    const normalizada = normalizarTexto(clave);
+    const encontrada = entries.find(([key, value]) => {
+      return normalizarTexto(key) === normalizada && !valorVacio(value);
+    });
+
+    if (encontrada) return encontrada[1];
+  }
+
+  return "";
+};
+
 const esCampoDniPorLabel = (label = "") => {
   const normalizado = normalizarTexto(label);
 
@@ -1183,13 +1200,13 @@ const FormularioGestionPublico = () => {
 
   const obtenerDatosPrincipalesDesdeRespuesta = (respuestasPlanos) => {
     const apellidoOriginal =
-      obtenerValorPorClaves(respuestasPlanos, ["Apellido", "Apellidos"]) ||
       afiliadoValidado?.apellido ||
+      obtenerValorPorClavesExactas(respuestasPlanos, ["Apellido", "Apellidos"]) ||
       "";
 
     const nombreOriginal =
-      obtenerValorPorClaves(respuestasPlanos, ["Nombre", "Nombres"]) ||
       afiliadoValidado?.nombre ||
+      obtenerValorPorClavesExactas(respuestasPlanos, ["Nombre", "Nombres"]) ||
       "";
 
     const persona = separarApellidoNombrePersona(
@@ -1198,8 +1215,10 @@ const FormularioGestionPublico = () => {
     );
 
     const dni =
+      normalizarDni(afiliadoValidado?.dni) ||
+      normalizarDni(dniValidacion) ||
       normalizarDni(
-        obtenerValorPorClaves(respuestasPlanos, [
+        obtenerValorPorClavesExactas(respuestasPlanos, [
           "DNI",
           "Documento",
           "Nro DNI",
@@ -1208,12 +1227,11 @@ const FormularioGestionPublico = () => {
           "Número de DNI",
           "Numero de DNI",
         ])
-      ) ||
-      normalizarDni(afiliadoValidado?.dni) ||
-      normalizarDni(dniValidacion);
+      );
 
     const departamento =
-      obtenerValorPorClaves(respuestasPlanos, [
+      afiliadoValidado?.departamento ||
+      obtenerValorPorClavesExactas(respuestasPlanos, [
         "Departamento",
         "Depto",
         "Dpto",
@@ -1645,11 +1663,14 @@ const FormularioGestionPublico = () => {
 
     const apellidoOriginal =
       respuestaRegistrada.apellido ||
-      obtenerValorPorClaves(respuestasGuardadas, ["Apellido", "Apellidos"]);
+      obtenerValorPorClavesExactas(respuestasGuardadas, [
+        "Apellido",
+        "Apellidos",
+      ]);
 
     const nombreOriginal =
       respuestaRegistrada.nombre ||
-      obtenerValorPorClaves(respuestasGuardadas, ["Nombre", "Nombres"]);
+      obtenerValorPorClavesExactas(respuestasGuardadas, ["Nombre", "Nombres"]);
 
     const persona = separarApellidoNombrePersona(
       apellidoOriginal,
@@ -1663,7 +1684,7 @@ const FormularioGestionPublico = () => {
       detalle,
       "DNI",
       respuestaRegistrada.dni ||
-        obtenerValorPorClaves(respuestasGuardadas, [
+        obtenerValorPorClavesExactas(respuestasGuardadas, [
           "DNI",
           "Documento",
           "Nro DNI",
@@ -2081,9 +2102,12 @@ const FormularioGestionPublico = () => {
       case "numero":
         return (
           <InputText
-            type="number"
+            type={esCampoDniPorLabel(campo.label) ? "text" : "number"}
             value={valor}
             onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
+            inputMode={esCampoDniPorLabel(campo.label) ? "numeric" : undefined}
+            pattern={esCampoDniPorLabel(campo.label) ? "[0-9]*" : undefined}
+            autoComplete={esCampoDniPorLabel(campo.label) ? "off" : undefined}
             placeholder={campo.placeholder || "Ingrese un número"}
             disabled={enviando}
           />
@@ -2247,6 +2271,9 @@ const FormularioGestionPublico = () => {
             value={valor}
             onChange={(e) => actualizarRespuesta(campo.id, e.target.value)}
             placeholder={campo.placeholder || "Ingrese su respuesta"}
+            inputMode={esCampoDniPorLabel(campo.label) ? "numeric" : undefined}
+            pattern={esCampoDniPorLabel(campo.label) ? "[0-9]*" : undefined}
+            autoComplete={esCampoDniPorLabel(campo.label) ? "off" : undefined}
             disabled={enviando}
           />
         );
@@ -2293,10 +2320,15 @@ const FormularioGestionPublico = () => {
               <label>DNI</label>
 
               <InputText
+                type="text"
                 value={dniValidacion}
                 onChange={(e) => setDniValidacion(e.target.value)}
                 placeholder="Ingrese su DNI"
                 keyfilter="int"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                enterKeyHint="search"
                 disabled={validandoDni}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {

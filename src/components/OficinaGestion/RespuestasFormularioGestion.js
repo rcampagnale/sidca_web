@@ -77,6 +77,125 @@ const ICONO_ESTADO_POR_COLOR = {
   [COLOR_TARJETA.ROJO]: "pi pi-times-circle",
 };
 
+// El padrón se consulta una sola vez por sesión de esta pantalla. Las
+// respuestas históricas conservan sus datos originales; este mapa sólo sirve
+// para mostrar la identidad correcta cuando una respuesta pública fue
+// validada por DNI.
+let identidadesPorDniCache = null;
+let identidadesPorDniEnCurso = null;
+
+const CLAVES_DNI_NORMALIZADAS = new Set([
+  "dni",
+  "documento",
+  "nro dni",
+  "numero de dni",
+]);
+
+const normalizarClaveRespuesta = (valor) => {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
+
+const obtenerDniCandidatoRespuesta = (respuesta) => {
+  const fuentes = [
+    respuesta || {},
+    respuesta?.respuestas || {},
+    respuesta?.datosPersona || {},
+  ];
+
+  for (const fuente of fuentes) {
+    const entrada = Object.entries(fuente).find(([clave, valor]) => {
+      return CLAVES_DNI_NORMALIZADAS.has(normalizarClaveRespuesta(clave)) && valor;
+    });
+
+    if (entrada) return normalizarDniAfiliacion(entrada[1]);
+  }
+
+  const campoDni = Object.values(respuesta?.respuestasPorCampo || {}).find(
+    (campo) =>
+      CLAVES_DNI_NORMALIZADAS.has(normalizarClaveRespuesta(campo?.label)) &&
+      campo?.valor
+  );
+
+  return normalizarDniAfiliacion(
+    campoDni?.valor || respuesta?.identificador || ""
+  );
+};
+
+const obtenerIdentidadPadron = (data = {}) => {
+  const dni = normalizarDniAfiliacion(
+    data.dni ||
+      data.DNI ||
+      data.documento ||
+      data.Documento ||
+      data.nroDni ||
+      data.numeroDni ||
+      ""
+  );
+
+  if (!dni) return null;
+
+  return {
+    dni,
+    apellido: String(
+      data.apellido || data.Apellido || data.apellidos || data.Apellidos || ""
+    ).trim(),
+    nombre: String(
+      data.nombre || data.Nombre || data.nombres || data.Nombres || ""
+    ).trim(),
+    departamento: String(
+      data.departamento ||
+        data.Departamento ||
+        data.depto ||
+        data.dpto ||
+        data.delegacion ||
+        data.Delegacion ||
+        ""
+    ).trim(),
+  };
+};
+
+const cargarIdentidadesPorDni = async () => {
+  if (identidadesPorDniCache) return identidadesPorDniCache;
+
+  if (!identidadesPorDniEnCurso) {
+    identidadesPorDniEnCurso = Promise.all([
+      getDocs(collection(db, "usuarios")),
+      getDocs(collection(db, "nuevoAfiliado")),
+    ])
+      .then((colecciones) => {
+        const identidades = new Map();
+
+        colecciones.forEach((snapshot) => {
+          snapshot.docs.forEach((docSnap) => {
+            const identidad = obtenerIdentidadPadron(docSnap.data());
+            if (!identidad) return;
+
+            const existente = identidades.get(identidad.dni) || {};
+
+            identidades.set(identidad.dni, {
+              dni: identidad.dni,
+              apellido: existente.apellido || identidad.apellido,
+              nombre: existente.nombre || identidad.nombre,
+              departamento: existente.departamento || identidad.departamento,
+            });
+          });
+        });
+
+        identidadesPorDniCache = identidades;
+        return identidades;
+      })
+      .finally(() => {
+        identidadesPorDniEnCurso = null;
+      });
+  }
+
+  return identidadesPorDniEnCurso;
+};
+
 const ETIQUETA_ESTADO_POR_COLOR = {
   [COLOR_TARJETA.VERDE]: "Verde",
   [COLOR_TARJETA.AMARILLO]: "Amarillo",
@@ -96,6 +215,7 @@ const RespuestasFormularioGestion = () => {
   const [respuestas, setRespuestas] = useState([]);
   const [respuestaDetalle, setRespuestaDetalle] = useState(null);
   const [busquedaRespuestas, setBusquedaRespuestas] = useState("");
+  const [identidadesPorDni, setIdentidadesPorDni] = useState(() => new Map());
 
   const [loadingFormularios, setLoadingFormularios] = useState(false);
   const [loadingRespuestas, setLoadingRespuestas] = useState(false);
@@ -379,6 +499,109 @@ const RespuestasFormularioGestion = () => {
     return "";
   };
 
+  const obtenerValorRespuestaExacto = (respuesta, posiblesClaves = []) => {
+    const fuentes = [
+      respuesta?.respuestas || {},
+      respuesta?.datosPersona || {},
+    ];
+    const respuestasPorCampo = Object.values(respuesta?.respuestasPorCampo || {});
+
+    for (const clave of posiblesClaves) {
+      const claveNormalizada = normalizarTexto(clave);
+
+      for (const fuente of fuentes) {
+        const encontrada = Object.entries(fuente).find(([key, value]) => {
+          return normalizarTexto(key) === claveNormalizada && value !== "";
+        });
+
+        if (encontrada) return encontrada[1];
+      }
+
+      const desdeCampo = respuestasPorCampo.find((campo) => {
+        return (
+          normalizarTexto(campo?.label) === claveNormalizada &&
+          campo?.valor !== undefined &&
+          campo?.valor !== null &&
+          campo?.valor !== ""
+        );
+      });
+
+      if (desdeCampo) {
+        return desdeCampo.valorLegible ?? desdeCampo.valor;
+      }
+    }
+
+    return "";
+  };
+
+  const obtenerDniRespuesta = (respuesta) => {
+    return normalizarDniAfiliacion(
+      obtenerValorRespuestaExacto(respuesta, [
+        "DNI",
+        "Documento",
+        "Nro DNI",
+        "Numero de DNI",
+      ]) ||
+        respuesta?.dni ||
+        respuesta?.DNI ||
+        respuesta?.identificador ||
+        ""
+    );
+  };
+
+  const esRespuestaPublicaValidadaPorDni = (respuesta) => {
+    return Boolean(
+      respuesta?.origen === "formulario_publico" &&
+        (formularioActual?.requiereValidacionDni ||
+          formularioActual?.campos?.some(
+            (campo) => campo.tipo === "validacion_dni"
+          ))
+    );
+  };
+
+  const resolverDatosPersonaRespuesta = (respuesta) => {
+    const dni = obtenerDniRespuesta(respuesta);
+    const identidad = dni ? identidadesPorDni.get(dni) : null;
+
+    const apellidoExacto = normalizarValorPrincipal(
+      obtenerValorRespuestaExacto(respuesta, ["Apellido", "Apellidos"])
+    );
+    const nombreExacto = normalizarValorPrincipal(
+      obtenerValorRespuestaExacto(respuesta, ["Nombre", "Nombres"])
+    );
+    const departamentoExacto = normalizarValorPrincipal(
+      obtenerValorRespuestaExacto(respuesta, [
+        "Departamento",
+        "Depto",
+        "Dpto",
+        "Delegacion",
+      ])
+    );
+
+    const apellidoHistorico = normalizarValorPrincipal(
+      respuesta?.apellido || respuesta?.apellidos
+    );
+    const nombreHistorico = normalizarValorPrincipal(
+      respuesta?.nombre || respuesta?.nombres
+    );
+    const departamentoHistorico = normalizarValorPrincipal(
+      respuesta?.departamento || respuesta?.depto || respuesta?.dpto
+    );
+
+    const persona = separarApellidoNombrePersona(
+      identidad?.apellido || apellidoExacto || apellidoHistorico,
+      identidad?.nombre || nombreExacto || nombreHistorico
+    );
+
+    return {
+      apellido: persona.apellido || "â€”",
+      nombre: persona.nombre || "â€”",
+      dni: dni || "â€”",
+      departamento:
+        identidad?.departamento || departamentoExacto || departamentoHistorico || "â€”",
+    };
+  };
+
   const obtenerOrigenRespuesta = (respuesta) => {
     const origen = respuesta?.origen || "sin_origen";
 
@@ -537,7 +760,64 @@ const RespuestasFormularioGestion = () => {
     cargarRespuestas(formularioSeleccionado);
   }, [formularioSeleccionado]);
 
+  useEffect(() => {
+    let activa = true;
+    const requiereValidacionDni = Boolean(
+      formularioActual?.requiereValidacionDni ||
+        formularioActual?.campos?.some(
+          (campo) => campo.tipo === "validacion_dni"
+        )
+    );
+    const hayRespuestasPublicasConDni = respuestas.some(
+      (respuesta) =>
+        respuesta?.origen === "formulario_publico" &&
+        Boolean(obtenerDniCandidatoRespuesta(respuesta))
+    );
+
+    if (!requiereValidacionDni || !hayRespuestasPublicasConDni) {
+      setIdentidadesPorDni(new Map());
+      return () => {
+        activa = false;
+      };
+    }
+
+    cargarIdentidadesPorDni()
+      .then((identidades) => {
+        if (activa) setIdentidadesPorDni(identidades);
+      })
+      .catch((error) => {
+        console.error("No se pudo cargar el padrÃ³n para respuestas histÃ³ricas:", error);
+        if (activa) setIdentidadesPorDni(new Map());
+      });
+
+    return () => {
+      activa = false;
+    };
+  }, [formularioActual, respuestas]);
+
   const obtenerDatosPrincipales = (respuesta) => {
+    if (esRespuestaPublicaValidadaPorDni(respuesta)) {
+      const datosResueltos = resolverDatosPersonaRespuesta(respuesta);
+
+      return {
+        ...datosResueltos,
+        presentoDocumentacion:
+          obtenerValorRespuesta(respuesta, [
+            "presentoDocumentacion",
+            "PresentÃ³ documentaciÃ³n",
+            "Presento documentacion",
+            "PresentÃ³ documentaciÃ³n (SI)",
+            "Documentacion",
+            "DocumentaciÃ³n",
+            "Documentacion SI",
+            "DOCUMENTACIÃ“N PRESENTADA",
+            "DOCUMENTACION PRESENTADA",
+            "DocumentaciÃ³n presentada",
+            "Documentacion presentada",
+          ]) || "â€”",
+      };
+    }
+
     const apellidoOriginal = normalizarValorPrincipal(
       obtenerValorRespuesta(respuesta, ["apellido", "Apellido", "Apellidos"])
     );
@@ -1587,6 +1867,7 @@ const RespuestasFormularioGestion = () => {
     const datos = obtenerDatosPrincipales(respuesta);
 
     confirmDialog({
+      className: styles.confirmDialogGestion,
       message: `¿Está seguro de eliminar la respuesta de ${datos.apellido} ${datos.nombre} - DNI ${datos.dni}? Esta acción no se puede deshacer.`,
       header: "Eliminar respuesta",
       icon: "pi pi-exclamation-triangle",
@@ -1803,7 +2084,7 @@ const RespuestasFormularioGestion = () => {
   return (
     <div className={styles.formWrapper}>
       <Toast ref={toast} />
-      <ConfirmDialog />
+      <ConfirmDialog className={styles.confirmDialogGestion} />
 
       <div className={styles.sectionTitle}>
         <div>
