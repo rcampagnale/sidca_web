@@ -294,14 +294,33 @@ const RespuestasFormularioGestion = () => {
     let apellido = limpiarValorPersona(apellidoValor);
     let nombre = limpiarValorPersona(nombreValor);
 
-    if (!apellido && nombre.includes(",")) {
+    const normalizarComparacion = (valor = "") =>
+      String(valor || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+    // Algunos registros históricos guardaron "APELLIDO, NOMBRE" en el
+    // campo Nombre aunque Apellido ya estaba correctamente informado.
+    // Sólo se retira el prefijo cuando coincide con el apellido real para
+    // no alterar datos legítimos del formulario.
+    if (nombre.includes(",")) {
       const partes = nombre.split(",");
       const posibleApellido = partes.shift()?.trim() || "";
       const posibleNombre = partes.join(",").trim();
 
       if (posibleApellido && posibleNombre) {
-        apellido = posibleApellido;
-        nombre = posibleNombre;
+        if (!apellido) {
+          apellido = posibleApellido;
+          nombre = posibleNombre;
+        } else if (
+          normalizarComparacion(apellido) ===
+          normalizarComparacion(posibleApellido)
+        ) {
+          nombre = posibleNombre;
+        }
       }
     }
 
@@ -819,11 +838,15 @@ const RespuestasFormularioGestion = () => {
     }
 
     const apellidoOriginal = normalizarValorPrincipal(
-      obtenerValorRespuesta(respuesta, ["apellido", "Apellido", "Apellidos"])
+      obtenerValorRespuestaExacto(respuesta, ["Apellido", "Apellidos"]) ||
+        respuesta?.apellido ||
+        respuesta?.apellidos
     );
 
     const nombreOriginal = normalizarValorPrincipal(
-      obtenerValorRespuesta(respuesta, ["nombre", "Nombre", "Nombres"])
+      obtenerValorRespuestaExacto(respuesta, ["Nombre", "Nombres"]) ||
+        respuesta?.nombre ||
+        respuesta?.nombres
     );
 
     const personaNormalizada = separarApellidoNombrePersona(

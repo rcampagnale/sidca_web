@@ -18,6 +18,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   query,
   serverTimestamp,
   setDoc,
@@ -25,7 +26,7 @@ import {
   where,
 } from "firebase/firestore";
 
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { db, storage } from "../../firebase/firebase-config";
 
@@ -322,6 +323,13 @@ const unificarArchivos = (lista = []) => {
   return Array.from(map.values());
 };
 
+const copiarArchivosPorCampo = (archivosPorCampo = {}) => {
+  return Object.entries(archivosPorCampo).reduce((acumulado, [campoId, lista]) => {
+    acumulado[campoId] = Array.isArray(lista) ? [...lista] : [];
+    return acumulado;
+  }, {});
+};
+
 const obtenerArchivosGuardadosCampo = (respuesta, campo) => {
   if (!respuesta || !campo?.id) return [];
 
@@ -500,6 +508,20 @@ const separarApellidoNombrePersona = (apellidoValor = "", nombreValor = "") => {
     }
   }
 
+  const palabrasApellido = apellido.split(/\s+/).filter(Boolean);
+  const palabrasNombre = nombre.split(/\s+/).filter(Boolean);
+
+  if (
+    palabrasApellido.length > 0 &&
+    palabrasNombre.length > palabrasApellido.length &&
+    palabrasNombre
+      .slice(0, palabrasApellido.length)
+      .map(normalizarTexto)
+      .join(" ") === palabrasApellido.map(normalizarTexto).join(" ")
+  ) {
+    nombre = palabrasNombre.slice(palabrasApellido.length).join(" ");
+  }
+
   return { apellido, nombre };
 };
 
@@ -536,11 +558,27 @@ const obtenerDniDesdeRespuestaRegistrada = (data = {}) => {
 
 const normalizarAfiliado = (data = {}, idDoc = "", origen = "") => {
   const apellidoOriginal = String(
-    data.apellido || data.Apellido || data.apellidos || data.Apellidos || ""
+    data.apellido ||
+      data.Apellido ||
+      data.APELLIDO ||
+      data.apellidos ||
+      data.Apellidos ||
+      data.apellidoAfiliado ||
+      ""
   ).trim();
 
   const nombreOriginal = String(
-    data.nombre || data.Nombre || data.nombres || data.Nombres || ""
+    data.nombre ||
+      data.Nombre ||
+      data.NOMBRE ||
+      data.nombres ||
+      data.Nombres ||
+      data.nombreAfiliado ||
+      data.nombreCompleto ||
+      data.apellidoNombre ||
+      data.apellido_nombre ||
+      data.apellidoyNombre ||
+      ""
   ).trim();
 
   const personaNormalizada = separarApellidoNombrePersona(
@@ -560,6 +598,9 @@ const normalizarAfiliado = (data = {}, idDoc = "", origen = "") => {
         data.Documento ||
         data.nroDni ||
         data.numeroDni ||
+        data.numeroDocumento ||
+        data.dniAfiliado ||
+        idDoc ||
         ""
     ),
     departamento:
@@ -611,6 +652,7 @@ const FormularioGestionPublico = () => {
 
   const [modoEdicionAfiliado, setModoEdicionAfiliado] = useState(false);
   const [respuestaEditandoId, setRespuestaEditandoId] = useState(null);
+  const [archivosOriginalesEdicion, setArchivosOriginalesEdicion] = useState({});
 
   const enviado = Boolean(estadoEnvio);
 
@@ -825,6 +867,25 @@ const FormularioGestionPublico = () => {
 
     if (!dniNormalizado) return null;
 
+    try {
+      const directo = await getDoc(doc(db, nombreColeccion, dniNormalizado));
+
+      if (directo.exists()) {
+        const afiliadoDirecto = normalizarAfiliado(
+          directo.data(),
+          directo.id,
+          nombreColeccion
+        );
+
+        if (afiliadoDirecto?.dni) return afiliadoDirecto;
+      }
+    } catch (error) {
+      console.error(
+        `Error al buscar DNI por ID en ${nombreColeccion}:`,
+        error
+      );
+    }
+
     const camposBusqueda = [
       "dni",
       "DNI",
@@ -832,6 +893,8 @@ const FormularioGestionPublico = () => {
       "Documento",
       "nroDni",
       "numeroDni",
+      "numeroDocumento",
+      "dniAfiliado",
     ];
 
     const valoresBusqueda = [dniNormalizado];
@@ -846,7 +909,8 @@ const FormularioGestionPublico = () => {
         try {
           const q = query(
             collection(db, nombreColeccion),
-            where(campo, "==", valor)
+            where(campo, "==", valor),
+            limit(1)
           );
 
           const snap = await getDocs(q);
@@ -873,16 +937,32 @@ const FormularioGestionPublico = () => {
   };
 
   const buscarAfiliadoPorDni = async (dni) => {
-    for (const nombreColeccion of COLECCIONES_VALIDACION_DNI) {
-      const afiliado = await buscarAfiliadoPorDniEnColeccion(
-        nombreColeccion,
-        dni
-      );
+    const encontrados = await Promise.all(
+      COLECCIONES_VALIDACION_DNI.map((nombreColeccion) =>
+        buscarAfiliadoPorDniEnColeccion(nombreColeccion, dni)
+      )
+    );
 
-      if (afiliado?.dni) return afiliado;
-    }
+    return (
+      encontrados.find((afiliado) => afiliado?.dni && afiliado?.nombre) ||
+      encontrados.find((afiliado) => afiliado?.dni) ||
+      null
+    );
+  };
 
-    return null;
+  const cargarIdentidadPadronPorDni = async (dni) => {
+    const dniNormalizado = normalizarDni(dni);
+    const afiliado = await buscarAfiliadoPorDni(dniNormalizado);
+
+    if (!afiliado) return null;
+
+    const identidad = {
+      ...afiliado,
+      dni: dniNormalizado,
+    };
+
+    setAfiliadoValidado(identidad);
+    return identidad;
   };
 
   const verificarRespuestaExistentePorDni = async (dni) => {
@@ -954,6 +1034,8 @@ const FormularioGestionPublico = () => {
         );
 
         if (respuestaExistente) {
+          await cargarIdentidadPadronPorDni(dniNormalizado);
+
           setRespuestaRegistrada(respuestaExistente);
           setVerDetalleRespuesta(true);
           setEstadoEnvio(null);
@@ -989,6 +1071,7 @@ const FormularioGestionPublico = () => {
         );
 
         if (respuestaExistente) {
+          await cargarIdentidadPadronPorDni(dniNormalizado);
           setRespuestaRegistrada(respuestaExistente);
           setEstadoEnvio("dni_existente");
 
@@ -1058,9 +1141,10 @@ const FormularioGestionPublico = () => {
     setMensajeValidacionDni("");
     setRespuestas({});
     setArchivos({});
+    setArchivosOriginalesEdicion({});
   };
 
-  const cargarRespuestaParaEdicionAfiliado = () => {
+  const cargarRespuestaParaEdicionAfiliado = async () => {
     if (!respuestaRegistrada?.id) return;
 
     const respuestasGuardadas = respuestaRegistrada.respuestas || {};
@@ -1097,17 +1181,37 @@ const FormularioGestionPublico = () => {
 
     setRespuestas(respuestasIniciales);
     setArchivos(archivosIniciales);
+    setArchivosOriginalesEdicion(copiarArchivosPorCampo(archivosIniciales));
     setModoEdicionAfiliado(true);
     setRespuestaEditandoId(respuestaRegistrada.id);
     setEstadoEnvio(null);
     setVerDetalleRespuesta(false);
 
-    setAfiliadoValidado({
-      apellido: respuestaRegistrada.apellido || "",
-      nombre: respuestaRegistrada.nombre || "",
-      dni: respuestaRegistrada.dni || dniValidacion,
-      departamento: respuestaRegistrada.departamento || "",
-    });
+    const dniEdicion =
+      normalizarDni(afiliadoValidado?.dni) ||
+      normalizarDni(respuestaRegistrada.dni) ||
+      normalizarDni(dniValidacion) ||
+      obtenerDniDesdeRespuestaRegistrada(respuestaRegistrada);
+
+    let identidadResueltaPorDni = null;
+
+    if (!afiliadoValidado && dniEdicion) {
+      const afiliado = await buscarAfiliadoPorDni(dniEdicion);
+
+      if (afiliado) {
+        identidadResueltaPorDni = {
+          ...afiliado,
+          dni: dniEdicion,
+        };
+      }
+    }
+
+    const identidadEdicion = afiliadoValidado || identidadResueltaPorDni;
+
+    if (identidadEdicion) {
+      setAfiliadoValidado(identidadEdicion);
+      autocompletarDatosAfiliado(identidadEdicion);
+    }
   };
 
   const validarCampos = () => {
@@ -1358,6 +1462,46 @@ const FormularioGestionPublico = () => {
     };
   };
 
+  const eliminarArchivosRetiradosDeStorage = async (archivosFinales = {}) => {
+    const clavesFinales = new Set(
+      Object.values(archivosFinales)
+        .flat()
+        .map(obtenerClaveArchivo)
+        .filter(Boolean)
+    );
+
+    const archivosRetirados = unificarArchivos(
+      Object.values(archivosOriginalesEdicion).flat()
+    )
+      .filter((archivo) => {
+        if (esArchivoLocal(archivo)) return false;
+        const clave = obtenerClaveArchivo(archivo);
+        return clave && !clavesFinales.has(clave);
+      });
+
+    const resultados = await Promise.allSettled(
+      archivosRetirados.map((archivo) => {
+        const path = archivo.path || archivo.fullPath || "";
+
+        if (!path) return Promise.resolve();
+
+        return deleteObject(ref(storage, path));
+      })
+    );
+
+    const eliminacionesFallidas = resultados.filter(
+      (resultado) => resultado.status === "rejected"
+    ).length;
+
+    if (eliminacionesFallidas > 0) {
+      console.warn("No se pudieron limpiar archivos anteriores del formulario", {
+        cantidad: eliminacionesFallidas,
+      });
+    }
+
+    return eliminacionesFallidas;
+  };
+
   const enviarFormulario = async () => {
     if (!formulario || enviando || (enviado && !modoEdicionAfiliado)) return;
 
@@ -1406,14 +1550,15 @@ const FormularioGestionPublico = () => {
         }
       }
 
-      const refRespuesta = modoEdicionAfiliado
+      const actualizandoRespuesta = modoEdicionAfiliado;
+      const refRespuesta = actualizandoRespuesta
         ? doc(db, "oficina_gestion_respuestas", respuestaEditandoId)
         : doc(collection(db, "oficina_gestion_respuestas"));
 
       const payload = await construirPayloadRespuesta(refRespuesta.id);
       const ahoraVista = new Date();
 
-      if (modoEdicionAfiliado) {
+      if (actualizandoRespuesta) {
         await updateDoc(refRespuesta, {
           ...payload,
           editadoPorAfiliado: true,
@@ -1421,6 +1566,10 @@ const FormularioGestionPublico = () => {
           edicionAfiliadoHabilitada: false,
           edicionAfiliadoDeshabilitadaAt: serverTimestamp(),
         });
+
+        const eliminacionesFallidas = await eliminarArchivosRetiradosDeStorage(
+          payload.archivos
+        );
 
         setRespuestaRegistrada({
           ...(respuestaRegistrada || {}),
@@ -1436,8 +1585,19 @@ const FormularioGestionPublico = () => {
 
         setModoEdicionAfiliado(false);
         setRespuestaEditandoId(null);
+        setArchivosOriginalesEdicion({});
         setVerDetalleRespuesta(false);
         setEstadoEnvio("actualizado");
+
+        if (eliminacionesFallidas > 0) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Formulario actualizado",
+            detail:
+              "La respuesta se actualizó, aunque no se pudo limpiar un archivo anterior del almacenamiento.",
+            life: 6000,
+          });
+        }
       } else {
         await setDoc(refRespuesta, {
           id: refRespuesta.id,
@@ -1493,6 +1653,7 @@ const FormularioGestionPublico = () => {
     setVerDetalleRespuesta(false);
     setModoEdicionAfiliado(false);
     setRespuestaEditandoId(null);
+    setArchivosOriginalesEdicion({});
 
     if (requiereValidacionDni) {
       setDniValidacion("");
@@ -1662,6 +1823,7 @@ const FormularioGestionPublico = () => {
     }
 
     const apellidoOriginal =
+      afiliadoValidado?.apellido ||
       respuestaRegistrada.apellido ||
       obtenerValorPorClavesExactas(respuestasGuardadas, [
         "Apellido",
@@ -1669,6 +1831,7 @@ const FormularioGestionPublico = () => {
       ]);
 
     const nombreOriginal =
+      afiliadoValidado?.nombre ||
       respuestaRegistrada.nombre ||
       obtenerValorPorClavesExactas(respuestasGuardadas, ["Nombre", "Nombres"]);
 
@@ -1683,7 +1846,8 @@ const FormularioGestionPublico = () => {
     actualizarOCrearCampoDetalle(
       detalle,
       "DNI",
-      respuestaRegistrada.dni ||
+      afiliadoValidado?.dni ||
+        respuestaRegistrada.dni ||
         obtenerValorPorClavesExactas(respuestasGuardadas, [
           "DNI",
           "Documento",
@@ -1698,7 +1862,8 @@ const FormularioGestionPublico = () => {
     actualizarOCrearCampoDetalle(
       detalle,
       "Departamento",
-      respuestaRegistrada.departamento ||
+      afiliadoValidado?.departamento ||
+        respuestaRegistrada.departamento ||
         obtenerValorPorClaves(respuestasGuardadas, [
           "Departamento",
           "Depto",
@@ -2190,19 +2355,44 @@ const FormularioGestionPublico = () => {
       case "archivo_pdf": {
         const accept = campo.archivoAccept || ARCHIVOS_DEFAULT;
         const archivosCampo = archivos[campo.id] || [];
+        const archivosGuardados = archivosCampo.filter(
+          (archivo) => !esArchivoLocal(archivo)
+        );
+        const tieneArchivoGuardado = archivosGuardados.length > 0;
+        const textoSeleccionArchivo = !modoEdicionAfiliado
+          ? "Seleccionar archivo"
+          : campo.multiple
+            ? "Adjuntar archivo"
+            : tieneArchivoGuardado
+              ? "Reemplazar archivo"
+              : "Adjuntar archivo";
 
         return (
           <div className={styles.fileField}>
+            {modoEdicionAfiliado && tieneArchivoGuardado && (
+              <div className={styles.currentFileNotice}>
+                <i className="pi pi-paperclip" />
+                <span>
+                  {archivosGuardados.length === 1
+                    ? "Archivo actualmente cargado"
+                    : "Archivos actualmente cargados"}
+                </span>
+              </div>
+            )}
+
             <div className={styles.fileActions}>
               <label className={styles.fileButton}>
                 <i className="pi pi-upload" />
-                Seleccionar archivo
+                {textoSeleccionArchivo}
                 <input
                   type="file"
                   accept={accept}
                   multiple={Boolean(campo.multiple)}
                   disabled={enviando}
-                  onChange={(e) => actualizarArchivos(campo, e.target.files)}
+                  onChange={(e) => {
+                    actualizarArchivos(campo, e.target.files);
+                    e.target.value = "";
+                  }}
                 />
               </label>
 
@@ -2215,7 +2405,10 @@ const FormularioGestionPublico = () => {
                     accept="image/*"
                     capture="environment"
                     disabled={enviando}
-                    onChange={(e) => actualizarArchivos(campo, e.target.files)}
+                    onChange={(e) => {
+                      actualizarArchivos(campo, e.target.files);
+                      e.target.value = "";
+                    }}
                   />
                 </label>
               )}
@@ -2236,7 +2429,11 @@ const FormularioGestionPublico = () => {
                       className={styles.fileItem}
                     >
                       <span>
-                        <strong>{esNuevo ? "Nuevo:" : "Cargado:"}</strong>{" "}
+                        <strong>
+                          {esNuevo
+                            ? "Nuevo archivo seleccionado:"
+                            : "Archivo actualmente cargado:"}
+                        </strong>{" "}
                         {nombre}
                       </span>
 
