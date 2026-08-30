@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useHistory, useLocation } from "react-router-dom";
 import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
-import { cerrarSesionValidador, iniciarSesionValidador, registrarCursoValidado } from "../../services/certificadosValidacionService";
+import { cerrarSesionValidador, registrarCursoValidado } from "../../services/certificadosValidacionService";
 import { registrarValidacionCertificado } from "../../services/certificadosService";
 import { validatorAuth } from "../../firebase/firebaseCertificadosValidator";
 import { listarRegistroInscriptosValidador, descargarPlanillaRegistroInscriptos } from "../../services/registroInscriptosService";
@@ -10,8 +10,7 @@ import { listarRegistroAprobados, obtenerRegistroAprobadosCurso } from "../../se
 import ScannerCertificadoQR from "./components/ScannerCertificadoQR";
 import ResultadoValidacionCertificado from "./components/ResultadoValidacionCertificado";
 import useSesionValidador from "./components/useSesionValidador";
-import PublicHeader from "../../components/Layout/Header/PublicHeader/PublicHeader";
-import logo from "../../assets/img/logo-01.png";
+import LoginGestionInstitucional from "../../components/GestionInstitucional/LoginGestionInstitucional";
 import "../../styles/institutional.css";
 import styles from "./ValidadorCertificados.module.css";
 
@@ -19,9 +18,6 @@ const ValidadorCertificados = () => {
   const history = useHistory();
   const location = useLocation();
   const { cargando, sesion, origenSesion } = useSesionValidador();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
   const [validacionActual, setValidacionActual] = useState(null);
@@ -211,37 +207,15 @@ const ValidadorCertificados = () => {
     finally { setDescargando(""); }
   };
 
-  const ingresar = async (e) => {
-    e.preventDefault();
-    setError("");
-    try { await iniciarSesionValidador(email, password); setPassword(""); history.replace("/validar-certificados/inicio"); }
-    catch { setError("No pudimos ingresar. Revisá el correo y la contraseña."); }
-  };
-
   const escanear = ({ cursoId, token }) => {
     setAbierto(false);
     history.push(`/validar-certificado/${encodeURIComponent(cursoId)}/${encodeURIComponent(token)}`);
   };
 
-  const encabezadoAcceso = (
-    <>
-      <PublicHeader />
-      <header className={`${styles.encabezado} ${styles.encabezadoAcceso}`}>
-      <img className={styles.logoAcceso} src={logo} alt="SiDCa" />
-      <span className={styles.marca}>SIDCA</span>
-      <p className={styles.bienvenida}>Bienvenido</p>
-      <h1 className={styles.titulo}>Gestión Institucional</h1>
-      <p className={styles.subtituloAcceso}>
-        Ingresá con tus credenciales para acceder a las herramientas de gestión institucional.
-      </p>
-      </header>
-    </>
-  );
-
   const encabezado = <header className={styles.encabezado}><div><span className={styles.marca}>SIDCA</span><h1>Validación de certificados</h1><p>Comprobá la autenticidad y vigencia de los certificados emitidos por SIDCA.</p></div><span className={styles.badge}>VALIDACIÓN QR</span></header>;
 
   if (cargando) return <main className={styles.pagina}><section className={styles.tarjeta}>Verificando sesión…</section></main>;
-  if (!sesion) return <main className={styles.pagina}><section className={`${styles.tarjeta} ${styles.tarjetaAcceso}`}>{encabezadoAcceso}<div className={styles.loginBloque}><h2>Validación de certificados</h2><form onSubmit={ingresar}><label>Correo electrónico<input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} /></label><label>Contraseña<input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} /></label>{error && <p className={styles.error}>{error}</p>}<button>Ingresar</button></form><small>Acceso exclusivo para personal autorizado.</small></div></section><button type="button" className={styles.botonRegresarAcceso} onClick={() => history.push("/administracion")}><i className="pi pi-arrow-left" aria-hidden="true" />Regresar</button></main>;
+  if (!sesion) return <LoginGestionInstitucional />;
 
   const textoNormalizado = (valor) => String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const cursosFiltrados = registros.filter((curso) => curso.archivos?.length > 0 && textoNormalizado(curso.titulo).includes(textoNormalizado(busquedaRegistro)));

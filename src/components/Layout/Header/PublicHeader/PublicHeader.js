@@ -41,7 +41,10 @@ const PublicHeader = () => {
     pathname === "/admin/login" ||
     pathname === "/validar-certificados" ||
     pathname.startsWith("/validar-certificados/") ||
-    pathname.startsWith("/validar-certificado/");
+    pathname.startsWith("/validar-certificado/") ||
+    pathname === "/validar-cena" ||
+    pathname.startsWith("/validar-cena/") ||
+    pathname.startsWith("/admin/gestion-cena/validar/");
 
   const esLoginComercio = pathname === "/comercio-login";
   const esPaginaComercio = pathname === "/comercio";

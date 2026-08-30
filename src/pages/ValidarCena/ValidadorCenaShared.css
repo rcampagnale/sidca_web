@@ -1,0 +1,38 @@
+.gcCenaResultado { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid; border-radius: 7px; }
+.gcCenaResultado p, .gcCenaResultado span { margin: 0; display: block; }
+.gcCenaResultado p { font-weight: 800; }
+.gcCenaResultado p i { margin-right: 4px; font-size: 1.05em; }
+.gcCenaResultado span { margin-top: 4px; font-size: .9rem; line-height: 1.4; }
+.gcCenaResultado button { min-height: 48px; padding: 0 16px; border: 1px solid #0a646c; border-radius: 6px; color: #fff; background: #0a646c; font: inherit; font-weight: 800; cursor: pointer; }
+.gcCenaResultado button:disabled { opacity: .62; cursor: wait; }
+.gcCenaResultadoPendiente { color: #075b44; background: #e9f8f0; border-color: #8bd5ae; }
+.gcCenaResultadoExito { color: #075b44; background: #e4f7ea; border-color: #67bf8d; }
+.gcCenaResultadoYaRegistrado { color: #76520d; background: #fff7de; border-color: #d9b85a; }
+.gcCenaResultadoConsulta { color: #174b75; background: #edf5fc; border-color: #a6c9e9; }
+.gcCenaResultadoBloqueado { color: #8b2919; background: #fff2ed; border-color: #ecb49f; }
+.gcCenaReserva { padding: 15px; border: 1px solid #d9e2e9; border-radius: 7px; }
+.gcCenaEyebrow { margin: 0; color: #527087; font-size: .72rem; font-weight: 800; letter-spacing: .06em; }
+.gcCenaReserva h2 { margin: 5px 0 2px; color: #172f49; font-size: 1.13rem; line-height: 1.25; }
+.gcCenaDni { margin: 0; color: #52647a; font-weight: 700; }
+.gcCenaConteos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 15px 0 0; }
+.gcCenaConteos div { padding-left: 9px; border-left: 3px solid #0b6b71; }
+.gcCenaConteos dt { color: #5a6b7e; font-size: .72rem; overflow-wrap: anywhere; }
+.gcCenaConteos dd { margin: 2px 0 0; color: #132f4d; font-size: 1.18rem; font-weight: 800; }
+.gcCenaTarjetas { display: grid; gap: 10px; }
+.gcCenaSeccionTitulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.gcCenaSeccionTitulo h2 { margin: 0; color: #1a344f; font-size: 1rem; }
+.gcCenaSeccionTitulo span { min-width: 28px; min-height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #0a646c; font-size: .82rem; font-weight: 800; }
+.gcCenaHistoricoTitulo { margin-top: 12px; padding-top: 14px; border-top: 1px solid #dbe3e9; }
+.gcCenaHistoricoTitulo h2 { color: #6d4a1c; }
+.gcCenaHistoricoTitulo span { color: #72500d; background: #f8e9ba; }
+.gcCenaTarjetas ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gcCenaTarjeta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px; border: 1px solid #d8e1e8; border-radius: 6px; }
+.gcCenaTarjeta strong { color: #19334d; display: block; }
+.gcCenaTarjeta small { display: block; margin-top: 3px; color: #53687c; }
+.gcCenaTarjetaSeleccionada { border-width: 2px; border-color: #0a646c; background: #f1fbfb; }
+.gcCenaEstado { flex: 0 0 auto; padding: 5px 7px; border-radius: 4px; font-size: .69rem; font-weight: 800; letter-spacing: .02em; }
+.gcCenaEstadopendiente { color: #075b44; background: #dff7e9; }
+.gcCenaEstadoingreso, .gcCenaEstadoacreditada { color: #174b75; background: #e0effa; }
+.gcCenaEstadoanulada { color: #8b2919; background: #ffe7df; }
+.gcCenaVacio { margin: 0; color: #5a6b7e; font-size: .9rem; }
+@media (min-width: 600px) { .gcCenaResultado { flex-direction: row; align-items: center; justify-content: space-between; } .gcCenaResultado button { flex: 0 0 auto; } }

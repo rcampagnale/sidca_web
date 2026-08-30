@@ -22,6 +22,7 @@ export const OPCIONES_VALIDADOR = [
     etiqueta: "Gestión certificados",
     ruta: "/validar-certificados",
   },
+  { etiqueta: "Gestión Cena", ruta: "/validar-cena" },
   { etiqueta: "Nosotros", ruta: "/validar-certificados/nosotros" },
   { etiqueta: "Convenios", ruta: "/validar-certificados/convenios" },
   { etiqueta: "Contacto", ruta: "/validar-certificados/contacto" },
@@ -34,4 +35,6 @@ export const OPCIONES_VALIDADOR = [
  * "Gestión certificados" quedaría siempre marcado como activo.
  */
 export const esRutaActiva = (rutaActual, ruta) =>
-  String(rutaActual || "").replace(/\/+$/, "") === ruta;
+  ruta === "/validar-cena"
+    ? String(rutaActual || "").replace(/\/+$/, "").startsWith("/validar-cena")
+    : String(rutaActual || "").replace(/\/+$/, "") === ruta;

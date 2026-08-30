@@ -1,0 +1,32 @@
+.pagina { min-height: 100vh; padding: 28px 12px 40px; background: var(--sidca-institutional-page-background); box-sizing: border-box; }
+.panel { width: min(100%, 760px); margin: 0 auto; padding: 24px; background: #fff; border: 1px solid #d8e0e8; border-radius: 8px; box-sizing: border-box; box-shadow: 0 12px 32px rgba(8, 35, 34, .2); }
+.marca { margin: 0; color: #0f5f66; font-size: .78rem; font-weight: 800; letter-spacing: .08em; }
+.encabezado h1 { margin: 5px 0; color: #132d4a; font-size: 1.4rem; line-height: 1.2; }
+.encabezado p { margin: 0; color: #52647a; line-height: 1.45; }
+.encabezado { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 15px; border-bottom: 1px solid #dbe3eb; }
+.encabezado > span { align-self: flex-start; padding: 6px 8px; color: #0a646c; background: #e6f3f3; font-size: .7rem; font-weight: 800; letter-spacing: .04em; }
+.selectorVistas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 18px; padding: 5px; border-radius: 8px; background: #e9eff1; }
+.selectorVistas button { min-height: 48px; padding: 0 12px; border: 1px solid transparent; border-radius: 5px; color: #385166; background: transparent; font: inherit; font-weight: 800; cursor: pointer; }
+.selectorVistas .vistaActiva { color: #fff; background: #0a646c; border-color: #07575d; box-shadow: 0 1px 3px rgba(8, 48, 51, .2); }
+.vistaOperacion { margin-top: 20px; }
+.accionQr { display: grid; justify-items: center; gap: 10px; padding: 30px 18px; border: 1px solid #d8e4e7; border-radius: 7px; background: #f8fbfb; text-align: center; }
+.accionQr > i { color: #0a646c; font-size: 2.5rem; }
+.accionQr h2, .consultaEncabezado h2 { margin: 0; color: #173651; font-size: 1.2rem; }
+.accionQr p, .consultaEncabezado p { max-width: 500px; margin: 0; color: #52647a; line-height: 1.45; }
+.buscarDni button, .gcCenaResultado button, .accionQr button, .siguiente { min-height: 52px; padding: 0 16px; border: 1px solid #0a646c; border-radius: 6px; color: #fff; background: #0a646c; font: inherit; font-weight: 800; cursor: pointer; }
+.accionQr button { margin-top: 8px; }
+.buscarDni button:disabled, .gcCenaResultado button:disabled, .accionQr button:disabled, .siguiente:disabled { opacity: .62; cursor: wait; }
+.consultaEncabezado { display: grid; gap: 6px; padding-bottom: 16px; border-bottom: 1px solid #e3e9ef; }
+.buscarDni { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; padding: 16px 0; }
+.buscarDni label { display: grid; gap: 5px; color: #263d57; font-size: .85rem; font-weight: 700; }
+.buscarDni input { min-height: 48px; padding: 0 12px; border: 1px solid #aebdca; border-radius: 6px; color: #15283d; font: inherit; font-size: 1rem; box-sizing: border-box; }
+.buscarDni button { grid-column: 1 / -1; }
+.error { margin: 14px 0 0; padding: 10px 12px; border: 1px solid #e8aaaa; border-radius: 6px; color: #981b1b; background: #fff0f0; font-weight: 700; line-height: 1.45; }
+.error i { margin-right: 5px; }
+.cargando { margin: 18px 0; color: #445b73; text-align: center; }
+.verificando { display: flex; align-items: center; justify-content: center; gap: 8px; color: #0a646c; font-weight: 800; }
+.resultado { display: grid; gap: 16px; margin-top: 18px; }
+.siguiente { justify-self: start; color: #1d3a55; border-color: #aebdca; background: #f7fafc; }
+@media (min-width: 600px) { .buscarDni { grid-template-columns: 92px minmax(0, 1fr) auto; align-items: end; } .buscarDni button { grid-column: auto; } }
+@media (max-width: 599px) { .gcCenaResultado button, .siguiente, .accionQr button { width: 100%; } }
+@media (max-width: 420px) { .pagina { padding: 16px 10px 32px; } .panel { padding: 18px 14px; } .encabezado { display: block; } .encabezado > span { display: inline-block; margin-top: 12px; } .selectorVistas button { padding: 0 6px; font-size: .84rem; } .accionQr { padding: 26px 14px; } }

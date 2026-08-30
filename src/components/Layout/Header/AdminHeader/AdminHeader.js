@@ -17,6 +17,7 @@ const NAV_GROUPS = [
       { label: "Oficina de Gestión", path: "/admin/oficina-gestion" },
       { label: "Gestión Delegados", path: "/admin/gestion-delegados" },
       { label: "Gestión de Pago", path: "/admin/gestion-pagos" },
+      { label: "Gestión Cena", path: "/admin/gestion-cena" },
       { label: "Asesoramiento", path: "/admin/asesoramiento" },
       { label: "Novedades", path: "/admin/novedades" },
     ],

@@ -37,7 +37,7 @@ const SeleccionAccesoAdministracion = () => {
               <span className={styles.tarjetaEtiqueta}>PERSONAL AUTORIZADO</span>
               <h2>Gestión Institucional</h2>
               <p>Acceso a las herramientas y procesos de gestión institucional.</p>
-              <button type="button" onClick={() => history.push("/validar-certificados")}>
+              <button type="button" onClick={() => history.push("/validar-cena")}>
                 Ingresar <i className="pi pi-arrow-right" aria-hidden="true" />
               </button>
             </div>

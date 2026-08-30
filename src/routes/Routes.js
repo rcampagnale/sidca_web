@@ -20,6 +20,7 @@ import Cursos from "../pages/Admin/Cursos/Cursos";
 import CertificadosAdmin from "../pages/Admin/Certificados/CertificadosAdmin";
 import ValidarCertificadoQr from "../pages/ValidarCertificado/ValidarCertificadoQr";
 import ValidadorCertificados from "../pages/ValidarCertificado/ValidadorCertificados";
+import ValidadorCena from "../pages/ValidarCena/ValidadorCena";
 import ValidatorShell from "../pages/ValidarCertificado/components/ValidatorShell";
 import InicioValidador from "../pages/ValidarCertificado/InicioValidador";
 import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
@@ -59,6 +60,7 @@ import Servicios from "../pages/Admin/Servicios/Servicios";
 import GestionDelegadosAdmin from "../pages/Admin/GestionDelegadosAdmin/GestionDelegadosAdmin";
 import GestionDelegadosUsuario from "../pages/Delegado/GestionDelegadosUsuario/GestionDelegadosUsuario";
 import GestionPagosAdmin from "../pages/Admin/GestionPagos/GestionPagosAdmin";
+import GestionCenaAdmin from "../pages/Admin/GestionCena/GestionCenaAdmin";
 import GestionPagos from "../pages/GestionPagos/GestionPagos";
 import PagoResultado from "../pages/GestionPagos/PagoResultado";
 
@@ -147,6 +149,8 @@ const AppRouter = () => {
           path="/validar-certificado/:cursoId/:token"
           component={ValidarCertificadoQr}
         />
+        <Route exact path="/validar-cena/:token" component={ValidadorCena} />
+        <Route exact path="/validar-cena" component={ValidadorCena} />
         {/* Páginas informativas de la sesión de validación.
 
             Van ANTES de /validar-certificados: sin `exact` en aquella, un
@@ -451,6 +455,21 @@ const AppRouter = () => {
           exact
           path="/admin/gestion-pagos"
           component={GestionPagosAdmin}
+        />
+
+        <AdminRoute
+          exact
+          path="/admin/gestion-cena"
+          component={GestionCenaAdmin}
+        />
+
+        {/* Compatibilidad con QR ya impresos: antes apuntaban a esta URL
+            administrativa. La validación nueva conserva el token, pero se
+            resuelve fuera de AdminRoute para el personal de ingreso. */}
+        <Route
+          exact
+          path="/admin/gestion-cena/validar/:token"
+          component={ValidadorCena}
         />
 
         <AdminRoute
