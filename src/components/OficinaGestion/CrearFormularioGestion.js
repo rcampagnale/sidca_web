@@ -24,6 +24,10 @@ import {
   departamentosOptions,
   departamentosValues,
 } from "./departamentos";
+import {
+  crearCampoNuevo,
+  tienenIdsCamposDuplicados,
+} from "./campoIds";
 
 const TIPOS_CAMPO = [
   { label: "Validación por DNI", value: "validacion_dni" },
@@ -154,11 +158,16 @@ const CrearFormularioGestion = ({ onCreated }) => {
     setDescripcionArchivoDescargaFormulario,
   ] = useState("");
 
-  const [campos, setCampos] = useState([{ ...campoInicial }]);
+  const [campos, setCampos] = useState(() => [
+    crearCampoNuevo(campoInicial),
+  ]);
   const [guardando, setGuardando] = useState(false);
 
   const agregarCampo = () => {
-    setCampos((prevCampos) => [...prevCampos, { ...campoInicial }]);
+    setCampos((prevCampos) => [
+      ...prevCampos,
+      crearCampoNuevo(campoInicial),
+    ]);
   };
 
   const eliminarCampo = (index) => {
@@ -253,7 +262,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
     setPermitirMultiplesRespuestasPorDni(false);
     setArchivoDescargaFormulario(null);
     setDescripcionArchivoDescargaFormulario("");
-    setCampos([{ ...campoInicial }]);
+    setCampos([crearCampoNuevo(campoInicial)]);
 
     if (archivoDescargaInputRef.current) {
       archivoDescargaInputRef.current.value = "";
@@ -291,6 +300,18 @@ const CrearFormularioGestion = ({ onCreated }) => {
         summary: "Atención",
         detail: "Debe agregar al menos un campo.",
         life: 3000,
+      });
+
+      return false;
+    }
+
+    if (tienenIdsCamposDuplicados(campos)) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Atención",
+        detail:
+          "Se detectaron campos con identificadores duplicados. Revise el formulario antes de continuar.",
+        life: 4000,
       });
 
       return false;
@@ -365,7 +386,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
   const normalizarCamposParaGuardar = () => {
     return campos.map((campo, index) => {
       const campoBase = {
-        id: `campo_${index + 1}`,
+        id: campo.id,
         label: campo.label.trim(),
         tipo: campo.tipo,
         obligatorio: Boolean(campo.obligatorio),
@@ -494,6 +515,7 @@ const CrearFormularioGestion = ({ onCreated }) => {
         soloConsultaDni: Boolean(soloConsultaDni),
         modoSoloConsultaDni: Boolean(soloConsultaDni),
         bloquearCargaRespuestas: Boolean(soloConsultaDni),
+        modoEdicionPorDni: false,
 
         // Si está en modo solo consulta, no corresponde permitir múltiples cargas.
         permitirMultiplesRespuestasPorDni: soloConsultaDni

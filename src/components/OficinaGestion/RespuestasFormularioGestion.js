@@ -222,6 +222,8 @@ const RespuestasFormularioGestion = () => {
   const [procesandoId, setProcesandoId] = useState(null);
   const [descargandoZip, setDescargandoZip] = useState(false);
   const [procesandoEdicionMasiva, setProcesandoEdicionMasiva] = useState(false);
+  const [procesandoModoEdicionFormulario, setProcesandoModoEdicionFormulario] =
+    useState(false);
 
   // Verificación de afiliación. `preview` guarda el resultado ya calculado
   // para poder mostrarlo y confirmarlo sin volver a consultar el padrón.
@@ -767,6 +769,82 @@ const RespuestasFormularioGestion = () => {
       });
     } finally {
       setLoadingRespuestas(false);
+    }
+  };
+
+  const cambiarModoEdicionFormulario = async () => {
+    if (!formularioActual?.id) return;
+
+    const modoEdicionPorDni = !Boolean(formularioActual.modoEdicionPorDni);
+    const configuracionAnterior = {
+      soloConsultaDni: Boolean(formularioActual.soloConsultaDni),
+      modoSoloConsultaDni: Boolean(formularioActual.modoSoloConsultaDni),
+      bloquearCargaRespuestas: Boolean(
+        formularioActual.bloquearCargaRespuestas
+      ),
+      requiereValidacionDni: Boolean(formularioActual.requiereValidacionDni),
+    };
+    const configuracionRestaurada =
+      formularioActual.configuracionDniAntesModoEdicion || {
+        soloConsultaDni: false,
+        modoSoloConsultaDni: false,
+        bloquearCargaRespuestas: false,
+        requiereValidacionDni: Boolean(
+          formularioActual.campos?.some(
+            (campo) => campo.tipo === "validacion_dni"
+          )
+        ),
+      };
+
+    setProcesandoModoEdicionFormulario(true);
+
+    try {
+      await updateDoc(
+        doc(db, "oficina_gestion_formularios", formularioActual.id),
+        {
+          modoEdicionPorDni,
+          soloConsultaDni: modoEdicionPorDni
+            ? false
+            : Boolean(configuracionRestaurada.soloConsultaDni),
+          modoSoloConsultaDni: modoEdicionPorDni
+            ? false
+            : Boolean(configuracionRestaurada.modoSoloConsultaDni),
+          bloquearCargaRespuestas: modoEdicionPorDni
+            ? false
+            : Boolean(configuracionRestaurada.bloquearCargaRespuestas),
+          requiereValidacionDni: modoEdicionPorDni
+            ? true
+            : Boolean(configuracionRestaurada.requiereValidacionDni),
+          configuracionDniAntesModoEdicion: modoEdicionPorDni
+            ? configuracionAnterior
+            : null,
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      await cargarFormularios();
+
+      toast.current?.show({
+        severity: "success",
+        summary: modoEdicionPorDni
+          ? "Consulta por DNI habilitada"
+          : "Consulta por DNI deshabilitada",
+        detail: modoEdicionPorDni
+          ? "El formulario público mostrará las presentaciones ya cargadas para el DNI ingresado."
+          : "El formulario público ya no permitirá consultar presentaciones por DNI.",
+        life: 4500,
+      });
+    } catch (error) {
+      console.error("Error al cambiar edición por DNI del formulario:", error);
+
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo actualizar el modo de edición del formulario.",
+        life: 4000,
+      });
+    } finally {
+      setProcesandoModoEdicionFormulario(false);
     }
   };
 
@@ -2121,6 +2199,28 @@ const RespuestasFormularioGestion = () => {
         </div>
 
         <div className={styles.manageActions}>
+          {formularioActual?.tipoFormulario !== "consulta_excel_agrupada" && (
+            <Button
+              label={
+                formularioActual?.modoEdicionPorDni
+                  ? "Deshabilitar consulta por DNI"
+                  : "Habilitar consulta por DNI"
+              }
+              icon={
+                formularioActual?.modoEdicionPorDni
+                  ? "pi pi-lock"
+                  : "pi pi-user-edit"
+              }
+              severity={
+                formularioActual?.modoEdicionPorDni ? "warning" : "success"
+              }
+              outlined={!formularioActual?.modoEdicionPorDni}
+              onClick={cambiarModoEdicionFormulario}
+              disabled={!formularioActual || loadingFormularios}
+              loading={procesandoModoEdicionFormulario}
+            />
+          )}
+
           <Button
             label="Habilitar edición a todos"
             icon="pi pi-users"
@@ -2559,8 +2659,16 @@ const RespuestasFormularioGestion = () => {
                         ? "Deshabilitar edición"
                         : "Habilitar edición"
                     }
-                    icon={edicionHabilitada ? "pi pi-lock" : "pi pi-pencil"}
-                    severity={edicionHabilitada ? "warning" : "success"}
+                    icon={
+                      edicionHabilitada
+                        ? "pi pi-lock"
+                        : "pi pi-pencil"
+                    }
+                    severity={
+                      edicionHabilitada
+                        ? "warning"
+                        : "success"
+                    }
                     outlined
                     loading={procesandoId === respuesta.id}
                     onClick={() => confirmarCambioEstadoEdicion(respuesta)}

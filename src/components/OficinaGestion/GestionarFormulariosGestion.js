@@ -41,6 +41,11 @@ import {
   departamentosOptions,
   departamentosValues,
 } from "./departamentos";
+import {
+  crearCampoNuevo,
+  normalizarIdsCampos,
+  tienenIdsCamposDuplicados,
+} from "./campoIds";
 
 import {
   htmlATextoPlano,
@@ -177,7 +182,9 @@ const GestionarFormulariosGestion = () => {
     editPermitirMultiplesRespuestasPorDni,
     setEditPermitirMultiplesRespuestasPorDni,
   ] = useState(false);
-  const [editCampos, setEditCampos] = useState([{ ...campoInicial }]);
+  const [editCampos, setEditCampos] = useState(() => [
+    crearCampoNuevo(campoInicial),
+  ]);
   const [editArchivoDescargaFormulario, setEditArchivoDescargaFormulario] =
     useState(null);
   const [
@@ -217,11 +224,17 @@ const GestionarFormulariosGestion = () => {
   };
 
   const formularioSoloConsultaDni = (formulario) => {
+    if (formulario?.modoEdicionPorDni) return false;
+
     return Boolean(
       formulario?.soloConsultaDni ||
         formulario?.modoSoloConsultaDni ||
         formulario?.bloquearCargaRespuestas
     );
+  };
+
+  const formularioModoEdicionPorDni = (formulario) => {
+    return Boolean(formulario?.modoEdicionPorDni);
   };
 
   const formularioPermiteMultiplesRespuestasPorDni = (formulario) => {
@@ -244,7 +257,8 @@ const GestionarFormulariosGestion = () => {
       const data = snap.docs.map((docSnap) => {
         const dataFormulario = docSnap.data();
 
-        const soloConsulta = Boolean(
+        const modoEdicionPorDni = Boolean(dataFormulario.modoEdicionPorDni);
+        const soloConsulta = !modoEdicionPorDni && Boolean(
           dataFormulario.soloConsultaDni ||
             dataFormulario.modoSoloConsultaDni ||
             dataFormulario.bloquearCargaRespuestas
@@ -259,11 +273,13 @@ const GestionarFormulariosGestion = () => {
           soloConsultaDni: soloConsulta,
           modoSoloConsultaDni: soloConsulta,
           bloquearCargaRespuestas: soloConsulta,
+          modoEdicionPorDni,
           permitirMultiplesRespuestasPorDni: soloConsulta
             ? false
             : Boolean(dataFormulario.permitirMultiplesRespuestasPorDni),
           requiereValidacionDni: Boolean(
             soloConsulta ||
+              modoEdicionPorDni ||
               dataFormulario.requiereValidacionDni ||
               dataFormulario.campos?.some(
                 (campo) => campo.tipo === "validacion_dni"
@@ -521,8 +537,11 @@ const GestionarFormulariosGestion = () => {
     try {
       const codigoFormulario = obtenerCodigoFormulario(formulario);
       const soloConsulta = formularioSoloConsultaDni(formulario);
+      const modoEdicionPorDni = formularioModoEdicionPorDni(formulario);
       const requiereValidacionDni =
-        soloConsulta || formularioTieneValidacionDni(formulario);
+        soloConsulta ||
+        modoEdicionPorDni ||
+        formularioTieneValidacionDni(formulario);
 
       await updateDoc(doc(db, "oficina_gestion_formularios", formulario.id), {
         publicado: publicar,
@@ -532,6 +551,7 @@ const GestionarFormulariosGestion = () => {
         soloConsultaDni: soloConsulta,
         modoSoloConsultaDni: soloConsulta,
         bloquearCargaRespuestas: soloConsulta,
+        modoEdicionPorDni,
         permitirMultiplesRespuestasPorDni: soloConsulta
           ? false
           : formularioPermiteMultiplesRespuestasPorDni(formulario),
@@ -557,6 +577,73 @@ const GestionarFormulariosGestion = () => {
         summary: "Error",
         detail: "No se pudo actualizar el estado de publicación.",
         life: 3500,
+      });
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
+  const cambiarModoEdicionPorDni = async (formulario) => {
+    const modoEdicionPorDni = !formularioModoEdicionPorDni(formulario);
+    const configuracionAnterior = {
+      soloConsultaDni: Boolean(formulario.soloConsultaDni),
+      modoSoloConsultaDni: Boolean(formulario.modoSoloConsultaDni),
+      bloquearCargaRespuestas: Boolean(formulario.bloquearCargaRespuestas),
+      requiereValidacionDni: Boolean(formulario.requiereValidacionDni),
+    };
+    const configuracionRestaurada =
+      formulario.configuracionDniAntesModoEdicion || {
+        soloConsultaDni: false,
+        modoSoloConsultaDni: false,
+        bloquearCargaRespuestas: false,
+        requiereValidacionDni: Boolean(
+          formulario.campos?.some((campo) => campo.tipo === "validacion_dni")
+        ),
+      };
+
+    setProcesandoId(formulario.id);
+
+    try {
+      await updateDoc(doc(db, "oficina_gestion_formularios", formulario.id), {
+        modoEdicionPorDni,
+        soloConsultaDni: modoEdicionPorDni
+          ? false
+          : Boolean(configuracionRestaurada.soloConsultaDni),
+        modoSoloConsultaDni: modoEdicionPorDni
+          ? false
+          : Boolean(configuracionRestaurada.modoSoloConsultaDni),
+        bloquearCargaRespuestas: modoEdicionPorDni
+          ? false
+          : Boolean(configuracionRestaurada.bloquearCargaRespuestas),
+        requiereValidacionDni:
+          modoEdicionPorDni ||
+          Boolean(configuracionRestaurada.requiereValidacionDni),
+        configuracionDniAntesModoEdicion: modoEdicionPorDni
+          ? configuracionAnterior
+          : null,
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.current?.show({
+        severity: "success",
+        summary: modoEdicionPorDni
+          ? "Consulta de respuestas por DNI habilitada"
+          : "Consulta de respuestas por DNI deshabilitada",
+        detail: modoEdicionPorDni
+          ? "El formulario mostrará sólo las presentaciones ya cargadas para el DNI ingresado. La edición requiere autorización individual."
+          : "El formulario vuelve a su comportamiento de carga o consulta configurado.",
+        life: 4500,
+      });
+
+      await cargarFormularios();
+    } catch (error) {
+      console.error("Error al cambiar consulta por DNI:", error);
+
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo actualizar el modo de consulta por DNI.",
+        life: 4000,
       });
     } finally {
       setProcesandoId(null);
@@ -666,7 +753,7 @@ const GestionarFormulariosGestion = () => {
       return;
     }
 
-    const camposNormalizados =
+    const camposNormalizadosBase =
       formulario.campos && formulario.campos.length > 0
         ? formulario.campos.map((campo, index) => {
             const modoDepartamento =
@@ -674,7 +761,7 @@ const GestionarFormulariosGestion = () => {
               (campo.departamentoMultiple ? "multiple" : "unico");
 
             return {
-              id: campo.id || `campo_${index + 1}`,
+              id: campo.id,
               label:
                 campo.tipo === "validacion_dni"
                   ? campo.label || "Validación por DNI"
@@ -718,7 +805,9 @@ const GestionarFormulariosGestion = () => {
                   : Boolean(campo.autocompletarDatosAfiliado),
             };
           })
-        : [{ ...campoInicial }];
+        : [crearCampoNuevo(campoInicial)];
+
+    const camposNormalizados = normalizarIdsCampos(camposNormalizadosBase);
 
     const descripcionHtmlInicial = formulario.descripcionHtml
       ? sanearHtmlBasico(formulario.descripcionHtml)
@@ -752,7 +841,7 @@ const GestionarFormulariosGestion = () => {
     setEditActivo(true);
     setEditSoloConsultaDni(false);
     setEditPermitirMultiplesRespuestasPorDni(false);
-    setEditCampos([{ ...campoInicial }]);
+    setEditCampos([crearCampoNuevo(campoInicial)]);
     setEditArchivoDescargaFormulario(null);
     setEditDescripcionArchivoDescargaFormulario("");
 
@@ -762,7 +851,7 @@ const GestionarFormulariosGestion = () => {
   };
 
   const agregarCampoEdicion = () => {
-    setEditCampos((prev) => [...prev, { ...campoInicial }]);
+    setEditCampos((prev) => [...prev, crearCampoNuevo(campoInicial)]);
   };
 
   const eliminarCampoEdicion = (index) => {
@@ -885,6 +974,18 @@ const GestionarFormulariosGestion = () => {
       return false;
     }
 
+    if (tienenIdsCamposDuplicados(editCampos)) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Atención",
+        detail:
+          "Se detectaron campos con identificadores duplicados. Revise el formulario antes de continuar.",
+        life: 4000,
+      });
+
+      return false;
+    }
+
     const campoSinNombre = editCampos.some(
       (campo) => !campo.label || !campo.label.trim()
     );
@@ -941,7 +1042,7 @@ const GestionarFormulariosGestion = () => {
   const normalizarCamposParaGuardar = () => {
     return editCampos.map((campo, index) => {
       const base = {
-        id: campo.id || `campo_${index + 1}`,
+        id: campo.id,
         label: campo.label.trim(),
         tipo: campo.tipo || "texto",
         obligatorio: Boolean(campo.obligatorio),
@@ -1060,8 +1161,12 @@ const GestionarFormulariosGestion = () => {
             }
           : null;
 
+      const modoEdicionPorDni =
+        !editSoloConsultaDni &&
+        Boolean(formularioEditando.modoEdicionPorDni);
       const requiereValidacionDni =
         editSoloConsultaDni ||
+        modoEdicionPorDni ||
         camposNormalizados.some((campo) => campo.tipo === "validacion_dni");
 
       await updateDoc(
@@ -1075,6 +1180,7 @@ const GestionarFormulariosGestion = () => {
           soloConsultaDni: Boolean(editSoloConsultaDni),
           modoSoloConsultaDni: Boolean(editSoloConsultaDni),
           bloquearCargaRespuestas: Boolean(editSoloConsultaDni),
+          modoEdicionPorDni,
           permitirMultiplesRespuestasPorDni: editSoloConsultaDni
             ? false
             : Boolean(editPermitirMultiplesRespuestasPorDni),
@@ -1351,6 +1457,7 @@ const GestionarFormulariosGestion = () => {
               formulario
             );
             const soloConsulta = formularioSoloConsultaDni(formulario);
+            const modoEdicionPorDni = formularioModoEdicionPorDni(formulario);
             const permiteMultiples =
               formularioPermiteMultiplesRespuestasPorDni(formulario);
 
@@ -1391,6 +1498,10 @@ const GestionarFormulariosGestion = () => {
 
                     {soloConsulta && (
                       <Tag value="Solo consulta por DNI" severity="help" />
+                    )}
+
+                    {modoEdicionPorDni && (
+                      <Tag value="Consulta respuestas por DNI" severity="warning" />
                     )}
 
                     {permiteMultiples && (
@@ -1446,6 +1557,12 @@ const GestionarFormulariosGestion = () => {
                     <span>Solo consulta por DNI</span>
 
                     <strong>{soloConsulta ? "Sí" : "No"}</strong>
+                  </div>
+
+                  <div className={styles.metaItem}>
+                    <span>Consulta de respuestas por DNI</span>
+
+                    <strong>{modoEdicionPorDni ? "Sí" : "No"}</strong>
                   </div>
 
                   <div className={styles.metaItem}>
@@ -1529,6 +1646,21 @@ const GestionarFormulariosGestion = () => {
                       severity="info"
                       outlined
                       onClick={() => abrirEditorFormulario(formulario)}
+                    />
+                  )}
+
+                  {tipoFormulario !== "Excel agrupado" && (
+                    <Button
+                      label={
+                        modoEdicionPorDni
+                          ? "Deshabilitar consulta de respuestas por DNI"
+                          : "Habilitar consulta de respuestas por DNI"
+                      }
+                      icon="pi pi-user-edit"
+                      severity={modoEdicionPorDni ? "warning" : "success"}
+                      outlined={!modoEdicionPorDni}
+                      onClick={() => cambiarModoEdicionPorDni(formulario)}
+                      loading={procesandoId === formulario.id}
                     />
                   )}
 
@@ -1619,6 +1751,10 @@ const GestionarFormulariosGestion = () => {
 
                 {formularioSoloConsultaDni(formularioPreview) && (
                   <Tag value="Solo consulta por DNI" severity="help" />
+                )}
+
+                {formularioModoEdicionPorDni(formularioPreview) && (
+                  <Tag value="Consulta respuestas por DNI" severity="warning" />
                 )}
 
                 {formularioPermiteMultiplesRespuestasPorDni(

@@ -607,6 +607,56 @@
   justify-content: center;
 }
 
+.presentacionesList {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  width: 100%;
+}
+
+.presentacionesCard {
+  align-content: start;
+}
+
+.presentacionCard {
+  display: grid;
+  align-content: start;
+  align-items: start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.presentacionCard h2 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.presentacionCard p {
+  margin: 4px 0;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.presentacionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.presentacionActions :global(.p-button) {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border-radius: 7px;
+  box-shadow: none;
+  font-weight: 700;
+}
+
 /* =========================================================
    MODAL: INFORMACIÓN CARGADA / DETALLE DE RESPUESTA
    ========================================================= */
@@ -1213,6 +1263,18 @@
     width: 100%;
     flex-direction: column;
   }
+
+  .presentacionActions {
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .presentacionActions :global(.p-button) {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+  }
+
 
   .fileActions {
     flex-direction: column;

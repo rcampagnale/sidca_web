@@ -286,6 +286,7 @@ const CrearFormularioDesdeExcel = ({ onCreated, onCancel }) => {
         soloConsultaDni: true,
         modoSoloConsultaDni: true,
         bloquearCargaRespuestas: true,
+        modoEdicionPorDni: false,
         requiereValidacionDni: true,
         permitirMultiplesRespuestasPorDni: false,
         configuracionExcel: {
