@@ -1038,8 +1038,8 @@ const FormularioGestionPublico = () => {
 
         snap.docs.forEach((docSnap) => {
           respuestasMap.set(docSnap.id, {
-            id: docSnap.id,
             ...docSnap.data(),
+            id: docSnap.id,
           });
         });
       }
@@ -1250,7 +1250,16 @@ const FormularioGestionPublico = () => {
   const cargarRespuestaParaEdicionAfiliado = async (
     respuestaSeleccionada = respuestaRegistrada
   ) => {
-    if (!respuestaSeleccionada?.id) return;
+    if (!respuestaSeleccionada?.id) {
+      toast.current?.show({
+        severity: "error",
+        summary: "No se pudo abrir la edición",
+        detail: "La presentación no tiene un identificador válido.",
+        life: 4500,
+      });
+
+      return;
+    }
 
     const respuestasGuardadas = respuestaSeleccionada.respuestas || {};
     const respuestasPorCampo = respuestaSeleccionada.respuestasPorCampo || {};
@@ -2966,7 +2975,7 @@ const FormularioGestionPublico = () => {
                 label="Editar mi formulario"
                 icon="pi pi-pencil"
                 severity="success"
-                onClick={cargarRespuestaParaEdicionAfiliado}
+                onClick={() => cargarRespuestaParaEdicionAfiliado()}
               />
             )}
 

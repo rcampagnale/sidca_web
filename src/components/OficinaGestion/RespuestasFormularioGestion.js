@@ -749,8 +749,8 @@ const RespuestasFormularioGestion = () => {
 
         snap.docs.forEach((docSnap) => {
           respuestasMap.set(docSnap.id, {
-            id: docSnap.id,
             ...docSnap.data(),
+            id: docSnap.id,
           });
         });
       }
