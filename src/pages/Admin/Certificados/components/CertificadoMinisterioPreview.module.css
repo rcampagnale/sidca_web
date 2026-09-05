@@ -1,0 +1,36 @@
+.dialogo :global(.p-dialog-content) { padding: 12px; background: #f8fafc; overflow: auto; }
+.viewport { width: min(842px, calc(96vw - 48px)); max-width: 100%; margin: 0 auto; overflow: hidden; }
+.certificado { position: relative; transform-origin: top left; overflow: hidden; background: #fff; color: #151515; font-family: "Liberation Sans", Arial, sans-serif; }
+.marco, .logo { position: absolute; object-fit: contain; pointer-events: none; user-select: none; }
+.gobierno, .ministerio, .secretaria, .certifica, .participante, .actividad, .titulo, .cuerpoLinea { position: absolute; box-sizing: border-box; margin: 0; text-align: center; }
+.gobierno, .ministerio { text-align: left; }
+.gobierno { font-size: 11px; line-height: 1.1; font-weight: 400; }
+.ministerio { font-size: 13px; line-height: 1.05; font-weight: 700; }
+.secretaria { font-size: 11px; line-height: 1.1; font-weight: 700; }
+.certifica { font-size: 26px; line-height: 1; font-weight: 700; letter-spacing: 0; }
+.participante { font-weight: 400; transform: translateY(-50%); }
+.actividad { font-weight: 400; transform: translateY(-50%); }
+.titulo { font-weight: 700; text-align: center; transform: translateY(-50%); }
+.tituloBox { position: absolute; top: var(--titulo-top, 35.5%); left: var(--titulo-left, 17%); width: var(--titulo-width, 66%); height: var(--titulo-height, 5.2%); display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1; transform: none; overflow: visible; white-space: normal; font-weight: 700; box-sizing: border-box; margin: 0; }
+.cuerpoLinea { text-align: center; transform: none; font-weight: 400; }
+.firmante { position: absolute; top: 0; text-align: center; }
+.firmaImagen { position: absolute; display: flex; align-items: center; justify-content: center; }
+.firmaImagen img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.firmaImagen span { font-size: 5px; color: #9a3412; }
+.firmanteTexto { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; overflow: hidden; font-size: 5.5px; line-height: 1.2; }
+.firmanteTexto strong { font-size: 6.5px; line-height: 1.2; }
+.firmanteTexto .cargo { font-size: 5.5px; line-height: 1.25; white-space: nowrap; }
+.firmanteTexto .organismo { line-height: 1.25; overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.qr { position: absolute; display: flex; align-items: center; justify-content: center; background: #fff; }
+.qr svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+.qr span { color: #64748b; font-weight: 700; font-size: 20px; }
+.advertencia { margin: 0 0 12px; padding: 10px 12px; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; font-size: 0.84rem; }
+.advertencia ul { margin: 6px 0 0; padding-left: 18px; }
+.pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.notaPie { flex: 1 1 260px; margin: 0; color: #64748b; font-size: 0.82rem; line-height: 1.4; }
+.pieBotones { display: flex; gap: 8px; flex-wrap: wrap; }
+.botonEmitir, .botonCerrar { min-height: 44px; padding: 0 16px; border-radius: 9px; font: inherit; font-weight: 700; cursor: pointer; }
+.botonEmitir { color: #fff; background: #0f766e; border: 1px solid #0f766e; }
+.botonCerrar { color: #334155; background: #fff; border: 1px solid #cbd5e1; }
+.botonEmitir:disabled, .botonCerrar:disabled { color: #94a3b8; background: #e2e8f0; border-color: #cbd5e1; cursor: not-allowed; }
+@media (max-width: 640px) { .dialogo :global(.p-dialog-content) { padding: 8px; } .viewport { width: calc(96vw - 28px); } .pieBotones { width: 100%; } .pieBotones button { flex: 1 1 auto; } }

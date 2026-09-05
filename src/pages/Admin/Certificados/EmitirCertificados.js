@@ -29,8 +29,9 @@
 // snapshot con lo que él mismo lee. El frontend sólo envía usuarioDocId.
 // Todavía NO se genera PDF ni QR gráfico: eso llega en la etapa siguiente.
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "primereact/dialog";
+import { ProgressBar } from "primereact/progressbar";
 
 import {
   eliminarConfiguracionCertificado,
@@ -51,10 +52,14 @@ import {
   obtenerPdfSegmentoActual,
   descargarPdfSegmento as descargarPdfSegmentoArchivo,
   obtenerDatosExcelSegmento,
+  obtenerFirmaMinisterio,
+  obtenerFirmaMinisterioEmitida,
+  reiniciarEmisionesCurso,
   reincluirUsuarioEmision,
 } from "../../../services/certificadosService";
 import CertificadoPreview from "./components/CertificadoPreview";
 import SelectorConfiguracion from "./SelectorConfiguracion";
+import { validarConfiguracionMinisterio } from "./utils/ministerioCertificado";
 import styles from "./CertificadosAdmin.module.css";
 import emitir from "./EmitirCertificados.module.css";
 // La descarga MASIVA ya no se arma en el navegador: la resuelve el Cloud Run
@@ -81,6 +86,76 @@ const claveEmision = (cursoId, usuarioDocId) => {
   const usuario = String(usuarioDocId || "").trim();
   if (!curso || !usuario) return "";
   return `${curso}::${usuario}`;
+};
+
+const prepararFirmantesMinisterio = async ({
+  certificado,
+  resolverImagen,
+  estricto = false,
+}) => {
+  const objectUrls = [];
+  const firmantes = Array.isArray(certificado?.firmantesMinisterio)
+    ? certificado.firmantesMinisterio
+        .filter((firmante) => firmante?.activo !== false)
+        .sort((a, b) => Number(a?.orden || 0) - Number(b?.orden || 0))
+    : [];
+
+  try {
+    const enriquecidos = await Promise.all(
+      firmantes.map(async (firmante) => {
+        const nombre = String(firmante?.nombre || "Firmante").trim();
+        const tieneReferencia =
+          String(firmante?.imagenStoragePath || "").trim() &&
+          Number(firmante?.imagenVersion || 0) > 0;
+
+        if (!tieneReferencia) {
+          if (estricto) {
+            throw new Error(
+              `No se encontró la firma histórica de ${nombre}. El PDF no fue generado.`
+            );
+          }
+          return { ...firmante, imagenUrl: "" };
+        }
+
+        try {
+          const blob = await resolverImagen(firmante);
+          const imagenUrl = URL.createObjectURL(blob);
+          objectUrls.push(imagenUrl);
+          return { ...firmante, imagenUrl };
+        } catch (_) {
+          if (estricto) {
+            throw new Error(
+              `No se pudo cargar la firma de ${nombre}. El PDF no fue generado.`
+            );
+          }
+          return { ...firmante, imagenUrl: "" };
+        }
+      })
+    );
+
+    return {
+      firmantes: enriquecidos,
+      firmas: Object.fromEntries(
+        enriquecidos
+          .filter((firmante) => firmante.imagenUrl)
+          .map((firmante) => [firmante.id, firmante.imagenUrl])
+      ),
+      objectUrls,
+    };
+  } catch (error) {
+    objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    throw error;
+  }
+};
+
+const esperarRenderCertificado = async () => {
+  if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+    await Promise.resolve();
+    return;
+  }
+
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
 };
 
 /** Sólo para mostrar. El DNI almacenado no se modifica. */
@@ -266,13 +341,6 @@ const MOTIVO_DATOS_INCOMPLETOS =
 const MOTIVO_YA_EMITIDO =
   "Este participante ya tiene un certificado emitido. La anulación se gestionará desde Emitidos.";
 
-/** Mensaje del backend que indica inequívocamente una emisión ya existente. */
-const esErrorYaEmitido = (error) =>
-  error?.status === 409 &&
-  String(error?.message || "")
-    .toLowerCase()
-    .includes("ya tiene un certificado vigente");
-
 const EmitirCertificados = ({ notificar }) => {
   const [configuraciones, setConfiguraciones] = useState([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -304,14 +372,14 @@ const EmitirCertificados = ({ notificar }) => {
   const [quitandoUsuario, setQuitandoUsuario] = useState("");
   const [recuperandoUsuario, setRecuperandoUsuario] = useState("");
   const [quitandoCurso, setQuitandoCurso] = useState(false);
+  const [reiniciandoEmisiones, setReiniciandoEmisiones] = useState(false);
+  const [dialogoReinicioVisible, setDialogoReinicioVisible] = useState(false);
 
   // Emisión en curso. Sirve para el estado del botón y para que un doble
   // click no dispare dos POST.
   const [emitiendoUsuario, setEmitiendoUsuario] = useState("");
-
-  // Consulta de emisión en curso. Evita pedidos duplicados y bloquea el botón
-  // Emitir mientras todavía no sabemos si ya existe un certificado.
-  const [consultandoEmisionUsuario, setConsultandoEmisionUsuario] = useState("");
+  const [consultandoEmisionUsuario, setConsultandoEmisionUsuario] =
+    useState("");
 
   /**
    * Emisiones conocidas en esta pantalla: usuarioDocId -> emisión completa.
@@ -320,12 +388,16 @@ const EmitirCertificados = ({ notificar }) => {
    * el PDF necesitará el token y el snapshot. Tener la clave alcanza para
    * saber que está emitido, así que no hace falta un segundo estado.
    *
-   * Se llena por dos vías: la respuesta del POST al emitir, y el GET al abrir
-   * el preview de alguien ya emitido. La autoridad sigue siendo el backend.
+   * Se llena por dos vías: la respuesta del POST al emitir y una acción
+   * explícita que necesita mostrar un emitido histórico. La autoridad sigue
+   * siendo el backend.
    */
   const [emisionesSesion, setEmisionesSesion] = useState(() => new Map());
   const [descargandoUsuario, setDescargandoUsuario] = useState("");
   const [descargandoMasivo, setDescargandoMasivo] = useState(false);
+  const [firmasMinisterioPreview, setFirmasMinisterioPreview] = useState({});
+  const [recargaFirmasPreview, setRecargaFirmasPreview] = useState(0);
+  const preparandoPdfRef = useRef(false);
 
   // PDF masivo. El trabajo vive en Firestore, no en esta pestaña: por eso se
   // guarda el documento completo del trabajo y no un progreso local. El texto
@@ -355,6 +427,76 @@ const EmitirCertificados = ({ notificar }) => {
   const [confirmarEmisionMasivaVisible, setConfirmarEmisionMasivaVisible] =
     useState(false);
   const [resultadoEmisionMasiva, setResultadoEmisionMasiva] = useState(null);
+
+  // El preview empieza siempre con la configuración actual. Sólo se completa
+  // con un snapshot después de una emisión real o al abrir un emitido histórico
+  // desde una acción que explícitamente lo necesita.
+  const [emisionPreview, setEmisionPreview] = useState(null);
+  const certificadoPreview =
+    emisionPreview
+      ? emisionPreview.certificado
+      : configuracion;
+  const esMinisterioPreview =
+    certificadoPreview?.institucionCertificado === "ministerio";
+  const validacionMinisterioPreview = useMemo(
+    () =>
+      esMinisterioPreview
+        ? validarConfiguracionMinisterio({
+            certificado: certificadoPreview,
+            participante: emisionPreview?.participante || participantePreview,
+          })
+        : null,
+    [
+      esMinisterioPreview,
+      certificadoPreview,
+      emisionPreview?.participante,
+      participantePreview,
+    ]
+  );
+
+  useEffect(() => {
+    let activo = true;
+    const urls = [];
+    const cargarFirmas = async () => {
+      if (preparandoPdfRef.current) return;
+      if (!esMinisterioPreview || !curso?.id || !participantePreview?.usuarioDocId) {
+        setFirmasMinisterioPreview({});
+        return;
+      }
+
+      const usuarioDocId =
+        emisionPreview?.participante?.usuarioDocId ||
+        participantePreview.usuarioDocId;
+      const preparado = await prepararFirmantesMinisterio({
+        certificado: certificadoPreview,
+        resolverImagen: (firmante) =>
+          emisionPreview
+            ? obtenerFirmaMinisterioEmitida(curso.id, usuarioDocId, firmante.id)
+            : obtenerFirmaMinisterio(curso.id, firmante.id),
+      });
+      if (activo) {
+        urls.push(...preparado.objectUrls);
+        setFirmasMinisterioPreview(preparado.firmas);
+      } else {
+        preparado.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      }
+    };
+
+    cargarFirmas().catch(() => {
+      if (activo) setFirmasMinisterioPreview({});
+    });
+    return () => {
+      activo = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [
+    esMinisterioPreview,
+    curso?.id,
+    participantePreview?.usuarioDocId,
+    certificadoPreview,
+    emisionPreview,
+    recargaFirmasPreview,
+  ]);
 
   const recordarEmision = useCallback((cursoId, usuarioDocId, emision) => {
     const clave = claveEmision(cursoId, usuarioDocId);
@@ -417,6 +559,7 @@ const EmitirCertificados = ({ notificar }) => {
     setParticipantesExcluidos([]);
     setBusqueda("");
     setError("");
+    setConsultandoEmisionUsuario("");
   }, []);
 
   /**
@@ -597,10 +740,10 @@ const EmitirCertificados = ({ notificar }) => {
   /**
    * Participantes a los que la emisión masiva les crearía un certificado.
    *
-   * La autoridad es `certificadoEmitido`, que viene del backend: es lo que
-   * sabe si existe una emisión vigente, incluso una hecha por otro
-   * administrador en otra pestaña. `emisionesSesion` no sirve como fuente
-   * porque sólo conoce lo que pasó por esta pantalla.
+   * La autoridad es `estaEmitido`, que combina la marca vigente del backend
+   * con la emisión completa que esta pantalla acaba de registrar o consultar.
+   * Así el contador reacciona inmediatamente a una emisión individual y sigue
+   * reconociendo emisiones hechas por otro administrador tras recargar.
    *
    * Los apartados no se cuentan porque ni siquiera están en `participantes`:
    * viven en `participantesExcluidos`.
@@ -614,9 +757,9 @@ const EmitirCertificados = ({ notificar }) => {
         (participante) =>
           participante?.estado === "aprobado" &&
           Boolean(participante?.usuarioDocId) &&
-          participante?.certificadoEmitido !== true
+          !estaEmitido(participante)
       ),
-    [participantes]
+    [participantes, estaEmitido]
   );
 
   const cantidadPendientesEmision = participantesPendientesEmision.length;
@@ -624,10 +767,22 @@ const EmitirCertificados = ({ notificar }) => {
   const cantidadYaEmitidos = useMemo(
     () =>
       participantes.filter(
-        (participante) => participante?.certificadoEmitido === true
+        (participante) => estaEmitido(participante)
       ).length,
-    [participantes]
+    [participantes, estaEmitido]
   );
+
+  // La descarga segmentada sólo lee emisiones vigentes existentes. Puede
+  // convivir con participantes pendientes, pero no con una operación que
+  // esté creando o eliminando esas mismas emisiones.
+  const hayCertificadosEmitidos = cantidadYaEmitidos > 0;
+  const operacionIncompatibleSegmentos =
+    cargando ||
+    emitiendoMasivo ||
+    Boolean(emitiendoUsuario) ||
+    reiniciandoEmisiones ||
+    quitandoCurso ||
+    descargandoMasivo;
 
   const textoBotonEmisionMasiva = emitiendoMasivo
     ? "Emitiendo certificados…"
@@ -652,14 +807,11 @@ const EmitirCertificados = ({ notificar }) => {
   const puedePrevisualizar = Boolean(configuracion);
 
   /**
-   * Abre el preview y averigua si ese participante ya tiene certificado.
+   * Abre una simulación con la configuración actual del curso.
    *
-   * El certificado se muestra de inmediato; la consulta va después y en
-   * paralelo, así abrir el preview nunca se siente lento. Es una consulta
-   * LAZY, por participante: nunca se piden las emisiones de toda la tabla.
-   *
-   * Es lo que hace que el QR siga apareciendo después de un F5: el Map en
-   * memoria se pierde, pero la emisión sigue en Firestore.
+   * Preview es completamente no destructivo: no consulta emisiones ni carga
+   * snapshots históricos. Sólo una emisión real puede completar este preview
+   * con el snapshot que devolvió el POST.
    */
   const abrirPreview = useCallback(
     async (participante) => {
@@ -672,62 +824,119 @@ const EmitirCertificados = ({ notificar }) => {
         return;
       }
 
-      setParticipantePreview(participante);
+      if (consultandoEmisionUsuario) return;
 
-      const usuarioDocId = participante?.usuarioDocId;
+      const emisionLocal = emisionesSesion.get(
+        claveEmision(curso?.id, participante?.usuarioDocId)
+      );
 
-      // Sin usuario no hay emisión posible; y si ya la conocemos, no se
-      // vuelve a preguntar.
-      if (!curso || !usuarioDocId) return;
-      const clave = claveEmision(curso.id, usuarioDocId);
-      if (clave && emisionesSesion.has(clave)) return;
+      if (emisionLocal) {
+        setEmisionPreview(emisionLocal);
+        setParticipantePreview(participante);
+        return;
+      }
 
-      setConsultandoEmisionUsuario(usuarioDocId);
+      if (participante?.certificadoEmitido !== true) {
+        setEmisionPreview(null);
+        setParticipantePreview(participante);
+        return;
+      }
 
+      // Después de un refresh la fila conserva sólo la marca de emisión. Se
+      // obtiene una vez la emisión vigente y se incorpora al mismo Map que
+      // usa la fila, el PDF y el preview posterior.
+      setConsultandoEmisionUsuario(participante.usuarioDocId);
       try {
         const emision = await obtenerEmisionVigenteCertificado(
           curso.id,
-          usuarioDocId
+          participante.usuarioDocId
         );
 
-        // null = 404 controlado: todavía no emitido. Se registra igual para no
-        // repetir la consulta cada vez que se abre el mismo preview.
-        recordarEmision(curso.id, usuarioDocId, emision);
-      } catch (e) {
-        // Error real de red o servidor. No se cierra el preview: el
-        // certificado se sigue viendo, sólo no sabemos si está emitido.
+        if (!emision) {
+          recordarEmision(curso.id, participante.usuarioDocId, null);
+          throw new Error(
+            "No se encontró la emisión vigente de este participante. Actualizá la lista antes de continuar."
+          );
+        }
+
+        recordarEmision(curso.id, participante.usuarioDocId, emision);
+        setEmisionPreview(emision);
+        setParticipantePreview(participante);
+      } catch (error) {
         notificar?.(
           "error",
-          "No se pudo consultar la emisión",
-          e?.message || "Error inesperado."
+          "No se pudo abrir el certificado emitido",
+          error?.message || "No se pudo consultar la emisión vigente."
         );
       } finally {
         setConsultandoEmisionUsuario("");
       }
     },
-    [puedePrevisualizar, curso, emisionesSesion, recordarEmision, notificar]
+    [
+      puedePrevisualizar,
+      consultandoEmisionUsuario,
+      emisionesSesion,
+      curso,
+      recordarEmision,
+      notificar,
+    ]
   );
 
   const descargarPdfIndividual = useCallback(async (participante) => {
     if (!curso || !estaEmitido(participante) || descargandoUsuario) return;
     setDescargandoUsuario(participante.usuarioDocId);
+    const objectUrls = [];
+    let esMinisterio = false;
     try {
       let emision = emisionesSesion.get(claveEmision(curso.id, participante.usuarioDocId));
       if (!emision) {
         emision = await obtenerEmisionVigenteCertificado(curso.id, participante.usuarioDocId);
         recordarEmision(curso.id, participante.usuarioDocId, emision);
       }
+
+      esMinisterio = emision?.certificado?.institucionCertificado === "ministerio";
+      let emisionParaRender = emision;
+      if (esMinisterio) {
+        const preparado = await prepararFirmantesMinisterio({
+          certificado: emision.certificado,
+          estricto: true,
+          resolverImagen: (firmante) =>
+            obtenerFirmaMinisterioEmitida(
+              curso.id,
+              emision.participante?.usuarioDocId || participante.usuarioDocId,
+              firmante.id
+            ),
+        });
+        objectUrls.push(...preparado.objectUrls);
+        emisionParaRender = {
+          ...emision,
+          certificado: {
+            ...emision.certificado,
+            firmantesMinisterio: preparado.firmantes,
+          },
+        };
+        preparandoPdfRef.current = true;
+        setFirmasMinisterioPreview(preparado.firmas);
+      }
+
+      setEmisionPreview(emisionParaRender);
       setParticipantePreview(participante);
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      const elemento = document.querySelector(`.${emitir.certificado}`) || document.querySelector("[class*='certificado']");
+      await esperarRenderCertificado();
+      const elemento = document.querySelector('[data-certificado-preview="true"]');
       if (!elemento) throw new Error("No se encontró el lienzo del certificado.");
-      const canvas = await capturarCertificado(elemento);
+      const canvas = await capturarCertificado(elemento, {
+        scale:
+          emision?.certificado?.institucionCertificado === "ministerio" ? 3 : 2,
+      });
       const pdf = crearPdfA4Horizontal();
       agregarCanvasAPdf(pdf, canvas, true);
       pdf.save(`Certificado - ${sanitizarNombreArchivo(emision?.participante?.apellidoNombre || participante.apellidoNombre)} - ${sanitizarNombreArchivo(emision?.participante?.dni || participante.dni)}.pdf`);
     } catch (error) {
       notificar?.("error", "No se pudo generar el PDF", error?.message || "Error inesperado.");
     } finally {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      preparandoPdfRef.current = false;
+      if (esMinisterio) setRecargaFirmasPreview((valor) => valor + 1);
       setDescargandoUsuario("");
     }
   }, [curso, emisionesSesion, descargandoUsuario, estaEmitido, recordarEmision, notificar]);
@@ -1194,13 +1403,10 @@ const EmitirCertificados = ({ notificar }) => {
     async (participante) => {
       if (!curso || !configuracion || !participante) return;
       if (!esEmitible(participante)) return;
+      if (estaEmitido(participante)) return;
       const clave = claveEmision(curso.id, participante.usuarioDocId);
       if (clave && emisionesSesion.get(clave)) return;
       if (emitiendoUsuario) return;
-      // Todavía no sabemos si ya existe un certificado: esperar la consulta
-      // evita un 409 innecesario.
-      if (consultandoEmisionUsuario === participante.usuarioDocId) return;
-
       const confirmado = window.confirm(
         `¿Emitir el certificado de "${participante.apellidoNombre}"?\n\n` +
           `DNI: ${mostrarDni(participante.dni)}\n\n` +
@@ -1228,6 +1434,7 @@ const EmitirCertificados = ({ notificar }) => {
         // Se guarda la emisión COMPLETA, no sólo la marca: el QR necesita
         // urlValidacion y así aparece de inmediato, sin un GET extra.
         recordarEmision(curso.id, participante.usuarioDocId, emision);
+        setEmisionPreview(emision);
 
         notificar?.(
           "success",
@@ -1235,23 +1442,8 @@ const EmitirCertificados = ({ notificar }) => {
           `El certificado de ${participante.apellidoNombre} fue registrado correctamente.`
         );
       } catch (e) {
-        // Si el backend avisa que YA existe un certificado vigente, se
-        // recupera esa emisión para poder mostrar su QR: el certificado
-        // existe, sólo no lo teníamos en memoria. No se hace ante cualquier
-        // 409 — excluido, curso apartado o datos incompletos son situaciones
-        // distintas y corregibles.
-        if (esErrorYaEmitido(e)) {
-          try {
-            const existente = await obtenerEmisionVigenteCertificado(
-              curso.id,
-              participante.usuarioDocId
-            );
-            if (existente) recordarEmision(curso.id, participante.usuarioDocId, existente);
-          } catch (errorConsulta) {
-            /* si tampoco se puede consultar, queda el mensaje de error */
-          }
-        }
-
+        // Un 409 indica que no hubo una nueva emisión. El preview debe seguir
+        // mostrando la configuración actual, sin cargar el snapshot histórico.
         notificar?.(
           "error",
           "No se pudo emitir el certificado",
@@ -1266,7 +1458,7 @@ const EmitirCertificados = ({ notificar }) => {
       configuracion,
       emisionesSesion,
       emitiendoUsuario,
-      consultandoEmisionUsuario,
+      estaEmitido,
       recordarEmision,
       notificar,
     ]
@@ -1486,6 +1678,50 @@ const EmitirCertificados = ({ notificar }) => {
     }
   }, [curso, notificar]);
 
+  /**
+   * Reinicia sólo las emisiones y artefactos derivados del curso actual.
+   * La configuración y las aprobaciones se conservan; el backend devuelve la
+   * cantidad real eliminada y luego se vuelve a cargar el padrón.
+   */
+  const reiniciarEmisiones = useCallback(async () => {
+    if (!curso?.id || reiniciandoEmisiones) return;
+
+    setReiniciandoEmisiones(true);
+
+    try {
+      const resultado = await reiniciarEmisionesCurso(curso.id);
+
+      setDialogoReinicioVisible(false);
+      setParticipantePreview(null);
+      setEmisionPreview(null);
+      setFirmasMinisterioPreview({});
+      setEmisionesSesion((previas) => {
+        const siguiente = new Map(previas);
+        const prefijo = `${curso.id}::`;
+        Array.from(siguiente.keys())
+          .filter((clave) => String(clave).startsWith(prefijo))
+          .forEach((clave) => siguiente.delete(clave));
+        return siguiente;
+      });
+
+      await recargarAprobados();
+
+      notificar?.(
+        "success",
+        "Emisiones eliminadas",
+        `Se eliminaron ${resultado.emisionesEliminadas} certificados emitidos. Ya podés generar nuevos certificados con la configuración actual.`
+      );
+    } catch (e) {
+      notificar?.(
+        "error",
+        "No se pudieron eliminar las emisiones",
+        e?.message || "Error inesperado."
+      );
+    } finally {
+      setReiniciandoEmisiones(false);
+    }
+  }, [curso, reiniciandoEmisiones, recargarAprobados, notificar]);
+
   return (
     <>
       <section className={styles.bloque}>
@@ -1569,8 +1805,14 @@ const EmitirCertificados = ({ notificar }) => {
               type="button"
               className={styles.botonSecundario}
               onClick={abrirDialogoSegmentos}
-              disabled={cargando}
-              title="Genera y descarga los certificados ya emitidos, agrupados por departamento. No emite a nadie."
+              disabled={
+                !hayCertificadosEmitidos || operacionIncompatibleSegmentos
+              }
+              title={
+                !hayCertificadosEmitidos
+                  ? "Todavía no hay certificados emitidos para descargar por segmentos."
+                  : "Genera y descarga los certificados ya emitidos, agrupados por departamento. No emite a nadie."
+              }
             >
               Descarga por segmentos
             </button>
@@ -1582,6 +1824,24 @@ const EmitirCertificados = ({ notificar }) => {
               title="Elimina la configuración del certificado. El curso, los participantes y sus aprobaciones no se tocan."
             >
               {quitandoCurso ? "Eliminando…" : "Quitar curso de emisión"}
+            </button>
+
+            <button
+              type="button"
+              className={emitir.botonReiniciarEmisiones}
+              onClick={() => setDialogoReinicioVisible(true)}
+              disabled={
+                reiniciandoEmisiones ||
+                quitandoCurso ||
+                cargando ||
+                emitiendoMasivo ||
+                Boolean(emitiendoUsuario) ||
+                Boolean(descargandoUsuario) ||
+                descargandoMasivo
+              }
+              title="Elimina los certificados emitidos de este curso, pero conserva su configuración y participantes."
+            >
+              Eliminar certificados emitidos
             </button>
 
             <button
@@ -2053,7 +2313,9 @@ const EmitirCertificados = ({ notificar }) => {
            emitir—, sólo el botón que crea el certificado. */
         puedeEmitir={
           esEmitible(participantePreview) &&
-          afiliacionHabilitada(participantePreview)
+          afiliacionHabilitada(participantePreview) &&
+          !consultandoEmisionUsuario &&
+          (validacionMinisterioPreview?.valid !== false)
         }
         motivoNoEmitir={
           participantePreview?.estado === "datos_incompletos"
@@ -2061,20 +2323,13 @@ const EmitirCertificados = ({ notificar }) => {
             : !afiliacionHabilitada(participantePreview)
             ? participantePreview?.afiliacion?.motivoBloqueo ||
               "No se pudo verificar la condición de afiliación."
-            : ""
+            : validacionMinisterioPreview?.errores?.[0] || ""
         }
         emitiendo={emitiendoUsuario === participantePreview?.usuarioDocId}
-        emitido={estaEmitido(participantePreview)}
-        consultandoEmision={
-          consultandoEmisionUsuario === participantePreview?.usuarioDocId
-        }
-        emision={
-          curso?.id && participantePreview?.usuarioDocId
-            ? emisionesSesion.get(
-                claveEmision(curso.id, participantePreview.usuarioDocId)
-              ) || null
-            : null
-        }
+        emitido={Boolean(emisionPreview) || estaEmitido(participantePreview)}
+        consultandoEmision={Boolean(consultandoEmisionUsuario)}
+        emision={emisionPreview}
+        firmas={firmasMinisterioPreview}
         onEmitir={() => emitirParticipante(participantePreview)}
         onCerrar={() => setParticipantePreview(null)}
       />
@@ -2433,6 +2688,89 @@ const EmitirCertificados = ({ notificar }) => {
           aprobados y elegibles que todavía no tengan una emisión vigente. Cada
           certificado tendrá su propio código de validación.
         </p>
+
+        {emitiendoMasivo && (
+          <div className={emitir.operationProgress} role="status" aria-live="polite">
+            <div className={emitir.operationProgressHeader}>
+              <span>Emitiendo certificados...</span>
+              <strong>Procesando solicitud</strong>
+            </div>
+            <ProgressBar
+              mode="indeterminate"
+              className={emitir.operationProgressBar}
+            />
+            <small>No cierres esta ventana hasta finalizar el proceso.</small>
+          </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        visible={dialogoReinicioVisible}
+        onHide={() => {
+          if (!reiniciandoEmisiones) setDialogoReinicioVisible(false);
+        }}
+        modal
+        blockScroll
+        closeOnEscape={!reiniciandoEmisiones}
+        dismissableMask={false}
+        draggable={false}
+        style={{ width: "min(560px, 94vw)" }}
+        breakpoints={{ "768px": "96vw" }}
+        header="Eliminar certificados emitidos"
+        footer={
+          <div className={emitir.pieConfirmacion}>
+            <button
+              type="button"
+              className={styles.botonSecundario}
+              onClick={() => setDialogoReinicioVisible(false)}
+              disabled={reiniciandoEmisiones}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={emitir.botonReiniciarConfirmacion}
+              onClick={reiniciarEmisiones}
+              disabled={reiniciandoEmisiones}
+            >
+              {reiniciandoEmisiones ? "Eliminando…" : "Eliminar y reiniciar"}
+            </button>
+          </div>
+        }
+      >
+        <p className={styles.notaGuardado}>
+          Esta acción eliminará los certificados emitidos de esta capacitación
+          y permitirá generarlos nuevamente con la configuración actual.
+        </p>
+        <p className={styles.notaGuardado}>
+          Los códigos QR y tokens de los certificados eliminados dejarán de ser
+          válidos. La configuración del certificado, firmantes y participantes
+          no será eliminada.
+        </p>
+
+        {reiniciandoEmisiones && (
+          <div className={emitir.operationProgress} role="status" aria-live="polite">
+            <div className={emitir.operationProgressHeader}>
+              <span>Eliminando certificados emitidos...</span>
+            </div>
+            <ProgressBar
+              mode="indeterminate"
+              className={emitir.operationProgressBar}
+            />
+            <small>Esto puede demorar unos segundos.</small>
+          </div>
+        )}
+
+        <dl className={emitir.resumenConfirmacion}>
+          <div>
+            <dt>Curso</dt>
+            <dd>{curso?.titulo || "Sin título"}</dd>
+          </div>
+          <div>
+            <dt>Cantidad de certificados emitidos</dt>
+            <dd>{cantidadYaEmitidos}</dd>
+          </div>
+        </dl>
       </Dialog>
 
       {/* Resumen posterior. Se muestra siempre, incluso sin errores, para que

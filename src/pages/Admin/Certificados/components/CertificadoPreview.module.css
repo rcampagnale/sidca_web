@@ -282,7 +282,7 @@
    cuerpo lo resuelve useAjusteTitulo midiendo el elemento. */
 .tituloBox {
   position: absolute;
-  top: 42.6%;
+  top: 39%;
   left: 17%;
   width: 66%;
   height: var(--titulo-alto, 5.2%);

@@ -29,6 +29,8 @@ import { Toast } from "primereact/toast";
 import {
   guardarConfiguracionCertificado,
   obtenerConfiguracionCertificado,
+  obtenerFirmaMinisterio,
+  subirFirmaMinisterio,
 } from "../../../services/certificadosService";
 import AutoridadesCertificado, {
   AUTORIDADES_VACIAS,
@@ -41,6 +43,17 @@ import FormularioCertificado, {
 import InstitucionCertificado, {
   normalizarInstitucion,
 } from "./InstitucionCertificado";
+import MinisterioCertificado, {
+  DATOS_MINISTERIO_VACIOS,
+  normalizarNivelesMinisterio,
+} from "./MinisterioCertificado";
+import FirmantesMinisterioCertificado, {
+  normalizarFirmantesMinisterio,
+} from "./FirmantesMinisterioCertificado";
+import {
+  normalizarFechaParaInput,
+  normalizarTextoAuspicioMinisterio,
+} from "./utils/ministerioCertificado";
 import SelectorCurso from "./SelectorCurso";
 import ValidarCertificadoQR from "./ValidarCertificadoQR";
 import ValidadoresCertificados from "./ValidadoresCertificados";
@@ -63,6 +76,7 @@ const FORM_VACIO = {
   dias: "",
   fecha: "",
   modalidad: "",
+  ...DATOS_MINISTERIO_VACIOS,
 };
 
 const CertificadosAdmin = () => {
@@ -78,12 +92,16 @@ const CertificadosAdmin = () => {
   // texto del formulario: una es una elección entre dos, la otra una lista.
   const [institucionCertificado, setInstitucionCertificado] = useState("sidca");
   const [autoridades, setAutoridades] = useState(AUTORIDADES_VACIAS);
+  const [firmantesMinisterio, setFirmantesMinisterio] = useState(() =>
+    normalizarFirmantesMinisterio([])
+  );
 
   const [errores, setErrores] = useState({});
 
   const [configuracion, setConfiguracion] = useState(null);
   const [cargandoConfig, setCargandoConfig] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [subiendoFirmanteId, setSubiendoFirmanteId] = useState(null);
 
   const notificar = useCallback((severity, summary, detail) => {
     toast.current?.show({ severity, summary, detail, life: 5000 });
@@ -116,6 +134,18 @@ const CertificadosAdmin = () => {
             dias: existente.dias || "",
             fecha: existente.fecha || "",
             modalidad: existente.modalidad || "",
+            tipoActividad: existente.tipoActividad || "",
+            fechaInicio: existente.fechaInicio || "",
+            fechaFin: existente.fechaFin || "",
+            localidad: existente.localidad || "",
+            departamento: existente.departamento || "",
+            niveles: normalizarNivelesMinisterio(existente.niveles),
+            textoEvaluacion:
+              existente.textoEvaluacion || DATOS_MINISTERIO_VACIOS.textoEvaluacion,
+            textoAuspicio:
+              normalizarTextoAuspicioMinisterio(
+                existente.textoAuspicio || DATOS_MINISTERIO_VACIOS.textoAuspicio
+              ),
           });
           // Configuraciones anteriores no traen institución: caen en "sidca".
           setInstitucionCertificado(
@@ -125,6 +155,9 @@ const CertificadosAdmin = () => {
           // El backend ya resolvió el fallback desde las firmas legacy; acá
           // sólo se completan las dos posiciones fijas.
           setAutoridades(normalizarDosAutoridades(existente.autoridades));
+          setFirmantesMinisterio(
+            normalizarFirmantesMinisterio(existente.firmantesMinisterio)
+          );
 
           notificar(
             "info",
@@ -135,12 +168,14 @@ const CertificadosAdmin = () => {
           setForm({ ...FORM_VACIO, titulo: cursoElegido.titulo || "" });
           setInstitucionCertificado("sidca");
           setAutoridades(normalizarDosAutoridades([]));
+          setFirmantesMinisterio(normalizarFirmantesMinisterio([]));
         }
       } catch (error) {
         // No se deja el formulario a medio cargar: se vuelve al estado neutro.
         setForm({ ...FORM_VACIO, titulo: cursoElegido.titulo || "" });
         setInstitucionCertificado("sidca");
         setAutoridades(normalizarDosAutoridades([]));
+        setFirmantesMinisterio(normalizarFirmantesMinisterio([]));
         notificar(
           "error",
           "No se pudo consultar la configuración",
@@ -154,7 +189,9 @@ const CertificadosAdmin = () => {
   );
 
   const cambiarCampo = useCallback((campo, valor) => {
-    setForm((previo) => ({ ...previo, [campo]: valor }));
+    const valorNormalizado =
+      campo === "niveles" ? normalizarNivelesMinisterio(valor) : valor;
+    setForm((previo) => ({ ...previo, [campo]: valorNormalizado }));
     setErrores((previos) => {
       if (!previos[campo]) return previos;
       const siguiente = { ...previos };
@@ -170,6 +207,13 @@ const CertificadosAdmin = () => {
   const validar = useCallback(() => {
     const nuevos = {};
 
+    // El modelo Ministerio se guarda como borrador: sus datos se exigirán al
+    // emitir, cuando exista el renderer específico de su plantilla.
+    if (institucionCertificado === "ministerio") {
+      setErrores(nuevos);
+      return true;
+    }
+
     CAMPOS_CERTIFICADO.forEach((campo) => {
       if (!String(form[campo.nombre] || "").trim()) {
         nuevos[campo.nombre] = "Este dato es obligatorio.";
@@ -182,7 +226,7 @@ const CertificadosAdmin = () => {
 
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
-  }, [form]);
+  }, [form, institucionCertificado]);
 
   const guardar = useCallback(async () => {
     if (!curso) return;
@@ -201,17 +245,30 @@ const CertificadosAdmin = () => {
     try {
       const guardada = await guardarConfiguracionCertificado(curso.id, {
         ...form,
+        niveles: normalizarNivelesMinisterio(form.niveles),
+        fecha:
+          institucionCertificado === "ministerio"
+            ? normalizarFechaParaInput(form.fecha)
+            : form.fecha,
         institucionCertificado,
         autoridades,
+        firmantesMinisterio,
       });
 
       setConfiguracion(guardada);
+      setForm((previo) => ({
+        ...previo,
+        niveles: normalizarNivelesMinisterio(guardada?.niveles),
+      }));
 
       if (guardada) {
         setInstitucionCertificado(
           normalizarInstitucion(guardada.institucionCertificado)
         );
         setAutoridades(normalizarDosAutoridades(guardada.autoridades));
+        setFirmantesMinisterio(
+          normalizarFirmantesMinisterio(guardada.firmantesMinisterio)
+        );
       }
 
       notificar(
@@ -228,7 +285,44 @@ const CertificadosAdmin = () => {
     } finally {
       setGuardando(false);
     }
-  }, [curso, form, institucionCertificado, autoridades, validar, notificar]);
+  }, [
+    curso,
+    form,
+    institucionCertificado,
+    autoridades,
+    firmantesMinisterio,
+    validar,
+    notificar,
+  ]);
+
+  const subirImagenFirmante = useCallback(
+    async (firmanteId, archivo) => {
+      if (!curso || !configuracion) {
+        notificar(
+          "warn",
+          "Guardá primero la configuración",
+          "La firma necesita una configuración de certificado ya creada."
+        );
+        return;
+      }
+
+      setSubiendoFirmanteId(firmanteId);
+
+      try {
+        const guardada = await subirFirmaMinisterio(curso.id, firmanteId, archivo);
+        setConfiguracion(guardada);
+        setFirmantesMinisterio(
+          normalizarFirmantesMinisterio(guardada?.firmantesMinisterio)
+        );
+        notificar("success", "Firma actualizada", "Se creó una nueva versión de la firma.");
+      } catch (error) {
+        notificar("error", "No se pudo subir la firma", error.message);
+      } finally {
+        setSubiendoFirmanteId(null);
+      }
+    },
+    [curso, configuracion, notificar]
+  );
 
   /**
    * Cierra el modal y vuelve al listado. No se limpia el curso: así el ítem
@@ -369,17 +463,37 @@ const CertificadosAdmin = () => {
                       errores={errores}
                       onCambiar={cambiarCampo}
                       deshabilitado={guardando}
+                      modelo={institucionCertificado}
                     />
 
-                    <AutoridadesCertificado
-                      autoridades={autoridades}
-                      onCambiar={setAutoridades}
-                      deshabilitado={guardando}
-                    />
+                    {institucionCertificado === "ministerio" ? (
+                      <>
+                        <MinisterioCertificado
+                          valores={form}
+                          onCambiar={cambiarCampo}
+                          deshabilitado={guardando}
+                        />
+                        <FirmantesMinisterioCertificado
+                          cursoId={configuracion ? curso.id : null}
+                          firmantes={firmantesMinisterio}
+                          onCambiar={setFirmantesMinisterio}
+                          onSubirImagen={subirImagenFirmante}
+                          obtenerImagen={obtenerFirmaMinisterio}
+                          deshabilitado={guardando}
+                          subiendoFirmanteId={subiendoFirmanteId}
+                        />
+                      </>
+                    ) : (
+                      <AutoridadesCertificado
+                        autoridades={autoridades}
+                        onCambiar={setAutoridades}
+                        deshabilitado={guardando}
+                      />
+                    )}
 
                     <p className={styles.notaGuardado}>
-                      Se guarda como <strong>borrador</strong>. Podés guardar
-                      aunque falten autoridades: se exigen completas al emitir.
+                      Se guarda como <strong>borrador</strong>. Los datos
+                      obligatorios se verifican al emitir el certificado.
                     </p>
                   </>
                 )

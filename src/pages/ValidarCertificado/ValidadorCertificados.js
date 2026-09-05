@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { useHistory, useLocation } from "react-router-dom";
 import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
-import { cerrarSesionValidador, registrarCursoValidado } from "../../services/certificadosValidacionService";
+import { cerrarSesionValidador, registrarCursoValidado, validarCertificadoQr } from "../../services/certificadosValidacionService";
 import { registrarValidacionCertificado } from "../../services/certificadosService";
 import { validatorAuth } from "../../firebase/firebaseCertificadosValidator";
 import { listarRegistroInscriptosValidador, descargarPlanillaRegistroInscriptos } from "../../services/registroInscriptosService";
@@ -14,10 +14,65 @@ import LoginGestionInstitucional from "../../components/GestionInstitucional/Log
 import "../../styles/institutional.css";
 import styles from "./ValidadorCertificados.module.css";
 
+const formatearDni = (dni) => {
+  const limpio = String(dni || "").replace(/\D/g, "");
+  return limpio ? limpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "—";
+};
+
+const formatearFechaEmision = (valor) => {
+  const fecha = new Date(String(valor || ""));
+  return Number.isNaN(fecha.getTime())
+    ? String(valor || "—")
+    : fecha.toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+};
+
+const prepararResultadoValidacion = (validacion) => {
+  const estado = String(validacion?.estado || "").toLowerCase();
+  const certificado = validacion?.certificado || {};
+  const participante = validacion?.participante || {};
+  const vigente = validacion?.valido === true && estado === "vigente";
+  const tipo = vigente
+    ? "vigente"
+    : estado === "anulado"
+    ? "anulado"
+    : estado === "reemplazado"
+    ? "reemplazado"
+    : "desconocido";
+
+  return {
+    resultado: { tipo, validacion },
+    presentacion: {
+      clase: vigente ? "resultadoValido" : "resultadoReemplazado",
+      icono: vigente ? "✓" : "!",
+      titulo: vigente ? "CERTIFICADO VÁLIDO" : "CERTIFICADO NO VÁLIDO",
+      detalle: vigente
+        ? "Este certificado fue emitido por el sistema de certificación SIDCA y se encuentra vigente."
+        : "El código QR corresponde a un certificado que no se encuentra vigente.",
+    },
+    filas: [
+      ["Participante", participante.apellidoNombre || "—"],
+      ["DNI", formatearDni(participante.dni)],
+      ["Capacitación", certificado.titulo || certificado.cursoTitulo || "—"],
+      ["Resolución", certificado.resolucion || "—"],
+      ["Modalidad", certificado.modalidad || "—"],
+      ["Carga horaria", certificado.cargaHoraria || "—"],
+      ["Período", certificado.dias || "—"],
+      ["Fecha del certificado", certificado.fecha || "—"],
+      ["Fecha de emisión", formatearFechaEmision(validacion.emitidoEn)],
+      ["Estado", estado.toUpperCase() || "—"],
+      ["Institución", certificado.institucionValidacion || "—"],
+    ],
+  };
+};
+
 const ValidadorCertificados = () => {
   const history = useHistory();
   const location = useLocation();
-  const { cargando, sesion, origenSesion } = useSesionValidador();
+  const { cargando, sesion, origenSesion, principal, validador } = useSesionValidador();
   const [abierto, setAbierto] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
   const [validacionActual, setValidacionActual] = useState(null);
@@ -87,6 +142,7 @@ const ValidadorCertificados = () => {
   const abrirScanner = () => {
     setValidacionActual(null);
     setRegistroError("");
+    setRegistrando(false);
     setScannerKey((key) => key + 1);
     setAbierto(true);
     history.replace("/validar-certificados", {});
@@ -95,6 +151,7 @@ const ValidadorCertificados = () => {
   const cerrarResultado = () => {
     setValidacionActual(null);
     setRegistroError("");
+    setRegistrando(false);
     setAbierto(false);
     history.replace("/validar-certificados", {});
   };
@@ -207,9 +264,28 @@ const ValidadorCertificados = () => {
     finally { setDescargando(""); }
   };
 
-  const escanear = ({ cursoId, token }) => {
+  const escanear = async ({ cursoId, token }) => {
     setAbierto(false);
-    history.push(`/validar-certificado/${encodeURIComponent(cursoId)}/${encodeURIComponent(token)}`);
+    setValidacionActual(null);
+    setRegistroError("");
+    setRegistrando(false);
+
+    try {
+      const validacion = await validarCertificadoQr(cursoId, token, {
+        usuarioFirebase: origenSesion === "validador" ? validador : principal,
+      });
+      const resultado = prepararResultadoValidacion(validacion);
+      setValidacionActual({
+        ...resultado,
+        cursoId,
+        token,
+        registroInfo: validacion?.registroCurso || null,
+      });
+    } catch (error) {
+      setRegistroError(
+        error?.message || "No se pudo validar el certificado escaneado."
+      );
+    }
   };
 
   const encabezado = <header className={styles.encabezado}><div><span className={styles.marca}>SIDCA</span><h1>Validación de certificados</h1><p>Comprobá la autenticidad y vigencia de los certificados emitidos por SIDCA.</p></div><span className={styles.badge}>VALIDACIÓN QR</span></header>;

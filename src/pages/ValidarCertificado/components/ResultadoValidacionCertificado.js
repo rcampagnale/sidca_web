@@ -5,12 +5,18 @@ import adminStyles from "../../Admin/Certificados/CertificadosAdmin.module.css";
 
 export const formatInstitucionCertificado = (valor) => {
   const normalizado = String(valor || "").trim().toLowerCase();
+  if (normalizado === "sidca") {
+    return "SIDCA";
+  }
   if (
     normalizado === "itm" ||
     normalizado.includes("instituto tecnologico municipal") ||
     normalizado.includes("instituto tecnológico municipal")
   ) {
-    return "ITM — Instituto Tecnológico Municipal";
+    return "Instituto Tecnológico Municipal";
+  }
+  if (normalizado === "ministerio") {
+    return "Ministerio de Educación y Trabajo";
   }
   return String(valor || "").trim();
 };
@@ -26,8 +32,7 @@ const formatRegistroFecha = (valor) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
-  });
+  }).replace(", ", " a las ");
 };
 
 /** Resultado compartido: conserva la misma composición visual del panel admin. */
@@ -43,6 +48,7 @@ const ResultadoValidacionCertificado = ({
   onCerrar,
   registroInfo,
   registroError,
+  mostrarRegistro = true,
 }) => {
   if (!resultado || !presentacion) return null;
   const filasPresentacion = (filas || []).map(([etiqueta, valor]) => [
@@ -75,7 +81,7 @@ const ResultadoValidacionCertificado = ({
         <div className={styles.accionesResultado}>
           {registroError && <p className={styles.mensajeError} role="alert">No se pudo registrar el curso. {registroError}</p>}
           {registroInfo && <p className={styles.registroAviso} role="status">Este curso ya fue registrado por {registroInfo.usuario || registroInfo.usuarioNombre || registroInfo.registradoPorNombre || "otro usuario"} el {formatRegistroFecha(registroInfo.fecha || registroInfo.registradoEn)}.</p>}
-          {resultado.tipo === "vigente" && <button type="button" className={adminStyles.botonPrimario} onClick={onRegistrarCurso} disabled={!onRegistrarCurso || registrando || registrado || Boolean(registroInfo)}>{registrado || registroInfo ? "Curso registrado" : registrando ? "Registrando…" : "Registrar curso"}</button>}
+          {mostrarRegistro && resultado.tipo === "vigente" && <button type="button" className={adminStyles.botonPrimario} onClick={onRegistrarCurso} disabled={!onRegistrarCurso || registrando || registrado || Boolean(registroInfo)}>{registrado || registroInfo ? "Curso registrado" : registrando ? "Registrando…" : "Registrar curso"}</button>}
           <button type="button" className={adminStyles.botonPrimario} onClick={onEscanearOtro}>Escanear otro certificado</button>
         </div>
       </section>

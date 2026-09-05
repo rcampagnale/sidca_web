@@ -7,9 +7,10 @@
 // 5 horas del panel. Los validadores designados no son administradores, así
 // que esa vía los rechazaría.
 //
-// Acá la sesión es la de validatorAuth — la instancia Firebase aislada — y el
-// permiso lo resuelve el backend, que acepta administrador O usuario con
-// validarCertificados === true.
+// La consulta del QR es pública: el token de la URL identifica el certificado
+// y el backend devuelve únicamente un DTO seguro del snapshot emitido. La
+// sesión validatorAuth sólo se usa para la acción administrativa posterior de
+// registrar un curso validado.
 //
 // Sobre los dos "tokens" que aparecen en este flujo, que NO son lo mismo:
 //   certificadoToken : los 48 hex que viajan en la URL del QR, identifican el
@@ -17,21 +18,8 @@
 //   firebaseIdToken  : el JWT de Firebase Auth que acredita QUIÉN consulta, y
 //                      viaja en el header Authorization.
 //
-// DOS SESIONES POSIBLES
-// La consulta puede hacerse con cualquiera de las dos sesiones Firebase que
-// pueden existir en el navegador:
-//
-//   validatorAuth.currentUser : el validador que ingresó en esta pantalla.
-//   auth.currentUser          : la sesión principal, típicamente un
-//                               administrador con el panel abierto.
-//
-// Un administrador ya autenticado no debería tener que loguearse de nuevo sólo
-// por escanear un QR. Quién tiene permiso lo decide el backend, que acepta
-// administrador O usuario con validarCertificados === true; acá no se
-// comprueban roles.
-//
-// Este módulo NUNCA hace signIn ni signOut sobre la sesión principal: sólo la
-// LEE. Su ciclo de vida es del panel administrativo, no de esta pantalla.
+// Este módulo mantiene las funciones de sesión para el validador institucional
+// y nunca inicia ni cierra la sesión principal del panel administrativo.
 
 import {
   browserLocalPersistence,
@@ -51,9 +39,9 @@ const API_BASE_URL = String(
 
 const MENSAJES_POR_ESTADO = {
   400: "El enlace de validación no es válido.",
-  401: "La sesión venció. Ingresá nuevamente.",
-  403: "Tu cuenta no tiene permiso para validar certificados SIDCA.",
-  404: "El código QR no corresponde a un certificado emitido por SIDCA o el enlace es inválido.",
+  401: "No fue posible verificar el certificado en este momento.",
+  403: "No fue posible verificar el certificado en este momento.",
+  404: "No se encontró un certificado vigente asociado a este código.",
 };
 
 // ====================================================================
@@ -226,19 +214,55 @@ export const esperarSesionValidador = obtenerSesionValidador;
 const errorValidacion = (mensaje, status) =>
   Object.assign(new Error(mensaje), { status });
 
+/** Consulta públicamente la validez del snapshot identificado por el QR. */
+export const validarCertificadoPublico = async (
+  cursoId,
+  certificadoToken
+) => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
+    );
+  }
+
+  const ruta = `/publico/validar/${encodeURIComponent(cursoId)}/${encodeURIComponent(certificadoToken)}`;
+
+  let respuesta;
+
+  try {
+    respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    throw errorValidacion(
+      "No fue posible verificar el certificado en este momento.",
+      0
+    );
+  }
+
+  let datos = null;
+  try {
+    datos = await respuesta.json();
+  } catch (error) {
+    datos = null;
+  }
+
+  if (respuesta.ok) {
+    return datos?.validacion ? { ...datos.validacion } : null;
+  }
+
+  throw errorValidacion(
+    MENSAJES_POR_ESTADO[respuesta.status] ||
+      "No fue posible verificar el certificado en este momento.",
+    respuesta.status
+  );
+};
+
 /**
- * Consulta la validez de un certificado escaneado.
- *
- * `usuarioFirebase` decide con QUÉ identidad se consulta: puede ser el
- * validador de esta pantalla o la sesión principal. La lógica HTTP es una
- * sola — no se duplica el fetch por cada origen.
- *
- * Ante un 401 reintenta UNA vez con el ID Token refrescado, con el MISMO
- * usuario: cubre el token vencido entre la lectura y el envío. Sin bucles: el
- * segundo intento ya no reintenta.
- *
- * No decide permisos ni interpreta el 403: eso corresponde a quien llama, que
- * es el único que sabe qué sesión eligió y por lo tanto cómo reaccionar.
+ * Consulta institucional autenticada. A diferencia de la ruta pública,
+ * devuelve el estado administrativo `registroCurso` y registra la auditoría
+ * del escaneo, sin modificar el certificado ni crear el registro del curso.
  */
 export const validarCertificadoQr = async (
   cursoId,
@@ -250,17 +274,14 @@ export const validarCertificadoQr = async (
       "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
     );
   }
-
   if (!usuarioFirebase) {
     throw errorValidacion("Ingresá con una cuenta autorizada.", 401);
   }
 
   const firebaseIdToken = await usuarioFirebase.getIdToken(!permitirReintento);
-
   const ruta = `/validar/${encodeURIComponent(cursoId)}/${encodeURIComponent(
     certificadoToken
   )}`;
-
   let respuesta;
 
   try {
@@ -285,9 +306,10 @@ export const validarCertificadoQr = async (
   }
 
   if (respuesta.ok) {
-    return datos?.validacion ? { ...datos.validacion, verificacion: datos.verificacion || null } : null;
+    return datos?.validacion
+      ? { ...datos.validacion, verificacion: datos.verificacion || null }
+      : null;
   }
-
   if (respuesta.status === 401 && permitirReintento) {
     return validarCertificadoQr(cursoId, certificadoToken, {
       usuarioFirebase,

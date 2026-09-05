@@ -2,7 +2,7 @@
 //
 // Institución del certificado: define qué plantilla se usa al emitir.
 //
-// Sólo dos opciones, con valores semánticos ("sidca" / "itm"). No es texto
+// Tres opciones, con valores semánticos ("sidca" / "itm" / "ministerio"). No es texto
 // libre: el valor viaja a Firestore y determina un asset, así que un typo
 // rompería la plantilla sin aviso.
 
@@ -21,11 +21,16 @@ export const INSTITUCIONES = [
     etiqueta: "ITM",
     detalle: "Instituto Tecnológico Municipal",
   },
+  {
+    valor: "ministerio",
+    etiqueta: "Ministerio de Educación",
+    detalle: "Certificado oficial del Ministerio de Educación y Trabajo",
+  },
 ];
 
 /** Toda configuración sin institución explícita es SIDCA. */
 export const normalizarInstitucion = (valor) =>
-  valor === "itm" ? "itm" : "sidca";
+  ["itm", "ministerio"].includes(valor) ? valor : "sidca";
 
 const InstitucionCertificado = ({ valor, onCambiar, deshabilitado }) => {
   const seleccionada = normalizarInstitucion(valor);

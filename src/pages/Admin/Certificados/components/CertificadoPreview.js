@@ -29,6 +29,7 @@ import QRCode from "react-qr-code";
 
 import plantillaSidca from "../../../../assets/constancia/certificadocursosidca.png";
 import plantillaITM from "../../../../assets/constancia/certificadoITM.png";
+import CertificadoMinisterioPreview from "./CertificadoMinisterioPreview";
 import styles from "./CertificadoPreview.module.css";
 
 /**
@@ -41,7 +42,10 @@ const PLANTILLAS = {
 };
 
 /** Toda configuración sin institución explícita es SIDCA. */
-const normalizarInstitucion = (valor) => (valor === "itm" ? "itm" : "sidca");
+const normalizarInstitucion = (valor) => {
+  if (valor === "itm" || valor === "ministerio") return valor;
+  return "sidca";
+};
 
 /**
  * Autoridades a imprimir, con compatibilidad hacia el modelo anterior.
@@ -367,7 +371,7 @@ const useAjusteTitulo = (titulo, abierto) => {
   return { boxRef, textRef, layout };
 };
 
-const CertificadoPreview = ({
+const CertificadoPreviewBase = ({
   abierto,
   participante,
   configuracion,
@@ -542,7 +546,7 @@ const escalaResolucion = Math.min(
           <p className={styles.notaPie}>
             {emitido
               ? "Emisión registrada correctamente. El código QR de validación ya está incorporado. La descarga en PDF se incorporará en la siguiente etapa."
-              : "Revisá los datos antes de emitir el certificado."}
+              : "Vista previa: todavía no se emitió el certificado. Revisá los datos antes de emitirlo."}
           </p>
 
           <div className={styles.pieBotones}>
@@ -576,6 +580,7 @@ const escalaResolucion = Math.min(
         className={`${styles.certificado} ${styles.previewOnly} ${
           institucionCertificado === "itm" ? styles.certificadoItm : ""
         }`}
+        data-certificado-preview="true"
       >
         <img
           src={fuentePlantilla}
@@ -735,7 +740,7 @@ const escalaResolucion = Math.min(
               </span>
             ) : (
               <span className={styles.qrTexto} aria-hidden="true">
-                QR
+                QR de validación
               </span>
             )}
           </div>
@@ -744,6 +749,19 @@ const escalaResolucion = Math.min(
       </div>
     </Dialog>
   );
+};
+
+const CertificadoPreview = (props) => {
+  const institucion = normalizarInstitucion(
+    props.emision?.certificado?.institucionCertificado ||
+      props.configuracion?.institucionCertificado
+  );
+
+  if (institucion === "ministerio") {
+    return <CertificadoMinisterioPreview {...props} />;
+  }
+
+  return <CertificadoPreviewBase {...props} />;
 };
 
 export default CertificadoPreview;

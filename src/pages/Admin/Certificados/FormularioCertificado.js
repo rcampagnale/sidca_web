@@ -16,6 +16,7 @@
 import React from "react";
 
 import styles from "./CertificadosAdmin.module.css";
+import { normalizarFechaParaInput } from "./utils/ministerioCertificado";
 
 export const CAMPOS_CERTIFICADO = [
   {
@@ -56,26 +57,45 @@ export const CAMPOS_CERTIFICADO = [
   },
 ];
 
-const FormularioCertificado = ({ valores, errores, onCambiar, deshabilitado }) => (
+const FormularioCertificado = ({
+  valores,
+  errores,
+  onCambiar,
+  deshabilitado,
+  modelo,
+}) => {
+  const campos = CAMPOS_CERTIFICADO.filter(
+    (campo) => !(modelo === "ministerio" && campo.nombre === "dias")
+  );
+
+  return (
   <section className={styles.bloque}>
     <div className={styles.bloqueHeader}>
       <h3 className={styles.bloqueTitulo}>Datos del certificado</h3>
     </div>
 
     <div className={styles.grillaCampos}>
-      {CAMPOS_CERTIFICADO.map((campo) => {
+      {campos.map((campo) => {
         const error = errores?.[campo.nombre];
+        const esFechaMinisterio =
+          modelo === "ministerio" && campo.nombre === "fecha";
 
         return (
           <label key={campo.nombre} className={styles.campo}>
-            <span className={styles.campoLabel}>{campo.etiqueta}</span>
+            <span className={styles.campoLabel}>
+              {esFechaMinisterio ? "Fecha de expedición" : campo.etiqueta}
+            </span>
 
             <input
-              type="text"
+              type={esFechaMinisterio ? "date" : "text"}
               className={`${styles.input} ${error ? styles.inputError : ""}`}
-              value={valores[campo.nombre] || ""}
+              value={
+                esFechaMinisterio
+                  ? normalizarFechaParaInput(valores[campo.nombre])
+                  : valores[campo.nombre] || ""
+              }
               onChange={(e) => onCambiar(campo.nombre, e.target.value)}
-              placeholder={campo.placeholder}
+              placeholder={esFechaMinisterio ? undefined : campo.placeholder}
               disabled={deshabilitado}
               aria-invalid={error ? "true" : "false"}
             />
@@ -92,6 +112,7 @@ const FormularioCertificado = ({ valores, errores, onCambiar, deshabilitado }) =
       })}
     </div>
   </section>
-);
+  );
+};
 
 export default FormularioCertificado;

@@ -138,9 +138,9 @@ const AppRouter = () => {
             VALIDACIÓN DE CERTIFICADO POR QR
 
             Route normal, NO AdminRoute / PrivateRoute / PublicRoute: la
-            pantalla maneja su propia autenticación con una instancia Firebase
-            aislada, y envolverla en un guard produciría redirecciones
-            inesperadas al llegar desde un QR sin sesión.
+            consulta usa el token del QR y no requiere sesión Firebase. La
+            acción administrativa de registrar una validación permanece
+            protegida en su endpoint separado.
 
             Va primera para que ningún patrón anterior la capture.
         =========================== */}

@@ -127,6 +127,13 @@ export const obtenerConfiguracionCertificado = async (cursoId) => {
  * curso real y del token verificado.
  */
 export const guardarConfiguracionCertificado = async (cursoId, datos) => {
+  const institucionCertificado =
+    datos?.institucionCertificado === "itm"
+      ? "itm"
+      : datos?.institucionCertificado === "ministerio"
+      ? "ministerio"
+      : "sidca";
+
   const cuerpo = {
     titulo: String(datos?.titulo || "").trim(),
     resolucion: String(datos?.resolucion || "").trim(),
@@ -137,8 +144,7 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
 
     // Determina la plantilla institucional. Se envía el valor semántico, no
     // el nombre del PNG: el asset es un detalle del frontend.
-    institucionCertificado:
-      datos?.institucionCertificado === "itm" ? "itm" : "sidca",
+    institucionCertificado,
 
     // Autoridades en TEXTO, hasta cuatro renglones. Nada de imagenUrl,
     // imagenPublicId, proveedor ni plantillas: el modelo de firmas con imagen
@@ -154,6 +160,36 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
       })),
   };
 
+  if (institucionCertificado === "ministerio") {
+    cuerpo.tipoActividad = String(datos?.tipoActividad || "").trim();
+    cuerpo.fechaInicio = String(datos?.fechaInicio || "").trim();
+    cuerpo.fechaFin = String(datos?.fechaFin || "").trim();
+    cuerpo.localidad = String(datos?.localidad || "").trim();
+    cuerpo.departamento = String(datos?.departamento || "").trim();
+    cuerpo.niveles = (Array.isArray(datos?.niveles) ? datos.niveles : [])
+      .map((nivel) => String(nivel || "").trim())
+      .filter(Boolean);
+    cuerpo.textoEvaluacion = String(datos?.textoEvaluacion || "").trim();
+    cuerpo.textoAuspicio = String(datos?.textoAuspicio || "").trim();
+    cuerpo.firmantesMinisterio = (
+      Array.isArray(datos?.firmantesMinisterio)
+        ? datos.firmantesMinisterio
+        : []
+    )
+      .slice(0, 3)
+      .map((firmante, indice) => ({
+        id: String(firmante?.id || "").trim(),
+        orden: indice + 1,
+        nombre: String(firmante?.nombre || "").trim(),
+        cargo: String(firmante?.cargo || "").trim(),
+        organismo: String(firmante?.organismo || "").trim(),
+        activo: firmante?.activo !== false,
+        imagenStoragePath: String(firmante?.imagenStoragePath || "").trim(),
+        imagenVersion: Number(firmante?.imagenVersion || 0),
+        imagenSha256: String(firmante?.imagenSha256 || "").trim(),
+      }));
+  }
+
   const respuesta = await pedir(
     `/admin/configuracion/${encodeURIComponent(cursoId)}`,
     {
@@ -163,6 +199,102 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
   );
 
   return respuesta?.configuracion || null;
+};
+
+const validarArchivoFirmaMinisterio = (archivo) => {
+  if (!(archivo instanceof File)) {
+    throw new Error("Seleccioná una imagen PNG o JPG.");
+  }
+
+  const extension = archivo.name.split(".").pop()?.toLowerCase();
+  const mimeValido = ["image/png", "image/jpeg"].includes(archivo.type);
+  const extensionValida = ["png", "jpg", "jpeg"].includes(extension);
+
+  if (!mimeValido || !extensionValida) {
+    throw new Error("La firma debe ser una imagen PNG o JPG.");
+  }
+
+  if (!archivo.size || archivo.size > 2 * 1024 * 1024) {
+    throw new Error("La firma debe pesar como máximo 2 MB.");
+  }
+};
+
+export const subirFirmaMinisterio = async (cursoId, firmanteId, archivo) => {
+  validarArchivoFirmaMinisterio(archivo);
+
+  if (!API_BASE_URL) {
+    throw new Error(
+      "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
+    );
+  }
+
+  const token = await obtenerIdToken();
+  const form = new FormData();
+  form.append("imagen", archivo);
+
+  const respuesta = await fetch(
+    `${API_BASE_URL}/admin/configuracion/${encodeURIComponent(
+      cursoId
+    )}/firmantes/${encodeURIComponent(firmanteId)}/imagen`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
+  );
+  const datos = await respuesta.json().catch(() => null);
+
+  if (!respuesta.ok) {
+    throw new Error(datos?.error || "No se pudo subir la firma.");
+  }
+
+  return datos?.configuracion || null;
+};
+
+export const obtenerFirmaMinisterio = async (cursoId, firmanteId) => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
+    );
+  }
+
+  const token = await obtenerIdToken();
+  const respuesta = await fetch(
+    `${API_BASE_URL}/admin/configuracion/${encodeURIComponent(
+      cursoId
+    )}/firmantes/${encodeURIComponent(firmanteId)}/imagen`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!respuesta.ok) {
+    throw new Error("No se pudo cargar la firma.");
+  }
+
+  return respuesta.blob();
+};
+
+export const obtenerFirmaMinisterioEmitida = async (
+  cursoId,
+  usuarioDocId,
+  firmanteId
+) => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
+    );
+  }
+
+  const token = await obtenerIdToken();
+  const respuesta = await fetch(
+    `${API_BASE_URL}/admin/emision/${encodeURIComponent(
+      cursoId
+    )}/usuario/${encodeURIComponent(usuarioDocId)}/firmantes/${encodeURIComponent(
+      firmanteId
+    )}/imagen`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!respuesta.ok) {
+    throw new Error("No se pudo cargar la firma histórica.");
+  }
+
+  return respuesta.blob();
 };
 
 /**
@@ -289,6 +421,24 @@ export const obtenerCertificadosEmitidosCurso = async (cursoId) => {
     { method: "GET" }
   );
   return Array.isArray(datos?.emisiones) ? datos.emisiones : [];
+};
+
+/**
+ * Elimina las emisiones y los artefactos derivados de un curso, conservando
+ * su configuración, participantes y aprobaciones.
+ */
+export const reiniciarEmisionesCurso = async (cursoId) => {
+  const datos = await pedir(
+    `/admin/emision/${encodeURIComponent(cursoId)}/reiniciar-emisiones`,
+    { method: "DELETE" }
+  );
+
+  return {
+    emisionesEliminadas: Number(datos?.emisionesEliminadas || 0),
+    tokensEliminados: Number(datos?.tokensEliminados || 0),
+    archivosEliminados: Number(datos?.archivosEliminados || 0),
+    trabajosPdfEliminados: Number(datos?.trabajosPdfEliminados || 0),
+  };
 };
 
 /**

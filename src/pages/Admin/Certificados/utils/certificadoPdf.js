@@ -7,27 +7,44 @@ export const sanitizarNombreArchivo = (valor) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const esperarImagenes = async (elemento) => {
+export const esperarImagenes = async (elemento) => {
   const imagenes = Array.from(elemento.querySelectorAll("img"));
   await Promise.all(
-    imagenes.map((imagen) =>
-      imagen.complete
-        ? Promise.resolve()
-        : new Promise((resolve) => {
-            imagen.addEventListener("load", resolve, { once: true });
-            imagen.addEventListener("error", resolve, { once: true });
-          })
-    )
+    imagenes.map(async (imagen) => {
+      if (imagen.complete && imagen.naturalWidth > 0) {
+        if (typeof imagen.decode === "function") {
+          try { await imagen.decode(); } catch (_) {}
+        }
+        return;
+      }
+
+      if (imagen.complete) {
+        throw new Error("No se pudo cargar una imagen del certificado.");
+      }
+
+      await new Promise((resolve, reject) => {
+        imagen.addEventListener("load", resolve, { once: true });
+        imagen.addEventListener(
+          "error",
+          () => reject(new Error("No se pudo cargar una imagen del certificado.")),
+          { once: true }
+        );
+      });
+
+      if (typeof imagen.decode === "function") {
+        try { await imagen.decode(); } catch (_) {}
+      }
+    })
   );
 };
 
-export const capturarCertificado = async (elemento) => {
+export const capturarCertificado = async (elemento, { scale = 2 } = {}) => {
   await document.fonts?.ready;
   await esperarImagenes(elemento);
   elemento.setAttribute("data-pdf-capture", "true");
   try {
     return await html2canvas(elemento, {
-      scale: 2,
+      scale,
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
