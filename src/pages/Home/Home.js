@@ -35,7 +35,7 @@ const Home = ({ modoValidador = false }) => {
   const location = useLocation();
 
   const rutaConvenios = modoValidador
-    ? "/validar-certificados/convenios"
+    ? "/gestion-institucional/convenios"
     : "/convenios";
 
   useEffect(() => {

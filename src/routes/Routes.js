@@ -23,6 +23,7 @@ import ValidadorCertificados from "../pages/ValidarCertificado/ValidadorCertific
 import ValidadorCena from "../pages/ValidarCena/ValidadorCena";
 import ValidatorShell from "../pages/ValidarCertificado/components/ValidatorShell";
 import InicioValidador from "../pages/ValidarCertificado/InicioValidador";
+import GestionInstitucionalInicio from "../pages/GestionInstitucional/GestionInstitucionalInicio";
 import Asesoramiento from "../pages/Admin/Asesoramiento/Asesoramiento";
 import Novedades from "../pages/Admin/Novedades/Novedades";
 import NovedadesUser from "../pages/Novedades/Novedades";
@@ -151,6 +152,34 @@ const AppRouter = () => {
         />
         <Route exact path="/validar-cena/:token" component={ValidadorCena} />
         <Route exact path="/validar-cena" component={ValidadorCena} />
+        <Route exact path="/gestion-institucional" component={GestionInstitucionalInicio} />
+        <Route
+          exact
+          path="/gestion-institucional/nosotros"
+          render={() => (
+            <ValidatorShell modulo={null}>
+              <Nosotros modoValidador />
+            </ValidatorShell>
+          )}
+        />
+        <Route
+          exact
+          path="/gestion-institucional/convenios"
+          render={() => (
+            <ValidatorShell modulo={null}>
+              <Convenio />
+            </ValidatorShell>
+          )}
+        />
+        <Route
+          exact
+          path="/gestion-institucional/contacto"
+          render={() => (
+            <ValidatorShell modulo={null}>
+              <Contacto />
+            </ValidatorShell>
+          )}
+        />
         {/* Páginas informativas de la sesión de validación.
 
             Van ANTES de /validar-certificados: sin `exact` en aquella, un
@@ -177,29 +206,17 @@ const AppRouter = () => {
         <Route
           exact
           path="/validar-certificados/nosotros"
-          render={() => (
-            <ValidatorShell>
-              <Nosotros modoValidador />
-            </ValidatorShell>
-          )}
+          render={() => <Redirect to="/gestion-institucional/nosotros" />}
         />
         <Route
           exact
           path="/validar-certificados/convenios"
-          render={() => (
-            <ValidatorShell>
-              <Convenio />
-            </ValidatorShell>
-          )}
+          render={() => <Redirect to="/gestion-institucional/convenios" />}
         />
         <Route
           exact
           path="/validar-certificados/contacto"
-          render={() => (
-            <ValidatorShell>
-              <Contacto />
-            </ValidatorShell>
-          )}
+          render={() => <Redirect to="/gestion-institucional/contacto" />}
         />
 
         <Route

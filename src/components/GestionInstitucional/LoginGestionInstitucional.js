@@ -25,6 +25,7 @@ const LoginGestionInstitucional = ({ onIngresado, mostrarRegresar = true }) => {
       const usuario = await iniciarSesionValidador(email, password);
       setPassword("");
       if (onIngresado) onIngresado(usuario);
+      else history.replace("/gestion-institucional");
     } catch (fallo) {
       setError("No pudimos ingresar. Revisá el correo y la contraseña.");
     } finally {

@@ -13,7 +13,7 @@
 // La raíz es la herramienta, no la portada.
 
 export const OPCIONES_VALIDADOR = [
-  { etiqueta: "Inicio", ruta: "/validar-certificados/inicio" },
+  { etiqueta: "Inicio", ruta: "/gestion-institucional" },
   {
     // Es la herramienta principal de la sesión, pero se dibuja como un ítem
     // más: mismo color, mismo peso y —sin icono— el mismo punto de partida del
@@ -21,11 +21,31 @@ export const OPCIONES_VALIDADOR = [
     // rótulo y desalinea el menú.
     etiqueta: "Gestión certificados",
     ruta: "/validar-certificados",
+    modulo: "certificados",
   },
-  { etiqueta: "Gestión Cena", ruta: "/validar-cena" },
-  { etiqueta: "Nosotros", ruta: "/validar-certificados/nosotros" },
-  { etiqueta: "Convenios", ruta: "/validar-certificados/convenios" },
-  { etiqueta: "Contacto", ruta: "/validar-certificados/contacto" },
+  { etiqueta: "Gestión Cena", ruta: "/validar-cena", modulo: "cena" },
+  { etiqueta: "Nosotros", ruta: "/gestion-institucional/nosotros" },
+  { etiqueta: "Convenios", ruta: "/gestion-institucional/convenios" },
+  { etiqueta: "Contacto", ruta: "/gestion-institucional/contacto" },
+];
+
+export const MODULOS_INSTITUCIONALES = [
+  {
+    id: "certificados",
+    permiso: "certificados",
+    etiqueta: "Certificados",
+    titulo: "Gestión de certificados",
+    descripcion: "Validación y registro de certificados institucionales.",
+    ruta: "/validar-certificados",
+  },
+  {
+    id: "cena",
+    permiso: "cena",
+    etiqueta: "Cena del Docente",
+    titulo: "Cena del Docente",
+    descripcion: "Control y validación de tarjetas de la Cena del Docente.",
+    ruta: "/validar-cena",
+  },
 ];
 
 /**

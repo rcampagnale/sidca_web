@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { useHistory, useLocation } from "react-router-dom";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
 import { cerrarSesionValidador, registrarCursoValidado, validarCertificadoQr } from "../../services/certificadosValidacionService";
 import { registrarValidacionCertificado } from "../../services/certificadosService";
@@ -10,7 +10,6 @@ import { listarRegistroAprobados, obtenerRegistroAprobadosCurso } from "../../se
 import ScannerCertificadoQR from "./components/ScannerCertificadoQR";
 import ResultadoValidacionCertificado from "./components/ResultadoValidacionCertificado";
 import useSesionValidador from "./components/useSesionValidador";
-import LoginGestionInstitucional from "../../components/GestionInstitucional/LoginGestionInstitucional";
 import "../../styles/institutional.css";
 import styles from "./ValidadorCertificados.module.css";
 
@@ -72,7 +71,7 @@ const prepararResultadoValidacion = (validacion) => {
 const ValidadorCertificados = () => {
   const history = useHistory();
   const location = useLocation();
-  const { cargando, sesion, origenSesion, principal, validador } = useSesionValidador();
+  const { cargando, sesion, origenSesion, principal, validador, permisos, permisosCargando } = useSesionValidador();
   const [abierto, setAbierto] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
   const [validacionActual, setValidacionActual] = useState(null);
@@ -290,8 +289,9 @@ const ValidadorCertificados = () => {
 
   const encabezado = <header className={styles.encabezado}><div><span className={styles.marca}>SIDCA</span><h1>Validación de certificados</h1><p>Comprobá la autenticidad y vigencia de los certificados emitidos por SIDCA.</p></div><span className={styles.badge}>VALIDACIÓN QR</span></header>;
 
-  if (cargando) return <main className={styles.pagina}><section className={styles.tarjeta}>Verificando sesión…</section></main>;
-  if (!sesion) return <LoginGestionInstitucional />;
+  if (cargando || permisosCargando) return <main className={styles.pagina}><section className={styles.tarjeta}>Verificando sesión…</section></main>;
+  if (!sesion) return <Redirect to="/gestion-institucional" />;
+  if (!permisos.certificados) return <main className={styles.pagina}><section className={styles.tarjeta}>No tenés permisos para validar certificados.</section></main>;
 
   const textoNormalizado = (valor) => String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const cursosFiltrados = registros.filter((curso) => curso.archivos?.length > 0 && textoNormalizado(curso.titulo).includes(textoNormalizado(busquedaRegistro)));
@@ -321,9 +321,9 @@ const ValidadorCertificados = () => {
     </>}
   </section>;
 
-  if (vista === "aprobados") return <><ValidatorHeader origenSesion={origenSesion} onSalir={cerrarSesionValidador} /><main className={styles.pagina}><section className={styles.tarjeta}>{encabezado}<div className={styles.selectorVistas} role="tablist" aria-label="Operaciones de certificados"><button type="button" className={vista === "validar" ? styles.vistaActiva : ""} onClick={() => cambiarVista("validar")}>Validar certificado</button><button type="button" className={vista === "registro" ? styles.vistaActiva : ""} onClick={() => cambiarVista("registro")}>Registro Inscriptos</button><button type="button" className={styles.vistaActiva}>Registro de Aprobados</button></div>{panelAprobados}</section></main></>;
+  if (vista === "aprobados") return <><ValidatorHeader origenSesion={origenSesion} onSalir={cerrarSesionValidador} permisos={permisos} /><main className={styles.pagina}><section className={styles.tarjeta}>{encabezado}<div className={styles.selectorVistas} role="tablist" aria-label="Operaciones de certificados"><button type="button" className={vista === "validar" ? styles.vistaActiva : ""} onClick={() => cambiarVista("validar")}>Validar certificado</button><button type="button" className={vista === "registro" ? styles.vistaActiva : ""} onClick={() => cambiarVista("registro")}>Registro Inscriptos</button><button type="button" className={styles.vistaActiva}>Registro de Aprobados</button></div>{panelAprobados}</section></main></>;
 
-  return <><ValidatorHeader origenSesion={origenSesion} onSalir={cerrarSesionValidador} /><main className={styles.pagina}><section className={styles.tarjeta}>{encabezado}<div className={styles.selectorVistas} role="tablist" aria-label="Operaciones de certificados"><button type="button" className={vista === "validar" ? styles.vistaActiva : ""} onClick={() => cambiarVista("validar")}>Validar certificado</button><button type="button" className={vista === "registro" ? styles.vistaActiva : ""} onClick={() => cambiarVista("registro")}>Registro Inscriptos</button><button type="button" className={vista === "aprobados" ? styles.vistaActiva : ""} onClick={() => cambiarVista("aprobados")}>Registro de Aprobados</button></div>
+  return <><ValidatorHeader origenSesion={origenSesion} onSalir={cerrarSesionValidador} permisos={permisos} /><main className={styles.pagina}><section className={styles.tarjeta}>{encabezado}<div className={styles.selectorVistas} role="tablist" aria-label="Operaciones de certificados"><button type="button" className={vista === "validar" ? styles.vistaActiva : ""} onClick={() => cambiarVista("validar")}>Validar certificado</button><button type="button" className={vista === "registro" ? styles.vistaActiva : ""} onClick={() => cambiarVista("registro")}>Registro Inscriptos</button><button type="button" className={vista === "aprobados" ? styles.vistaActiva : ""} onClick={() => cambiarVista("aprobados")}>Registro de Aprobados</button></div>
     {vista === "registro" ? <section className={styles.registroPanel}><div className={styles.registroEncabezado}><div><h2>Registro Inscriptos</h2><p>Seleccioná una capacitación para descargar sus planillas de inscripción.</p></div><button type="button" className={styles.accion} onClick={() => cargarRegistros(true)} disabled={cargandoRegistros}><i className="pi pi-refresh" aria-hidden="true" /> {cargandoRegistros ? "Actualizando…" : "Actualizar"}</button></div>{cargandoRegistros ? <p>Cargando planillas disponibles…</p> : registroError ? <div className={styles.registroEstadoError}><p>No se pudieron cargar las planillas.</p><button type="button" className={styles.accion} onClick={reintentarRegistros}>Reintentar</button></div> : registros.length === 0 ? <p className={styles.vacio}>No hay planillas disponibles.</p> : <><label className={styles.registroBusqueda}>Buscar capacitación<input value={busquedaRegistro} onChange={(event) => setBusquedaRegistro(event.target.value)} placeholder="Buscar por título" /></label>{cursosFiltrados.length === 0 ? <p className={styles.vacio}>No hay capacitaciones que coincidan con la búsqueda.</p> : <div className={styles.registroLista}>{cursosFiltrados.map((curso) => { const cantidad = curso.cantidadArchivos || curso.archivos.length; const abiertoCurso = cursoRegistroSeleccionado === curso.cursoId; return <article className={styles.registroCurso} key={curso.cursoId}><div className={styles.registroCursoHeader}><div><h3>{curso.titulo}</h3><p>{cantidad} planilla{cantidad === 1 ? "" : "s"} disponible{cantidad === 1 ? "" : "s"}</p></div><button type="button" className={styles.accion} onClick={() => setCursoRegistroSeleccionado(abiertoCurso ? null : curso.cursoId)}>{abiertoCurso ? "Ocultar planillas" : "Ver planillas"}</button></div>{abiertoCurso && <div>{curso.archivos.map((archivo) => <div className={styles.registroArchivo} key={archivo.archivoId}><span><strong>{archivo.nombreOriginal}</strong><small>{archivo.size ? `${Math.max(1, Math.round(archivo.size / 1024))} KB` : ""}</small></span><button type="button" className={styles.accion} disabled={Boolean(descargando)} onClick={() => descargarPlanilla(curso.cursoId, archivo)}>{descargando === archivo.archivoId ? "Descargando…" : "Descargar"}</button></div>)}</div>}</article>; })}</div>}</>}</section> : <><div className={styles.scannerBloque}><i className="pi pi-qrcode" aria-hidden="true" /><h2>Escaneá el código QR del certificado</h2><p>Podés validar certificados impresos o mostrados desde otro dispositivo.</p><button type="button" className={styles.accion} onClick={() => setAbierto(true)}><i className="pi pi-camera" aria-hidden="true" /> Escanear certificado</button></div><p className={styles.seguridad}><i className="pi pi-shield" aria-hidden="true" /> Las validaciones se realizan de forma segura contra el registro oficial de SIDCA.</p><div className={styles.sesion}><div><small>SESIÓN DE VALIDACIÓN</small><span><i className="pi pi-user" aria-hidden="true" /> {sesion.email}</span></div></div><ScannerCertificadoQR key={scannerKey} abierto={abierto} onCodigoValido={escanear} onCancelar={() => setAbierto(false)} />{validacionActual && <ResultadoValidacionCertificado resultado={validacionActual.resultado} presentacion={validacionActual.presentacion} filas={validacionActual.filas} registroInfo={validacionActual.registroInfo} registrando={registrando} registrado={Boolean(validacionActual.registroInfo)} registroError={registroError} onRegistrarCurso={validacionActual.resultado?.tipo === "vigente" ? registrarCurso : undefined} onEscanearOtro={abrirScanner} onCerrar={cerrarResultado} />}</>}</section></main></>;
 };
 

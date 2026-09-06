@@ -27,10 +27,11 @@ import propios from "./validatorHeader.module.css";
 import logo from "../../../../assets/img/logo-01.png";
 import { OPCIONES_VALIDADOR, esRutaActiva } from "./menuValidador";
 
-const ValidatorHeader = ({ origenSesion = "validador", onSalir }) => {
+const ValidatorHeader = ({ origenSesion = "validador", onSalir, permisos }) => {
   const history = useHistory();
   const location = useLocation();
   const [active, setActive] = useState(false);
+  const permisosVisibles = permisos || { certificados: true, cena: location.pathname.startsWith("/validar-cena") };
 
   // Con la sesión del panel administrativo no se cierra nada: el botón sólo
   // devuelve al administrador a su módulo. Cerrarle la sesión principal desde
@@ -59,17 +60,17 @@ const ValidatorHeader = ({ origenSesion = "validador", onSalir }) => {
   return (
     <header className={styles.header}>
       <a
-        href="/validar-certificados/inicio"
+        href="/gestion-institucional"
         onClick={(e) => {
           e.preventDefault();
-          history.push("/validar-certificados/inicio");
+          history.push("/gestion-institucional");
         }}
       >
         <img className={styles.headerLogo} src={logo} alt="SiDCa logo" />
       </a>
 
       <ul className={styles.headerNav}>
-        {OPCIONES_VALIDADOR.map((opcion) => {
+        {OPCIONES_VALIDADOR.filter((opcion) => !opcion.modulo || permisosVisibles[opcion.modulo]).map((opcion) => {
           const activa = esRutaActiva(location.pathname, opcion.ruta);
 
           return (
@@ -113,6 +114,7 @@ const ValidatorHeader = ({ origenSesion = "validador", onSalir }) => {
           setActive={setActive}
           onCerrarSesion={confirmarSalida}
           etiquetaSalida={etiquetaSalida}
+          permisos={permisosVisibles}
         />
       )}
     </header>

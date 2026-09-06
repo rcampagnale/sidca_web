@@ -17,11 +17,12 @@ import { Redirect } from "react-router-dom";
 
 import ValidatorHeader from "../../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
 import { cerrarSesionValidador } from "../../../services/certificadosValidacionService";
+import LoginGestionInstitucional from "../../../components/GestionInstitucional/LoginGestionInstitucional";
 import useSesionValidador from "./useSesionValidador";
 import estilos from "./ValidatorShell.module.css";
 
-const ValidatorShell = ({ children }) => {
-  const { cargando, sesion, origenSesion } = useSesionValidador();
+const ValidatorShell = ({ children, modulo = "certificados", requiereLogin = false }) => {
+  const { cargando, sesion, origenSesion, permisos, permisosCargando } = useSesionValidador();
 
   // Mientras Firebase restaura la sesión no se decide nada: redirigir acá
   // expulsaría a alguien que sí está autenticado.
@@ -33,15 +34,18 @@ const ValidatorShell = ({ children }) => {
     );
   }
 
-  if (!sesion) return <Redirect to="/validar-certificados" />;
+  if (!sesion) return requiereLogin ? <LoginGestionInstitucional mostrarRegresar /> : <Redirect to="/gestion-institucional" />;
+  if (permisosCargando) return <main style={{ padding: "2rem", textAlign: "center" }}>Verificando permisos…</main>;
+  if (modulo && !permisos[modulo]) return <main style={{ padding: "2rem", textAlign: "center" }}>No tenés permisos para acceder a este módulo.</main>;
 
   return (
     <>
       <ValidatorHeader
         origenSesion={origenSesion}
         onSalir={cerrarSesionValidador}
+        permisos={permisos}
       />
-      <main className={estilos.contenido}>{children}</main>
+      <main className={estilos.contenido}>{React.isValidElement(children) ? React.cloneElement(children, { permisos, permisosCargando, sesion }) : children}</main>
     </>
   );
 };

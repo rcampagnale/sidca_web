@@ -19,7 +19,7 @@ import styles from "../../PrivateHeader/nav/navUser.module.scss";
 import propios from "../validatorHeader.module.css";
 import { OPCIONES_VALIDADOR, esRutaActiva } from "../menuValidador";
 
-const NavValidator = ({ active, setActive, onCerrarSesion, etiquetaSalida }) => {
+const NavValidator = ({ active, setActive, onCerrarSesion, etiquetaSalida, permisos = {} }) => {
   const history = useHistory();
   const location = useLocation();
   const menuRef = useRef(null);
@@ -59,7 +59,7 @@ const NavValidator = ({ active, setActive, onCerrarSesion, etiquetaSalida }) => 
   return (
     <div className={styles.mobileMenuPanel} ref={menuRef}>
       <ul className={styles.navUl}>
-        {OPCIONES_VALIDADOR.map((opcion) => {
+        {OPCIONES_VALIDADOR.filter((opcion) => !opcion.modulo || permisos[opcion.modulo]).map((opcion) => {
           const activa = esRutaActiva(location.pathname, opcion.ruta);
 
           return (

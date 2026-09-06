@@ -353,3 +353,16 @@ export const registrarCursoValidado = async (
   }
   throw Object.assign(new Error(datos?.error || "No se pudo registrar el curso."), { status: respuesta.status, datos });
 };
+
+export const obtenerPermisosValidador = async (usuarioFirebase) => {
+  if (!API_BASE_URL) throw new Error("Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env.");
+  if (!usuarioFirebase) throw errorValidacion("La sesión del validador no está disponible.", 401);
+  const token = await usuarioFirebase.getIdToken(false);
+  const respuesta = await fetch(`${API_BASE_URL}/validador/permisos`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  let datos = null;
+  try { datos = await respuesta.json(); } catch (error) { datos = null; }
+  if (respuesta.ok) return datos?.permisos || { certificados: false, cena: false };
+  throw errorValidacion(datos?.error || "No se pudieron consultar los permisos.", respuesta.status);
+};

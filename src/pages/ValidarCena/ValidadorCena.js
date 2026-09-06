@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useHistory, useParams } from "react-router-dom";
+import { Redirect, useHistory, useParams } from "react-router-dom";
 
 import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
-import LoginGestionInstitucional from "../../components/GestionInstitucional/LoginGestionInstitucional";
 import useSesionValidador from "../ValidarCertificado/components/useSesionValidador";
 import {
   cerrarSesionValidador,
@@ -32,7 +31,7 @@ const vibrar = (patron) => {
 const ValidadorCena = () => {
   const { token: tokenRuta } = useParams();
   const history = useHistory();
-  const { cargando, validador, principal, origenSesion } = useSesionValidador();
+  const { cargando, validador, principal, origenSesion, permisos, permisosCargando } = useSesionValidador();
   const [principalRechazada, setPrincipalRechazada] = useState(false);
   const [vista, setVista] = useState("qr");
   const [scannerAbierto, setScannerAbierto] = useState(false);
@@ -202,14 +201,15 @@ const ValidadorCena = () => {
     liberarLectura();
   };
 
-  if (cargando) return <main className={styles.pagina}><p className={styles.cargando}>Verificando sesión…</p></main>;
-  if (!sesion) return <LoginGestionInstitucional />;
+  if (cargando || permisosCargando) return <main className={styles.pagina}><p className={styles.cargando}>Verificando sesión…</p></main>;
+  if (!sesion) return <Redirect to="/gestion-institucional" />;
+  if (!permisos.cena) return <main className={styles.pagina}><p className={styles.cargando}>No tenés permisos para acceder al módulo Cena del Docente.</p></main>;
 
   const esVistaQr = vista === "qr";
 
   return (
     <>
-      <ValidatorHeader origenSesion={origenSesion || origen} onSalir={cerrarSesionValidador} />
+      <ValidatorHeader origenSesion={origenSesion || origen} onSalir={cerrarSesionValidador} permisos={permisos} />
       <main className={styles.pagina}>
         <section className={styles.panel}>
           <header className={styles.encabezado}>
