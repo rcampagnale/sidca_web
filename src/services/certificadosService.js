@@ -706,6 +706,19 @@ export const descargarPdfMasivo = async (cursoId, jobId) => {
   return response.blob();
 };
 
+/** Obtiene una URL temporal para descargar directamente desde Cloud Storage. */
+export const obtenerUrlDescargaPdfMasivo = async (cursoId, jobId) => {
+  const datos = await pedir(
+    `/admin/pdf-masivo/${encodeURIComponent(cursoId)}/${encodeURIComponent(
+      jobId
+    )}/descarga-url`,
+    { method: "GET" }
+  );
+
+  if (!datos?.url) throw new Error("El backend no devolvió una URL de descarga.");
+  return { url: datos.url, filename: datos.filename || "certificados.pdf" };
+};
+
 // ============================================================
 // DESCARGA POR SEGMENTOS GEOGRÁFICOS
 //
@@ -786,4 +799,23 @@ export const descargarPdfSegmento = async (cursoId, segmentoId, jobId) => {
   }
 
   return response.blob();
+};
+
+/** Obtiene una URL temporal para descargar directamente desde Cloud Storage. */
+export const obtenerUrlDescargaPdfSegmento = async (
+  cursoId,
+  segmentoId,
+  jobId
+) => {
+  const datos = await pedir(
+    `/admin/pdf-segmentado/${encodeURIComponent(
+      cursoId
+    )}/${encodeURIComponent(segmentoId)}/${encodeURIComponent(
+      jobId
+    )}/descarga-url`,
+    { method: "GET" }
+  );
+
+  if (!datos?.url) throw new Error("El backend no devolvió una URL de descarga.");
+  return { url: datos.url, filename: datos.filename || "certificados.pdf" };
 };

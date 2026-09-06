@@ -45,12 +45,12 @@ import {
   iniciarPdfMasivo,
   obtenerEstadoPdfMasivo,
   obtenerPdfMasivoActual,
-  descargarPdfMasivo as descargarPdfMasivoArchivo,
+  obtenerUrlDescargaPdfMasivo,
   obtenerSegmentosPdf,
   iniciarPdfSegmento,
   obtenerEstadoPdfSegmento,
   obtenerPdfSegmentoActual,
-  descargarPdfSegmento as descargarPdfSegmentoArchivo,
+  obtenerUrlDescargaPdfSegmento,
   obtenerDatosExcelSegmento,
   obtenerFirmaMinisterio,
   obtenerFirmaMinisterioEmitida,
@@ -952,17 +952,21 @@ const EmitirCertificados = ({ notificar }) => {
     async (trabajo) => {
       if (!curso?.id || !trabajo?.jobId) return;
 
-      const blob = await descargarPdfMasivoArchivo(curso.id, trabajo.jobId);
-      const url = URL.createObjectURL(blob);
+      const descarga = await obtenerUrlDescargaPdfMasivo(
+        curso.id,
+        trabajo.jobId
+      );
       const anchor = document.createElement("a");
 
-      anchor.href = url;
+      anchor.href = descarga.url;
       anchor.download =
+        descarga.filename ||
         trabajo.nombreArchivo ||
         `Certificados - ${sanitizarNombreArchivo(curso.titulo)}.pdf`;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
       anchor.click();
-
-      URL.revokeObjectURL(url);
+      anchor.remove();
     },
     [curso]
   );
@@ -1204,20 +1208,19 @@ const EmitirCertificados = ({ notificar }) => {
       setSegmentoBajando(segmentoId);
 
       try {
-        const blob = await descargarPdfSegmentoArchivo(
+        const descarga = await obtenerUrlDescargaPdfSegmento(
           curso.id,
           segmentoId,
           trabajo.jobId
         );
-        const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
 
-        anchor.href = url;
-        anchor.download =
-          trabajo.nombreArchivo || `Certificados_${segmentoId}.pdf`;
+        anchor.href = descarga.url;
+        anchor.download = descarga.filename || trabajo.nombreArchivo || `Certificados_${segmentoId}.pdf`;
+        anchor.rel = "noopener";
+        document.body.appendChild(anchor);
         anchor.click();
-
-        URL.revokeObjectURL(url);
+        anchor.remove();
       } catch (e) {
         notificar?.(
           "error",
