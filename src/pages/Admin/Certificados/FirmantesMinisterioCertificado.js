@@ -93,18 +93,17 @@ const FirmantesMinisterioCertificado = ({
 
       const siguientes = {};
 
-      for (const firmante of lista) {
-        if (!firmante.imagenStoragePath) continue;
-
+      await Promise.all(lista.map(async (firmante) => {
+        if (!firmante.imagenStoragePath) return;
         try {
-          const imagen = await obtenerImagen(cursoId, firmante.id);
+          const imagen = await obtenerImagen(cursoId, firmante.id, firmante.imagenVersion);
           const url = URL.createObjectURL(imagen);
           urls.push(url);
           siguientes[firmante.id] = url;
         } catch (_) {
           // La carga se puede reintentar desde el botón; no se interrumpe la edición.
         }
-      }
+      }));
 
       if (activo) setPrevisualizaciones(siguientes);
     };

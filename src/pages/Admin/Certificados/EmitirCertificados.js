@@ -471,8 +471,8 @@ const EmitirCertificados = ({ notificar }) => {
         certificado: certificadoPreview,
         resolverImagen: (firmante) =>
           emisionPreview
-            ? obtenerFirmaMinisterioEmitida(curso.id, usuarioDocId, firmante.id)
-            : obtenerFirmaMinisterio(curso.id, firmante.id),
+            ? obtenerFirmaMinisterioEmitida(curso.id, usuarioDocId, firmante.id, firmante.imagenVersion)
+            : obtenerFirmaMinisterio(curso.id, firmante.id, firmante.imagenVersion),
       });
       if (activo) {
         urls.push(...preparado.objectUrls);
@@ -904,7 +904,8 @@ const EmitirCertificados = ({ notificar }) => {
             obtenerFirmaMinisterioEmitida(
               curso.id,
               emision.participante?.usuarioDocId || participante.usuarioDocId,
-              firmante.id
+              firmante.id,
+              firmante.imagenVersion
             ),
         });
         objectUrls.push(...preparado.objectUrls);

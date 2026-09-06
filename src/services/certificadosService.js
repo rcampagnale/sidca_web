@@ -247,7 +247,32 @@ export const subirFirmaMinisterio = async (cursoId, firmanteId, archivo) => {
   return datos?.configuracion || null;
 };
 
-export const obtenerFirmaMinisterio = async (cursoId, firmanteId) => {
+const firmasMinisterioEnMemoria = new Map();
+
+const obtenerFirmaMinisterioConCache = (clave, url, token, mensaje) => {
+  const existente = firmasMinisterioEnMemoria.get(clave);
+  if (existente) return existente;
+
+  const solicitud = fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    .then(async (respuesta) => {
+      if (!respuesta.ok) throw new Error(mensaje);
+      return respuesta.blob();
+    })
+    .catch((error) => {
+      firmasMinisterioEnMemoria.delete(clave);
+      throw error;
+    });
+
+  firmasMinisterioEnMemoria.set(clave, solicitud);
+  return solicitud;
+};
+
+const versionarFirmaUrl = (url, imagenVersion) => {
+  const version = Number(imagenVersion || 0);
+  return version > 0 ? `${url}?v=${encodeURIComponent(version)}` : url;
+};
+
+export const obtenerFirmaMinisterio = async (cursoId, firmanteId, imagenVersion = 0) => {
   if (!API_BASE_URL) {
     throw new Error(
       "Falta configurar REACT_APP_CERTIFICADOS_API_BASE_URL en el archivo .env."
@@ -255,24 +280,25 @@ export const obtenerFirmaMinisterio = async (cursoId, firmanteId) => {
   }
 
   const token = await obtenerIdToken();
-  const respuesta = await fetch(
+  const url = versionarFirmaUrl(
     `${API_BASE_URL}/admin/configuracion/${encodeURIComponent(
       cursoId
     )}/firmantes/${encodeURIComponent(firmanteId)}/imagen`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    imagenVersion
   );
-
-  if (!respuesta.ok) {
-    throw new Error("No se pudo cargar la firma.");
-  }
-
-  return respuesta.blob();
+  return obtenerFirmaMinisterioConCache(
+    `configuracion:${cursoId}:${firmanteId}:${Number(imagenVersion || 0)}`,
+    url,
+    token,
+    "No se pudo cargar la firma."
+  );
 };
 
 export const obtenerFirmaMinisterioEmitida = async (
   cursoId,
   usuarioDocId,
-  firmanteId
+  firmanteId,
+  imagenVersion = 0
 ) => {
   if (!API_BASE_URL) {
     throw new Error(
@@ -281,20 +307,20 @@ export const obtenerFirmaMinisterioEmitida = async (
   }
 
   const token = await obtenerIdToken();
-  const respuesta = await fetch(
+  const url = versionarFirmaUrl(
     `${API_BASE_URL}/admin/emision/${encodeURIComponent(
       cursoId
     )}/usuario/${encodeURIComponent(usuarioDocId)}/firmantes/${encodeURIComponent(
       firmanteId
     )}/imagen`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    imagenVersion
   );
-
-  if (!respuesta.ok) {
-    throw new Error("No se pudo cargar la firma histórica.");
-  }
-
-  return respuesta.blob();
+  return obtenerFirmaMinisterioConCache(
+    `emitida:${cursoId}:${usuarioDocId}:${firmanteId}:${Number(imagenVersion || 0)}`,
+    url,
+    token,
+    "No se pudo cargar la firma histórica."
+  );
 };
 
 /**
