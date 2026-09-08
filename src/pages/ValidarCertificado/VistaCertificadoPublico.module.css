@@ -1,0 +1,55 @@
+.pagina {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 42px 30px 56px;
+  background: #fff;
+  color: #111;
+  font-family: Arial, Roboto, system-ui, sans-serif;
+}
+
+.documento {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.estadoTexto {
+  margin: 0;
+  color: #111;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.documento h1 {
+  margin: 0 0 26px;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.documento p {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+}
+
+.linea + .linea {
+  margin-top: 10px;
+}
+
+.etiqueta {
+  margin-right: 0;
+}
+
+@media (max-width: 640px) {
+  .pagina {
+    padding: 34px 30px 48px;
+  }
+
+  .documento h1,
+  .documento p {
+    font-size: 22px;
+  }
+}

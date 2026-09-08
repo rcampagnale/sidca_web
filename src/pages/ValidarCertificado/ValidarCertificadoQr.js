@@ -8,11 +8,15 @@
 // desde el snapshot inmutable del certificado.
 
 import React, { useEffect, useState } from "react";
-import { useHistory, useLocation, useParams } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 
-import { validarCertificadoPublico } from "../../services/certificadosValidacionService";
-import styles from "./ValidarCertificadoQr.module.css";
-import ResultadoValidacionCertificado from "./components/ResultadoValidacionCertificado";
+import {
+  validarCertificadoPublico,
+  validarCertificadoQr,
+} from "../../services/certificadosValidacionService";
+import useSesionValidador from "./components/useSesionValidador";
+import VistaCertificadoPublico from "./VistaCertificadoPublico";
+import styles from "./VistaCertificadoPublico.module.css";
 
 /** Sólo para mostrar. El valor original no se toca. */
 const formatearDni = (dni) => {
@@ -87,27 +91,43 @@ const construirResultado = (validacion) => {
 const ValidarCertificadoQr = () => {
   const { cursoId, token: certificadoToken } = useParams();
   const history = useHistory();
-  const location = useLocation();
+  const {
+    cargando: sesionCargando,
+    sesion,
+    validador,
+    principal,
+    origenSesion,
+    permisos,
+    permisosCargando,
+  } = useSesionValidador();
   const [validando, setValidando] = useState(true);
   const [validacion, setValidacion] = useState(null);
-  const [estadoError, setEstadoError] = useState(0);
-  const modoValidador = Boolean(location.state?.modoValidador);
 
   useEffect(() => {
     let activa = true;
 
     const consultar = async () => {
+      if (sesionCargando || permisosCargando) return;
+
       setValidando(true);
       setValidacion(null);
-      setEstadoError(0);
 
       try {
-        const resultado = await validarCertificadoPublico(cursoId, certificadoToken);
+        const esInstitucional = Boolean(
+          sesion && permisos.certificados === true
+        );
+        const usuarioInstitucional =
+          origenSesion === "validador" ? validador : principal;
+        const resultado = esInstitucional
+          ? await validarCertificadoQr(cursoId, certificadoToken, {
+              usuarioFirebase: usuarioInstitucional,
+            })
+          : await validarCertificadoPublico(cursoId, certificadoToken);
         if (!activa) return;
 
-        // El escáner institucional reutiliza la misma consulta pública, pero
-        // el resultado se muestra sobre su propia pantalla de gestión.
-        if (modoValidador) {
+        // La interfaz institucional existente sigue siendo la única que
+        // muestra auditoría, registro y acciones administrativas.
+        if (esInstitucional) {
           const resultadoConstruido = construirResultado(resultado);
           history.replace({
             pathname: "/validar-certificados",
@@ -126,9 +146,9 @@ const ValidarCertificadoQr = () => {
         }
 
         setValidacion(resultado);
-      } catch (error) {
+      } catch {
         if (!activa) return;
-        setEstadoError(Number(error?.status || 0));
+        setValidacion({ valido: false, estado: "desconocido" });
       } finally {
         if (activa) setValidando(false);
       }
@@ -138,51 +158,31 @@ const ValidarCertificadoQr = () => {
     return () => {
       activa = false;
     };
-  }, [certificadoToken, cursoId, history, modoValidador]);
+  }, [
+    certificadoToken,
+    cursoId,
+    history,
+    origenSesion,
+    permisos,
+    permisosCargando,
+    principal,
+    sesion,
+    sesionCargando,
+    validador,
+  ]);
 
-  const encabezado = (
-    <header className={styles.encabezado}>
-      <span className={styles.marca}>SIDCA</span>
-      <h1 className={styles.titulo}>Validación de Certificado SIDCA</h1>
-    </header>
-  );
-
-  const resultado = validacion ? construirResultado(validacion) : null;
+  if (sesionCargando || permisosCargando || validando) {
+    return (
+      <main className={styles.pagina}>
+        <p className={styles.estadoTexto}>Verificando certificado…</p>
+      </main>
+    );
+  }
 
   return (
-    <div className={styles.pagina}>
-      <div className={styles.tarjeta}>
-        {encabezado}
-
-        {validando && (
-          <p className={styles.estadoTexto}>Verificando certificado…</p>
-        )}
-
-        {!validando && !validacion && (
-          <div className={styles.bloqueNoEncontrado}>
-            <h2 className={styles.resultadoTitulo}>CERTIFICADO NO VÁLIDO</h2>
-            <p className={styles.resultadoTexto}>
-              {estadoError === 404 || estadoError === 400
-                ? estadoError === 404
-                  ? "No se encontró un certificado vigente asociado a este código."
-                  : "El enlace de validación no es válido."
-                : "No fue posible verificar el certificado en este momento."}
-            </p>
-          </div>
-        )}
-
-        {!validando && resultado && (
-          <ResultadoValidacionCertificado
-            resultado={{ tipo: resultado.tipo }}
-            presentacion={resultado.presentacion}
-            filas={resultado.filas}
-            mostrarRegistro={false}
-            onEscanearOtro={() => history.replace("/validar-certificados")}
-            onCerrar={() => history.replace("/validar-certificados")}
-          />
-        )}
-      </div>
-    </div>
+    <VistaCertificadoPublico
+      validacion={validacion || { valido: false, estado: "desconocido" }}
+    />
   );
 };
 
