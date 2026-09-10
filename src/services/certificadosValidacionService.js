@@ -347,7 +347,7 @@ export const registrarCursoValidado = async (
   }
   let datos = null;
   try { datos = await respuesta.json(); } catch (error) { datos = null; }
-  if (respuesta.ok) return datos?.registro || datos;
+  if (respuesta.ok) return datos || {};
   if (respuesta.status === 401 && permitirReintento) {
     return registrarCursoValidado(cursoId, certificadoToken, { usuarioFirebase, idToken: idTokenInicial, permitirReintento: false });
   }

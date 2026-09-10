@@ -13,6 +13,11 @@ import styles from "./ValidadoresCertificados.module.css";
 const dni = (v) => String(v || "").replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const nombre = (u) => u.apellidoNombre || [u.apellido, u.nombre].filter(Boolean).join(", ") || "Sin nombre";
 const permisosDe = (u) => ({ certificados: u?.permisos?.certificados === true || (!u?.permisos && u?.validarCertificados === true), cena: u?.permisos?.cena === true });
+const JUNTAS_CLASIFICACION = {
+  media_tecnica_artistica: "JUNTA DE CLASIFICACION DE ENSEÑANZA MEDIA, TECNICA Y ARTISTICA",
+  inicial_primaria_especial_adulto: "JUNTA DE CLASIFICACION DE EDUCACION INICIAL, PRIMARIA, ESPECIAL Y ADULTO",
+};
+const juntaLabel = (codigo) => JUNTAS_CLASIFICACION[codigo] || "Junta no asignada";
 
 const ValidadoresCertificados = ({ notificar }) => {
   const [validadores, setValidadores] = useState([]);
@@ -27,6 +32,7 @@ const ValidadoresCertificados = ({ notificar }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [consultando, setConsultando] = useState(false);
   const [permisos, setPermisos] = useState({ certificados: true, cena: false });
+  const [juntaClasificacionCertificados, setJuntaClasificacionCertificados] = useState("");
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -51,6 +57,7 @@ const ValidadoresCertificados = ({ notificar }) => {
     try {
       const estado = await obtenerAccesoValidadorCertificados(u.usuarioDocId);
       setPermisos(permisosDe(estado));
+      setJuntaClasificacionCertificados(estado.juntaClasificacionCertificados || "");
       setAcceso({ ...estado, estado: estado.existe ? "existente" : "inexistente" });
     } catch (e) {
       setAcceso({ estado: "error", error: e.message, status: e.status });
@@ -63,6 +70,7 @@ const ValidadoresCertificados = ({ notificar }) => {
     setPassword("");
     setConfirmPassword("");
     setPermisos(permisosDe(u));
+    setJuntaClasificacionCertificados(u.juntaClasificacionCertificados || "");
     await consultarAcceso(u);
   };
 
@@ -85,6 +93,9 @@ const ValidadoresCertificados = ({ notificar }) => {
   const autorizar = async () => {
     if (!modal || !acceso || acceso.estado === "error" || acceso.estado === "cargando") return;
     if (!permisos.certificados && !permisos.cena) return notificar?.("error", "Módulos no seleccionados", "Seleccioná al menos un módulo.");
+    if (permisos.certificados && !JUNTAS_CLASIFICACION[juntaClasificacionCertificados]) {
+      return notificar?.("error", "Seleccioná una junta", "Indicá a qué Junta de Clasificación pertenece el validador.");
+    }
     if ((acceso.estado === "inexistente" || password || confirmPassword) && (password.length < 8 || password !== confirmPassword)) {
       return notificar?.("error", "Contraseña inválida", "Debe tener al menos 8 caracteres y coincidir.");
     }
@@ -93,9 +104,10 @@ const ValidadoresCertificados = ({ notificar }) => {
       const actualizado = await autorizarValidadorCertificados(modal.usuarioDocId, {
         email: modal.email || modal.correo || "",
         permisos,
+        ...(juntaClasificacionCertificados ? { juntaClasificacionCertificados } : {}),
         ...(acceso.estado === "inexistente" ? { passwordInicial: password } : password ? { passwordNueva: password } : {}),
       });
-      const usuarioActualizado = { ...modal, ...actualizado, validarCertificados: permisos.certificados, permisos };
+      const usuarioActualizado = { ...modal, ...actualizado, validarCertificados: permisos.certificados, permisos, juntaClasificacionCertificados: actualizado.juntaClasificacionCertificados || juntaClasificacionCertificados || modal.juntaClasificacionCertificados || "" };
       setResultados((xs) => xs.map((x) => x.usuarioDocId === modal.usuarioDocId ? usuarioActualizado : x));
       setValidadores((xs) => [...xs.filter((x) => x.usuarioDocId !== modal.usuarioDocId), usuarioActualizado]);
       setModal(null);
@@ -103,6 +115,16 @@ const ValidadoresCertificados = ({ notificar }) => {
     } catch (e) { notificar?.("error", "No se pudo autorizar", e.message); }
     finally { setActualizando(""); }
   };
+
+  const seleccionJunta = () => permisos.certificados ? <fieldset className={styles.juntaBloque}>
+    <legend>Junta de clasificación</legend>
+    {Object.entries(JUNTAS_CLASIFICACION).map(([codigo, etiqueta]) => (
+      <label className={styles.juntaOpcion} key={codigo}>
+        <input type="radio" name="juntaClasificacionCertificados" value={codigo} checked={juntaClasificacionCertificados === codigo} onChange={(e) => setJuntaClasificacionCertificados(e.target.value)} />
+        <span>{etiqueta}</span>
+      </label>
+    ))}
+  </fieldset> : null;
 
   const contenidoAcceso = () => {
     if (consultando || acceso?.estado === "cargando") return <p>Comprobando cuenta de acceso…</p>;
@@ -114,6 +136,7 @@ const ValidadoresCertificados = ({ notificar }) => {
     if (acceso?.estado === "existente") return <>
       <p className={styles.mensajeAcceso}>Esta persona ya posee una cuenta de acceso.{acceso.habilitada ? "" : acceso.gestionadaPorModulo ? " Se habilitará nuevamente." : " La cuenta está deshabilitada y no fue gestionada por este módulo."}</p>
       <label className={styles.permisoFila}><span><input type="checkbox" checked={permisos.certificados} onChange={(e) => setPermisos((p) => ({ ...p, certificados: e.target.checked }))} /> Certificados</span></label>
+      {seleccionJunta()}
       <label className={styles.permisoFila}><span><input type="checkbox" checked={permisos.cena} onChange={(e) => setPermisos((p) => ({ ...p, cena: e.target.checked }))} /> Cena del Docente</span></label>
       <label>Nueva contraseña (opcional)<input type="password" value={password} minLength={8} maxLength={128} onChange={(e) => setPassword(e.target.value)} /></label>
       <label>Confirmar nueva contraseña<input type="password" value={confirmPassword} minLength={8} maxLength={128} onChange={(e) => setConfirmPassword(e.target.value)} /></label>
@@ -121,6 +144,7 @@ const ValidadoresCertificados = ({ notificar }) => {
     return <>
       <p>No tiene una cuenta de acceso para validación.</p>
       <label className={styles.permisoFila}><span><input type="checkbox" checked={permisos.certificados} onChange={(e) => setPermisos((p) => ({ ...p, certificados: e.target.checked }))} /> Certificados</span></label>
+      {seleccionJunta()}
       <label className={styles.permisoFila}><span><input type="checkbox" checked={permisos.cena} onChange={(e) => setPermisos((p) => ({ ...p, cena: e.target.checked }))} /> Cena del Docente</span></label>
       <label>Contraseña inicial<input type="password" value={password} minLength={8} maxLength={128} onChange={(e) => setPassword(e.target.value)} /></label>
       <label>Confirmar contraseña<input type="password" value={confirmPassword} minLength={8} maxLength={128} onChange={(e) => setConfirmPassword(e.target.value)} /></label>
@@ -133,7 +157,7 @@ const ValidadoresCertificados = ({ notificar }) => {
     <p>Administrá las personas que pueden comprobar la autenticidad y vigencia de los certificados SIDCA.</p>
     <form className={styles.busqueda} onSubmit={buscar}><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por DNI, apellido, nombre o correo" /><button disabled={buscando}>{buscando ? "Buscando…" : "Buscar"}</button></form>
     <section className={styles.panel}><h3>Resultado</h3>{resultados.map((u) => <article className={styles.tarjeta} key={u.usuarioDocId}><strong>{nombre(u)}</strong><span>DNI: {dni(u.dni)}</span><span>{u.email || u.correo || "Sin correo registrado"}</span>{Object.values(permisosDe(u)).some(Boolean) ? <><b className={styles.ok}>✓ Acceso configurado</b><button onClick={() => abrirAutorizar(u)}>Editar acceso</button></> : <button disabled={!u.email && !u.correo} onClick={() => abrirAutorizar(u)}>{u.email || u.correo ? "Autorizar" : "Falta correo"}</button>}</article>)}</section>
-    <section className={styles.panel}><h3>Validadores autorizados: {validadores.length}</h3>{cargando ? <p>Cargando…</p> : validadores.map((u) => <article className={styles.tarjeta} key={u.usuarioDocId}><strong>{nombre(u)}</strong><span>DNI: {dni(u.dni)}</span><span>{u.email || u.correo || "Sin correo registrado"}</span><b className={styles.ok}>AUTORIZADO</b><button className={styles.quitar} disabled={actualizando === u.usuarioDocId} onClick={() => quitar(u)}>Quitar acceso</button></article>)}</section>
+    <section className={styles.panel}><h3>Validadores autorizados: {validadores.length}</h3>{cargando ? <p>Cargando…</p> : validadores.map((u) => <article className={styles.tarjeta} key={u.usuarioDocId}><strong>{nombre(u)}</strong><span>DNI: {dni(u.dni)}</span><span>{u.email || u.correo || "Sin correo registrado"}</span>{permisosDe(u).certificados && <span className={styles.juntaListado}>{juntaLabel(u.juntaClasificacionCertificados)}</span>}<b className={styles.ok}>AUTORIZADO</b><button className={styles.quitar} disabled={actualizando === u.usuarioDocId} onClick={() => quitar(u)}>Quitar acceso</button></article>)}</section>
     <Dialog className={styles.dialogoAutorizacion} header="Autorizar validador" visible={Boolean(modal)} modal onHide={() => setModal(null)}>{modal && <div className={styles.modalContenido}><div className={styles.personaDatos}><strong>{nombre(modal)}</strong><span>DNI: {dni(modal.dni)}</span><span>Correo: {modal.email || modal.correo || "Sin correo registrado"}</span></div>{contenidoAcceso()}<div className={styles.modalAcciones}><button type="button" className={styles.accionSecundaria} onClick={() => setModal(null)}>Cancelar</button><button type="button" className={styles.accionPrimaria} disabled={consultando || !acceso || acceso.estado === "error" || acceso.estado === "cargando" || (acceso.estado === "inexistente" && !password)} onClick={autorizar}>{acceso?.estado === "existente" ? (acceso.habilitada ? "Autorizar" : "Habilitar y autorizar") : "Crear acceso y autorizar"}</button></div></div>}</Dialog>
   </section>;
 };

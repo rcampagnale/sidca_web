@@ -115,15 +115,17 @@ const ValidadorCertificados = () => {
     }
   }, [history, location.pathname, location.state]);
 
-  const registrarCurso = async () => {
+  const confirmarRegistroCurso = async () => {
     const datos = validacionActual?.resultado?.validacion;
     const cursoId = validacionActual?.cursoId;
     const tokenCertificado = validacionActual?.token;
     if (!cursoId || !tokenCertificado) return setRegistroError("No se pudo identificar el certificado para registrar el curso.");
-    if (registrando || validacionActual?.registroInfo) return;
-    const curso = datos.certificado?.titulo || datos.certificado?.cursoTitulo || "Sin título";
-    const fecha = datos.certificado?.fecha || "Sin fecha";
-    if (!window.confirm(`Vas a registrar el curso:\n\n${curso}\n\nFecha del certificado: ${fecha}\n\n¿Confirmás el registro?`)) return;
+    const verificacion = datos?.verificacion || {};
+    const requiereJunta = origenSesion === "validador";
+    if (registrando || (requiereJunta && (!verificacion.juntaValidador || verificacion.registroJuntaActual || !verificacion.puedeRegistrarEnJunta))) {
+      if (requiereJunta && verificacion.motivoNoRegistro) setRegistroError(verificacion.motivoNoRegistro);
+      return;
+    }
     if (origenSesion === "validador" && !validatorAuth.currentUser) return setRegistroError("La sesión del validador no está disponible.");
     setRegistrando(true);
     setRegistroError("");
@@ -132,11 +134,34 @@ const ValidadorCertificados = () => {
       // con refresco forzado ante un 401: no hace falta forzarlo acá antes de
       // llamarlo, ese refresco previo era un round-trip de más en el camino
       // normal (token todavía válido).
-      const registro = origenSesion === "principal" ? await registrarValidacionCertificado(cursoId, tokenCertificado) : await registrarCursoValidado(cursoId, tokenCertificado, { usuarioFirebase: validatorAuth.currentUser });
-      setValidacionActual((actual) => ({ ...actual, registroInfo: registro }));
-    } catch (e) { setRegistroError(e?.message || "Error inesperado."); }
+      const respuesta = origenSesion === "principal" ? await registrarValidacionCertificado(cursoId, tokenCertificado) : await registrarCursoValidado(cursoId, tokenCertificado, { usuarioFirebase: validatorAuth.currentUser });
+      const registro = respuesta?.registro || respuesta;
+      setValidacionActual((actual) => ({
+        ...actual,
+        registroInfo: registro,
+        resultado: {
+          ...actual.resultado,
+          validacion: {
+            ...actual.resultado.validacion,
+            verificacion: {
+              ...(actual.resultado.validacion.verificacion || {}),
+              ...(respuesta?.verificacion || {}),
+              registroJuntaActual: registro,
+              puedeRegistrarEnJunta: false,
+            },
+          },
+        },
+      }));
+    } catch (e) {
+      if (e?.status === 409 && e?.datos?.yaRegistrado) {
+        const registro = e.datos.registro || e.datos;
+        setValidacionActual((actual) => ({ ...actual, registroInfo: registro, resultado: { ...actual.resultado, validacion: { ...actual.resultado.validacion, verificacion: { ...(actual.resultado.validacion.verificacion || {}), registroJuntaActual: registro } } } }));
+      } else setRegistroError(e?.message || "Error inesperado.");
+    }
     finally { setRegistrando(false); }
   };
+
+  const registrarCurso = confirmarRegistroCurso;
 
   const abrirScanner = () => {
     setValidacionActual(null);

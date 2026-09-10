@@ -23,6 +23,12 @@
 .permisoFila:hover { border-color: #f5b824; background: #fffbeb; }
 .permisoFila span { display: flex; align-items: center; gap: 10px; }
 .permisoFila input[type="checkbox"] { width: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: #d99b00; cursor: pointer; }
+.juntaBloque { display: grid; gap: .65rem; margin: 0; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 13px; background: #fffdf5; }
+.juntaBloque legend { padding: 0 4px; color: #334155; font-weight: 700; }
+.juntaOpcion { display: flex !important; grid-template-columns: none; align-items: flex-start; gap: 10px !important; font-weight: 500 !important; }
+.juntaOpcion input[type="radio"] { flex: 0 0 auto; width: 18px; min-height: 18px; margin: 2px 0 0; accent-color: #d99b00; cursor: pointer; }
+.juntaOpcion span { overflow-wrap: anywhere; }
+.juntaListado { flex: 1 1 320px !important; overflow-wrap: anywhere; line-height: 1.35; }
 .mensajeAcceso { margin: 0; padding: 10px 12px; border-left: 3px solid #cbd5e1; border-radius: 6px; color: #64748b; background: #f8fafc; line-height: 1.45; }
 .modalAcciones { display: flex; justify-content: flex-end; gap: .6rem; margin-top: .35rem; }
 .errorAcceso { display: grid; gap: .45rem; color: #991b1b; }
