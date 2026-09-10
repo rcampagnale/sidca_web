@@ -24,6 +24,31 @@ export const GESTION_CENA_COLLECTION = "gestion_cena";
 
 export const normalizarDniCena = (valor) => String(valor || "").replace(/\D/g, "");
 
+export const normalizarBusquedaCena = (valor) => String(valor || "")
+  .trim()
+  .toLowerCase()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/\s+/g, " ");
+
+export const reservaCoincideBusquedaCena = (reserva, busqueda) => {
+  const termino = normalizarBusquedaCena(busqueda);
+  if (!termino) return true;
+
+  const afiliado = reserva?.afiliado || {};
+  const dni = normalizarDniCena(afiliado.dni);
+  const dniTermino = normalizarDniCena(termino);
+  const apellido = normalizarBusquedaCena(afiliado.apellido);
+  const nombre = normalizarBusquedaCena(afiliado.nombre);
+  const combinaciones = [
+    `${apellido} ${nombre}`.trim(),
+    `${nombre} ${apellido}`.trim(),
+  ];
+
+  return (Boolean(dniTermino) && dniTermino === dni)
+    || [dni, apellido, nombre, ...combinaciones].some((valor) => valor.includes(termino));
+};
+
 const limpiarTexto = (valor) => String(valor || "").trim();
 
 const upper = (valor) => limpiarTexto(valor).toUpperCase();
@@ -71,33 +96,55 @@ const primerValor = (data, campos) => {
   return "";
 };
 
+export const separarApellidoNombre = (valor) => {
+  const texto = limpiarTexto(valor).replace(/\s+/g, " ");
+  if (!texto) return { apellido: "", nombre: "" };
+
+  const separador = texto.indexOf(",");
+  if (separador < 0) return { apellido: "", nombre: "" };
+
+  return {
+    apellido: limpiarTexto(texto.slice(0, separador)),
+    nombre: limpiarTexto(texto.slice(separador + 1)),
+  };
+};
+
 const afiliadoDesdeDoc = (docSnap, dniBuscado, origen) => {
   const data = docSnap.data() || {};
   const dni = normalizarDniCena(primerValor(data, dniCampos) || docSnap.id || dniBuscado);
-  const apellidoNombre =
-    data.apellidoNombre ||
-    data.nombreCompleto ||
-    data.apellido_y_nombre ||
-    data["Apellido y Nombre"] ||
-    "";
   let apellido = primerValor(data, apellidoCampos);
   let nombre = primerValor(data, nombreCampos);
 
-  if ((!apellido || !nombre) && apellidoNombre) {
-    const partes = String(apellidoNombre).split(",");
-    if (partes.length > 1) {
-      apellido = apellido || partes[0];
-      nombre = nombre || partes.slice(1).join(" ");
-    } else {
-      nombre = nombre || apellidoNombre;
+  const combinados = [
+    data.apellidoNombre,
+    data.nombreCompleto,
+    data.apellido_y_nombre,
+    data["Apellido y Nombre"],
+    !apellido ? data.nombre : "",
+  ];
+
+  if (!apellido || !nombre) {
+    for (const combinado of combinados) {
+      const separado = separarApellidoNombre(combinado);
+      if (separado.apellido && separado.nombre) {
+        apellido = apellido || separado.apellido;
+        nombre = nombre || separado.nombre;
+        break;
+      }
     }
   }
 
+  const apellidoNormalizado = upper(apellido);
+  const nombreNormalizado = upper(nombre);
+  const apellidoNombreNormalizado = upper(
+    `${apellidoNormalizado} ${nombreNormalizado}`.trim()
+  );
+
   return {
     dni,
-    apellido: upper(apellido),
-    nombre: upper(nombre),
-    apellidoNombre: upper(`${apellido} ${nombre}`.trim() || apellidoNombre),
+    apellido: apellidoNormalizado,
+    nombre: nombreNormalizado,
+    apellidoNombre: apellidoNombreNormalizado,
     origen,
     docId: docSnap.id,
   };
@@ -499,6 +546,58 @@ export const anularReservaCena = async ({ anio, reservaId, usuario = null }) => 
     transaction.update(reservaRef, { estado: "anulada", fechaAnulacion: serverTimestamp(), fechaActualizacion: serverTimestamp() });
     return { acreditadas };
   });
+};
+
+const validarReferenciaReserva = ({ anio, reservaId }) => {
+  const anioNumero = Number(anio);
+  const id = limpiarTexto(reservaId);
+  if (!Number.isInteger(anioNumero) || anioNumero < 2000 || anioNumero > 3000) {
+    throw new Error("El año de la reserva no es válido.");
+  }
+  if (!id) throw new Error("La reserva no es válida.");
+  return { anio: anioNumero, reservaId: id };
+};
+
+const borrarReferenciasPorLotes = async (referencias, tamanoLote = 400) => {
+  let eliminados = 0;
+  for (let inicio = 0; inicio < referencias.length; inicio += tamanoLote) {
+    const lote = referencias.slice(inicio, inicio + tamanoLote);
+    const batch = writeBatch(db);
+    lote.forEach((referencia) => batch.delete(referencia));
+    await batch.commit();
+    eliminados += lote.length;
+  }
+  return eliminados;
+};
+
+export const eliminarReservaCena = async ({ anio, reservaId }) => {
+  const referencia = validarReferenciaReserva({ anio, reservaId });
+  const reservaRef = doc(reservasRef(referencia.anio), referencia.reservaId);
+  const reservaSnap = await getDoc(reservaRef);
+  if (!reservaSnap.exists()) throw new Error("No se encontró la reserva.");
+
+  const [tarjetasSnap, validacionesSnap] = await Promise.all([
+    getDocs(query(tarjetasRef(referencia.anio), where("reservaId", "==", referencia.reservaId))),
+    getDocs(query(validacionesRef(referencia.anio), where("reservaId", "==", referencia.reservaId))),
+  ]);
+
+  const tarjetasEliminadas = await borrarReferenciasPorLotes(
+    tarjetasSnap.docs.map((item) => item.ref)
+  );
+  const validacionesEliminadas = await borrarReferenciasPorLotes(
+    validacionesSnap.docs.map((item) => item.ref)
+  );
+
+  const reservaBatch = writeBatch(db);
+  reservaBatch.delete(reservaRef);
+  reservaBatch.set(anualRef(referencia.anio), { fechaActualizacion: serverTimestamp() }, { merge: true });
+  await reservaBatch.commit();
+
+  return {
+    reservaEliminada: 1,
+    tarjetasEliminadas,
+    validacionesEliminadas,
+  };
 };
 
 export const anularTarjetaCena = async ({ anio, tarjetaId, motivo, observacion = "", usuario = null }) => {

@@ -8,6 +8,12 @@ const CenaReservaDialog = ({ visible, reserva, anio, onClose, onGuardar }) => {
   const [cantidad, setCantidad] = useState(1);
   const [mensaje, setMensaje] = useState("");
   const [buscando, setBuscando] = useState(false);
+  const afiliadoValido = Boolean(
+    afiliado &&
+      normalizarDniCena(afiliado.dni) &&
+      afiliado.apellido &&
+      afiliado.nombre
+  );
 
   useEffect(() => {
     if (!visible) return;
@@ -34,6 +40,17 @@ const CenaReservaDialog = ({ visible, reserva, anio, onClose, onGuardar }) => {
         setMensaje("No se encontró el DNI en usuarios ni en nuevoAfiliado.");
         return;
       }
+      if (
+        !normalizarDniCena(encontrado.dni) ||
+        !encontrado.apellido ||
+        !encontrado.nombre
+      ) {
+        setAfiliado(null);
+        setMensaje(
+          "Se encontró el DNI, pero los datos de apellido y nombre están incompletos."
+        );
+        return;
+      }
       setDni(encontrado.dni);
       setAfiliado(encontrado);
       setMensaje(`Afiliado encontrado en ${encontrado.origen}.`);
@@ -46,6 +63,10 @@ const CenaReservaDialog = ({ visible, reserva, anio, onClose, onGuardar }) => {
 
   const guardar = (event) => {
     event.preventDefault();
+    if (!afiliadoValido) {
+      setMensaje("Completá un afiliado válido antes de guardar.");
+      return;
+    }
     onGuardar({ reservaId: reserva?.id || null, afiliado, cantidadTarjetas: cantidad });
   };
 
@@ -65,7 +86,17 @@ const CenaReservaDialog = ({ visible, reserva, anio, onClose, onGuardar }) => {
               pattern="[0-9]*"
               value={dni}
               disabled={Boolean(reserva)}
-              onChange={(e) => setDni(normalizarDniCena(e.target.value))}
+              onChange={(e) => {
+                const nuevoDni = normalizarDniCena(e.target.value);
+                setDni(nuevoDni);
+                if (
+                  afiliado &&
+                  nuevoDni !== normalizarDniCena(afiliado.dni)
+                ) {
+                  setAfiliado(null);
+                  setMensaje("Volvé a buscar el afiliado.");
+                }
+              }}
             />
             <button type="button" className={styles.secondaryButton} disabled={buscando || Boolean(reserva)} onClick={buscar}>
               {buscando ? "Buscando..." : "Buscar"}
@@ -86,7 +117,7 @@ const CenaReservaDialog = ({ visible, reserva, anio, onClose, onGuardar }) => {
         {mensaje && <p className={styles.notice}>{mensaje}</p>}
         <div className={styles.modalActions}>
           <button type="button" className={styles.secondaryButton} onClick={onClose}>Cancelar</button>
-          <button type="submit" className={styles.primaryButton} disabled={!afiliado}>Guardar</button>
+          <button type="submit" className={styles.primaryButton} disabled={!afiliadoValido}>Guardar</button>
         </div>
       </form>
     </div>

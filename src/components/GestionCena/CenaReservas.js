@@ -1,12 +1,19 @@
-import React, { useMemo } from "react";
-import { estadoAcreditacionReservaCena, formatearDniCena, resumirTarjetasVigentesCena } from "../../services/gestionCenaService";
+import React, { useMemo, useState } from "react";
+import { estadoAcreditacionReservaCena, formatearDniCena, normalizarBusquedaCena, reservaCoincideBusquedaCena, resumirTarjetasVigentesCena } from "../../services/gestionCenaService";
 import styles from "../../pages/Admin/GestionCena/GestionCenaAdmin.module.css";
 
 export const estadoReservaDesdeTarjetas = (reserva, tarjetas = []) => {
   return estadoAcreditacionReservaCena(reserva, tarjetas);
 };
 
-const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarjetas, onPdf, onImportar, onExcelSorteo, titularesElegiblesSorteo }) => {
+const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onEliminar, onTarjetas, onPdf, onImportar, onExcelSorteo, titularesElegiblesSorteo, eliminandoReservaId }) => {
+  const [busqueda, setBusqueda] = useState("");
+
+  const reservasFiltradas = useMemo(() => {
+    const termino = normalizarBusquedaCena(busqueda);
+    return reservas.filter((reserva) => reservaCoincideBusquedaCena(reserva, termino));
+  }, [reservas, busqueda]);
+
   const agrupadas = useMemo(() => {
     const mapa = new Map();
     tarjetas.forEach((tarjeta) => {
@@ -28,6 +35,17 @@ const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarje
         </div>
       </div>
 
+      <label className={styles.reservasSearch}>
+        Buscar reserva
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(event) => setBusqueda(event.target.value)}
+          placeholder="Buscar por DNI, apellido o nombre..."
+          aria-label="Buscar reservas por DNI, apellido o nombre"
+        />
+      </label>
+
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -44,7 +62,7 @@ const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarje
             </tr>
           </thead>
           <tbody>
-            {reservas.map((reserva) => {
+            {reservasFiltradas.map((reserva) => {
               const lista = agrupadas.get(reserva.id) || [];
               const resumen = resumirTarjetasVigentesCena(lista);
               const titulares = resumen.vigentes.filter((tarjeta) => tarjeta.tipo === "titular").length;
@@ -66,6 +84,9 @@ const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarje
                       <button type="button" onClick={() => onEditar(reserva)}>Editar</button>
                       <button type="button" onClick={() => onPdf(reserva)}>PDF</button>
                       <button type="button" onClick={() => onAnular(reserva)}>Anular</button>
+                      <button type="button" onClick={() => onEliminar(reserva)} disabled={eliminandoReservaId === reserva.id}>
+                        {eliminandoReservaId === reserva.id ? "Eliminando..." : "Eliminar"}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -75,7 +96,7 @@ const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarje
         </table>
       </div>
       <div className={styles.reservationCards}>
-        {reservas.map((reserva) => {
+        {reservasFiltradas.map((reserva) => {
           const lista = agrupadas.get(reserva.id) || [];
           const resumen = resumirTarjetasVigentesCena(lista);
           const titulares = resumen.vigentes.filter((tarjeta) => tarjeta.tipo === "titular").length;
@@ -100,12 +121,16 @@ const CenaReservas = ({ reservas, tarjetas, onNueva, onEditar, onAnular, onTarje
                 <button type="button" onClick={() => onEditar(reserva)}>Editar</button>
                 <button type="button" onClick={() => onPdf(reserva)}>PDF</button>
                 <button type="button" onClick={() => onAnular(reserva)}>Anular</button>
+                <button type="button" onClick={() => onEliminar(reserva)} disabled={eliminandoReservaId === reserva.id}>
+                  {eliminandoReservaId === reserva.id ? "Eliminando..." : "Eliminar"}
+                </button>
               </div>
             </article>
           );
         })}
       </div>
       {!reservas.length && <p className={styles.empty}>Todavía no hay reservas para este año.</p>}
+      {reservas.length > 0 && !reservasFiltradas.length && <p className={styles.empty}>No se encontraron reservas con esa búsqueda.</p>}
     </section>
   );
 };

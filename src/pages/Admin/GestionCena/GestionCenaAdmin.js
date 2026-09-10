@@ -18,6 +18,7 @@ import {
   guardarDatosEventoCena,
   formatearDniCena,
   importarReservasCena,
+  eliminarReservaCena,
   normalizarDniCena,
   obtenerResumenVaciadoGestionCena,
   reemitirTarjetaCena,
@@ -142,6 +143,7 @@ const GestionCenaAdmin = ({ match }) => {
   const [vaciado, setVaciado] = useState(null);
   const [confirmacionVaciado, setConfirmacionVaciado] = useState("");
   const [vaciando, setVaciando] = useState(false);
+  const [eliminandoReservaId, setEliminandoReservaId] = useState(null);
   const [editarDatosEvento, setEditarDatosEvento] = useState(false);
   const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
   const [progresoPdf, setProgresoPdf] = useState({
@@ -247,6 +249,34 @@ const GestionCenaAdmin = ({ match }) => {
     await anularReservaCena({ anio, reservaId: reserva.id, usuario });
     setMensaje("Reserva anulada. Los QR pendientes dejaron de ser válidos.");
     await recargar();
+  };
+
+  const eliminar = async (reserva) => {
+    const lista = tarjetas.filter((tarjeta) => tarjeta.reservaId === reserva.id);
+    const acreditadas = lista.filter((tarjeta) => tarjeta.validada === true || tarjeta.estado === "validada").length;
+    const advertenciaAcreditadas = acreditadas
+      ? ` ATENCIÓN: esta reserva posee ${acreditadas} tarjeta(s) acreditada(s). También se eliminarán sus registros de validación.`
+      : "";
+    const confirmado = window.confirm(
+      `¿Eliminar completamente la reserva de ${reserva.afiliado?.apellido || ""} ${reserva.afiliado?.nombre || ""}?\n\n` +
+      `Se eliminarán la reserva, todas sus tarjetas, reemisiones y registros de validación asociados.${advertenciaAcreditadas}\n\n` +
+      "Esta acción no se puede deshacer."
+    );
+    if (!confirmado) return;
+
+    setEliminandoReservaId(reserva.id);
+    setMensaje("");
+    setError("");
+    try {
+      await eliminarReservaCena({ anio, reservaId: reserva.id });
+      if (reservaSeleccionada?.id === reserva.id) setReservaSeleccionada(null);
+      setMensaje("Reserva eliminada completamente.");
+      await recargar();
+    } catch (err) {
+      setError(err.message || "No se pudo eliminar la reserva.");
+    } finally {
+      setEliminandoReservaId(null);
+    }
   };
 
   const anularTarjeta = async (tarjeta, motivo, observacion) => {
@@ -550,11 +580,13 @@ const GestionCenaAdmin = ({ match }) => {
             onNueva={() => setDialogReserva({})}
             onEditar={(reserva) => setDialogReserva(reserva)}
             onAnular={anular}
+            onEliminar={eliminar}
             onTarjetas={(reserva) => { setReservaSeleccionada(reserva); setTab("tarjetas"); }}
             onPdf={pdfReserva}
             onImportar={() => setImportar(true)}
             onExcelSorteo={exportarExcelSorteo}
             titularesElegiblesSorteo={titularesElegiblesSorteo.length}
+            eliminandoReservaId={eliminandoReservaId}
           />
         )}
         {tab === "tarjetas" && (
