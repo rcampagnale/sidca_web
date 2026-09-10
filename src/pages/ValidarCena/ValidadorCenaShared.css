@@ -26,7 +26,13 @@
 .gcCenaHistoricoTitulo h2 { color: #6d4a1c; }
 .gcCenaHistoricoTitulo span { color: #72500d; background: #f8e9ba; }
 .gcCenaTarjetas ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.gcCenaTarjeta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px; border: 1px solid #d8e1e8; border-radius: 6px; }
+.gcCenaTarjeta { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px; border: 1px solid #d8e1e8; border-radius: 6px; }
+.gcCenaTarjeta > div { min-width: 0; }
+.gcCenaTarjetaConSeleccion { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; }
+.gcCenaTarjeta > input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: #0a646c; }
+.gcCenaSeleccionControles { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gcCenaSeleccionControles button { min-height: 38px; padding: 0 12px; border: 1px solid #0a646c; border-radius: 5px; color: #0a646c; background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.gcCenaSeleccionControles span { color: #53687c; font-size: .85rem; font-weight: 700; }
 .gcCenaTarjeta strong { color: #19334d; display: block; }
 .gcCenaTarjeta small { display: block; margin-top: 3px; color: #53687c; }
 .gcCenaTarjetaSeleccionada { border-width: 2px; border-color: #0a646c; background: #f1fbfb; }
@@ -36,3 +42,17 @@
 .gcCenaEstadoanulada { color: #8b2919; background: #ffe7df; }
 .gcCenaVacio { margin: 0; color: #5a6b7e; font-size: .9rem; }
 @media (min-width: 600px) { .gcCenaResultado { flex-direction: row; align-items: center; justify-content: space-between; } .gcCenaResultado button { flex: 0 0 auto; } }
+@media (max-width: 599px) {
+  .gcCenaReserva { padding: 13px; }
+  .gcCenaConteos { gap: 6px; margin-top: 13px; }
+  .gcCenaConteos div { padding-left: 7px; }
+  .gcCenaConteos dt { font-size: .67rem; }
+  .gcCenaConteos dd { font-size: 1.05rem; }
+  .gcCenaTarjeta { gap: 8px; padding: 10px; }
+  .gcCenaTarjeta strong { font-size: .88rem; line-height: 1.25; }
+  .gcCenaTarjeta small { font-size: .76rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .gcCenaEstado { align-self: start; padding: 4px 5px; font-size: .62rem; }
+  .gcCenaSeleccionControles { align-items: stretch; gap: 6px; }
+  .gcCenaSeleccionControles button { width: 100%; }
+  .gcCenaSeleccionControles span { text-align: center; }
+}

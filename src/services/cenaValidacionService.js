@@ -44,7 +44,7 @@ const errorCena = (mensaje, status, datos = null) =>
 
 const pedirCena = async (
   ruta,
-  { usuarioFirebase, method = "GET", permitirReintento = true } = {}
+  { usuarioFirebase, method = "GET", body, permitirReintento = true } = {}
 ) => {
   if (!API_BASE_URL) {
     throw new Error(
@@ -64,6 +64,7 @@ const pedirCena = async (
         "Content-Type": "application/json",
         Authorization: `Bearer ${firebaseIdToken}`,
       },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (error) {
     throw new Error("No se pudo conectar con el servidor de SIDCA. Revisá tu conexión.");
@@ -78,7 +79,7 @@ const pedirCena = async (
 
   if (respuesta.ok) return datos;
   if (respuesta.status === 401 && permitirReintento) {
-    return pedirCena(ruta, { usuarioFirebase, method, permitirReintento: false });
+    return pedirCena(ruta, { usuarioFirebase, method, body, permitirReintento: false });
   }
 
   throw errorCena(
@@ -106,6 +107,18 @@ export const registrarTarjetaCena = async (token, opciones = {}) => {
   });
   return {
     resultado: datos?.resultado || "registrada",
+    validacion: datos?.validacion || null,
+  };
+};
+
+export const registrarTarjetasCenaManual = async (anio, reservaId, tarjetaIds, opciones = {}) => {
+  const datos = await pedirCena(
+    `/reserva/${encodeURIComponent(anio)}/${encodeURIComponent(reservaId)}/registrar-manual`,
+    { ...opciones, method: "POST", body: { tarjetaIds } }
+  );
+  return {
+    resultado: datos?.resultado || "registradas",
+    cantidad: Number(datos?.cantidad || tarjetaIds.length),
     validacion: datos?.validacion || null,
   };
 };

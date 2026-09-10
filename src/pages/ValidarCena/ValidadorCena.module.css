@@ -27,6 +27,19 @@
 .verificando { display: flex; align-items: center; justify-content: center; gap: 8px; color: #0a646c; font-weight: 800; }
 .resultado { display: grid; gap: 16px; margin-top: 18px; }
 .siguiente { justify-self: start; color: #1d3a55; border-color: #aebdca; background: #f7fafc; }
+.registrarManual { min-height: 52px; padding: 0 16px; border: 1px solid #0a646c; border-radius: 6px; color: #fff; background: #0a646c; font: inherit; font-weight: 800; cursor: pointer; }
+.registrarManual:disabled { opacity: .62; cursor: wait; }
+.dialogoManual { width: min(100% - 24px, 480px); }
+.dialogoManual p { margin: 0 0 12px; color: #40566c; line-height: 1.45; }
+.resumenDialogo { padding: 12px; border: 1px solid #dbe3eb; border-radius: 6px; background: #f7fafc; }
+.resumenDialogo strong { color: #173651; }
+.listaDialogo { display: grid; gap: 6px; margin: 0 0 14px; padding-left: 20px; color: #173651; }
+.dialogoManual small { color: #52647a; }
+.dialogoAcciones { display: flex; justify-content: flex-end; gap: 8px; }
+.dialogoAcciones button { min-height: 44px; padding: 0 14px; border-radius: 6px; font: inherit; font-weight: 800; cursor: pointer; }
+.dialogoCancelar { border: 1px solid #aebdca; color: #385166; background: #fff; }
+.dialogoConfirmar { border: 1px solid #0a646c; color: #fff; background: #0a646c; }
+.dialogoAcciones button:disabled { opacity: .62; cursor: wait; }
 @media (min-width: 600px) { .buscarDni { grid-template-columns: 92px minmax(0, 1fr) auto; align-items: end; } .buscarDni button { grid-column: auto; } }
-@media (max-width: 599px) { .gcCenaResultado button, .siguiente, .accionQr button { width: 100%; } }
+@media (max-width: 599px) { .gcCenaResultado button, .siguiente, .accionQr button, .registrarManual { width: 100%; } .dialogoAcciones { flex-direction: column-reverse; } .dialogoAcciones button { width: 100%; } }
 @media (max-width: 420px) { .pagina { padding: 16px 10px 32px; } .panel { padding: 18px 14px; } .encabezado { display: block; } .encabezado > span { display: inline-block; margin-top: 12px; } .selectorVistas button { padding: 0 6px; font-size: .84rem; } .accionQr { padding: 26px 14px; } }

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Redirect, useHistory, useParams } from "react-router-dom";
+import { Dialog } from "primereact/dialog";
 
 import ValidatorHeader from "../../components/Layout/Header/ValidatorHeader/ValidatorHeader";
 import useSesionValidador from "../ValidarCertificado/components/useSesionValidador";
@@ -10,6 +11,7 @@ import {
   descartarSesionValidadorVencida,
   registrarActividadValidador,
   registrarTarjetaCena,
+  registrarTarjetasCenaManual,
   sesionValidadorExpirada,
 } from "../../services/cenaValidacionService";
 import ScannerCenaQR from "./components/ScannerCenaQR";
@@ -42,6 +44,8 @@ const ValidadorCena = () => {
   const [anio, setAnio] = useState(anioActual);
   const [consultando, setConsultando] = useState(false);
   const [registrando, setRegistrando] = useState(false);
+  const [tarjetasSeleccionadas, setTarjetasSeleccionadas] = useState([]);
+  const [dialogoManualAbierto, setDialogoManualAbierto] = useState(false);
   const [error, setError] = useState("");
   const lecturaBloqueada = useRef(false);
   const consultaBloqueada = useRef(false);
@@ -84,6 +88,7 @@ const ValidadorCena = () => {
     setError("");
     setValidacion(null);
     setResultadoRegistro("");
+    setTarjetasSeleccionadas([]);
     try {
       const resultado = await consultarTarjetaCenaQr(token, { usuarioFirebase: usuario });
       setTokenConsultado(token);
@@ -120,6 +125,7 @@ const ValidadorCena = () => {
     setError("");
     setValidacion(null);
     setResultadoRegistro("");
+    setTarjetasSeleccionadas([]);
     setTokenConsultado(token);
     history.push(`/validar-cena/${encodeURIComponent(token)}`);
   }, [history]);
@@ -133,6 +139,7 @@ const ValidadorCena = () => {
     setValidacion(null);
     setResultadoRegistro("");
     setTokenConsultado("");
+    setTarjetasSeleccionadas([]);
     history.replace("/validar-cena");
   };
 
@@ -176,12 +183,56 @@ const ValidadorCena = () => {
     }
   };
 
+  const tarjetasPendientes = (validacion?.tarjetas || []).filter((tarjeta) => (
+    tarjeta.anulada !== true && tarjeta.reemplazada !== true && tarjeta.validada !== true && tarjeta.estado !== "validada"
+  ));
+
+  const cambiarSeleccionTarjeta = (tarjetaId) => {
+    if (tarjetaId === "__todas__") {
+      setTarjetasSeleccionadas((actuales) => (
+        tarjetasPendientes.every((tarjeta) => actuales.includes(tarjeta.id))
+          ? []
+          : tarjetasPendientes.map((tarjeta) => tarjeta.id)
+      ));
+      return;
+    }
+    setTarjetasSeleccionadas((actuales) => actuales.includes(tarjetaId)
+      ? actuales.filter((id) => id !== tarjetaId)
+      : [...actuales, tarjetaId]);
+  };
+
+  const registrarManual = async () => {
+    if (!sesion || registrando || !validacion?.reserva?.id || !tarjetasSeleccionadas.length) return;
+    setRegistrando(true);
+    setError("");
+    try {
+      const respuesta = await registrarTarjetasCenaManual(
+        validacion.reserva.anio || anio,
+        validacion.reserva.id,
+        tarjetasSeleccionadas,
+        { usuarioFirebase: sesion }
+      );
+      setValidacion(respuesta.validacion || validacion);
+      setTarjetasSeleccionadas([]);
+      setDialogoManualAbierto(false);
+      vibrar([55]);
+      if (origen === "validador") registrarActividadValidador();
+    } catch (fallo) {
+      vibrar([55, 35, 55]);
+      if (!(await manejarErrorSesion(fallo, origen))) setError(fallo?.message || "No se pudo registrar el ingreso manual.");
+    } finally {
+      setRegistrando(false);
+    }
+  };
+
   const escanearSiguiente = () => {
     liberarLectura();
     setVista("qr");
     setValidacion(null);
     setResultadoRegistro("");
     setTokenConsultado("");
+    setTarjetasSeleccionadas([]);
+    setDialogoManualAbierto(false);
     setError("");
     history.replace("/validar-cena");
     setScannerAbierto(true);
@@ -192,6 +243,7 @@ const ValidadorCena = () => {
     setValidacion(null);
     setResultadoRegistro("");
     setTokenConsultado("");
+    setTarjetasSeleccionadas([]);
     setError("");
     history.replace("/validar-cena");
   };
@@ -259,12 +311,43 @@ const ValidadorCena = () => {
               {error && <p className={styles.error} role="alert"><i className="pi pi-times-circle" aria-hidden="true" /> {error}</p>}
               {validacion && <div className={styles.resultado}>
                 <ReservaCenaValidador reserva={validacion.reserva} resumen={validacion.resumen} />
-                <TarjetasReservaValidador tarjetas={validacion.tarjetas} tarjetasHistoricas={validacion.tarjetasHistoricas} tarjetaSeleccionada={validacion.tarjeta} />
+                <TarjetasReservaValidador
+                  tarjetas={validacion.tarjetas}
+                  tarjetasHistoricas={validacion.tarjetasHistoricas}
+                  tarjetaSeleccionada={validacion.tarjeta}
+                  modoSeleccion
+                  seleccionadas={tarjetasSeleccionadas}
+                  onCambiarSeleccion={cambiarSeleccionTarjeta}
+                />
+                {tarjetasPendientes.length > 0 && <button
+                  type="button"
+                  className={styles.registrarManual}
+                  disabled={!tarjetasSeleccionadas.length || registrando}
+                  onClick={() => setDialogoManualAbierto(true)}
+                >
+                  <i className={registrando ? "pi pi-spin pi-spinner" : "pi pi-check-circle"} aria-hidden="true" /> {registrando ? "Registrando ingresos..." : `Registrar ingreso${tarjetasSeleccionadas.length > 1 ? ` (${tarjetasSeleccionadas.length})` : ""}`}
+                </button>}
                 <button type="button" className={styles.siguiente} onClick={nuevaConsultaDni}>Nueva consulta</button>
               </div>}
             </section>
           )}
           <ScannerCenaQR abierto={scannerAbierto} onCodigoValido={escanear} onCancelar={cancelarScanner} />
+          <Dialog
+            visible={dialogoManualAbierto}
+            onHide={() => !registrando && setDialogoManualAbierto(false)}
+            header="Registrar ingreso manual"
+            modal
+            className={styles.dialogoManual}
+            footer={<div className={styles.dialogoAcciones}>
+              <button type="button" className={styles.dialogoCancelar} onClick={() => setDialogoManualAbierto(false)} disabled={registrando}>Cancelar</button>
+              <button type="button" className={styles.dialogoConfirmar} onClick={registrarManual} disabled={registrando || !tarjetasSeleccionadas.length}><i className={registrando ? "pi pi-spin pi-spinner" : "pi pi-check"} aria-hidden="true" /> Confirmar ingreso</button>
+            </div>}
+          >
+            <p>Se registrará el ingreso de <strong>{tarjetasSeleccionadas.length} tarjeta{tarjetasSeleccionadas.length === 1 ? "" : "s"}</strong> para:</p>
+            <p className={styles.resumenDialogo}><strong>{validacion?.reserva?.afiliado?.nombre || validacion?.reserva?.afiliado?.apellidoNombre || "La reserva consultada"}</strong><br />DNI {validacion?.reserva?.afiliado?.dni || dni}</p>
+            <ul className={styles.listaDialogo}>{tarjetasPendientes.filter((tarjeta) => tarjetasSeleccionadas.includes(tarjeta.id)).map((tarjeta) => <li key={tarjeta.id}>{tarjeta.tipo === "titular" ? "TITULAR" : `ACOMPAÑANTE ${tarjeta.numeroAcompanante || ""}`}</li>)}</ul>
+            <small>La operación quedará registrada con tu usuario y la fecha actual.</small>
+          </Dialog>
         </section>
       </main>
     </>
