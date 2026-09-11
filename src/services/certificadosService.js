@@ -145,6 +145,7 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
     // Determina la plantilla institucional. Se envía el valor semántico, no
     // el nombre del PNG: el asset es un detalle del frontend.
     institucionCertificado,
+    descargaAppHabilitada: datos?.descargaAppHabilitada !== false,
 
     // Autoridades en TEXTO, hasta cuatro renglones. Nada de imagenUrl,
     // imagenPublicId, proveedor ni plantillas: el modelo de firmas con imagen
@@ -265,6 +266,17 @@ const obtenerFirmaMinisterioConCache = (clave, url, token, mensaje) => {
 
   firmasMinisterioEnMemoria.set(clave, solicitud);
   return solicitud;
+};
+
+export const actualizarDescargaAppCertificado = async (cursoId, habilitada) => {
+  const datos = await pedir(
+    `/admin/configuracion/${encodeURIComponent(cursoId)}/descarga-app`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ habilitada: habilitada === true }),
+    }
+  );
+  return datos?.descargaAppHabilitada !== false;
 };
 
 const versionarFirmaUrl = (url, imagenVersion) => {

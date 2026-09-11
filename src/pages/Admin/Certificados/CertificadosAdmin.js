@@ -76,6 +76,7 @@ const FORM_VACIO = {
   dias: "",
   fecha: "",
   modalidad: "",
+  descargaAppHabilitada: true,
   ...DATOS_MINISTERIO_VACIOS,
 };
 
@@ -134,6 +135,7 @@ const CertificadosAdmin = () => {
             dias: existente.dias || "",
             fecha: existente.fecha || "",
             modalidad: existente.modalidad || "",
+            descargaAppHabilitada: existente.descargaAppHabilitada !== false,
             tipoActividad: existente.tipoActividad || "",
             fechaInicio: existente.fechaInicio || "",
             fechaFin: existente.fechaFin || "",

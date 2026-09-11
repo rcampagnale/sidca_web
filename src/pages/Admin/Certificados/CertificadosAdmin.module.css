@@ -265,6 +265,23 @@
   grid-column: 1 / -1;
 }
 
+.opcionDescarga {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.opcionDescarga input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #005cfe;
+}
+
 /* ── Selector de curso ── */
 .selectorCurso {
   display: flex;

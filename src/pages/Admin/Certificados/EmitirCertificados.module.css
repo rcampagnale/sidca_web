@@ -352,6 +352,84 @@
   line-height: 1.35;
 }
 
+.descargaAppPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #dbe3eb;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.descargaAppTexto {
+  min-width: 0;
+}
+
+.descargaAppTexto h3 {
+  margin: 0;
+  color: #173651;
+  font-size: .95rem;
+}
+
+.descargaAppTexto p {
+  margin: 3px 0 2px;
+  color: #52647a;
+  font-size: .84rem;
+  line-height: 1.35;
+}
+
+.descargaAppTexto small {
+  color: #64748b;
+  font-size: .76rem;
+}
+
+.descargaAppSwitch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 50px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.descargaAppSwitch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .25);
+  transition: transform .15s ease;
+}
+
+.descargaAppSwitchActivo {
+  border-color: #0a646c;
+  background: #0a646c;
+}
+
+.descargaAppSwitchActivo span {
+  transform: translateX(22px);
+}
+
+.descargaAppSwitch:focus-visible {
+  outline: 3px solid #fcd34d;
+  outline-offset: 2px;
+}
+
+.descargaAppSwitch:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
 @media (max-width: 520px) {
   .operationProgressHeader {
     align-items: flex-start;
@@ -361,6 +439,15 @@
 
   .operationProgressHeader strong {
     text-align: left;
+  }
+
+  .descargaAppPanel {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .descargaAppTexto p {
+    font-size: .8rem;
   }
 }
 

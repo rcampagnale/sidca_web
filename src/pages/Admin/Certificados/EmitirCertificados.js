@@ -40,6 +40,7 @@ import {
   excluirUsuarioEmision,
   obtenerAprobadosCurso,
   obtenerConfiguracionCertificado,
+  actualizarDescargaAppCertificado,
   obtenerConfiguracionesCertificado,
   obtenerEmisionVigenteCertificado,
   iniciarPdfMasivo,
@@ -350,6 +351,7 @@ const EmitirCertificados = ({ notificar }) => {
   const [curso, setCurso] = useState(null);
   const [modalEmitirVisible, setModalEmitirVisible] = useState(false);
   const [configuracion, setConfiguracion] = useState(null);
+  const [guardandoDescargaApp, setGuardandoDescargaApp] = useState(false);
   const [sinConfiguracion, setSinConfiguracion] = useState(false);
 
   const [resumen, setResumen] = useState(RESUMEN_VACIO);
@@ -436,6 +438,7 @@ const EmitirCertificados = ({ notificar }) => {
     emisionPreview
       ? emisionPreview.certificado
       : configuracion;
+  const descargaAppHabilitada = configuracion?.descargaAppHabilitada !== false;
   const esMinisterioPreview =
     certificadoPreview?.institucionCertificado === "ministerio";
   const validacionMinisterioPreview = useMemo(
@@ -507,6 +510,24 @@ const EmitirCertificados = ({ notificar }) => {
       return siguiente;
     });
   }, []);
+
+  const cambiarDescargaApp = useCallback(async () => {
+    if (!curso?.id || !configuracion || guardandoDescargaApp) return;
+    const anterior = configuracion.descargaAppHabilitada !== false;
+    const siguiente = !anterior;
+    setConfiguracion((previa) => ({ ...previa, descargaAppHabilitada: siguiente }));
+    setGuardandoDescargaApp(true);
+    try {
+      const valorFinal = await actualizarDescargaAppCertificado(curso.id, siguiente);
+      setConfiguracion((previa) => ({ ...previa, descargaAppHabilitada: valorFinal }));
+      notificar?.("success", "Descarga en APP actualizada", valorFinal ? "La descarga quedó habilitada." : "La descarga quedó deshabilitada.");
+    } catch (error) {
+      setConfiguracion((previa) => ({ ...previa, descargaAppHabilitada: anterior }));
+      notificar?.("error", "No se pudo guardar la descarga en APP", error?.message || "El valor anterior fue restaurado.");
+    } finally {
+      setGuardandoDescargaApp(false);
+    }
+  }, [configuracion, curso?.id, guardandoDescargaApp, notificar]);
 
   /**
    * ¿Este participante tiene certificado emitido?
@@ -2304,6 +2325,26 @@ const EmitirCertificados = ({ notificar }) => {
             </section>
           )}
           </>
+        )}
+        {!cargando && !sinConfiguracion && configuracion && (
+          <section className={emitir.descargaAppPanel} aria-label="Descarga en APP">
+            <div className={emitir.descargaAppTexto}>
+              <h3>Descarga en APP</h3>
+              <p>Permitir que los docentes descarguen el PDF desde la APP</p>
+              <small>Estado: {descargaAppHabilitada ? "Habilitada" : "Deshabilitada"}</small>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={descargaAppHabilitada}
+              aria-label="Permitir descarga desde APP"
+              className={`${emitir.descargaAppSwitch} ${descargaAppHabilitada ? emitir.descargaAppSwitchActivo : ""}`}
+              onClick={cambiarDescargaApp}
+              disabled={guardandoDescargaApp || cargando}
+            >
+              <span aria-hidden="true" />
+            </button>
+          </section>
         )}
       </Dialog>
 
