@@ -104,6 +104,111 @@ const valorVerdadero = (value) =>
     String(value ?? "").trim().toLowerCase()
   );
 
+const WHATSAPP_CASA_DOCENTE = "5493834250139";
+
+const formatearFechaWhatsapp = (fecha) => {
+  const valor = String(fecha || "");
+  const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : valor;
+};
+
+const formatearDniWhatsapp = (dni) => {
+  const valor = String(dni || "").trim();
+  const digitos = valor.replace(/\D/g, "");
+  return digitos ? digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : valor;
+};
+
+const crearUrlWhatsappCasaDocente = (mensaje) =>
+  `https://wa.me/${WHATSAPP_CASA_DOCENTE}?text=${encodeURIComponent(mensaje)}`;
+
+const abrirVentanaWhatsappPendiente = () =>
+  typeof window !== "undefined" ? window.open("", "_blank") : null;
+
+const redirigirVentanaWhatsapp = (ventana, mensaje) => {
+  const url = crearUrlWhatsappCasaDocente(mensaje);
+  if (ventana && !ventana.closed) {
+    ventana.location.href = url;
+    return;
+  }
+  window.location.assign(url);
+};
+
+const cerrarVentanaWhatsappPendiente = (ventana) => {
+  if (ventana && !ventana.closed) ventana.close();
+};
+
+const construirMensajeNuevaReserva = ({
+  tipoNombre,
+  modoTexto,
+  fechaIngreso,
+  fechaEgreso,
+  noches,
+  formNombre,
+  formDni,
+  formCelular,
+  cantidadPersonas,
+  cantNoAfiliados,
+  precioAfiliado,
+  precioNoAfiliado,
+  precioFinal,
+  precioTotalEstadia,
+  formComentario,
+}) => {
+  const comentario = formComentario ? `\nComentario: ${formComentario}` : "";
+  return (
+    "Hola, quiero solicitar una reserva en la Casa del Docente.\n\n" +
+    "*SOLICITUD DE RESERVA*\n\n" +
+    `Afiliado: ${formNombre}\n` +
+    `DNI: ${formatearDniWhatsapp(formDni)}\n` +
+    `Celular: ${formCelular}\n` +
+    `Habitación: ${tipoNombre}\n` +
+    `Ingreso: ${formatearFechaWhatsapp(fechaIngreso)}\n` +
+    `Egreso: ${formatearFechaWhatsapp(fechaEgreso)}\n` +
+    `Noches: ${noches}\n` +
+    `Modalidad: ${modoTexto}\n` +
+    `Personas: ${cantidadPersonas}\n` +
+    `No afiliados: ${cantNoAfiliados}\n` +
+    `Precio afiliado por noche: $${precioAfiliado || 0}\n` +
+    `Precio no afiliado por noche: $${precioNoAfiliado || 0}\n` +
+    `Precio final por noche: $${precioFinal || 0}\n` +
+    `Total estimado: $${precioTotalEstadia || precioFinal || 0}` +
+    comentario +
+    "\n\nLa reserva fue registrada desde la web de SIDCA y queda pendiente de confirmación administrativa."
+  );
+};
+
+const construirMensajeCancelacion = (reserva, tipoNombre, motivo) =>
+  "Hola, solicito la cancelación de una reserva en la Casa del Docente.\n\n" +
+  "*SOLICITUD DE CANCELACIÓN*\n\n" +
+  `Afiliado: ${reserva.apellidoNombre || ""}\n` +
+  `DNI: ${formatearDniWhatsapp(reserva.dni)}\n` +
+  `Habitación: ${tipoNombre}\n` +
+  `Ingreso: ${formatearFechaWhatsapp(reserva.fechaIngreso)}\n` +
+  `Egreso: ${formatearFechaWhatsapp(reserva.fechaEgreso)}\n` +
+  `Motivo: ${motivo}\n\n` +
+  "La solicitud fue registrada en el sistema y queda pendiente de revisión administrativa.";
+
+const construirMensajeModificacionFechas = ({
+  reserva,
+  tipoNombre,
+  fechaIngresoNueva,
+  fechaEgresoNueva,
+  noches,
+}) =>
+  "Hola, solicito modificar las fechas de una reserva en la Casa del Docente.\n\n" +
+  "*SOLICITUD DE MODIFICACIÓN DE FECHAS*\n\n" +
+  `Afiliado: ${reserva.apellidoNombre || ""}\n` +
+  `DNI: ${formatearDniWhatsapp(reserva.dni)}\n` +
+  `Habitación: ${tipoNombre}\n\n` +
+  "*Fechas anteriores*\n" +
+  `Ingreso: ${formatearFechaWhatsapp(reserva.fechaIngreso)}\n` +
+  `Egreso: ${formatearFechaWhatsapp(reserva.fechaEgreso)}\n\n` +
+  "*Nuevas fechas*\n" +
+  `Ingreso: ${formatearFechaWhatsapp(fechaIngresoNueva)}\n` +
+  `Egreso: ${formatearFechaWhatsapp(fechaEgresoNueva)}\n` +
+  `Noches: ${noches}\n\n` +
+  "La modificación fue registrada en el sistema y queda pendiente de revisión administrativa.";
+
 const ReservaCasaDocenteModales = ({
   isReservaModalOpen,
   onCloseReserva,
@@ -184,6 +289,7 @@ const ReservaCasaDocenteModales = ({
   const [consultaResultados, setConsultaResultados] = useState([]);
   const [cancelandoReserva, setCancelandoReserva] = useState(null);
   const [editandoReserva, setEditandoReserva] = useState(null);
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   const [editFechas, setEditFechas] = useState({ ingreso: "", egreso: "" });
   const [reservaCancelacion, setReservaCancelacion] = useState(null);
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
@@ -625,8 +731,10 @@ const ReservaCasaDocenteModales = ({
       return;
     }
 
+    let ventanaWhatsapp = null;
     try {
       setSendingReserva(true);
+      ventanaWhatsapp = abrirVentanaWhatsappPendiente();
 
       const cantidadPersonas = Math.max(
         Number(cantidadPersonasSeleccionada) || 1,
@@ -686,58 +794,31 @@ const ReservaCasaDocenteModales = ({
         onCloseReserva?.();
       }, 2500);
 
-      // 📲 Abrir WhatsApp con mensaje
-      try {
-        // 54 (AR) 9 + 3834 25-0139
-        const phoneWithCountry = "5493834250139";
-        const tipoNombre =
-          getTipoById(tipoSeleccionado)?.nombre || "habitación";
-
-        const modoTexto =
-          modoReserva === "compartida"
-            ? `Compartida (${labelSexo(sexoSeleccionado)})`
-            : "Completa";
-
-        const comentarioExtra = formComentario.trim()
-          ? `\n• Comentario: ${formComentario.trim()}`
-          : "";
-
-        const preciosExtra =
-          precioAfiliado || precioNoAfiliado || precioFinal
-            ? `\n\n💵 Detalle de precios:\n` +
-              `• Precio afiliado por noche: $${precioAfiliado || 0}\n` +
-              (!esHabitacionDeUnaCama(habitacionAsignable)
-                ? `• Precio no afiliado por noche: $${precioNoAfiliado || 0}\n` +
-                  `• Cant. no afiliados: ${cantNoAfiliados}\n`
-                : "") +
-              `• Precio final por noche (${1 + cantNoAfiliados} persona/s): $${precioFinal || 0}\n` +
-              `• Noches: ${noches}\n` +
-              `• Precio total estimado estadía: $${precioTotalEstadia || 0}`
-            : "";
-
-        const mensajeWhatsapp =
-          `🏠 Solicitud de reserva - Casa del Docente SIDCA\n\n` +
-          `Su reserva se encuentra en estado "pedido". ` +
-          `Aguarde por su confirmación.\n\n` +
-          `📌 Datos de la reserva:\n` +
-          `• Habitación: ${tipoNombre}\n` +
-          `• Modalidad: ${modoTexto}\n` +
-          `• Fechas: ${fechaIngreso} al ${fechaEgreso}\n` +
-          `• Apellido y nombre: ${formNombre.trim()}\n` +
-          `• DNI: ${formDni.trim()}\n` +
-          `• Celular de contacto: ${formCelular.trim()}` +
-          comentarioExtra +
-          preciosExtra;
-
-        const url = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(
-          mensajeWhatsapp
-        )}`;
-
-        window.open(url, "_blank");
-      } catch (err) {
-        console.error("[ReservaCasaDocente] No se pudo abrir WhatsApp:", err);
-      }
+      const tipoNombre = getTipoById(tipoSeleccionado)?.nombre || "habitación";
+      const modoTexto =
+        modoReserva === "compartida"
+          ? `Compartida (${labelSexo(sexoSeleccionado)})`
+          : "Completa";
+      const mensajeWhatsapp = construirMensajeNuevaReserva({
+        tipoNombre,
+        modoTexto,
+        fechaIngreso,
+        fechaEgreso,
+        noches,
+        formNombre: formNombre.trim(),
+        formDni: formDni.trim(),
+        formCelular: formCelular.trim(),
+        cantidadPersonas,
+        cantNoAfiliados,
+        precioAfiliado,
+        precioNoAfiliado,
+        precioFinal,
+        precioTotalEstadia,
+        formComentario: formComentario.trim(),
+      });
+      redirigirVentanaWhatsapp(ventanaWhatsapp, mensajeWhatsapp);
     } catch (error) {
+      cerrarVentanaWhatsappPendiente(ventanaWhatsapp);
       console.error(
         "[ReservaCasaDocente] Error al guardar la reserva:",
         error
@@ -815,7 +896,9 @@ const ReservaCasaDocenteModales = ({
     if (!reserva) return;
     if (!motivo.trim()) return;
     setCancelandoReserva(reserva.id);
+    let ventanaWhatsapp = null;
     try {
+      ventanaWhatsapp = abrirVentanaWhatsappPendiente();
       await updateDoc(doc(dbReservas, "reservasCasaDocente", reserva.id), {
         estado: "cancelacion_solicitada",
         motivoCancelacion: motivo.trim(),
@@ -828,13 +911,19 @@ const ReservaCasaDocenteModales = ({
             : item
         )
       );
+      setReservaCancelacion(null);
+      setMotivoCancelacion("");
+      const tipoNombre = getTipoById(reserva.tipo)?.nombre || reserva.tipo || "habitación";
+      redirigirVentanaWhatsapp(
+        ventanaWhatsapp,
+        construirMensajeCancelacion(reserva, tipoNombre, motivo.trim())
+      );
     } catch (error) {
+      cerrarVentanaWhatsappPendiente(ventanaWhatsapp);
       console.error("[ReservaCasaDocente] Error solicitando cancelación:", error);
       window.alert("No se pudo solicitar la cancelación. Intentá nuevamente.");
     } finally {
       setCancelandoReserva(null);
-      setReservaCancelacion(null);
-      setMotivoCancelacion("");
     }
   };
 
@@ -844,26 +933,51 @@ const ReservaCasaDocenteModales = ({
       return;
     }
     const noches = calcularNoches(editFechas.ingreso, editFechas.egreso);
+    const fechaIngresoAnterior = reserva.fechaIngreso;
+    const fechaEgresoAnterior = reserva.fechaEgreso;
+    const fechaIngresoNueva = editFechas.ingreso;
+    const fechaEgresoNueva = editFechas.egreso;
     const estado = String(reserva.estado || "").toLowerCase();
     const requiereRevision = !["pedido", "pendiente"].includes(estado);
+    let ventanaWhatsapp = null;
+    setGuardandoEdicion(true);
     try {
+      ventanaWhatsapp = abrirVentanaWhatsappPendiente();
       await updateDoc(doc(dbReservas, "reservasCasaDocente", reserva.id), {
-        fechaIngresoAnterior: reserva.fechaIngreso,
-        fechaEgresoAnterior: reserva.fechaEgreso,
+        fechaIngresoAnterior,
+        fechaEgresoAnterior,
         estadoAnteriorModificacion: reserva.estado || "pendiente",
-        fechaIngreso: editFechas.ingreso,
-        fechaEgreso: editFechas.egreso,
+        fechaIngreso: fechaIngresoNueva,
+        fechaEgreso: fechaEgresoNueva,
         noches,
         ...(requiereRevision ? { estado: "modificacion_solicitada" } : {}),
         fechaSolicitudModificacion: new Date().toISOString(),
       });
       setConsultaResultados((prev) => prev.map((item) => item.id === reserva.id
-        ? { ...item, fechaIngreso: editFechas.ingreso, fechaEgreso: editFechas.egreso, noches, ...(requiereRevision ? { estado: "modificacion_solicitada" } : {}) }
+        ? { ...item, fechaIngreso: fechaIngresoNueva, fechaEgreso: fechaEgresoNueva, noches, ...(requiereRevision ? { estado: "modificacion_solicitada" } : {}) }
         : item));
       setEditandoReserva(null);
+      const tipoNombre = getTipoById(reserva.tipo)?.nombre || reserva.tipo || "habitación";
+      redirigirVentanaWhatsapp(
+        ventanaWhatsapp,
+        construirMensajeModificacionFechas({
+          reserva: {
+            ...reserva,
+            fechaIngreso: fechaIngresoAnterior,
+            fechaEgreso: fechaEgresoAnterior,
+          },
+          tipoNombre,
+          fechaIngresoNueva,
+          fechaEgresoNueva,
+          noches,
+        })
+      );
     } catch (error) {
+      cerrarVentanaWhatsappPendiente(ventanaWhatsapp);
       console.error("[ReservaCasaDocente] Error editando reserva:", error);
       window.alert("No se pudo actualizar la reserva.");
+    } finally {
+      setGuardandoEdicion(false);
     }
   };
 
@@ -1477,7 +1591,9 @@ const ReservaCasaDocenteModales = ({
                           <div className={styles.reservaAutofillRow}>
                             <input type="date" value={editFechas.ingreso} onChange={(e) => setEditFechas((v) => ({ ...v, ingreso: e.target.value }))} />
                             <input type="date" value={editFechas.egreso} onChange={(e) => setEditFechas((v) => ({ ...v, egreso: e.target.value }))} />
-                            <button type="button" className={styles.reservaAutofillButton} onClick={() => handleGuardarEdicion(reserva)}>Guardar</button>
+                            <button type="button" className={styles.reservaAutofillButton} onClick={() => handleGuardarEdicion(reserva)} disabled={guardandoEdicion}>
+                              {guardandoEdicion ? "Guardando..." : "Guardar"}
+                            </button>
                             <button type="button" className={styles.reservaSecondaryButton} onClick={() => setEditandoReserva(null)}>Cancelar</button>
                           </div>
                         )}

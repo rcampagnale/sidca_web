@@ -601,13 +601,22 @@ const ReservaCasaDocenteAdmin = () => {
 
   // 👉 helpers para WhatsApp
   const normalizarCelular = (celularRaw) => {
-    const soloNumeros = String(celularRaw || "").replace(/[^0-9]/g, "");
-    if (!soloNumeros || soloNumeros.length < 8) return null;
+    let soloNumeros = String(celularRaw || "").replace(/\D/g, "");
+    if (!soloNumeros) return null;
 
-    if (!soloNumeros.startsWith("54")) {
-      return "54" + soloNumeros;
+    if (soloNumeros.startsWith("549")) {
+      return soloNumeros.length >= 11 ? soloNumeros : null;
     }
-    return soloNumeros;
+
+    if (soloNumeros.startsWith("54")) {
+      soloNumeros = soloNumeros.slice(2);
+      if (soloNumeros.startsWith("9")) soloNumeros = soloNumeros.slice(1);
+    } else {
+      soloNumeros = soloNumeros.replace(/^0+/, "");
+      if (soloNumeros.startsWith("9")) soloNumeros = soloNumeros.slice(1);
+    }
+
+    return soloNumeros.length >= 8 ? `549${soloNumeros}` : null;
   };
 
   const getNombreHabitacion = (reserva) => {
@@ -621,7 +630,12 @@ const ReservaCasaDocenteAdmin = () => {
   const EMOJI_CLOCK = "⏰";
   const EMOJI_WARNING = "⚠️";
 
-  const buildWhatsappMessage = (reserva, nuevoEstado, notasAdmin) => {
+  const buildWhatsappMessage = (
+    reserva,
+    nuevoEstado,
+    notasAdmin,
+    { esAprobacionModificacion = false } = {}
+  ) => {
     const estadoLabel = {
       confirmada: "CONFIRMADA",
       rechazada: "RECHAZADA",
@@ -639,16 +653,27 @@ const ReservaCasaDocenteAdmin = () => {
     )} al ${formatearFecha(reserva.fechaEgreso)}`;
     const personas = reserva.cantidadPersonas || 1;
 
-    // Encabezado + detalles
-    let mensaje =
-      `${EMOJI_HOME} Hola ${nombre}, desde SIDCA te informamos que tu reserva en la Casa del Docente fue *${estadoLabel}*.\n\n` +
-      `${EMOJI_DETAILS} Detalles de la reserva:\n` +
-      `* Habitación: ${habitacion}\n` +
-      `* Fechas: ${fechas}\n` +
-      `* Personas: ${personas}\n`;
+    let mensaje;
+    if (esAprobacionModificacion) {
+      mensaje =
+        `${EMOJI_HOME} Hola ${nombre}, desde SIDCA te informamos que tu solicitud de modificación de fechas para la Casa del Docente fue *APROBADA*.\n\n` +
+        `${EMOJI_DETAILS} Datos actualizados de la reserva:\n` +
+        `* Habitación: ${habitacion}\n` +
+        `* Fechas: ${fechas}\n` +
+        `* Personas: ${personas}\n`;
+    } else {
+      mensaje =
+        `${EMOJI_HOME} Hola ${nombre}, desde SIDCA te informamos que tu reserva en la Casa del Docente fue *${estadoLabel}*.\n\n` +
+        `${EMOJI_DETAILS} Detalles de la reserva:\n` +
+        `* Habitación: ${habitacion}\n` +
+        `* Fechas: ${fechas}\n` +
+        `* Personas: ${personas}\n`;
+    }
 
     // Importe + horarios + importante SOLO si está confirmada
-    if (nuevoEstado === "cancelada") {
+    if (esAprobacionModificacion) {
+      mensaje += "\nLa reserva continúa confirmada con las nuevas fechas indicadas.\n";
+    } else if (nuevoEstado === "cancelada") {
       mensaje += "\nLa cancelación de tu reserva fue aprobada y realizada con éxito.\n";
     } else if (nuevoEstado === "modificacion_solicitada") {
       mensaje += "\nLa modificación de fechas quedó registrada y será revisada por la administración.\n";
@@ -660,7 +685,7 @@ const ReservaCasaDocenteAdmin = () => {
       mensaje += "\nLa solicitud de cancelación no fue aprobada. La reserva continúa vigente.\n";
     }
 
-    if (nuevoEstado === "confirmada") {
+    if (nuevoEstado === "confirmada" && !esAprobacionModificacion) {
       const hab = getHabitacionDeReserva(reserva);
       const { precioFinalNoche, noches, totalReserva, gastosVarios, totalGeneral, diasExtra } =
         calcularPreciosReservaAdmin(reserva, hab);
@@ -739,8 +764,26 @@ const ReservaCasaDocenteAdmin = () => {
     const gastosVarios = Math.max(Number(modalGastosVarios) || 0, 0);
     const hab = getHabitacionDeReserva(selectedReserva);
     const { totalReserva } = calcularPreciosReservaAdmin(selectedReserva, hab);
+    const requiereNotificacion =
+      (estadoAnterior !== estadoPersistido || nuevoEstado === "cancelacion_rechazada") &&
+      [
+        "confirmada",
+        "rechazada",
+        "cancelada",
+        "modificacion_solicitada",
+        "modificacion_rechazada",
+        "cancelacion_solicitada",
+        "cancelacion_rechazada",
+      ].includes(nuevoEstado);
+    const celularNormalizado = requiereNotificacion
+      ? normalizarCelular(selectedReserva.celular)
+      : null;
+    let whatsappWindow = null;
 
     try {
+      if (celularNormalizado) {
+        whatsappWindow = window.open("about:blank", "_blank");
+      }
       const reservaRef = doc(
         dbReservas,
         "reservasCasaDocente",
@@ -755,11 +798,8 @@ const ReservaCasaDocenteAdmin = () => {
         totalGeneral: totalReserva + gastosVarios,
       });
 
-      // 🔔 Si cambió el estado a CONFIRMADA o RECHAZADA, disparamos WhatsApp
-      if (
-        (estadoAnterior !== estadoPersistido || nuevoEstado === "cancelacion_rechazada") &&
-        ["confirmada", "rechazada", "cancelada", "modificacion_solicitada", "modificacion_rechazada", "cancelacion_solicitada", "cancelacion_rechazada"].includes(nuevoEstado)
-      ) {
+      // Abre WhatsApp cuando una acción administrativa requiere notificar al afiliado.
+      if (requiereNotificacion) {
         const reservaActualizada = {
           ...selectedReserva,
           estado: estadoPersistido,
@@ -768,25 +808,23 @@ const ReservaCasaDocenteAdmin = () => {
           gastosVarios,
           totalGeneral: totalReserva + gastosVarios,
         };
-        const celularNormalizado = normalizarCelular(reservaActualizada.celular);
 
         if (celularNormalizado) {
           const mensaje = buildWhatsappMessage(
             reservaActualizada,
             nuevoEstado,
-            modalNotas
+            modalNotas,
+            {
+              esAprobacionModificacion:
+                estadoAnterior === "modificacion_solicitada" &&
+                estadoPersistido === "confirmada",
+            }
           );
-
-          try {
-            const url = `https://wa.me/${celularNormalizado}?text=${encodeURIComponent(
-              mensaje
-            )}`;
-            window.open(url, "_blank");
-          } catch (err) {
-            console.error(
-              "[ReservaCasaDocenteAdmin] No se pudo abrir WhatsApp:",
-              err
-            );
+          const url = `https://wa.me/${celularNormalizado}?text=${encodeURIComponent(mensaje)}`;
+          if (whatsappWindow && !whatsappWindow.closed) {
+            whatsappWindow.location.href = url;
+          } else {
+            alert("La reserva se guardó, pero el navegador bloqueó la apertura de WhatsApp.");
           }
         } else {
           console.warn(
@@ -797,6 +835,7 @@ const ReservaCasaDocenteAdmin = () => {
 
       cerrarModal();
     } catch (error) {
+      if (whatsappWindow && !whatsappWindow.closed) whatsappWindow.close();
       console.error(
         "[ReservaCasaDocenteAdmin] Error al actualizar reserva:",
         error
