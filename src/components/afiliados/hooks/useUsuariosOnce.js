@@ -1,5 +1,5 @@
 // src/components/afiliados/hooks/useUsuariosOnce.js
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   collection,
   getDocs,
@@ -20,6 +20,9 @@ import { toRow, norm } from "../utils/shared.js";
 export default function useUsuariosOnce({ orderField = "updatedAt", pageSize = 5000 } = {}) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => setRefreshKey((value) => value + 1), []);
 
   useEffect(() => {
     let alive = true;
@@ -27,7 +30,14 @@ export default function useUsuariosOnce({ orderField = "updatedAt", pageSize = 5
     const mapDocs = (snap) =>
       snap.docs.map((d) => {
         const base = { id: d.id, ...d.data() };
-        const r = { ...toRow(base), origen: "usuarios" };
+        const r = {
+          ...toRow(base),
+          afiliadoActivo:
+            typeof base.afiliadoActivo === "boolean" ? base.afiliadoActivo : true,
+          estadoAfiliacion: base.estadoAfiliacion || "",
+          fechaBajaSindical: base.fechaBajaSindical || "",
+          origen: "usuarios",
+        };
         const haystack = norm(
           `${r.apellido} ${r.nombre} ${String(r.dni || "")} ${r.email || ""} ${r.departamento || ""}`
         );
@@ -91,7 +101,7 @@ export default function useUsuariosOnce({ orderField = "updatedAt", pageSize = 5
     return () => {
       alive = false;
     };
-  }, [orderField, pageSize]);
+  }, [orderField, pageSize, refreshKey]);
 
-  return [rows, loading];
+  return [rows, loading, refresh];
 }

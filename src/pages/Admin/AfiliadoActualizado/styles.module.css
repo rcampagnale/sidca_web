@@ -73,6 +73,43 @@
   min-width: 0;
 }
 
+.reafiliacionesToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #f2d28a;
+  border-radius: 10px;
+  background: #fffbeb;
+}
+
+.reafiliacionesSummary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #475569;
+  font-weight: 600;
+}
+
+.reafiliacionesSummary i { color: #c88719; }
+
+.reafiliacionesBadge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.reafiliacionesBadgeWarning { background: #fbbf24; color: #5b3a00; }
+.reafiliacionesBadgeMuted { background: #e2e8f0; color: #475569; }
+
 /* =========================
    Toolbar (buscador)
    ========================= */
@@ -226,6 +263,106 @@
   background: #ffedd5;
 }
 
+.reafiliacionesDialogContent,
+.reafiliacionDetailContent,
+.reafiliacionRejectContent {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.reafiliacionesDesktopList :global(.p-datatable-table) {
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.reafiliacionesDesktopList :global(.p-datatable .p-datatable-thead > tr > th),
+.reafiliacionesDesktopList :global(.p-datatable .p-datatable-tbody > tr > td) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+  line-height: 1.3;
+  padding: 10px 8px;
+}
+
+.reafiliacionesDesktopList :global(.p-datatable .p-datatable-thead > tr > th) {
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.reafiliacionNameColumn { min-width: 150px; }
+.reafiliacionContact { display: grid; gap: 3px; overflow-wrap: anywhere; }
+.reafiliacionStatus {
+  display: inline-flex;
+  justify-content: center;
+  max-width: 130px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.reafiliacionesMobileList { display: none; }
+
+.reafiliacionMobileCard {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.reafiliacionMobileName { font-weight: 700; color: #1e293b; }
+.reafiliacionMobileDni { color: #475569; font-size: 0.9rem; }
+.reafiliacionMobileFacts { display: grid; gap: 8px; margin: 0; }
+.reafiliacionMobileFacts > div { display: grid; gap: 2px; }
+.reafiliacionMobileFacts dt,
+.reafiliacionMobileFacts dd { margin: 0; }
+.reafiliacionMobileFacts dt { color: #64748b; font-size: 0.78rem; font-weight: 600; }
+.reafiliacionMobileFacts dd { color: #334155; }
+.mobileReviewButton { width: 100%; justify-content: center; }
+.emptyReafiliaciones { padding: 18px 4px; color: #64748b; text-align: center; }
+
+.reafiliacionDetailLayout { display: grid; gap: 16px; }
+.reafiliacionDetailIntro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #f2d28a;
+  border-radius: 10px;
+  background: #fffbeb;
+}
+.reafiliacionDetailPerson { display: grid; gap: 4px; min-width: 0; }
+.reafiliacionDetailPerson strong { color: #1e293b; font-size: 1.05rem; }
+.reafiliacionDetailPerson span { color: #64748b; }
+.reafiliacionSection { display: grid; gap: 10px; }
+.reafiliacionSection h4 { margin: 0; color: #475569; font-size: 0.9rem; font-weight: 700; }
+.reafiliacionFactsGrid,
+.reafiliacionDataGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.reafiliacionFactsGrid > div,
+.reafiliacionDataItem {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.reafiliacionFactsGrid span,
+.reafiliacionDataItem span { color: #64748b; font-size: 0.78rem; font-weight: 600; }
+.reafiliacionFactsGrid strong,
+.reafiliacionDataItem strong { color: #1e293b; font-weight: 500; }
+.breakAnywhere { overflow-wrap: anywhere; }
+.reafiliacionDetailFooter,
+.reafiliacionRejectFooter { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.reafiliacionRejectLabel { display: block; margin-bottom: 8px; color: #334155; }
+.reafiliacionRejectTextarea { width: 100%; min-height: 120px; padding: 10px; resize: vertical; }
+
 @media (max-width: 768px) {
   .mobileFriendlyHeader {
     display: grid;
@@ -241,10 +378,15 @@
 
   .mobileFriendlyActions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.45rem;
     width: 100%;
   }
+
+  .reafiliacionesToolbar { align-items: stretch; flex-direction: column; gap: 10px; }
+  .reafiliacionesToolbar :global(.p-button) { width: 100%; justify-content: center; }
+  .reafiliacionesDesktopList { display: none; }
+  .reafiliacionesMobileList { display: grid; gap: 10px; }
 
   .mobileFriendlyActions :global(.p-tag) {
     justify-content: center;
@@ -279,4 +421,22 @@
   .mobileFriendlyActions :global(.p-button-label) {
     white-space: normal;
   }
+
+  .reafiliacionDetailIntro { align-items: flex-start; flex-direction: column; }
+  .reafiliacionDetailIntro .reafiliacionStatus { max-width: none; }
+  .reafiliacionFactsGrid,
+  .reafiliacionDataGrid { grid-template-columns: 1fr; }
+  .reafiliacionDetailFooter,
+  .reafiliacionRejectFooter { flex-direction: column; }
+  .reafiliacionDetailFooter :global(.p-button),
+  .reafiliacionRejectFooter :global(.p-button) { width: 100%; justify-content: center; }
+  .reafiliacionDetailFooter :global(.p-button-success) { order: -1; }
+}
+
+@media (max-width: 480px) {
+  .reafiliacionesSummary { font-size: 0.92rem; }
+  .reafiliacionMobileCard { padding: 12px; }
+  .reafiliacionesDialogContent,
+  .reafiliacionDetailContent,
+  .reafiliacionRejectContent { padding: 12px; }
 }

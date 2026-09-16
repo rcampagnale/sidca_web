@@ -58,6 +58,10 @@ import {
   writeBatch as fsWriteBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase/firebase-config.js";
+import {
+  aprobarReafiliacion,
+  rechazarReafiliacion,
+} from "../../../services/reafiliacionesService.js";
 
 // ✅ Redux thunks SOLO para update/delete (nuevoAfiliado)
 import {
@@ -99,6 +103,43 @@ const toDniKey = (dniRaw) =>
   String(dniRaw ?? "")
     .replace(/[^\d]/g, "")
     .trim();
+
+const buildDatosHistoricosBaja = ({
+  dni,
+  nombre,
+  apellido,
+  nombreCompleto,
+}) => {
+  const dniKey = toDniKey(dni);
+  const nombreLimpio = String(nombre ?? "").trim();
+  const apellidoLimpio = String(apellido ?? "").trim();
+  const nombreCompletoLimpio = String(nombreCompleto ?? "").trim();
+  const nombreCompletoConstruido = [apellidoLimpio, nombreLimpio]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    dni: dniKey,
+    nombre: nombreLimpio,
+    apellido: apellidoLimpio,
+    nombreCompleto:
+      nombreCompletoConstruido || nombreCompletoLimpio || nombreLimpio || apellidoLimpio,
+  };
+};
+
+const construirPayloadIdentidadBaja = (datos) => ({
+  dni: datos.dni,
+  ...(datos.nombre ? { nombre: datos.nombre } : {}),
+  ...(datos.apellido ? { apellido: datos.apellido } : {}),
+  ...(datos.nombreCompleto ? { nombreCompleto: datos.nombreCompleto } : {}),
+  tieneBajaHistorica: true,
+});
+
+const isAfiliadoBaja = (row) =>
+  row?.afiliadoActivo === false ||
+  String(row?.estadoAfiliacion || "").trim().toLowerCase() === "baja";
+
+const isAfiliadoActivo = (row) => !isAfiliadoBaja(row);
 
 const getDniSearchVariants = (dniRaw) => {
   const limpio = toDniKey(dniRaw);
@@ -307,6 +348,40 @@ const getAdminLabel = () => {
   }
 };
 
+const formatFechaReafiliacion = (value) => {
+  if (!value) return "—";
+  if (typeof value === "string" && /^\d{4}-\d{2}$/.test(value)) {
+    const [year, month] = value.split("-").map(Number);
+    return new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(
+      new Date(year, month - 1, 1)
+    );
+  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Intl.DateTimeFormat("es-AR").format(new Date(year, month - 1, day));
+  }
+
+  const date = typeof value?.toDate === "function" ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+};
+
+const getReafiliacionPresentationData = (item) => {
+  const solicitud = item?.datosSolicitudReafiliacion ?? {};
+  const email = solicitud.email ?? item?.email ?? "";
+  const celular = solicitud.celular ?? item?.celular ?? "";
+  const departamento = solicitud.departamento ?? item?.departamento ?? "";
+
+  return {
+    email: String(email).trim(),
+    celular: String(celular).trim(),
+    departamento: String(departamento).trim(),
+  };
+};
+
 const getDniDigits = (value) => String(value ?? "").replace(/\D/g, "");
 
 const isDniSearch = (value) => /^\d{6,}$/.test(getDniDigits(value));
@@ -328,6 +403,10 @@ const mapUsuarioDocToRow = (d) => {
   const r = {
     ...toRow(base),
     ...getDeviceFields(base),
+    afiliadoActivo:
+      typeof base.afiliadoActivo === "boolean" ? base.afiliadoActivo : true,
+    estadoAfiliacion: base.estadoAfiliacion || "",
+    fechaBajaSindical: base.fechaBajaSindical || "",
     origen: "usuarios",
   };
 
@@ -350,6 +429,10 @@ const mapNuevoDocToRow = (d) => {
   const row = {
     ...toRow(base),
     ...getDeviceFields(base),
+    afiliadoActivo:
+      typeof base.afiliadoActivo === "boolean" ? base.afiliadoActivo : undefined,
+    estadoAfiliacion: base.estadoAfiliacion || "",
+    fechaBajaSindical: base.fechaBajaSindical || "",
     origen: "nuevoAfiliado",
   };
 
@@ -462,6 +545,10 @@ const unifyByDni = (arrNuevo, arrUsuarios) => {
             : typeof ur.activo === "boolean"
             ? ur.activo
             : true,
+        afiliadoActivo:
+          typeof ur.afiliadoActivo === "boolean" ? ur.afiliadoActivo : true,
+        estadoAfiliacion: ur.estadoAfiliacion || "",
+        fechaBajaSindical: ur.fechaBajaSindical || "",
         fecha: pick(nr.fecha, ur.fecha),
         hora: pick(nr.hora, ur.hora),
         cod: pick(nr.cod, ur.cod),
@@ -818,7 +905,7 @@ export default function AfiliadoActualizado() {
   const [loadingNuevo, setLoadingNuevo] = useState(true);
   const [rowsNuevo, setRowsNuevo] = useState([]);
 
-  const [rowsUsuarios, loadingUsuarios] = useUsuariosOnce({
+  const [rowsUsuarios, loadingUsuarios, refreshUsuarios] = useUsuariosOnce({
     orderField: "updatedAt",
     pageSize: 5000,
   });
@@ -882,6 +969,15 @@ export default function AfiliadoActualizado() {
   });
   const [excelFieldStats, setExcelFieldStats] = useState({});
 
+  const [reafiliacionesPendientes, setReafiliacionesPendientes] = useState([]);
+  const [reafiliacionesLoading, setReafiliacionesLoading] = useState(true);
+  const [reafiliacionesVisible, setReafiliacionesVisible] = useState(false);
+  const [reafiliacionDetalle, setReafiliacionDetalle] = useState(null);
+  const [reafiliacionDetalleVisible, setReafiliacionDetalleVisible] = useState(false);
+  const [rechazoVisible, setRechazoVisible] = useState(false);
+  const [rechazoObservacion, setRechazoObservacion] = useState("");
+  const [resolviendoReafiliacion, setResolviendoReafiliacion] = useState(false);
+
   const editableFields = excelMeta?.fieldMap
     ? Object.keys(excelMeta.fieldMap).filter(
         (f) => !["dni", "nombre", "apellido"].includes(f)
@@ -903,6 +999,128 @@ export default function AfiliadoActualizado() {
       detail: msg,
       life: 4000,
     });
+
+  const cargarReafiliacionesPendientes = useCallback(async () => {
+    try {
+      setReafiliacionesLoading(true);
+      const snap = await fsGetDocs(
+        fsQuery(
+          fsCollection(db, "nuevoAfiliado_counters"),
+          where("estadoReafiliacion", "==", "pendiente")
+        )
+      );
+      const pendientes = snap.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter((item) => item.requiereRevisionComision === true)
+        .map((item) => ({
+          ...item,
+          dni: toDniKey(item.dni || item.id),
+        }))
+        .filter((item) => item.dni);
+      setReafiliacionesPendientes(pendientes);
+    } catch (error) {
+      showError(error?.message || "No se pudieron cargar las reafiliaciones pendientes.");
+    } finally {
+      setReafiliacionesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarReafiliacionesPendientes();
+  }, [cargarReafiliacionesPendientes]);
+
+  const mostrarErrorResolucion = (error) => {
+    const status = Number(error?.status || 0);
+    if (status === 401) return showError("Tu sesión no es válida. Volvé a iniciar sesión.");
+    if (status === 403) return showError("No tenés permisos para resolver reafiliaciones.");
+    if (status === 404) return showError("No se encontró la solicitud o el usuario histórico.");
+    if (status === 409) return showError(error?.message || "La solicitud está en conflicto.");
+    if (status >= 500) return showError("No se pudo procesar la reafiliación.");
+    return showError(error?.message || "No se pudo procesar la reafiliación.");
+  };
+
+  const cerrarDetalleReafiliacion = () => {
+    if (resolviendoReafiliacion) return;
+    setReafiliacionDetalleVisible(false);
+    setReafiliacionDetalle(null);
+  };
+
+  const abrirDetalleReafiliacion = (solicitud) => {
+    setReafiliacionDetalle(solicitud);
+    setReafiliacionDetalleVisible(true);
+  };
+
+  const ejecutarAprobacionReafiliacion = async () => {
+    if (!reafiliacionDetalle || resolviendoReafiliacion) return;
+    try {
+      setResolviendoReafiliacion(true);
+      const respuesta = await aprobarReafiliacion(reafiliacionDetalle.dni);
+      setReafiliacionDetalleVisible(false);
+      setReafiliacionDetalle(null);
+      if (respuesta?.alreadyProcessed) {
+        showSuccess("La reafiliación ya había sido aprobada.");
+      } else {
+        showSuccess(
+          respuesta?.nroAfiliacion
+            ? `Reafiliación aprobada. Se conservó el N° de afiliación: ${respuesta.nroAfiliacion}.`
+            : "Reafiliación aprobada correctamente."
+        );
+      }
+      await cargarReafiliacionesPendientes();
+      await fetchAllNuevoAfiliado();
+      refreshUsuarios();
+    } catch (error) {
+      mostrarErrorResolucion(error);
+    } finally {
+      setResolviendoReafiliacion(false);
+    }
+  };
+
+  const confirmarAprobacionReafiliacion = () => {
+    if (!reafiliacionDetalle || resolviendoReafiliacion) return;
+    confirmDialog({
+      header: "Aprobar reafiliación",
+      icon: "pi pi-check-circle",
+      message: `¿Confirmás la reafiliación de ${reafiliacionDetalle.apellido || ""}, ${reafiliacionDetalle.nombre || ""} — DNI ${reafiliacionDetalle.dni}? Al aprobar, se reactivará la afiliación sindical conservando su historial y número de afiliación.`,
+      acceptLabel: "Aprobar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-success",
+      accept: ejecutarAprobacionReafiliacion,
+    });
+  };
+
+  const abrirRechazoReafiliacion = () => {
+    if (resolviendoReafiliacion) return;
+    setRechazoObservacion("");
+    setRechazoVisible(true);
+  };
+
+  const ejecutarRechazoReafiliacion = async () => {
+    const observacion = rechazoObservacion.trim();
+    if (!reafiliacionDetalle || resolviendoReafiliacion) return;
+    if (observacion.length < 3 || observacion.length > 1000) {
+      showError("La observación debe tener entre 3 y 1000 caracteres.");
+      return;
+    }
+    try {
+      setResolviendoReafiliacion(true);
+      const respuesta = await rechazarReafiliacion(reafiliacionDetalle.dni, observacion);
+      setRechazoVisible(false);
+      setReafiliacionDetalleVisible(false);
+      setReafiliacionDetalle(null);
+      setRechazoObservacion("");
+      showSuccess(
+        respuesta?.alreadyProcessed
+          ? "La solicitud ya había sido rechazada."
+          : "Solicitud de reafiliación rechazada."
+      );
+      await cargarReafiliacionesPendientes();
+    } catch (error) {
+      mostrarErrorResolucion(error);
+    } finally {
+      setResolviendoReafiliacion(false);
+    }
+  };
 
   // 1) Cargar nuevoAfiliado
   const fetchAllNuevoAfiliado = useCallback(async () => {
@@ -955,7 +1173,7 @@ export default function AfiliadoActualizado() {
         snapNum.forEach((d) => results.push(mapUsuarioDocToRow(d)));
       }
 
-      setExtraUsuariosRows(mergeUniqueById([], results));
+      setExtraUsuariosRows(mergeUniqueById([], results).filter(isAfiliadoActivo));
     } finally {
       setDniFetchLoading(false);
     }
@@ -963,7 +1181,7 @@ export default function AfiliadoActualizado() {
 
   // 3) Combinar / ordenar
   const rowsUsuariosMerged = useMemo(
-    () => mergeUniqueById(rowsUsuariosLocal, extraUsuariosRows),
+    () => mergeUniqueById(rowsUsuariosLocal, extraUsuariosRows).filter(isAfiliadoActivo),
     [rowsUsuariosLocal, extraUsuariosRows]
   );
 
@@ -978,7 +1196,7 @@ export default function AfiliadoActualizado() {
       arr = unifyByDni(rowsNuevo, rowsUsuariosMerged);
     }
 
-    return [...arr].sort((a, b) => {
+    return arr.filter(isAfiliadoActivo).sort((a, b) => {
       const sa = a.hora ? `${a.fecha} ${a.hora}` : a.fecha || "";
       const sb = b.hora ? `${b.fecha} ${b.hora}` : b.fecha || "";
       return toTimestamp(sb) - toTimestamp(sa);
@@ -1100,9 +1318,16 @@ export default function AfiliadoActualizado() {
       throw new Error("Seleccioná la fecha de baja.");
     }
 
+    const datosIdentidad = buildDatosHistoricosBaja({
+      dni: dniKey,
+      nombre: row?.nombre,
+      apellido: row?.apellido,
+    });
+
     await fsSetDoc(
       fsDoc(db, "nuevoAfiliado_counters", dniKey),
       {
+        ...construirPayloadIdentidadBaja(datosIdentidad),
         fechaUltimaBaja: fechaBaja,
         fechasBaja: arrayUnion(fechaBaja),
         updatedAt: serverTimestamp(),
@@ -1111,48 +1336,64 @@ export default function AfiliadoActualizado() {
     );
   };
 
-  const ejecutarEliminarSimple = async (row) => {
+  const ejecutarEliminarSimple = async (row, fechaBaja) => {
     const dniKey = toDniKey(row?.dni);
-    if (!dniKey) throw new Error("No se pudo eliminar: DNI inválido.");
+    if (!dniKey) throw new Error("No se pudo dar de baja: DNI inválido.");
 
-    const [usuarios, nuevoAfiliado, usuariosDni] = await Promise.all([
+    const [usuarios, nuevoAfiliado, usuariosDni, adherentes] = await Promise.all([
       buscarDocumentosPorDni("usuarios", dniKey, true),
       buscarDocumentosPorDni("nuevoAfiliado", dniKey, true),
       buscarDocumentosPorDni("usuarios_dni", dniKey, true),
+      buscarDocumentosPorDni("adherentes", dniKey, true),
     ]);
 
+    const usuariosMap = new Map();
+    usuarios.forEach((docSnap) => {
+      usuariosMap.set(docSnap.ref.path, docSnap.ref);
+    });
     const docsAEliminar = new Map();
-    [...usuarios, ...nuevoAfiliado, ...usuariosDni].forEach((docSnap) => {
+    [...nuevoAfiliado, ...usuariosDni, ...adherentes].forEach((docSnap) => {
       docsAEliminar.set(docSnap.ref.path, docSnap.ref);
     });
 
     if (row?.origen === "usuarios" && row?.id) {
-      docsAEliminar.set(`usuarios/${row.id}`, fsDoc(db, "usuarios", String(row.id)));
+      usuariosMap.set(`usuarios/${row.id}`, fsDoc(db, "usuarios", String(row.id)));
     }
     if (row?.origen === "nuevoAfiliado" && row?.id) {
       docsAEliminar.set(`nuevoAfiliado/${row.id}`, fsDoc(db, "nuevoAfiliado", String(row.id)));
     }
     if (row?.idUsuario) {
-      docsAEliminar.set(`usuarios/${row.idUsuario}`, fsDoc(db, "usuarios", String(row.idUsuario)));
+      usuariosMap.set(`usuarios/${row.idUsuario}`, fsDoc(db, "usuarios", String(row.idUsuario)));
     }
     if (row?.idNuevo) {
       docsAEliminar.set(`nuevoAfiliado/${row.idNuevo}`, fsDoc(db, "nuevoAfiliado", String(row.idNuevo)));
     }
     docsAEliminar.set(`usuarios_dni/${dniKey}`, fsDoc(db, "usuarios_dni", dniKey));
 
-    if (docsAEliminar.size === 0) {
-      throw new Error("No se encontraron documentos para eliminar en usuarios ni en nuevoAfiliado.");
+    if (usuariosMap.size === 0 && docsAEliminar.size === 0) {
+      throw new Error("No se encontraron documentos para dar de baja.");
     }
 
-    await Promise.all(Array.from(docsAEliminar.values()).map((ref) => fsDeleteDoc(ref)));
+    const batch = fsWriteBatch(db);
+    usuariosMap.forEach((ref) => {
+      batch.set(ref, {
+        afiliadoActivo: false,
+        estadoAfiliacion: "baja",
+        fechaBajaSindical: fechaBaja,
+        bajaSindicalActualizadaEn: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    });
+    docsAEliminar.forEach((ref) => batch.delete(ref));
+    await batch.commit();
 
     setRowsNuevo((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
     setRowsUsuariosLocal((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
     setExtraUsuariosRows((prev) => prev.filter((x) => toDniKey(x.dni) !== dniKey));
   };
 
-  const ejecutarEliminarAmbos = async (row) => {
-    await ejecutarEliminarSimple(row);
+  const ejecutarEliminarAmbos = async (row, fechaBaja) => {
+    await ejecutarEliminarSimple(row, fechaBaja);
   };
 
   const confirmarBajaYEliminar = async () => {
@@ -1169,9 +1410,9 @@ export default function AfiliadoActualizado() {
       await registrarFechaBajaCounter(bajaRow, bajaFecha);
 
       if (bajaTipo === "ambos") {
-        await ejecutarEliminarAmbos(bajaRow);
+        await ejecutarEliminarAmbos(bajaRow, bajaFecha);
       } else {
-        await ejecutarEliminarSimple(bajaRow);
+        await ejecutarEliminarSimple(bajaRow, bajaFecha);
       }
 
       setBajaVisible(false);
@@ -1181,11 +1422,11 @@ export default function AfiliadoActualizado() {
 
       showSuccess(
         bajaTipo === "ambos"
-          ? "Fecha de baja registrada y afiliado eliminado en ambas colecciones."
-          : "Fecha de baja registrada y afiliado eliminado correctamente."
+          ? "Afiliado dado de baja correctamente en sus registros activos."
+          : "Afiliado dado de baja correctamente."
       );
     } catch (e) {
-      showError(e?.message || "Error al registrar la baja y eliminar.");
+      showError(e?.message || "Error al registrar la baja.");
     } finally {
       setBajaSaving(false);
     }
@@ -1237,30 +1478,44 @@ export default function AfiliadoActualizado() {
     }
 
     try {
-      const [usuarios, nuevoAfiliado, usuariosDni, asistencias] = await Promise.all([
+      const [usuarios, nuevoAfiliado, usuariosDni, adherentes] = await Promise.all([
         buscarDocumentosPorDni("usuarios", fila.dni, true),
         buscarDocumentosPorDni("nuevoAfiliado", fila.dni, true),
         buscarDocumentosPorDni("usuarios_dni", fila.dni, true),
-        buscarDocumentosPorDni("asistencia", fila.dni, false),
+        buscarDocumentosPorDni("adherentes", fila.dni, true),
       ]);
-      const referencia = usuarios[0]?.data?.() || nuevoAfiliado[0]?.data?.() || {};
-      const total = usuarios.length + nuevoAfiliado.length + usuariosDni.length + asistencias.length;
+      const referencias = [
+        ...usuarios,
+        ...nuevoAfiliado,
+        ...usuariosDni,
+      ].map((item) => item.data?.() || {});
+      const referenciaEstructurada = referencias.find(
+        (referencia) => referencia.nombre || referencia.apellido
+      ) || {};
+      const nombreCompletoExcel = String(fila.nombre || "").trim();
+      const datosIdentidad = buildDatosHistoricosBaja({
+        dni: fila.dni,
+        nombre: referenciaEstructurada.nombre,
+        apellido: referenciaEstructurada.apellido,
+        nombreCompleto:
+          nombreCompletoExcel || referenciaEstructurada.apellidoNombre,
+      });
+      const total = usuarios.length + nuevoAfiliado.length + usuariosDni.length + adherentes.length;
 
       return {
         ...fila,
-        nombre:
-          fila.nombre ||
-          [referencia.apellido, referencia.nombre].filter(Boolean).join(", ") ||
-          referencia.apellidoNombre ||
-          "Sin nombre",
+        nombre: datosIdentidad.nombreCompleto || nombreCompletoExcel || "",
+        nombreIdentidad: datosIdentidad.nombre,
+        apellidoIdentidad: datosIdentidad.apellido,
+        nombreCompletoIdentidad: datosIdentidad.nombreCompleto,
         pathsUsuarios: usuarios.map((item) => item.ref.path),
         pathsNuevoAfiliado: nuevoAfiliado.map((item) => item.ref.path),
         pathsUsuariosDni: usuariosDni.map((item) => item.ref.path),
-        pathsAsistencia: asistencias.map((item) => item.ref.path),
+        pathsAdherentes: adherentes.map((item) => item.ref.path),
         cantidadUsuarios: usuarios.length,
         cantidadNuevoAfiliado: nuevoAfiliado.length,
         cantidadUsuariosDni: usuariosDni.length,
-        cantidadAsistencias: asistencias.length,
+        cantidadAdherentes: adherentes.length,
         valido: total > 0,
         error: total > 0 ? "" : "Sin coincidencias en las colecciones",
       };
@@ -1357,7 +1612,7 @@ export default function AfiliadoActualizado() {
 
   const confirmarBajaMasiva = async () => {
     const filasValidas = bajaMasivaRows.filter((fila) => fila.valido);
-    if (!filasValidas.length) return showError("No hay filas válidas para eliminar.");
+    if (!filasValidas.length) return showError("No hay filas válidas para dar de baja.");
 
     setBajaMasivaProcesando(true);
     const eliminados = [];
@@ -1365,27 +1620,30 @@ export default function AfiliadoActualizado() {
 
     for (const fila of filasValidas) {
       try {
-        const [usuariosActuales, nuevoActuales, usuariosDniActuales, asistenciasActuales] = await Promise.all([
+        const [usuariosActuales, nuevoActuales, usuariosDniActuales, adherentesActuales] = await Promise.all([
           buscarDocumentosPorDni("usuarios", fila.dni, true),
           buscarDocumentosPorDni("nuevoAfiliado", fila.dni, true),
           buscarDocumentosPorDni("usuarios_dni", fila.dni, true),
-          buscarDocumentosPorDni("asistencia", fila.dni, false),
+          buscarDocumentosPorDni("adherentes", fila.dni, true),
         ]);
         const paths = Array.from(
           new Set([
             ...fila.pathsUsuarios,
             ...fila.pathsNuevoAfiliado,
             ...(fila.pathsUsuariosDni || []),
-            ...fila.pathsAsistencia,
+            ...(fila.pathsAdherentes || []),
             ...usuariosActuales.map((item) => item.ref.path),
             ...nuevoActuales.map((item) => item.ref.path),
             ...usuariosDniActuales.map((item) => item.ref.path),
-            ...asistenciasActuales.map((item) => item.ref.path),
+            ...adherentesActuales.map((item) => item.ref.path),
           ])
         );
         const operaciones = [
           { tipo: "counter" },
-          ...paths.map((path) => ({ tipo: "delete", path })),
+          ...usuariosActuales.map((item) => ({ tipo: "updateUsuario", path: item.ref.path })),
+          ...paths
+            .filter((path) => !usuariosActuales.some((item) => item.ref.path === path))
+            .map((path) => ({ tipo: "delete", path })),
         ];
 
         for (let i = 0; i < operaciones.length; i += 450) {
@@ -1395,11 +1653,31 @@ export default function AfiliadoActualizado() {
               batch.set(
                 fsDoc(db, "nuevoAfiliado_counters", fila.dni),
                 {
+                  ...construirPayloadIdentidadBaja(
+                    buildDatosHistoricosBaja({
+                      dni: fila.dni,
+                      nombre: fila.nombreIdentidad,
+                      apellido: fila.apellidoIdentidad,
+                      nombreCompleto: fila.nombreCompletoIdentidad,
+                    })
+                  ),
                   fechaUltimaBaja: fila.periodo,
                   fechasBaja: arrayUnion(fila.periodo),
                   mesBaja: fila.mesBaja,
                   anioBaja: fila.anioBaja,
                   bajaMasivaArchivo,
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+              );
+            } else if (operacion.tipo === "updateUsuario") {
+              batch.set(
+                fsDoc(db, operacion.path),
+                {
+                  afiliadoActivo: false,
+                  estadoAfiliacion: "baja",
+                  fechaBajaSindical: fila.periodo,
+                  bajaSindicalActualizadaEn: serverTimestamp(),
                   updatedAt: serverTimestamp(),
                 },
                 { merge: true }
@@ -1424,12 +1702,12 @@ export default function AfiliadoActualizado() {
 
     if (errores.length) {
       setBajaMasivaRows(errores.map((fila) => ({ ...fila, valido: false })));
-      showError(`Se eliminaron ${eliminados.length} afiliados y fallaron ${errores.length}.`);
+      showError(`Se dieron de baja ${eliminados.length} afiliados y fallaron ${errores.length}.`);
       return;
     }
 
     cerrarBajaMasiva();
-    showSuccess(`Baja masiva completada: ${eliminados.length} afiliados eliminados junto con sus asistencias.`);
+    showSuccess(`Baja masiva completada: ${eliminados.length} afiliados dados de baja. Las asistencias se conservaron.`);
   };
 
   // ✅ NUEVO: reiniciar dispositivo vinculado para asistencia QR
@@ -1720,7 +1998,7 @@ export default function AfiliadoActualizado() {
         },
         { separator: true },
         {
-          label: "Eliminar (ambas)",
+          label: "Dar de baja",
           icon: "pi pi-trash",
           className: "p-menuitem-danger",
           command: () => onEliminarAmbos(currentRow),
@@ -1746,7 +2024,7 @@ export default function AfiliadoActualizado() {
       },
       { separator: true },
       {
-        label: "Eliminar",
+        label: "Dar de baja",
         icon: "pi pi-trash",
         className: "p-menuitem-danger",
         command: () => onEliminar(currentRow),
@@ -1781,7 +2059,19 @@ export default function AfiliadoActualizado() {
         return { allNuevo, allUsuarios };
       })();
 
-      const { allNuevo, allUsuarios } = await allUsuariosPromise;
+      const { allNuevo: nuevoRows, allUsuarios: usuariosRows } = await allUsuariosPromise;
+
+      const dnisDadosDeBaja = new Set(
+        usuariosRows
+          .filter(isAfiliadoBaja)
+          .map((row) => toDniKey(row.dni))
+          .filter(Boolean)
+      );
+      const allUsuarios = usuariosRows.filter(isAfiliadoActivo);
+      const allNuevo = nuevoRows.filter((row) => {
+        const dni = toDniKey(row.dni);
+        return !isAfiliadoBaja(row) && (!dni || !dnisDadosDeBaja.has(dni));
+      });
 
       setExportMsg("Unificando registros por DNI…");
 
@@ -2417,6 +2707,23 @@ export default function AfiliadoActualizado() {
         <h3 className={styles.mobileFriendlyTitle}>Afiliado Actualizado</h3>
 
         <div className={styles.mobileFriendlyActions}>
+          <div className={styles.reafiliacionesToolbar}>
+            <div className={styles.reafiliacionesSummary}>
+              <i className="pi pi-refresh" aria-hidden="true" />
+              <span>Reafiliaciones pendientes</span>
+              <span className={`${styles.reafiliacionesBadge} ${reafiliacionesPendientes.length > 0 ? styles.reafiliacionesBadgeWarning : styles.reafiliacionesBadgeMuted}`}>
+                {reafiliacionesPendientes.length}
+              </span>
+            </div>
+            <Button
+              label="Ver solicitudes"
+              icon="pi pi-inbox"
+              className="p-button-warning p-button-sm"
+              onClick={() => setReafiliacionesVisible(true)}
+              disabled={reafiliacionesLoading}
+            />
+          </div>
+
           <span className="p-tag p-tag-info">nuevoAfiliado: {countNuevo}</span>
 
           <span className="p-tag p-tag-secondary">
@@ -2533,6 +2840,198 @@ export default function AfiliadoActualizado() {
         showActivo={false}
       />
 
+      <Dialog
+        header="Reafiliaciones pendientes"
+        visible={reafiliacionesVisible}
+        modal
+        onHide={() => setReafiliacionesVisible(false)}
+        className={styles.reafiliacionesDialog}
+        contentClassName={styles.reafiliacionesDialogContent}
+        contentStyle={{ maxHeight: "70vh" }}
+        style={{ width: "92vw", maxWidth: 1200 }}
+        breakpoints={{ "768px": "96vw" }}
+      >
+        {reafiliacionesLoading ? (
+          <div style={{ padding: 32, display: "grid", placeItems: "center" }}>
+            <ProgressSpinner />
+          </div>
+        ) : (
+          <>
+            <div className={styles.reafiliacionesDesktopList}>
+              <DataTable
+                value={reafiliacionesPendientes}
+                dataKey="id"
+                stripedRows
+                emptyMessage="No hay reafiliaciones pendientes."
+              >
+                <Column
+                  header="Apellido y nombre"
+                  body={(row) => row.nombreCompleto || `${row.apellido || ""}, ${row.nombre || ""}`}
+                  className={styles.reafiliacionNameColumn}
+                />
+                <Column field="dni" header="DNI" />
+                <Column header="Última baja" body={(row) => formatFechaReafiliacion(row.fechaUltimaBaja)} />
+                <Column header="Fecha solicitud" body={(row) => formatFechaReafiliacion(row.fechaSolicitudReafiliacion)} />
+                <Column
+                  header="Contacto"
+                  body={(row) => {
+                    const { celular, email } = getReafiliacionPresentationData(row);
+                    const contacto = [celular, email].filter(Boolean);
+                    return (
+                      <span className={styles.reafiliacionContact}>
+                        {contacto.length > 0 ? contacto.map((dato) => <span key={dato}>{dato}</span>) : <span>—</span>}
+                      </span>
+                    );
+                  }}
+                />
+                <Column
+                  header="Departamento"
+                  body={(row) => getReafiliacionPresentationData(row).departamento || "—"}
+                />
+                <Column header="Estado" body={() => <span className={`p-tag p-tag-warning ${styles.reafiliacionStatus}`}>Pendiente de Aprobación</span>} />
+                <Column
+                  header="Acciones"
+                  body={(row) => <Button label="Revisar" icon="pi pi-eye" size="small" onClick={() => abrirDetalleReafiliacion(row)} />}
+                />
+              </DataTable>
+            </div>
+            <div className={styles.reafiliacionesMobileList}>
+              {reafiliacionesPendientes.length === 0 ? (
+                <div className={styles.emptyReafiliaciones}>No hay reafiliaciones pendientes.</div>
+              ) : (
+                reafiliacionesPendientes.map((row) => (
+                  <article className={styles.reafiliacionMobileCard} key={row.id}>
+                    {(() => {
+                      const { celular, email, departamento } = getReafiliacionPresentationData(row);
+                      const contacto = [celular, email].filter(Boolean);
+                      return (
+                        <>
+                    <div className={styles.reafiliacionMobileName}>{row.nombreCompleto || `${row.apellido || ""}, ${row.nombre || ""}`}</div>
+                    <div className={styles.reafiliacionMobileDni}>DNI: {row.dni}</div>
+                    <dl className={styles.reafiliacionMobileFacts}>
+                      <div><dt>Fecha solicitud</dt><dd>{formatFechaReafiliacion(row.fechaSolicitudReafiliacion)}</dd></div>
+                      <div><dt>Última baja</dt><dd>{formatFechaReafiliacion(row.fechaUltimaBaja)}</dd></div>
+                      <div><dt>Departamento</dt><dd>{departamento || "—"}</dd></div>
+                      <div><dt>Contacto</dt><dd>{contacto.length > 0 ? contacto.map((dato) => <React.Fragment key={dato}>{dato}<br /></React.Fragment>) : "—"}</dd></div>
+                    </dl>
+                    <span className={`p-tag p-tag-warning ${styles.reafiliacionStatus}`}>Pendiente de Aprobación</span>
+                    <Button label="Revisar" icon="pi pi-eye" className={styles.mobileReviewButton} onClick={() => abrirDetalleReafiliacion(row)} />
+                        </>
+                      );
+                    })()}
+                  </article>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </Dialog>
+
+      <Dialog
+        header="REAFILIACIÓN PENDIENTE"
+        visible={reafiliacionDetalleVisible}
+        modal
+        closable={!resolviendoReafiliacion}
+        onHide={cerrarDetalleReafiliacion}
+        className={styles.reafiliacionDetailDialog}
+        contentClassName={styles.reafiliacionDetailContent}
+        contentStyle={{ maxHeight: "70vh" }}
+        style={{ width: 720, maxWidth: "96vw" }}
+        footer={
+          <div className={styles.reafiliacionDetailFooter}>
+            <Button
+              label="Rechazar"
+              icon="pi pi-times"
+              className="p-button-danger"
+              onClick={abrirRechazoReafiliacion}
+              disabled={resolviendoReafiliacion}
+            />
+            <Button
+              label={resolviendoReafiliacion ? "Procesando..." : "Aprobar reafiliación"}
+              icon={resolviendoReafiliacion ? "pi pi-spin pi-spinner" : "pi pi-check"}
+              className="p-button-success"
+              onClick={confirmarAprobacionReafiliacion}
+              disabled={resolviendoReafiliacion}
+            />
+          </div>
+        }
+      >
+        {reafiliacionDetalle && (
+          <div className={styles.reafiliacionDetailLayout}>
+            <div className={styles.reafiliacionDetailIntro}>
+              <div className={styles.reafiliacionDetailPerson}>
+                <strong>{reafiliacionDetalle.apellido || "—"}, {reafiliacionDetalle.nombre || "—"}</strong>
+                <span>DNI {reafiliacionDetalle.dni}</span>
+              </div>
+              <span className={`p-tag p-tag-warning ${styles.reafiliacionStatus}`}>Pendiente de Aprobación</span>
+            </div>
+
+            <section className={styles.reafiliacionSection}>
+              <h4>Antecedente sindical</h4>
+              <div className={styles.reafiliacionFactsGrid}>
+                <div><span>Última baja</span><strong>{formatFechaReafiliacion(reafiliacionDetalle.fechaUltimaBaja)}</strong></div>
+                <div><span>Fecha de solicitud</span><strong>{formatFechaReafiliacion(reafiliacionDetalle.fechaSolicitudReafiliacion)}</strong></div>
+                <div><span>Usuario histórico</span><strong className={styles.breakAnywhere}>{reafiliacionDetalle.usuarioIdHistorico || "—"}</strong></div>
+                {Array.isArray(reafiliacionDetalle.fechasBaja) && reafiliacionDetalle.fechasBaja.length > 0 && (
+                  <div><span>Historial de bajas</span><strong>{reafiliacionDetalle.fechasBaja.map(formatFechaReafiliacion).join(", ")}</strong></div>
+                )}
+              </div>
+            </section>
+
+            <section className={styles.reafiliacionSection}>
+              <h4>Datos presentados actualmente</h4>
+              <div className={styles.reafiliacionDataGrid}>
+                {[
+                  ["Nombre", "nombre"], ["Apellido", "apellido"], ["Email", "email"], ["Celular", "celular"],
+                  ["Departamento", "departamento"], ["Establecimientos", "establecimientos"], ["Título de grado", "tituloGrado"], ["Descuento", "descuento"],
+                ].map(([label, field]) => (
+                  <div className={styles.reafiliacionDataItem} key={field}>
+                    <span>{label}</span>
+                    <strong className={styles.breakAnywhere}>{reafiliacionDetalle.datosSolicitudReafiliacion?.[field] || "—"}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        header="Rechazar reafiliación"
+        visible={rechazoVisible}
+        modal
+        closable={!resolviendoReafiliacion}
+        onHide={() => setRechazoVisible(false)}
+        className={styles.reafiliacionRejectDialog}
+        contentClassName={styles.reafiliacionRejectContent}
+        contentStyle={{ maxHeight: "70vh" }}
+        style={{ width: 520, maxWidth: "96vw" }}
+        footer={
+          <div className={styles.reafiliacionRejectFooter}>
+            <Button label="Cancelar" className="p-button-text" onClick={() => setRechazoVisible(false)} disabled={resolviendoReafiliacion} />
+            <Button
+              label={resolviendoReafiliacion ? "Procesando..." : "Confirmar rechazo"}
+              icon={resolviendoReafiliacion ? "pi pi-spin pi-spinner" : "pi pi-times"}
+              className="p-button-danger"
+              onClick={ejecutarRechazoReafiliacion}
+              disabled={resolviendoReafiliacion || rechazoObservacion.trim().length < 3}
+            />
+          </div>
+        }
+      >
+        <label className={styles.reafiliacionRejectLabel} htmlFor="observacion_rechazo_reafiliacion"><strong>Motivo / observación</strong></label>
+        <textarea
+          id="observacion_rechazo_reafiliacion"
+          value={rechazoObservacion}
+          onChange={(event) => setRechazoObservacion(event.target.value.slice(0, 1000))}
+          rows={5}
+          maxLength={1000}
+          disabled={resolviendoReafiliacion}
+          className={styles.reafiliacionRejectTextarea}
+        />
+        <small style={{ color: "#64748b" }}>{rechazoObservacion.trim().length}/1000 caracteres. Mínimo: 3.</small>
+      </Dialog>
+
       {/* Modal baja con fecha antes de eliminar */}
       <Dialog
         header="Registrar fecha de baja"
@@ -2561,8 +3060,8 @@ export default function AfiliadoActualizado() {
                 bajaSaving
                   ? "Procesando..."
                   : bajaTipo === "ambos"
-                  ? "Registrar baja y eliminar en ambas"
-                  : "Registrar baja y eliminar"
+                  ? "Confirmar baja"
+                  : "Confirmar baja"
               }
               icon={bajaSaving ? "pi pi-spin pi-spinner" : "pi pi-trash"}
               className="p-button-danger"
@@ -2583,12 +3082,15 @@ export default function AfiliadoActualizado() {
               fontSize: 14,
             }}
           >
-            Antes de eliminar el registro, se guardará la fecha de baja en
+            Al registrar la baja sindical, se conservarán en
             <strong>
               {" "}
               nuevoAfiliado_counters/{toDniKey(bajaRow?.dni) || "DNI"}
-            </strong>
-            . El contador <strong>last</strong> no se modifica.
+            </strong>{" "}
+            el DNI, apellido, nombre y fecha de baja. Este antecedente permitirá
+            identificar futuras solicitudes de reafiliación. La cuenta del usuario
+            y su historial permanecerán conservados. El contador <strong>last</strong>
+            no se modifica.
           </div>
 
           {bajaRow && (
@@ -2630,9 +3132,10 @@ export default function AfiliadoActualizado() {
           </div>
 
           <small style={{ color: "#64748b", lineHeight: 1.4 }}>
-            Se guardarán los campos <strong>fechaUltimaBaja</strong> y
-            <strong> fechasBaja</strong>. No se agregan motivos ni otra
-            colección.
+            Se guardará el historial de baja con DNI, apellido/nombre cuando
+            estén disponibles, <strong>fechaUltimaBaja</strong> y
+            <strong> fechasBaja</strong>. La cuenta de usuario y su historial
+            permanecerán conservados.
           </small>
         </div>
       </Dialog>
@@ -2656,7 +3159,7 @@ export default function AfiliadoActualizado() {
               label={
                 bajaMasivaProcesando
                   ? "Eliminando..."
-                  : `Confirmar y eliminar ${bajaMasivaRows.filter((fila) => fila.valido).length}`
+                  : `Confirmar bajas (${bajaMasivaRows.filter((fila) => fila.valido).length})`
               }
               icon={
                 bajaMasivaProcesando ? "pi pi-spin pi-spinner" : "pi pi-trash"
@@ -2682,11 +3185,14 @@ export default function AfiliadoActualizado() {
               lineHeight: 1.45,
             }}
           >
-            <strong>Acción irreversible.</strong> Se guardará el mes y año de baja
-            en <strong>nuevoAfiliado_counters</strong> y luego se eliminarán las
-            coincidencias encontradas en <strong>usuarios</strong>,{" "}
+            <strong>Acción irreversible.</strong> Para cada DNI se conservará en{" "}
+            <strong>nuevoAfiliado_counters</strong> el historial de baja con DNI,
+            apellido/nombre cuando estén disponibles y fecha/período de baja.
+            Luego se eliminarán las coincidencias encontradas en{" "}
+            <strong>usuarios</strong> como inactivos y se eliminarán{" "}
             <strong>nuevoAfiliado</strong>, <strong>usuarios_dni</strong> y{" "}
-            <strong>asistencia</strong>. Las filas
+            <strong>adherentes</strong>. Las asistencias históricas no se eliminan.
+            Las filas
             inválidas no serán procesadas.
           </div>
 
@@ -2727,11 +3233,6 @@ export default function AfiliadoActualizado() {
               style={{ width: 115 }}
             />
             <Column
-              field="cantidadAsistencias"
-              header="Asistencias"
-              style={{ width: 105 }}
-            />
-            <Column
               header="Validación"
               body={(fila) => (
                 <span
@@ -2740,7 +3241,7 @@ export default function AfiliadoActualizado() {
                     fontWeight: 700,
                   }}
                 >
-                  {fila.valido ? "Lista para eliminar" : fila.error || "Omitida"}
+                  {fila.valido ? "Lista para dar de baja" : fila.error || "Omitida"}
                 </span>
               )}
             />
