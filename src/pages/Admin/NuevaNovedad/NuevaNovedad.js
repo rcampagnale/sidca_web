@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { useForm } from '../../../hooks/useForm';
 import global from '../../../assets/styles/global.module.css';
 import styles from './styles.module.css';
@@ -12,13 +12,16 @@ import { Spinner } from '../../../components/Spinner/Spinner';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
 import { ProgressBar } from 'primereact/progressbar';
+import { departamentos as departamentosCatamarca } from '../../../constants/departamentos';
 
 const NuevaNovedad = () => {
   const dispatch = useDispatch();
   const history = useHistory();
+  const location = useLocation();
   const { id } = useParams();
 
   const initialform = {
@@ -30,53 +33,63 @@ const NuevaNovedad = () => {
     descarga: false,
     prioridad: 0,
     departamento: '',
+    departamentos: [],
+    alcanceTodosDepartamentos: false,
   };
 
   const novedades = useSelector(state => state.novedades);
   const [form, handleInputChange, reset] = useForm(id ? novedades.novedad : initialform);
+  const [departamentosSeleccionados, setDepartamentosSeleccionados] = useState([]);
+  const [alcanceTodosDepartamentos, setAlcanceTodosDepartamentos] = useState(false);
 
   const [formBase, setFormBase] = useState(id ? (novedades.novedad || initialform) : initialform);
-  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(formBase), [form, formBase]);
+  const isDirty = useMemo(() => {
+    const estadoActual = {
+      ...form,
+      departamentos: departamentosSeleccionados,
+      alcanceTodosDepartamentos,
+    };
+    return JSON.stringify(estadoActual) !== JSON.stringify(formBase);
+  }, [form, formBase, departamentosSeleccionados, alcanceTodosDepartamentos]);
 
   const opciones = [
     { label: 'Si', value: 'si' },
     { label: 'No', value: 'no' },
   ];
 
-  const categorias = [
+  const categoriasBase = [
     { label: 'Turismo', value: 'turismo' },
     { label: 'Casa del Docente', value: 'casa' },
     { label: 'Predio', value: 'predio' },
     { label: 'Convenio Comercio', value: 'convenio_comercio' },
-    { label: 'Convenio Hoteles', value: 'convenio_hoteles' }
+    { label: 'Convenio Hoteles', value: 'convenio_hoteles' },
   ];
 
-  const departamentos = [
-    { label: 'Ambato', value: 'Ambato' },
-    { label: 'Ancasti', value: 'Ancasti' },
-    { label: 'Andalgalá', value: 'Andalgalá' },
-    { label: 'Antofagasta de la Sierra', value: 'Antofagasta de la Sierra' },
-    { label: 'Belén', value: 'Belén' },
-    { label: 'Capayán', value: 'Capayán' },
-    { label: 'Capital', value: 'Capital' },
-    { label: 'El Alto', value: 'El Alto' },
-    { label: 'Fray Mamerto Esquiú', value: 'Fray Mamerto Esquiú' },
-    { label: 'La Paz', value: 'La Paz' },
-    { label: 'Paclín', value: 'Paclín' },
-    { label: 'Pomán', value: 'Pomán' },
-    { label: 'Santa María', value: 'Santa María' },
-    { label: 'Santa Rosa', value: 'Santa Rosa' },
-    { label: 'Tinogasta', value: 'Tinogasta' },
-    { label: 'Valle Viejo', value: 'Valle Viejo' },
-  ];
+  const categorias = form.categoria && !categoriasBase.some((item) => item.value === form.categoria)
+    ? [...categoriasBase, { label: form.categoria, value: form.categoria }]
+    : categoriasBase;
 
-  const esConvenioComercio = form.categoria === 'convenio_comercio';
+  const departamentos = Object.values(departamentosCatamarca).map((nombre) => ({
+    label: nombre,
+    value: nombre,
+  }));
+
+  const esConvenio = ['convenio_comercio', 'convenio_hoteles'].includes(form.categoria);
+  const normalizarFormulario = (novedad) => ({
+    ...novedad,
+    departamentos: Array.isArray(novedad?.departamentos)
+      ? novedad.departamentos
+      : novedad?.departamento
+        ? [novedad.departamento]
+        : [],
+    alcanceTodosDepartamentos: novedad?.alcanceTodosDepartamentos === true,
+  });
 
   // Helper: limpiar estado y forzar recarga de la lista
   const goToListAndHardReload = () => {
     dispatch(clearStatus());
     // Evita estado residual de Redux/inputs
-    window.location.href = '/admin/novedades';
+    window.location.href = `/admin/novedades${location.search || ''}`;
   };
 
   const handleSubmit = async (e) => {
@@ -85,14 +98,24 @@ const NuevaNovedad = () => {
       Swal.fire({ title: 'Error', text: 'Titulo y categoría son campos obligatorios', icon: 'error' });
       return;
     }
-    if (esConvenioComercio && !form.departamento) {
-      Swal.fire({ title: 'Falta departamento', text: 'Seleccioná el departamento para Convenio Comercio.', icon: 'warning' });
+    if (esConvenio && !alcanceTodosDepartamentos && departamentosSeleccionados.length === 0) {
+      Swal.fire({
+        title: 'Faltan departamentos',
+        text: 'Seleccioná al menos un departamento donde está disponible el convenio.',
+        icon: 'warning',
+      });
       return;
     }
 
     const payload = {
       ...form,
-      departamento: esConvenioComercio ? form.departamento : '',
+      departamentos: esConvenio && !alcanceTodosDepartamentos
+        ? departamentosSeleccionados
+        : [],
+      alcanceTodosDepartamentos: esConvenio && alcanceTodosDepartamentos,
+      departamento: esConvenio && !alcanceTodosDepartamentos
+        ? (departamentosSeleccionados[0] || '')
+        : '',
     };
 
     if (id) {
@@ -107,19 +130,28 @@ const NuevaNovedad = () => {
 
   useEffect(() => {
     if (id && novedades.novedad) {
-      Object.entries(novedades.novedad).forEach(([key, value]) => {
+      const formularioNormalizado = normalizarFormulario(novedades.novedad);
+      Object.entries(formularioNormalizado).forEach(([key, value]) => {
         if (key && value !== undefined) {
           handleInputChange({ target: { name: key, value } });
         }
       });
-      setFormBase(novedades.novedad);
+      setDepartamentosSeleccionados(
+        formularioNormalizado.alcanceTodosDepartamentos
+          ? []
+          : formularioNormalizado.departamentos
+      );
+      setAlcanceTodosDepartamentos(formularioNormalizado.alcanceTodosDepartamentos);
+      setFormBase(formularioNormalizado);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [novedades.novedad]);
 
   useEffect(() => {
-    if (!esConvenioComercio && form.departamento) {
+    if (!esConvenio && (form.departamento || departamentosSeleccionados.length || alcanceTodosDepartamentos)) {
       handleInputChange({ target: { name: 'departamento', value: '' } });
+      setDepartamentosSeleccionados([]);
+      setAlcanceTodosDepartamentos(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.categoria]);
@@ -202,21 +234,38 @@ const NuevaNovedad = () => {
             <label className={styles.labelForm} htmlFor="categoria">Categoría*</label>
           </span>
 
-          {esConvenioComercio && (
-            <span className={`p-float-label ${styles.inputSection}`}>
-              <Dropdown
+          {esConvenio && (
+            <div className={styles.departmentSection}>
+              <label className={styles.departmentLabel} htmlFor="departamentos">
+                Departamentos donde está disponible
+              </label>
+              <MultiSelect
                 className={styles.inputForm}
-                inputId="departamento"
-                value={form.departamento || ''}
-                name="departamento"
-                id="departamento"
-                onChange={handleInputChange}
+                inputId="departamentos"
+                value={departamentosSeleccionados}
+                name="departamentos"
                 options={departamentos}
-                placeholder="Seleccioná un departamento"
+                onChange={(event) => setDepartamentosSeleccionados(event.value || [])}
+                placeholder="Seleccioná uno o más departamentos"
+                display="chip"
+                filter
                 showClear
+                disabled={alcanceTodosDepartamentos}
               />
-              <label className={styles.labelForm} htmlFor="departamento">Departamento*</label>
-            </span>
+              <label className={styles.allDepartmentsOption} htmlFor="alcanceTodosDepartamentos">
+                <input
+                  id="alcanceTodosDepartamentos"
+                  name="alcanceTodosDepartamentos"
+                  type="checkbox"
+                  checked={alcanceTodosDepartamentos}
+                  onChange={(event) => {
+                    setAlcanceTodosDepartamentos(event.target.checked);
+                    if (event.target.checked) setDepartamentosSeleccionados([]);
+                  }}
+                />
+                Disponible en todos los departamentos
+              </label>
+            </div>
           )}
 
           <span className={`p-float-label ${styles.inputSection}`}>

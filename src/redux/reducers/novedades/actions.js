@@ -4,16 +4,9 @@ import {
   collection,
   addDoc,
   getDocs,
-  query,
-  orderBy,
-  limit,
   doc,
   setDoc,
-  startAfter,
-  endBefore,
-  limitToLast,
   deleteDoc,
-  where,
   getDoc // 👈 IMPORTANTE: para leer una novedad por id
 } from "firebase/firestore";
 import { uploadImgFunction } from '../../../functions/uploadImgFunction';
@@ -31,10 +24,13 @@ const CATEGORIA_MAP = {
   'convenio_comercio': 'convenio_comercio',
   'convenio_hoteles': 'convenio_hoteles',
 };
-const VALID_VALUES = new Set([
-  'turismo', 'predio', 'casa', 'convenio_comercio', 'convenio_hoteles'
-]);
 const normalizeCategoria = (v) => CATEGORIA_MAP[v] || v;
+const esCategoriaConvenio = (categoria) =>
+  categoria === 'convenio_comercio' || categoria === 'convenio_hoteles';
+const normalizarDepartamentos = (data) => {
+  if (Array.isArray(data.departamentos)) return data.departamentos.filter(Boolean);
+  return data.departamento ? [data.departamento] : [];
+};
 
 /* ======================= CREAR ======================= */
 export const nuevaNovedad = (data) => {
@@ -42,14 +38,16 @@ export const nuevaNovedad = (data) => {
     dispatch(nuevaNovedadProcess());
 
     const categoriaNorm = normalizeCategoria(data.categoria);
-    if (!VALID_VALUES.has(categoriaNorm)) {
-      return dispatch(nuevaNovedadError('Categoría inválida. Usa: turismo, predio, casa, convenio_comercio o convenio_hoteles.'));
+    if (typeof categoriaNorm !== 'string' || categoriaNorm.trim() === '') {
+      return dispatch(nuevaNovedadError('La categoría es obligatoria.'));
     }
 
-    // departamento solo aplica para convenio_comercio
-    const departamentoValue = categoriaNorm === 'convenio_comercio'
-      ? (data.departamento || '')
-      : ''; // <-- si preferís null, reemplazá '' por null
+    const esConvenio = esCategoriaConvenio(categoriaNorm);
+    const departamentos = esConvenio ? normalizarDepartamentos(data) : [];
+    const alcanceTodosDepartamentos = esConvenio && data.alcanceTodosDepartamentos === true;
+    const departamentoValue = esConvenio && departamentos.length > 0
+      ? departamentos[0]
+      : '';
 
     const enlace = {
       titulo: `${data.titulo}`,
@@ -60,7 +58,9 @@ export const nuevaNovedad = (data) => {
       imagen: `${data.imagen === '' ? false : data.imagen}`,
       prioridad: Number.parseInt(data.prioridad, 10),
       descarga: `${data.descarga === 'no' ? false : true}`,
-      departamento: departamentoValue, // 👈 NUEVO
+      departamento: departamentoValue,
+      departamentos,
+      alcanceTodosDepartamentos,
     };
 
     try {
@@ -86,13 +86,15 @@ export const uploadNovedad = (data, id) => {
     dispatch(uploadNovedadProcess());
 
     const categoriaNorm = normalizeCategoria(data.categoria);
-    if (!VALID_VALUES.has(categoriaNorm)) {
-      return dispatch(uploadNovedadError('Categoría inválida. Usa: turismo, predio, casa, convenio_comercio o convenio_hoteles.'));
+    if (typeof categoriaNorm !== 'string' || categoriaNorm.trim() === '') {
+      return dispatch(uploadNovedadError('La categoría es obligatoria.'));
     }
 
-    // departamento solo aplica para convenio_comercio
-    const departamentoValue = categoriaNorm === 'convenio_comercio'
-      ? (data.departamento || '')
+    const esConvenio = esCategoriaConvenio(categoriaNorm);
+    const departamentos = esConvenio ? normalizarDepartamentos(data) : [];
+    const alcanceTodosDepartamentos = esConvenio && data.alcanceTodosDepartamentos === true;
+    const departamentoValue = esConvenio && departamentos.length > 0
+      ? departamentos[0]
       : '';
 
     const novedadObj = {
@@ -104,7 +106,9 @@ export const uploadNovedad = (data, id) => {
       imagen: `${data.imagen === '' ? false : data.imagen}`,
       prioridad: Number.parseInt(data.prioridad, 10),
       descarga: `${data.descarga === 'no' ? false : true}`,
-      departamento: departamentoValue, // 👈 NUEVO
+      departamento: departamentoValue,
+      departamentos,
+      alcanceTodosDepartamentos,
     };
 
     try {
@@ -118,70 +122,13 @@ export const uploadNovedad = (data, id) => {
   };
 };
 
-/* ======================= LISTAR con FILTRO y PAGINACIÓN ======================= */
-/**
- * @param {'next'|'prev'|undefined} pagination - dirección de la paginación
- * @param {import('firebase/firestore').QueryDocumentSnapshot|undefined} start - doc de referencia para startAfter/endBefore
- * @param {string} categoria - categoría a filtrar; 'todas' para sin filtro (admite label o value)
- */
-export const getNovedades = (pagination, start, categoria = 'todas') => {
-  return async (dispatch, getState) => {
+/* ======================= LISTAR ======================= */
+/* La lista completa se carga una vez; filtro, orden y paginación viven en la UI. */
+export const getNovedades = () => {
+  return async (dispatch) => {
     dispatch(getNovedadesProcess());
     try {
-      const PAGE_SIZE = 20;
-
-      // Normalizamos por si llega un label desde la UI
-      const categoriaNorm = categoria === 'todas' ? 'todas' : normalizeCategoria(categoria);
-
-      // ====== Constraints base: where (opcional) + orderBy obligatorio ======
-      const constraints = [];
-
-      if (categoriaNorm && categoriaNorm !== 'todas') {
-        constraints.push(where('categoria', '==', categoriaNorm));
-      }
-
-      constraints.push(orderBy('prioridad', 'asc'));
-
-      // ====== Paginación ======
-      let q;
-      if (pagination === 'next' && start) {
-        q = query(
-          collection(db, 'novedades'),
-          ...constraints,
-          startAfter(start),
-          limit(PAGE_SIZE)
-        );
-      } else if (pagination === 'prev' && start) {
-        q = query(
-          collection(db, 'novedades'),
-          ...constraints,
-          endBefore(start),
-          limitToLast(PAGE_SIZE)
-        );
-      } else {
-        q = query(
-          collection(db, 'novedades'),
-          ...constraints,
-          limit(PAGE_SIZE)
-        );
-      }
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.size === 0) {
-        dispatch(getNovedadesError('No hay novedades'));
-        return;
-      }
-
-      const { page } = getState().novedades;
-
-      // Guardamos referencias de paginación (primer y último doc de esta página)
-      querySnapshot.docs.forEach((docSnap, i) => {
-        if (i === 0) dispatch(setFirstNovedad(docSnap));
-        if (i === PAGE_SIZE - 1) dispatch(setLastNovedad(docSnap));
-      });
-
-      // Normalizamos data
+      const querySnapshot = await getDocs(collection(db, 'novedades'));
       const arrayDocs = [];
       querySnapshot.forEach(docSnap => {
         const data = docSnap.data();
@@ -195,22 +142,22 @@ export const getNovedades = (pagination, start, categoria = 'todas') => {
           imagen: data.imagen,
           prioridad: data.prioridad,
           descarga: data.descarga,
-          departamento: data.departamento || '', // 👈 NUEVO
+          departamento: data.departamento || '',
+          departamentos: Array.isArray(data.departamentos) ? data.departamentos : undefined,
+          alcanceTodosDepartamentos: data.alcanceTodosDepartamentos === true,
         });
       });
 
+      arrayDocs.sort((a, b) => {
+        const prioridadA = Number.isFinite(Number(a.prioridad)) ? Number(a.prioridad) : 0;
+        const prioridadB = Number.isFinite(Number(b.prioridad)) ? Number(b.prioridad) : 0;
+        return prioridadA - prioridadB;
+      });
+
       dispatch(getNovedadesSuccess(arrayDocs));
-      dispatch(setPage(
-        pagination === 'next' ? page + 1 :
-        pagination === 'prev' ? page - 1 : page
-      ));
 
     } catch (error) {
-      if (error?.code === 'failed-precondition') {
-        dispatch(getNovedadesError('Se requiere un índice compuesto para filtrar por categoría y ordenar por prioridad. Crealo desde el link que muestra la consola.'));
-      } else {
-        dispatch(getNovedadesError('No se pudieron cargar las novedades'));
-      }
+      dispatch(getNovedadesError('No se pudieron cargar las novedades'));
       console.log(error);
     }
   };
@@ -239,7 +186,9 @@ export const getNovedad = (id) => {
         imagen: data.imagen,
         prioridad: data.prioridad,
         descarga: data.descarga,
-        departamento: data.departamento || '', // 👈 NUEVO
+        departamento: data.departamento || '',
+        departamentos: Array.isArray(data.departamentos) ? data.departamentos : undefined,
+        alcanceTodosDepartamentos: data.alcanceTodosDepartamentos === true,
       };
 
       dispatch({ type: types.GET_NOVEDAD, payload: novedad });
@@ -286,10 +235,6 @@ const getNovedadesError = (payload) => ({ type: types.GET_NOVEDADES_ERROR, paylo
 const deleteNovedadesProcess = (payload) => ({ type: types.DELETE_NOVEDADES, payload });
 const deleteNovedadesSuccess = (payload) => ({ type: types.DELETE_NOVEDADES_SUCCESS, payload });
 const deleteNovedadesError = (payload) => ({ type: types.DELETE_NOVEDADES_ERROR, payload });
-
-const setFirstNovedad = (payload) => ({ type: types.SET_FIRST_NOVEDAD, payload });
-const setLastNovedad  = (payload) => ({ type: types.SET_LAST_NOVEDAD, payload });
-const setPage         = (payload) => ({ type: types.SET_PAGE_NOVEDAD, payload });
 
 export const clearStatus    = (payload) => ({ type: types.CLEAR_STATUS, payload });
 export const clearNovedades = (payload) => ({ type: types.CLEAR_NOVEDADES, payload });

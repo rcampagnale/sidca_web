@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useHistory } from 'react-router';
+import { useHistory, useLocation } from 'react-router';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -9,7 +9,6 @@ import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Dropdown } from 'primereact/dropdown';
 import Swal from 'sweetalert2';
 
 import styles from './styles.module.css';
@@ -18,7 +17,6 @@ import {
   deleteNovedades,
   getNovedad,
   getNovedades,
-  clearNovedades,
 } from '../../../redux/reducers/novedades/actions';
 
 const PAGE_SIZE = 10;
@@ -31,76 +29,104 @@ const CATEGORIA_LABEL = {
   convenio_hoteles: 'Convenio Hoteles',
 };
 
+const CATEGORIAS_PRINCIPALES = [
+  { label: 'Todas', value: 'todas' },
+  { label: 'Convenio Comercio', value: 'convenio_comercio' },
+  { label: 'Convenio Hoteles', value: 'convenio_hoteles' },
+  { label: 'Turismo', value: 'turismo' },
+  { label: 'Casa del Docente', value: 'casa' },
+  { label: 'Predio', value: 'predio' },
+];
+
+const getDepartamentos = (novedad) => {
+  if (Array.isArray(novedad?.departamentos)) return novedad.departamentos;
+  return novedad?.departamento ? [novedad.departamento] : [];
+};
+
+const departamentosBodyTemplate = (row) => {
+  if (row.alcanceTodosDepartamentos === true) {
+    return <span className={styles.departmentCell}>Todos los departamentos</span>;
+  }
+
+  const valores = getDepartamentos(row);
+  if (!valores.length) return <span className={styles.noLink}>—</span>;
+
+  const visibles = valores.slice(0, 2).join(', ');
+  const resto = valores.length - 2;
+  return (
+    <span className={styles.departmentCell} title={valores.join(', ')}>
+      {visibles}{resto > 0 ? ` +${resto}` : ''}
+    </span>
+  );
+};
+
 const Novedades = () => {
   const dispatch = useDispatch();
   const history = useHistory();
+  const location = useLocation();
+  const navigationParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
   const columns = useMemo(() => ([
     { field: 'prioridad', header: 'Prioridad' },
     { field: 'titulo', header: 'Titulo' },
     { field: 'descripcion', header: 'Descripcion' },
     { field: 'categoria', header: 'Categoria' },
+    { field: 'departamentosAlcance', header: 'Departamentos' },
     { field: 'link', header: 'Link' },
     { field: 'id', header: 'Acciones' },
   ]), []);
 
   const novedades = useSelector((state) => state.novedades);
-  const page = useSelector((state) => state.novedades.page);
-
-  const [prevDisable, setPrevDisable] = useState(false);
-  const [nextDisable, setNextDisable] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(() => {
+    const pagina = Number(navigationParams.get('pagina'));
+    return Number.isInteger(pagina) && pagina >= 0 ? pagina : 0;
+  });
   const [subirNovedadesActive] = useState(false);
 
   // === Filtro de categoría ===
-  const [categoria, setCategoria] = useState('todas');
-  const categorias = [
-    { label: 'Todas', value: 'todas' },
-    { label: 'Turismo', value: 'turismo' },
-    { label: 'Casa del Docente', value: 'casa' },
-    { label: 'Predio', value: 'predio' },
-    { label: 'Convenio Comercio', value: 'convenio_comercio' },
-    { label: 'Convenio Hoteles', value: 'convenio_hoteles' },
-  ];
+  const [categoria, setCategoria] = useState(() => navigationParams.get('categoria') || 'todas');
+  const categoriaInicial = useRef(true);
+  const categorias = useMemo(() => {
+    const conocidas = new Set(CATEGORIAS_PRINCIPALES.map((item) => item.value));
+    const adicionales = (novedades.novedades || [])
+      .map((item) => item.categoria)
+      .filter((value) => value && !conocidas.has(value))
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .map((value) => ({ label: CATEGORIA_LABEL[value] || value, value }));
+
+    return [...CATEGORIAS_PRINCIPALES, ...adicionales];
+  }, [novedades.novedades]);
 
   const handleEdit = async (id) => {
     await dispatch(getNovedad(id));
-    history.push(`/admin/nueva-novedad/${id}`);
+    history.push({
+      pathname: `/admin/nueva-novedad/${id}`,
+      search: `?categoria=${encodeURIComponent(categoria)}&pagina=${paginaActual}`,
+    });
   };
 
   const handlePagination = async (pagination) => {
-    if (pagination === 'prev' && page === 1) {
-      setPrevDisable(true);
+    const totalPaginas = Math.max(1, Math.ceil(novedadesFiltradas.length / PAGE_SIZE));
+    if (pagination === 'prev') {
+      setPaginaActual((pagina) => Math.max(0, pagina - 1));
       return;
     }
-    setPrevDisable(false);
-    dispatch(
-      getNovedades(
-        pagination,
-        pagination === 'next' ? novedades.lastNovedad : novedades.firstNovedad,
-        categoria
-      )
-    );
+    setPaginaActual((pagina) => Math.min(totalPaginas - 1, pagina + 1));
   };
 
   // Carga inicial
   useEffect(() => {
-    dispatch(getNovedades(undefined, undefined, categoria));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dispatch(getNovedades());
   }, [dispatch]);
 
-  // Al cambiar categoría: limpiar y pedir primera página filtrada
+  // Cambiar de pestaña sólo cambia la navegación local.
   useEffect(() => {
-    dispatch(clearNovedades());
-    setPrevDisable(false);
-    setNextDisable(false);
-    dispatch(getNovedades(undefined, undefined, categoria));
-  }, [categoria, dispatch]);
-
-  // Habilitar/deshabilitar paginación según estado
-  useEffect(() => {
-    setPrevDisable(page <= 1);
-    setNextDisable(novedades.size < PAGE_SIZE);
-  }, [page, novedades.size]);
+    if (categoriaInicial.current) {
+      categoriaInicial.current = false;
+      return;
+    }
+    setPaginaActual(0);
+  }, [categoria]);
 
   const accept = (id) => {
     dispatch(deleteNovedades(id));
@@ -109,9 +135,9 @@ const Novedades = () => {
   // Re-fetch tras eliminar con el filtro actual (cuando llega SUCCESS_DELETE)
   useEffect(() => {
     if (novedades.status === 'SUCCESS_DELETE') {
-      dispatch(getNovedades(undefined, undefined, categoria));
+      dispatch(getNovedades());
     }
-  }, [novedades.status, categoria, dispatch]);
+  }, [novedades.status, dispatch]);
 
   const confirm = (id) => {
     confirmDialog({
@@ -123,13 +149,12 @@ const Novedades = () => {
   };
 
   const actionsBodyTemplate = (row) => (
-    <div>
+    <div className={styles.tableActions}>
       <Button
         label="Editar"
         icon="pi pi-pencil"
         className="p-button-raised p-button-primary"
         onClick={() => handleEdit(row.id)}
-        style={{ marginRight: 4 }}
       />
       <Button
         label="Eliminar"
@@ -141,21 +166,38 @@ const Novedades = () => {
   );
 
   const linkBodyTemplate = (row) =>
-    row.link ? (
-      <a href={row.link} target="_blank" rel="noopener noreferrer">
-        {String(row.link).slice(0, 40)}
-        {String(row.link).length > 40 ? '…' : ''}
+    row.link && String(row.link).toLowerCase() !== 'false' ? (
+      <a className={styles.linkButton} href={row.link} target="_blank" rel="noopener noreferrer">
+        <i className="pi pi-external-link" aria-hidden="true" />
+        Abrir
       </a>
     ) : (
-      <span style={{ opacity: 0.7 }}>—</span>
+      <span className={styles.noLink}>Sin enlace</span>
     );
 
   const categoriaBodyTemplate = (row) =>
-    CATEGORIA_LABEL[row.categoria] || row.categoria || '—';
+    <span className={styles.categoryBadge}>
+      {CATEGORIA_LABEL[row.categoria] || row.categoria || '—'}
+    </span>;
+
+  const descripcionBodyTemplate = (row) => (
+    <span className={styles.descriptionCell}>{row.descripcion || '—'}</span>
+  );
+
+  const titleBodyTemplate = (row) => (
+    <span className={styles.titleCell}>{row.titulo || '—'}</span>
+  );
 
   const dynamicColumns = columns.map((col) => {
     if (col.field === 'id') {
-      return <Column key={col.field} header={col.header} body={actionsBodyTemplate} />;
+      return (
+        <Column
+          key={col.field}
+          header={col.header}
+          body={actionsBodyTemplate}
+          className={styles.column_id}
+        />
+      );
     }
     if (col.field === 'link') {
       return (
@@ -163,7 +205,7 @@ const Novedades = () => {
           key={col.field}
           header={col.header}
           body={linkBodyTemplate}
-          style={{ minWidth: 200 }}
+          className={styles.linkColumn}
         />
       );
     }
@@ -173,12 +215,25 @@ const Novedades = () => {
           key={col.field}
           header={col.header}
           body={categoriaBodyTemplate}
+          className={styles.column_categoria}
+        />
+      );
+    }
+    if (col.field === 'departamentosAlcance') {
+      return (
+        <Column
+          key={col.field}
+          header={col.header}
+          body={departamentosBodyTemplate}
+          className={styles.column_departamentosAlcance}
         />
       );
     }
     return (
       <Column
         key={col.field}
+        body={col.field === 'titulo' ? titleBodyTemplate : col.field === 'descripcion' ? descripcionBodyTemplate : undefined}
+        className={styles[`column_${col.field}`]}
         bodyStyle={{ overflowWrap: 'break-word' }}
         field={col.field}
         header={col.header}
@@ -217,6 +272,22 @@ const Novedades = () => {
     }
   }, [novedades.status, novedades.msg, dispatch]);
 
+  const novedadesFiltradas = useMemo(() => {
+    const todas = novedades.novedades || [];
+    if (categoria === 'todas') return todas;
+    return todas.filter((item) => item.categoria === categoria);
+  }, [novedades.novedades, categoria]);
+
+  const totalPaginas = Math.max(1, Math.ceil(novedadesFiltradas.length / PAGE_SIZE));
+  const novedadesPaginadas = useMemo(() => {
+    const inicio = paginaActual * PAGE_SIZE;
+    return novedadesFiltradas.slice(inicio, inicio + PAGE_SIZE);
+  }, [novedadesFiltradas, paginaActual]);
+
+  useEffect(() => {
+    setPaginaActual((pagina) => Math.min(pagina, totalPaginas - 1));
+  }, [totalPaginas]);
+
   const template2 = {
     layout: 'PrevPageLink CurrentPageReport NextPageLink',
     PrevPageLink: (options) => (
@@ -224,7 +295,7 @@ const Novedades = () => {
         type="button"
         className={options.className}
         onClick={() => handlePagination('prev')}
-        disabled={prevDisable}
+        disabled={paginaActual <= 0}
       >
         <span className="p-3">Anterior</span>
       </button>
@@ -234,14 +305,14 @@ const Novedades = () => {
         type="button"
         className={options.className}
         onClick={() => handlePagination('next')}
-        disabled={nextDisable}
+        disabled={paginaActual >= totalPaginas - 1}
       >
         <span className="p-3">Siguiente</span>
       </button>
     ),
     CurrentPageReport: (options) => (
       <button type="button" className={options.className} onClick={options.onClick}>
-        {page}
+        {paginaActual + 1}
         <Ripple />
       </button>
     ),
@@ -252,50 +323,113 @@ const Novedades = () => {
       {/* Necesario para que funcione confirmDialog() */}
       <ConfirmDialog />
 
-      <div className={styles.title_and_button}>
+      <div className={styles.pageHeader}>
         <h3 className={styles.title}>Novedades</h3>
-        <div>
-          <Button
-            label="Nueva Novedad"
-            icon="pi pi-plus"
-            onClick={() => history.push('/admin/nueva-novedad')}
-            style={{ marginRight: 3 }}
-          />
-        </div>
+        <Button
+          label="Nueva Novedad"
+          icon="pi pi-plus"
+          onClick={() => history.push({
+            pathname: '/admin/nueva-novedad',
+            search: `?categoria=${encodeURIComponent(categoria)}&pagina=${paginaActual}`,
+          })}
+          className={styles.newButton}
+        />
       </div>
 
-      {/* 🔽 Filtro de Categoría */}
-      <div style={{ marginBottom: '1rem' }}>
-        <Dropdown
-          value={categoria}
-          options={categorias}
-          onChange={(e) => setCategoria(e.value)}
-          placeholder="Filtrar por categoría"
-          className="w-full md:w-20rem"
-        />
+      <div className={styles.categoryTabs} role="tablist" aria-label="Categorías de novedades">
+        {categorias.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={categoria === item.value}
+            className={`${styles.categoryTab} ${categoria === item.value ? styles.categoryTabActive : ''}`}
+            onClick={() => setCategoria(item.value)}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       <div className={styles.table_upload}>
         {subirNovedadesActive ? (
           <></>
-        ) : novedades.novedades.length > 0 ? (
+          ) : novedadesPaginadas.length > 0 ? (
           <>
-            <DataTable
-              value={novedades.novedades}
-              responsiveLayout="scroll"
-              loading={novedades.processing}
-            >
-              {dynamicColumns}
-            </DataTable>
-            <Paginator template={template2} />
+            <div className={styles.desktopTable}>
+              <DataTable
+                value={novedadesPaginadas}
+                loading={novedades.processing}
+                className={styles.novedadesTable}
+              >
+                {dynamicColumns}
+              </DataTable>
+            </div>
+            <div className={styles.mobileCards}>
+              {novedadesPaginadas.map((row) => (
+                <article className={styles.novedadCard} key={row.id}>
+                  <span className={styles.cardCategory}>
+                    {CATEGORIA_LABEL[row.categoria] || row.categoria || '—'}
+                  </span>
+                  {(row.categoria === 'convenio_comercio' || row.categoria === 'convenio_hoteles') && (
+                    <span className={styles.mobileDepartment}>
+                      <strong>Disponible en:</strong>{' '}
+                      {row.alcanceTodosDepartamentos === true
+                        ? 'Todos los departamentos'
+                        : getDepartamentos(row).length
+                          ? getDepartamentos(row).join(', ')
+                          : '—'}
+                    </span>
+                  )}
+                  <h4>{row.titulo || '—'}</h4>
+                  <p>{row.descripcion || '—'}</p>
+                  <div className={styles.cardMeta}>
+                    <span>Prioridad: {row.prioridad ?? '—'}</span>
+                  </div>
+                  {row.link && String(row.link).toLowerCase() !== 'false' && (
+                    <a
+                      className={styles.mobileLink}
+                      href={row.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <i className="pi pi-external-link" aria-hidden="true" />
+                      Abrir enlace
+                    </a>
+                  )}
+                  <div className={styles.mobileActions}>
+                    <Button
+                      label="Editar"
+                      icon="pi pi-pencil"
+                      className="p-button-raised p-button-primary"
+                      onClick={() => handleEdit(row.id)}
+                    />
+                    <Button
+                      label="Eliminar"
+                      icon="pi pi-trash"
+                      className="p-button-raised p-button-danger"
+                      onClick={() => confirm(row.id)}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+            <Paginator
+              first={paginaActual * PAGE_SIZE}
+              rows={PAGE_SIZE}
+              totalRecords={novedadesFiltradas.length}
+              onPageChange={(event) => setPaginaActual(event.page)}
+              template={template2}
+            />
           </>
         ) : novedades.processing ? (
           <ProgressSpinner className="loader" />
         ) : (
-          <Button
-            label="No hay novedades"
-            className={`p-button-outlined p-button-danger ${styles.errorBtn}`}
-          />
+          <div className={styles.emptyState}>
+            <i className="pi pi-inbox" aria-hidden="true" />
+            <strong>No hay novedades cargadas en esta categoría.</strong>
+            <span>Podés crear una nueva novedad desde el botón superior.</span>
+          </div>
         )}
       </div>
     </div>
