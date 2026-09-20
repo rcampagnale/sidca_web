@@ -16,6 +16,7 @@ import {
   listarModalInformativos,
 } from '../../../services/modalInformativosService';
 import {
+  crearNotificacionProgramada,
   enviarModalInformativoPrueba,
   enviarNotificacionPushMasiva,
 } from '../../../services/pushNotificationsService';
@@ -23,6 +24,18 @@ import styles from './styles.module.css';
 
 const MAX_IMAGE_SIZE = 1000000;
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp'];
+const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+
+const fechaActualArgentina = () => {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_HORARIA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const valores = Object.fromEntries(partes.filter((parte) => parte.type !== 'literal').map((parte) => [parte.type, parte.value]));
+  return `${valores.year}-${valores.month}-${valores.day}`;
+};
 
 const estadoLabel = {
   activo: 'ACTIVO',
@@ -33,7 +46,15 @@ const estadoLabel = {
 const formatearFecha = (valor) => {
   const fecha = valor?.toDate?.() || (valor ? new Date(valor) : null);
   if (!fecha || Number.isNaN(fecha.getTime())) return '—';
-  return fecha.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: ZONA_HORARIA,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(fecha);
 };
 
 const extractoDescripcion = (valor) => {
@@ -66,6 +87,9 @@ const ModalInformativo = () => {
   const [resultado, setResultado] = useState('');
   const [error, setError] = useState('');
   const [resumen, setResumen] = useState(null);
+  const [mostrarProgramacion, setMostrarProgramacion] = useState(false);
+  const [fechaProgramada, setFechaProgramada] = useState(fechaActualArgentina);
+  const [horaProgramada, setHoraProgramada] = useState('');
 
   const cargarModales = async () => {
     setCargando(true);
@@ -260,6 +284,59 @@ const ModalInformativo = () => {
     });
   };
 
+  const confirmarProgramacion = (modal) => {
+    if (!modal?.id) return;
+    if (!fechaProgramada || !horaProgramada) {
+      setError('Completá la fecha y la hora de programación.');
+      return;
+    }
+    const programadaParaIso = new Date(`${fechaProgramada}T${horaProgramada}:00-03:00`).toISOString();
+    if (new Date(programadaParaIso).getTime() <= Date.now() - 10000) {
+      setError('La fecha y hora deben ser futuras según el horario de Argentina.');
+      return;
+    }
+    confirmDialog({
+      header: 'Confirmar programación',
+      message: (
+        <div className={styles.confirmContent}>
+          <p>El modal activo se enviará a todos los usuarios con notificaciones habilitadas.</p>
+          <strong>Fecha: {fechaProgramada.split('-').reverse().join('/')} {horaProgramada}</strong>
+          <span>Horario: Argentina</span>
+          <span>Título: {modal.titulo}</span>
+        </div>
+      ),
+      acceptLabel: 'Programar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        setGuardando(true);
+        setError('');
+        try {
+          await crearNotificacionProgramada({
+            title: 'SiDCa - Tu Sindicato',
+            body: 'Tenemos una nueva información para vos.',
+            data: {
+              type: 'news_modal',
+              titulo: modal.titulo,
+              descripcion: modal.descripcion,
+              imagen: modal.imagen || '',
+              link: modal.link || '',
+              newsId: modal.id,
+            },
+            programadaParaIso,
+            tipoOrigen: 'modal',
+            origenId: modal.id,
+          });
+          setResultado('Notificación del modal programada correctamente.');
+          setMostrarProgramacion(false);
+        } catch (requestError) {
+          setError(mensajeOperacion(requestError, 'No se pudo programar el modal.'));
+        } finally {
+          setGuardando(false);
+        }
+      },
+    });
+  };
+
   const seleccionarImagen = (event) => {
     const archivo = event.files?.[0];
     if (!archivo) return;
@@ -347,6 +424,7 @@ const ModalInformativo = () => {
               <Button label="Editar" icon="pi pi-pencil" onClick={() => editar(modalActivo)} disabled={guardando} />
               <Button label="Enviar prueba" icon="pi pi-send" severity="secondary" onClick={() => prepararPrueba(modalActivo)} disabled={guardando} />
               <Button label="Enviar a todos" icon="pi pi-users" onClick={() => confirmarEnvioMasivo(modalActivo)} disabled={guardando} />
+              <Button label="Programar envío" icon="pi pi-calendar-plus" onClick={() => setMostrarProgramacion((visible) => !visible)} disabled={guardando} />
               <Button label="Desactivar" icon="pi pi-ban" severity="secondary" onClick={() => confirmarDesactivacion(modalActivo)} disabled={guardando} />
             </div>
           </div>
@@ -354,6 +432,23 @@ const ModalInformativo = () => {
           <div className={styles.activeEmpty}>
             <p>No hay un Modal informativo activo.</p>
             <small>Podés crear uno nuevo o activar uno desde el historial.</small>
+          </div>
+        )}
+        {modalActivo && mostrarProgramacion && (
+          <div className={styles.schedulePanel}>
+            <strong>Programar envío del modal activo</strong>
+            <span>Horario de Argentina</span>
+            <div className={styles.scheduleFields}>
+              <label className={styles.field} htmlFor="modal-scheduled-date">
+                <span>Fecha</span>
+                <InputText id="modal-scheduled-date" type="date" min={fechaActualArgentina()} value={fechaProgramada} onChange={(event) => setFechaProgramada(event.target.value)} disabled={guardando} />
+              </label>
+              <label className={styles.field} htmlFor="modal-scheduled-time">
+                <span>Hora</span>
+                <InputText id="modal-scheduled-time" type="time" value={horaProgramada} onChange={(event) => setHoraProgramada(event.target.value)} disabled={guardando} />
+              </label>
+            </div>
+            <Button label={guardando ? 'Programando...' : 'Programar envío'} icon={guardando ? undefined : 'pi pi-calendar-plus'} onClick={() => confirmarProgramacion(modalActivo)} disabled={guardando} />
           </div>
         )}
       </section>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { RadioButton } from "primereact/radiobutton";
@@ -10,6 +10,11 @@ import { confirmDialog } from "primereact/confirmdialog";
 import {
   enviarNotificacionPushMasiva,
   enviarNotificacionPushPrueba,
+  crearNotificacionProgramada,
+  listarNotificacionesProgramadas,
+  editarNotificacionProgramada,
+  cancelarNotificacionProgramada,
+  enviarNotificacionProgramadaAhora,
 } from "../../../services/pushNotificationsService";
 import styles from "./styles.module.css";
 
@@ -25,6 +30,55 @@ const DESTINOS = [
   { type: "office_management", label: "Oficina de Gestión", descripcion: "Al tocarla se abrirá la Oficina de Gestión." },
   { type: "external_url", label: "Enlace externo / YouTube", descripcion: "Al tocarla se abrirá el enlace indicado." },
 ];
+const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
+
+const partesFechaArgentina = (valor = new Date()) => {
+  const fecha = valor?.toDate?.() || new Date(valor);
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZONA_HORARIA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(fecha);
+  return Object.fromEntries(partes.filter((parte) => parte.type !== "literal").map((parte) => [parte.type, parte.value]));
+};
+
+const fechaActualArgentina = () => {
+  const partes = partesFechaArgentina();
+  return `${partes.year}-${partes.month}-${partes.day}`;
+};
+
+const isoDesdeArgentina = (fecha, hora) => {
+  if (!fecha || !hora) return "";
+  return new Date(`${fecha}T${hora}:00-03:00`).toISOString();
+};
+
+const fechaHoraArgentinaDesdeIso = (valor) => {
+  const partes = partesFechaArgentina(valor);
+  return {
+    fecha: `${partes.year}-${partes.month}-${partes.day}`,
+    hora: `${partes.hour}:${partes.minute}`,
+  };
+};
+
+const formatearFechaHoraArgentina = (valor) => {
+  const fecha = valor?.toDate?.() || (valor ? new Date(valor) : null);
+  if (!fecha || Number.isNaN(fecha.getTime())) return "—";
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: ZONA_HORARIA,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(fecha);
+};
+
+const destinoLabel = (type) => DESTINOS.find((opcion) => opcion.type === type)?.label || type || "—";
 
 const NotificacionesPush = () => {
   const [titulo, setTitulo] = useState(TITULO_INICIAL);
@@ -37,6 +91,28 @@ const NotificacionesPush = () => {
   const [error, setError] = useState("");
   const [resultado, setResultado] = useState("");
   const [resumen, setResumen] = useState(null);
+  const [modoEnvio, setModoEnvio] = useState("ahora");
+  const [fechaProgramada, setFechaProgramada] = useState(fechaActualArgentina);
+  const [horaProgramada, setHoraProgramada] = useState("");
+  const [programadaEditandoId, setProgramadaEditandoId] = useState("");
+  const [programadas, setProgramadas] = useState([]);
+  const [cargandoProgramadas, setCargandoProgramadas] = useState(true);
+
+  const cargarProgramadas = async () => {
+    setCargandoProgramadas(true);
+    try {
+      const respuesta = await listarNotificacionesProgramadas();
+      setProgramadas(Array.isArray(respuesta?.notificaciones) ? respuesta.notificaciones : []);
+    } catch (requestError) {
+      setError(requestError.message || "No se pudieron cargar las notificaciones programadas.");
+    } finally {
+      setCargandoProgramadas(false);
+    }
+  };
+
+  useEffect(() => {
+    void cargarProgramadas();
+  }, []);
 
   const prepararNotificacion = (requiereToken) => {
     const tituloLimpio = titulo.trim();
@@ -114,6 +190,133 @@ const NotificacionesPush = () => {
     } finally {
       setEnviando(false);
     }
+  };
+
+  const prepararProgramacion = () => {
+    const datos = prepararNotificacion(false);
+    if (!datos) return null;
+    if (!fechaProgramada || !horaProgramada) {
+      setError("Completá la fecha y la hora de programación.");
+      return null;
+    }
+    const programadaParaIso = isoDesdeArgentina(fechaProgramada, horaProgramada);
+    if (!programadaParaIso || new Date(programadaParaIso).getTime() <= Date.now() - 10000) {
+      setError("La fecha y hora deben ser futuras según el horario de Argentina.");
+      return null;
+    }
+    return { ...datos, programadaParaIso };
+  };
+
+  const confirmarProgramacion = () => {
+    const datos = prepararProgramacion();
+    if (!datos) return;
+    const fechaVisible = `${fechaProgramada.split("-").reverse().join("/")} ${horaProgramada}`;
+    confirmDialog({
+      header: "Confirmar programación",
+      message: (
+        <div className={styles.confirmContent}>
+          <strong>Fecha: {fechaVisible}</strong>
+          <span>Horario: Argentina</span>
+          <span>Título: {datos.title}</span>
+          <span>Mensaje: {datos.body}</span>
+          <span>Destino: {datos.destinoLabel}</span>
+        </div>
+      ),
+      acceptLabel: "Programar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setEnviando(true);
+        setError("");
+        setResultado("");
+        try {
+          if (programadaEditandoId) {
+            await editarNotificacionProgramada(programadaEditandoId, {
+              title: datos.title,
+              body: datos.body,
+              data: datos.data,
+              programadaParaIso: datos.programadaParaIso,
+            });
+            setResultado("Notificación programada actualizada correctamente.");
+          } else {
+            await crearNotificacionProgramada({
+              title: datos.title,
+              body: datos.body,
+              data: datos.data,
+              programadaParaIso: datos.programadaParaIso,
+              tipoOrigen: "push",
+              origenId: null,
+            });
+            setResultado("Notificación programada correctamente.");
+          }
+          setProgramadaEditandoId("");
+          await cargarProgramadas();
+        } catch (requestError) {
+          setError(requestError.message || "No se pudo guardar la programación.");
+        } finally {
+          setEnviando(false);
+        }
+      },
+    });
+  };
+
+  const editarProgramada = (notificacion) => {
+    const fechaHora = fechaHoraArgentinaDesdeIso(notificacion.programadaPara);
+    setProgramadaEditandoId(notificacion.id);
+    setTitulo(notificacion.title || "");
+    setMensaje(notificacion.body || "");
+    setDestino(notificacion.data?.type || "open_app");
+    setUrlDestino(notificacion.data?.url || "");
+    setFechaProgramada(fechaHora.fecha);
+    setHoraProgramada(fechaHora.hora);
+    setDestinatarios("todos");
+    setModoEnvio("programar");
+    setResultado("Editando notificación pendiente.");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const confirmarEnviarAhora = (notificacion) => {
+    confirmDialog({
+      header: "Enviar notificación ahora",
+      message: `Esta notificación está programada para ${formatearFechaHoraArgentina(notificacion.programadaPara)}. ¿Deseás enviarla ahora?`,
+      acceptLabel: "Enviar ahora",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setEnviando(true);
+        setError("");
+        try {
+          const respuesta = await enviarNotificacionProgramadaAhora(notificacion.id);
+          setResumen(respuesta?.estadisticas || null);
+          setResultado("Notificación programada enviada correctamente.");
+          await cargarProgramadas();
+        } catch (requestError) {
+          setError(requestError.message || "No se pudo enviar la notificación.");
+        } finally {
+          setEnviando(false);
+        }
+      },
+    });
+  };
+
+  const confirmarCancelar = (notificacion) => {
+    confirmDialog({
+      header: "Cancelar notificación programada",
+      message: "¿Deseás cancelar esta notificación programada?",
+      acceptLabel: "Cancelar envío",
+      rejectLabel: "Volver",
+      accept: async () => {
+        setEnviando(true);
+        try {
+          await cancelarNotificacionProgramada(notificacion.id);
+          setResultado("Notificación programada cancelada.");
+          await cargarProgramadas();
+        } catch (requestError) {
+          setError(requestError.message || "No se pudo cancelar la notificación.");
+        } finally {
+          setEnviando(false);
+        }
+      },
+    });
   };
 
   const confirmarEnvioMasivo = () => {
@@ -217,7 +420,11 @@ const NotificacionesPush = () => {
                 inputId="push-test-recipient"
                 name="destinatarios"
                 value="prueba"
-                onChange={(event) => setDestinatarios(event.value)}
+                onChange={(event) => {
+                  setDestinatarios(event.value);
+                  setModoEnvio("ahora");
+                  setProgramadaEditandoId("");
+                }}
                 checked={destinatarios === "prueba"}
                 disabled={enviando}
               />
@@ -238,6 +445,36 @@ const NotificacionesPush = () => {
               </span>
             </label>
           </div>
+          {destinatarios === "todos" && (
+            <div className={styles.sendMode}>
+              <span className={styles.modeTitle}>Enviar</span>
+              <label className={styles.radioOption} htmlFor="push-send-now">
+                <RadioButton
+                  inputId="push-send-now"
+                  name="modo-envio"
+                  value="ahora"
+                  onChange={(event) => {
+                    setModoEnvio(event.value);
+                    setProgramadaEditandoId("");
+                  }}
+                  checked={modoEnvio === "ahora"}
+                  disabled={enviando}
+                />
+                <span>Ahora</span>
+              </label>
+              <label className={styles.radioOption} htmlFor="push-send-scheduled">
+                <RadioButton
+                  inputId="push-send-scheduled"
+                  name="modo-envio"
+                  value="programar"
+                  onChange={(event) => setModoEnvio(event.value)}
+                  checked={modoEnvio === "programar"}
+                  disabled={enviando}
+                />
+                <span>Programar envío</span>
+              </label>
+            </div>
+          )}
         </div>
 
         {destinatarios === "prueba" ? (
@@ -266,14 +503,39 @@ const NotificacionesPush = () => {
           </div>
         ) : (
           <div className={styles.card}>
-            <h3>Enviar a todos</h3>
-            <p className={styles.massiveHint}>Se enviará la notificación a todos los dispositivos con notificaciones habilitadas.</p>
+            <h3>{modoEnvio === "programar" ? "Programar notificación" : "Enviar a todos"}</h3>
+            <p className={styles.massiveHint}>{modoEnvio === "programar" ? "Horario de Argentina" : "Se enviará la notificación a todos los dispositivos con notificaciones habilitadas."}</p>
+            {modoEnvio === "programar" && (
+              <div className={styles.scheduleFields}>
+                <label className={styles.field} htmlFor="push-scheduled-date">
+                  <span>Fecha</span>
+                  <InputText
+                    id="push-scheduled-date"
+                    type="date"
+                    min={fechaActualArgentina()}
+                    value={fechaProgramada}
+                    onChange={(event) => setFechaProgramada(event.target.value)}
+                    disabled={enviando}
+                  />
+                </label>
+                <label className={styles.field} htmlFor="push-scheduled-time">
+                  <span>Hora</span>
+                  <InputText
+                    id="push-scheduled-time"
+                    type="time"
+                    value={horaProgramada}
+                    onChange={(event) => setHoraProgramada(event.target.value)}
+                    disabled={enviando}
+                  />
+                </label>
+              </div>
+            )}
             <Button
               type="button"
-              label={enviando ? "Enviando..." : "Enviar a todos"}
-              icon={enviando ? undefined : "pi pi-send"}
+              label={enviando ? "Enviando..." : modoEnvio === "programar" ? (programadaEditandoId ? "Guardar cambios" : "Programar notificación") : "Enviar a todos"}
+              icon={enviando ? undefined : modoEnvio === "programar" ? "pi pi-calendar-plus" : "pi pi-send"}
               disabled={enviando}
-              onClick={confirmarEnvioMasivo}
+              onClick={modoEnvio === "programar" ? confirmarProgramacion : confirmarEnvioMasivo}
               className={styles.submitButton}
             />
             {enviando && <ProgressSpinner className={styles.spinner} />}
@@ -294,6 +556,35 @@ const NotificacionesPush = () => {
           </div>
         )}
       </form>
+
+      <section className={styles.scheduledSection} aria-labelledby="scheduled-title">
+        <div className={styles.sectionHeading}>
+          <h3 id="scheduled-title">Notificaciones programadas</h3>
+          <Button type="button" label="Actualizar" icon="pi pi-refresh" className="p-button-text" onClick={cargarProgramadas} disabled={enviando || cargandoProgramadas} />
+        </div>
+        {cargandoProgramadas ? <p className={styles.muted}>Cargando programaciones...</p> : !programadas.length ? <p className={styles.muted}>Todavía no hay notificaciones programadas.</p> : (
+          <div className={styles.scheduledList}>
+            {programadas.map((notificacion) => (
+              <article className={styles.scheduledItem} key={notificacion.id}>
+                <div className={styles.scheduledInfo}>
+                  <strong>{notificacion.title}</strong>
+                  <span>{formatearFechaHoraArgentina(notificacion.programadaPara)} · {destinoLabel(notificacion.data?.type)}</span>
+                  <span className={`${styles.statusBadge} ${styles[`status${String(notificacion.estado || "")[0]?.toUpperCase()}${String(notificacion.estado || "").slice(1)}`]}`}>{String(notificacion.estado || "").toUpperCase()}</span>
+                </div>
+                <div className={styles.scheduledActions}>
+                  {notificacion.estado === "pendiente" && <>
+                    <Button type="button" label="Editar" icon="pi pi-pencil" onClick={() => editarProgramada(notificacion)} disabled={enviando} />
+                    <Button type="button" label="Enviar ahora" icon="pi pi-send" onClick={() => confirmarEnviarAhora(notificacion)} disabled={enviando} />
+                    <Button type="button" label="Cancelar" icon="pi pi-ban" severity="secondary" onClick={() => confirmarCancelar(notificacion)} disabled={enviando} />
+                  </>}
+                  {notificacion.estado === "enviada" && notificacion.estadisticas && <span>Enviados: {notificacion.estadisticas.enviados} · Fallidos: {notificacion.estadisticas.fallidos}</span>}
+                  {notificacion.estado === "error" && <span className={styles.errorText}>{notificacion.ultimoError || "Error al procesar"}</span>}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 };

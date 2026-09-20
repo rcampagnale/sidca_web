@@ -65,12 +65,32 @@
 .radioOption { display: flex; align-items: flex-start; gap: 10px; color: #374151; line-height: 1.4; cursor: pointer; }
 .radioOption small { display: block; margin-top: 3px; color: #7a8799; }
 .disabledOption { color: #7a8799; cursor: not-allowed; }
+.sendMode { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid #e1e5ea; }
+.modeTitle { color: #374151; font-weight: 600; }
+.scheduleFields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .massiveHint { margin: 0; color: #64748b; line-height: 1.45; }
 .confirmContent { display: grid; gap: 8px; line-height: 1.4; }
 .confirmContent p { margin: 0 0 4px; }
 .summary { display: grid; gap: 7px; padding: 16px; border: 1px solid #a9d8b4; border-radius: 8px; background: #f1fff3; color: #23743b; }
 .summary h3 { margin: 0 0 4px; color: #1d6332; }
+.scheduledSection { display: grid; gap: 14px; margin-top: 22px; padding: 20px; border: 1px solid #dce4ed; border-radius: 10px; background: #fff; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sectionHeading h3 { margin: 0; color: #24324a; }
+.muted { margin: 0; color: #64748b; }
+.scheduledList { display: grid; gap: 10px; }
+.scheduledItem { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid #dce4ed; border-radius: 8px; background: #fbfcfe; }
+.scheduledInfo { display: grid; gap: 7px; min-width: 0; }
+.scheduledInfo strong, .scheduledInfo span { overflow-wrap: anywhere; }
+.scheduledInfo span { color: #64748b; }
+.scheduledActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; flex: 0 0 auto; }
+.scheduledActions > span { color: #64748b; font-size: .9rem; }
+.errorText { color: #a33030 !important; }
+.statusPendiente { background: #fff7d6; color: #956d00 !important; }
+.statusProcesando { background: #e0f2fe; color: #075985 !important; }
+.statusEnviada { background: #dcfce7; color: #087443 !important; }
+.statusCancelada { background: #eef2f7; color: #64748b !important; }
+.statusError { background: #fff1f2; color: #a33030 !important; }
 
 .submitButton { width: fit-content; min-width: 170px; }
 .spinner { width: 22px; height: 22px; }
@@ -85,9 +105,15 @@
   .header { align-items: flex-start; }
   .card { padding: 18px; }
   .submitButton { width: 100%; }
+  .scheduledItem { align-items: stretch; flex-direction: column; }
+  .scheduledActions { justify-content: stretch; }
+  .scheduledActions :global(.p-button) { flex: 1 1 140px; }
 }
 
 @media (max-width: 480px) {
   .header h2 { font-size: 1.25rem; }
   .card { padding: 15px; }
+  .scheduleFields { grid-template-columns: 1fr; }
+  .scheduledSection { padding: 15px; }
+  .sectionHeading { align-items: flex-start; flex-direction: column; }
 }

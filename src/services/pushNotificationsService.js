@@ -82,6 +82,27 @@ export const enviarNotificacionPushMasiva = ({ title, body, data }) =>
     }),
   });
 
+export const crearNotificacionProgramada = ({ title, body, data, programadaParaIso, tipoOrigen, origenId = null }) =>
+  pedir("/api/push/scheduled", {
+    method: "POST",
+    body: JSON.stringify({ title, body, data, programadaParaIso, tipoOrigen, origenId }),
+  });
+
+export const listarNotificacionesProgramadas = ({ estado } = {}) =>
+  pedir(`/api/push/scheduled${estado ? `?estado=${encodeURIComponent(estado)}` : ""}`);
+
+export const editarNotificacionProgramada = (id, cambios) =>
+  pedir(`/api/push/scheduled/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(cambios),
+  });
+
+export const cancelarNotificacionProgramada = (id) =>
+  pedir(`/api/push/scheduled/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" });
+
+export const enviarNotificacionProgramadaAhora = (id) =>
+  pedir(`/api/push/scheduled/${encodeURIComponent(id)}/send-now`, { method: "POST", body: "{}" });
+
 export const enviarModalInformativoPrueba = ({
   token,
   titulo,
