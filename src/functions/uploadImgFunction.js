@@ -74,7 +74,11 @@ export const uploadImgFunction = (
       },
       async () => {
         try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          const uploadedRef = uploadTask?.snapshot?.ref;
+          if (!uploadedRef) {
+            throw new Error("No se encontró la referencia de la imagen subida.");
+          }
+          const downloadURL = await getDownloadURL(uploadedRef);
           console.log("[uploadImgFunction] URL lista:", downloadURL);
           // 👇 Enviamos SOLO el string, el action creator ya arma { msg, img }
           dispatch(uploadImgSuccess(downloadURL));

@@ -56,7 +56,8 @@
 
 .field { display: grid; gap: 7px; color: #374151; font-weight: 600; }
 .field :global(.p-inputtext),
-.field :global(.p-inputtextarea) { width: 100%; }
+.field :global(.p-inputtextarea),
+.destinationDropdown { width: 100%; }
 .field :global(.p-inputtextarea) { min-height: 150px; resize: vertical; }
 .field small { color: #64748b; font-weight: 400; }
 
@@ -64,6 +65,12 @@
 .radioOption { display: flex; align-items: flex-start; gap: 10px; color: #374151; line-height: 1.4; cursor: pointer; }
 .radioOption small { display: block; margin-top: 3px; color: #7a8799; }
 .disabledOption { color: #7a8799; cursor: not-allowed; }
+
+.massiveHint { margin: 0; color: #64748b; line-height: 1.45; }
+.confirmContent { display: grid; gap: 8px; line-height: 1.4; }
+.confirmContent p { margin: 0 0 4px; }
+.summary { display: grid; gap: 7px; padding: 16px; border: 1px solid #a9d8b4; border-radius: 8px; background: #f1fff3; color: #23743b; }
+.summary h3 { margin: 0 0 4px; color: #1d6332; }
 
 .submitButton { width: fit-content; min-width: 170px; }
 .spinner { width: 22px; height: 22px; }

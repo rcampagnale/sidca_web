@@ -10,6 +10,7 @@ import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
 import NotificacionesPush from '../NotificacionesPush/NotificacionesPush';
+import ModalInformativo from '../ModalInformativo/ModalInformativo';
 
 import styles from './styles.module.css';
 import {
@@ -67,7 +68,8 @@ const Novedades = () => {
   const history = useHistory();
   const location = useLocation();
   const navigationParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const vista = navigationParams.get('vista') === 'push' ? 'push' : 'novedades';
+  const vistaParam = navigationParams.get('vista');
+  const vista = ['push', 'modal'].includes(vistaParam) ? vistaParam : 'novedades';
 
   const columns = useMemo(() => ([
     { field: 'prioridad', header: 'Prioridad' },
@@ -363,10 +365,22 @@ const Novedades = () => {
           <i className="pi pi-bell" aria-hidden="true" />
           Notificaciones Push
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vista === 'modal'}
+          className={`${styles.viewTab} ${vista === 'modal' ? styles.viewTabActive : ''}`}
+          onClick={() => cambiarVista('modal')}
+        >
+          <i className="pi pi-info-circle" aria-hidden="true" />
+          Modal informativo
+        </button>
       </div>
 
       {vista === 'push' ? (
         <NotificacionesPush />
+      ) : vista === 'modal' ? (
+        <ModalInformativo />
       ) : (
         <>
         <div className={styles.pageHeader}>

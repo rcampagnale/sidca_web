@@ -61,13 +61,49 @@ const pedir = async (ruta, opciones = {}, permitirReintento = true) => {
   );
 };
 
-export const enviarNotificacionPushPrueba = ({ token, title, body }) =>
+export const enviarNotificacionPushPrueba = ({ token, title, body, data }) =>
   pedir("/api/push/test", {
     method: "POST",
     body: JSON.stringify({
       token: token.trim(),
       title: title.trim(),
       body: body.trim(),
-      data: { type: "admin_push_test" },
+      ...(data ? { data } : {}),
     }),
   });
+
+export const enviarNotificacionPushMasiva = ({ title, body, data }) =>
+  pedir("/api/push/broadcast", {
+    method: "POST",
+    body: JSON.stringify({
+      title: title.trim(),
+      body: body.trim(),
+      data,
+    }),
+  });
+
+export const enviarModalInformativoPrueba = ({
+  token,
+  titulo,
+  descripcion,
+  imagen = '',
+  link = '',
+  newsId = '',
+}) => {
+  return pedir("/api/push/test", {
+    method: "POST",
+    body: JSON.stringify({
+      token: token.trim(),
+      title: "SiDCa - Tu Sindicato",
+      body: "Tenemos una nueva información para vos.",
+      data: {
+        type: "news_modal",
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        imagen: imagen.trim(),
+        link: link.trim(),
+        newsId,
+      },
+    }),
+  });
+};
