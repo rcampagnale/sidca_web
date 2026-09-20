@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory, useLocation } from 'react-router';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Paginator } from 'primereact/paginator';
-import { Ripple } from 'primereact/ripple';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
 import Swal from 'sweetalert2';
+import NotificacionesPush from '../NotificacionesPush/NotificacionesPush';
 
 import styles from './styles.module.css';
 import {
@@ -38,6 +38,8 @@ const CATEGORIAS_PRINCIPALES = [
   { label: 'Predio', value: 'predio' },
 ];
 
+const normalizarCategoria = (value) => String(value || '').trim().toLowerCase() || 'todas';
+
 const getDepartamentos = (novedad) => {
   if (Array.isArray(novedad?.departamentos)) return novedad.departamentos;
   return novedad?.departamento ? [novedad.departamento] : [];
@@ -65,6 +67,7 @@ const Novedades = () => {
   const history = useHistory();
   const location = useLocation();
   const navigationParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const vista = navigationParams.get('vista') === 'push' ? 'push' : 'novedades';
 
   const columns = useMemo(() => ([
     { field: 'prioridad', header: 'Prioridad' },
@@ -84,8 +87,7 @@ const Novedades = () => {
   const [subirNovedadesActive] = useState(false);
 
   // === Filtro de categoría ===
-  const [categoria, setCategoria] = useState(() => navigationParams.get('categoria') || 'todas');
-  const categoriaInicial = useRef(true);
+  const [categoria, setCategoria] = useState(() => normalizarCategoria(navigationParams.get('categoria')));
   const categorias = useMemo(() => {
     const conocidas = new Set(CATEGORIAS_PRINCIPALES.map((item) => item.value));
     const adicionales = (novedades.novedades || [])
@@ -105,28 +107,42 @@ const Novedades = () => {
     });
   };
 
-  const handlePagination = async (pagination) => {
+  const actualizarNavegacion = (nuevaCategoria, nuevaPagina, nuevaVista = vista) => {
+    history.replace({
+      pathname: '/admin/novedades',
+      search: `?vista=${nuevaVista}&categoria=${encodeURIComponent(nuevaCategoria)}&pagina=${nuevaPagina}`,
+    });
+  };
+
+  const cambiarCategoria = (valor) => {
+    const nuevaCategoria = normalizarCategoria(valor);
+    setCategoria(nuevaCategoria);
+    setPaginaActual(0);
+    actualizarNavegacion(nuevaCategoria, 0);
+  };
+
+  const cambiarPagina = (nuevaPagina) => {
+    setPaginaActual(nuevaPagina);
+    actualizarNavegacion(categoria, nuevaPagina);
+  };
+
+  const cambiarVista = (nuevaVista) => {
+    actualizarNavegacion(categoria, paginaActual, nuevaVista);
+  };
+
+  const handlePagination = (pagination) => {
     const totalPaginas = Math.max(1, Math.ceil(novedadesFiltradas.length / PAGE_SIZE));
     if (pagination === 'prev') {
-      setPaginaActual((pagina) => Math.max(0, pagina - 1));
+      cambiarPagina(Math.max(0, paginaActual - 1));
       return;
     }
-    setPaginaActual((pagina) => Math.min(totalPaginas - 1, pagina + 1));
+    cambiarPagina(Math.min(totalPaginas - 1, paginaActual + 1));
   };
 
   // Carga inicial
   useEffect(() => {
     dispatch(getNovedades());
   }, [dispatch]);
-
-  // Cambiar de pestaña sólo cambia la navegación local.
-  useEffect(() => {
-    if (categoriaInicial.current) {
-      categoriaInicial.current = false;
-      return;
-    }
-    setPaginaActual(0);
-  }, [categoria]);
 
   const accept = (id) => {
     dispatch(deleteNovedades(id));
@@ -275,7 +291,7 @@ const Novedades = () => {
   const novedadesFiltradas = useMemo(() => {
     const todas = novedades.novedades || [];
     if (categoria === 'todas') return todas;
-    return todas.filter((item) => item.categoria === categoria);
+    return todas.filter((item) => normalizarCategoria(item.categoria) === categoria);
   }, [novedades.novedades, categoria]);
 
   const totalPaginas = Math.max(1, Math.ceil(novedadesFiltradas.length / PAGE_SIZE));
@@ -285,8 +301,12 @@ const Novedades = () => {
   }, [novedadesFiltradas, paginaActual]);
 
   useEffect(() => {
-    setPaginaActual((pagina) => Math.min(pagina, totalPaginas - 1));
-  }, [totalPaginas]);
+    if (paginaActual >= totalPaginas) {
+      const paginaValida = totalPaginas - 1;
+      setPaginaActual(paginaValida);
+      actualizarNavegacion(categoria, paginaValida);
+    }
+  }, [totalPaginas, paginaActual, categoria]);
 
   const template2 = {
     layout: 'PrevPageLink CurrentPageReport NextPageLink',
@@ -311,10 +331,9 @@ const Novedades = () => {
       </button>
     ),
     CurrentPageReport: (options) => (
-      <button type="button" className={options.className} onClick={options.onClick}>
+      <span className={options.className}>
         {paginaActual + 1}
-        <Ripple />
-      </button>
+      </span>
     ),
   };
 
@@ -323,7 +342,34 @@ const Novedades = () => {
       {/* Necesario para que funcione confirmDialog() */}
       <ConfirmDialog />
 
-      <div className={styles.pageHeader}>
+      <div className={styles.viewTabs} role="tablist" aria-label="Secciones de novedades">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vista === 'novedades'}
+          className={`${styles.viewTab} ${vista === 'novedades' ? styles.viewTabActive : ''}`}
+          onClick={() => cambiarVista('novedades')}
+        >
+          <i className="pi pi-list" aria-hidden="true" />
+          Novedades
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vista === 'push'}
+          className={`${styles.viewTab} ${vista === 'push' ? styles.viewTabActive : ''}`}
+          onClick={() => cambiarVista('push')}
+        >
+          <i className="pi pi-bell" aria-hidden="true" />
+          Notificaciones Push
+        </button>
+      </div>
+
+      {vista === 'push' ? (
+        <NotificacionesPush />
+      ) : (
+        <>
+        <div className={styles.pageHeader}>
         <h3 className={styles.title}>Novedades</h3>
         <Button
           label="Nueva Novedad"
@@ -334,7 +380,7 @@ const Novedades = () => {
           })}
           className={styles.newButton}
         />
-      </div>
+        </div>
 
       <div className={styles.categoryTabs} role="tablist" aria-label="Categorías de novedades">
         {categorias.map((item) => (
@@ -344,14 +390,14 @@ const Novedades = () => {
             role="tab"
             aria-selected={categoria === item.value}
             className={`${styles.categoryTab} ${categoria === item.value ? styles.categoryTabActive : ''}`}
-            onClick={() => setCategoria(item.value)}
+            onClick={() => cambiarCategoria(item.value)}
           >
             {item.label}
           </button>
         ))}
       </div>
 
-      <div className={styles.table_upload}>
+        <div className={styles.table_upload}>
         {subirNovedadesActive ? (
           <></>
           ) : novedadesPaginadas.length > 0 ? (
@@ -418,7 +464,7 @@ const Novedades = () => {
               first={paginaActual * PAGE_SIZE}
               rows={PAGE_SIZE}
               totalRecords={novedadesFiltradas.length}
-              onPageChange={(event) => setPaginaActual(event.page)}
+              onPageChange={(event) => cambiarPagina(event.page)}
               template={template2}
             />
           </>
@@ -431,7 +477,9 @@ const Novedades = () => {
             <span>Podés crear una nueva novedad desde el botón superior.</span>
           </div>
         )}
-      </div>
+        </div>
+        </>
+      )}
     </div>
   );
 };

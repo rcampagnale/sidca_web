@@ -1,0 +1,86 @@
+.container {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 4px 0 24px;
+  padding: 0 6px 16px;
+  border-bottom: 1px solid #e1e5ea;
+}
+
+.header h2,
+.header p,
+.card h3 { margin: 0; }
+.header h2 { color: #24324a; font-size: 1.55rem; }
+.header p { margin-top: 7px; color: #64748b; }
+.header > i {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #f0d98d;
+  border-radius: 50%;
+  background: #fffaf0;
+  color: #d89b13;
+  font-size: 1.15rem;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid #dce4ed;
+  border-radius: 10px;
+  background: #fbfcfe;
+  box-shadow: 0 3px 12px rgba(36, 50, 74, 0.04);
+}
+
+.card:first-child { grid-row: span 2; }
+
+.card h3 { color: #24324a; font-size: 1.08rem; }
+
+.card:nth-child(2) { gap: 12px; padding-block: 18px; }
+
+.field { display: grid; gap: 7px; color: #374151; font-weight: 600; }
+.field :global(.p-inputtext),
+.field :global(.p-inputtextarea) { width: 100%; }
+.field :global(.p-inputtextarea) { min-height: 150px; resize: vertical; }
+.field small { color: #64748b; font-weight: 400; }
+
+.radioGroup { display: grid; gap: 10px; }
+.radioOption { display: flex; align-items: flex-start; gap: 10px; color: #374151; line-height: 1.4; cursor: pointer; }
+.radioOption small { display: block; margin-top: 3px; color: #7a8799; }
+.disabledOption { color: #7a8799; cursor: not-allowed; }
+
+.submitButton { width: fit-content; min-width: 170px; }
+.spinner { width: 22px; height: 22px; }
+.error,
+.success { margin: 0; padding: 12px 14px; border-radius: 8px; }
+.error { border: 1px solid #f0b5b5; background: #fff5f5; color: #a33030; }
+.success { border: 1px solid #a9d8b4; background: #f1fff3; color: #23743b; }
+
+@media (max-width: 768px) {
+  .form { grid-template-columns: 1fr; }
+  .card:first-child { grid-row: auto; }
+  .header { align-items: flex-start; }
+  .card { padding: 18px; }
+  .submitButton { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .header h2 { font-size: 1.25rem; }
+  .card { padding: 15px; }
+}
