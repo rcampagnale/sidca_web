@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
 import { ProgressBar } from 'primereact/progressbar';
 import { confirmDialog } from 'primereact/confirmdialog';
+import { Dialog } from 'primereact/dialog';
 
 import { uploadImg } from '../../../redux/reducers/novedades/actions';
 import {
@@ -90,6 +91,7 @@ const ModalInformativo = () => {
   const [mostrarProgramacion, setMostrarProgramacion] = useState(false);
   const [fechaProgramada, setFechaProgramada] = useState(fechaActualArgentina);
   const [horaProgramada, setHoraProgramada] = useState('');
+  const [mostrarDialogoPrueba, setMostrarDialogoPrueba] = useState(false);
 
   const cargarModales = async () => {
     setCargando(true);
@@ -151,10 +153,12 @@ const ModalInformativo = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const prepararPrueba = (modal) => {
+  const abrirDialogoPrueba = (modal) => {
     editar(modal);
-    setResultado('Modal cargado para enviar una prueba.');
-    window.setTimeout(() => document.getElementById('modal-test-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+    setToken('');
+    setError('');
+    setResultado('');
+    setMostrarDialogoPrueba(true);
   };
 
   const validarFormulario = () => {
@@ -367,31 +371,18 @@ const ModalInformativo = () => {
     if (!validarFormulario()) {
       return;
     }
-    confirmDialog({
-      header: 'Enviar modal informativo de prueba',
-      message: (
-        <div className={styles.confirmContent}>
-          <strong>{titulo}</strong>
-          <span>{descripcion}</span>
-          <p>Esta información se enviará al token indicado de la APP SIDCA.</p>
-        </div>
-      ),
-      acceptLabel: 'Enviar',
-      rejectLabel: 'Cancelar',
-      accept: async () => {
-        setGuardando(true);
-        setError('');
-        setResultado('');
-        try {
-          await enviarModalInformativoPrueba({ token: tokenLimpio, titulo, descripcion, imagen, link, newsId: formId });
-          setResultado('Notificación de prueba enviada correctamente.');
-        } catch (requestError) {
-          setError(mensajeOperacion(requestError, 'No se pudo enviar la prueba.'));
-        } finally {
-          setGuardando(false);
-        }
-      },
-    });
+    setGuardando(true);
+    setError('');
+    setResultado('');
+    void enviarModalInformativoPrueba({ token: tokenLimpio, titulo, descripcion, imagen, link, newsId: formId })
+      .then(() => {
+        setResultado('Notificación de prueba enviada correctamente.');
+        setMostrarDialogoPrueba(false);
+      })
+      .catch((requestError) => {
+        setError(mensajeOperacion(requestError, 'No se pudo enviar la prueba.'));
+      })
+      .finally(() => setGuardando(false));
   };
 
   const modalActivo = modales.find((modal) => modal.estado === 'activo');
@@ -422,7 +413,7 @@ const ModalInformativo = () => {
             </div>
             <div className={styles.inlineActions}>
               <Button label="Editar" icon="pi pi-pencil" onClick={() => editar(modalActivo)} disabled={guardando} />
-              <Button label="Enviar prueba" icon="pi pi-send" severity="secondary" onClick={() => prepararPrueba(modalActivo)} disabled={guardando} />
+              <Button label="Enviar prueba" icon="pi pi-send" severity="secondary" onClick={() => abrirDialogoPrueba(modalActivo)} disabled={guardando} />
               <Button label="Enviar a todos" icon="pi pi-users" onClick={() => confirmarEnvioMasivo(modalActivo)} disabled={guardando} />
               <Button label="Programar envío" icon="pi pi-calendar-plus" onClick={() => setMostrarProgramacion((visible) => !visible)} disabled={guardando} />
               <Button label="Desactivar" icon="pi pi-ban" severity="secondary" onClick={() => confirmarDesactivacion(modalActivo)} disabled={guardando} />
@@ -495,13 +486,7 @@ const ModalInformativo = () => {
         </section>
       </div>
 
-      <section className={styles.card} id="modal-test-section" aria-labelledby="test-title">
-        <h3 id="test-title">Enviar prueba</h3>
-        <label className={styles.field} htmlFor="modal-expo-token">
-          <span>Expo Push Token</span>
-          <InputText id="modal-expo-token" value={token} onChange={(event) => setToken(event.target.value)} placeholder="ExponentPushToken[...]" disabled={guardando} autoComplete="off" />
-        </label>
-        <Button label={guardando ? 'Procesando...' : 'Enviar prueba'} icon={guardando ? undefined : 'pi pi-send'} onClick={enviarPrueba} disabled={guardando || !formId} className={styles.testButton} />
+      <div className={styles.statusMessages}>
         {error && <p className={styles.error} role="alert">{error}</p>}
         {resultado && <p className={styles.success} role="status">{resultado}</p>}
         {resumen && (
@@ -515,7 +500,31 @@ const ModalInformativo = () => {
             <span>Dispositivos no registrados: {resumen.deviceNotRegistered}</span>
           </div>
         )}
-      </section>
+      </div>
+
+      <Dialog
+        header="Enviar prueba"
+        visible={mostrarDialogoPrueba}
+        onHide={() => {
+          if (!guardando) setMostrarDialogoPrueba(false);
+        }}
+        modal
+        className={styles.testDialog}
+        footer={(
+          <div className={styles.dialogActions}>
+            <Button label="Cancelar" severity="secondary" onClick={() => setMostrarDialogoPrueba(false)} disabled={guardando} />
+            <Button label={guardando ? 'Procesando...' : 'Enviar prueba'} icon={guardando ? undefined : 'pi pi-send'} onClick={enviarPrueba} disabled={guardando || !formId} />
+          </div>
+        )}
+      >
+        <div className={styles.testDialogContent}>
+          <p>Se enviará esta información únicamente al dispositivo indicado.</p>
+          <label className={styles.field} htmlFor="modal-expo-token">
+            <span>Expo Push Token</span>
+            <InputText id="modal-expo-token" value={token} onChange={(event) => setToken(event.target.value)} placeholder="ExponentPushToken[...]" disabled={guardando} autoComplete="off" />
+          </label>
+        </div>
+      </Dialog>
 
       <section className={styles.history} aria-labelledby="history-title">
         <h3 id="history-title">Historial de Modal informativos</h3>

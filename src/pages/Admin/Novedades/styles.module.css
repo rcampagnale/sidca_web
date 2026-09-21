@@ -76,6 +76,8 @@
   margin-bottom: 18px;
   padding: 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
   border-bottom: 1px solid #e1e5ea;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;

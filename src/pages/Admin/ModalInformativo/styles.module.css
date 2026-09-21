@@ -43,7 +43,11 @@
 .statusActive { background: #dcfce7; color: #087443; }
 .statusBorrador { background: #fff7d6; color: #956d00; }
 .statusInactivo { background: #eef2f7; color: #64748b; }
-.testButton { justify-self: start; }
+.testDialog { width: min(460px, calc(100vw - 32px)); }
+.testDialogContent { display: grid; gap: 16px; }
+.testDialogContent p { margin: 0; color: #526078; line-height: 1.5; }
+.dialogActions { display: flex; justify-content: flex-end; gap: 8px; }
+.statusMessages { display: grid; gap: 10px; margin-top: 18px; }
 .deliveryCard { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; }
 .deliveryCard p { margin: 6px 0 0; color: #64748b; }
 .deliveryCard :global(.p-button) { flex: 0 0 auto; }
@@ -78,7 +82,7 @@
   .card, .activePanel { padding: 16px; }
   .scheduleFields { grid-template-columns: 1fr; }
   .formActions, .inlineActions, .historyActions { display: grid; grid-template-columns: 1fr; }
-  .formActions :global(.p-button), .inlineActions :global(.p-button), .historyActions :global(.p-button), .deliveryCard :global(.p-button), .testButton { width: 100%; justify-content: center; }
+  .formActions :global(.p-button), .inlineActions :global(.p-button), .historyActions :global(.p-button), .deliveryCard :global(.p-button) { width: 100%; justify-content: center; }
   .historyItem { align-items: stretch; flex-direction: column; }
   .historyActions { flex: initial; }
   :global(.p-confirm-dialog) { width: calc(100vw - 24px); max-width: 420px; max-height: 85vh; }
