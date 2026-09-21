@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { RadioButton } from "primereact/radiobutton";
@@ -97,21 +97,62 @@ const NotificacionesPush = () => {
   const [programadaEditandoId, setProgramadaEditandoId] = useState("");
   const [programadas, setProgramadas] = useState([]);
   const [cargandoProgramadas, setCargandoProgramadas] = useState(true);
+  const [actualizandoProgramadas, setActualizandoProgramadas] = useState(false);
+  const actualizandoProgramadasRef = useRef(false);
+  const montadoRef = useRef(true);
 
-  const cargarProgramadas = async () => {
-    setCargandoProgramadas(true);
+  const cargarProgramadas = async ({ silencioso = false } = {}) => {
+    if (actualizandoProgramadasRef.current) return;
+    actualizandoProgramadasRef.current = true;
+    setActualizandoProgramadas(true);
+    if (!silencioso) setCargandoProgramadas(true);
     try {
       const respuesta = await listarNotificacionesProgramadas();
-      setProgramadas(Array.isArray(respuesta?.notificaciones) ? respuesta.notificaciones : []);
+      if (montadoRef.current) {
+        setProgramadas(Array.isArray(respuesta?.notificaciones) ? respuesta.notificaciones : []);
+      }
     } catch (requestError) {
-      setError(requestError.message || "No se pudieron cargar las notificaciones programadas.");
+      if (silencioso) {
+        console.error("[NotificacionesPush] No se pudo actualizar el historial programado.", requestError);
+      } else if (montadoRef.current) {
+        setError(requestError.message || "No se pudieron cargar las notificaciones programadas.");
+      }
     } finally {
-      setCargandoProgramadas(false);
+      actualizandoProgramadasRef.current = false;
+      if (montadoRef.current) {
+        setActualizandoProgramadas(false);
+        setCargandoProgramadas(false);
+      }
     }
   };
 
   useEffect(() => {
     void cargarProgramadas();
+    return () => {
+      montadoRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const actualizarSiVisible = () => {
+      if (document.visibilityState === "visible") {
+        void cargarProgramadas({ silencioso: true });
+      }
+    };
+
+    const intervalo = window.setInterval(actualizarSiVisible, 15000);
+    const manejarVisibilidad = () => {
+      if (document.visibilityState === "visible") actualizarSiVisible();
+    };
+
+    document.addEventListener("visibilitychange", manejarVisibilidad);
+    window.addEventListener("focus", actualizarSiVisible);
+
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", manejarVisibilidad);
+      window.removeEventListener("focus", actualizarSiVisible);
+    };
   }, []);
 
   const prepararNotificacion = (requiereToken) => {
@@ -560,7 +601,7 @@ const NotificacionesPush = () => {
       <section className={styles.scheduledSection} aria-labelledby="scheduled-title">
         <div className={styles.sectionHeading}>
           <h3 id="scheduled-title">Notificaciones programadas</h3>
-          <Button type="button" label="Actualizar" icon="pi pi-refresh" className="p-button-text" onClick={cargarProgramadas} disabled={enviando || cargandoProgramadas} />
+          <Button type="button" label={actualizandoProgramadas ? "Actualizando..." : "Actualizar"} icon="pi pi-refresh" className="p-button-text" onClick={() => cargarProgramadas()} disabled={enviando || actualizandoProgramadas} />
         </div>
         {cargandoProgramadas ? <p className={styles.muted}>Cargando programaciones...</p> : !programadas.length ? <p className={styles.muted}>Todavía no hay notificaciones programadas.</p> : (
           <div className={styles.scheduledList}>
