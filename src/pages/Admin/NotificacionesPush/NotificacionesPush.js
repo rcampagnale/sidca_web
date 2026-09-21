@@ -171,7 +171,14 @@ const NotificacionesPush = () => {
       return null;
     }
 
-    if (destino === "external_url" && !/^https?:\/\/\S+$/i.test(urlLimpia)) {
+    if (urlLimpia && !/^https?:\/\/\S+$/i.test(urlLimpia)) {
+      setResultado("");
+      setResumen(null);
+      setError("El enlace debe comenzar con http:// o https://.");
+      return null;
+    }
+
+    if (destino === "external_url" && !urlLimpia) {
       setResultado("");
       setResumen(null);
       setError("Completá una URL válida que comience con http:// o https://.");
@@ -184,7 +191,7 @@ const NotificacionesPush = () => {
       body: mensajeLimpio,
       data: {
         type: destino,
-        ...(destino === "external_url" ? { url: urlLimpia } : {}),
+        ...(urlLimpia ? { url: urlLimpia } : {}),
       },
       destinoLabel: destinoSeleccionado.label,
       url: urlLimpia,
@@ -261,6 +268,7 @@ const NotificacionesPush = () => {
           <span>Título: {datos.title}</span>
           <span>Mensaje: {datos.body}</span>
           <span>Destino: {datos.destinoLabel}</span>
+          {datos.url && <span>Enlace: {datos.url}</span>}
         </div>
       ),
       acceptLabel: "Programar",
@@ -372,7 +380,7 @@ const NotificacionesPush = () => {
           <strong>Título: {datos.title}</strong>
           <span>Mensaje: {datos.body}</span>
           <span>Destino: {datos.destinoLabel}</span>
-          {datos.data.type === "external_url" && <span>URL: {datos.url}</span>}
+          {datos.url && <span>Enlace: {datos.url}</span>}
         </div>
       ),
       acceptLabel: "Enviar a todos",
@@ -428,29 +436,25 @@ const NotificacionesPush = () => {
               options={DESTINOS}
               optionLabel="label"
               optionValue="type"
-              onChange={(event) => {
-                setDestino(event.value);
-                if (event.value !== "external_url") setUrlDestino("");
-              }}
+              onChange={(event) => setDestino(event.value)}
               disabled={enviando}
               className={styles.destinationDropdown}
             />
             <small>{DESTINOS.find((opcion) => opcion.type === destino)?.descripcion}</small>
           </label>
 
-          {destino === "external_url" && (
-            <label className={styles.field} htmlFor="push-destination-url">
-              <span>URL de destino</span>
-              <InputText
-                id="push-destination-url"
-                value={urlDestino}
-                onChange={(event) => setUrlDestino(event.target.value)}
-                placeholder="https://www.youtube.com/..."
-                disabled={enviando}
-                required
-              />
-            </label>
-          )}
+          <label className={styles.field} htmlFor="push-destination-url">
+            <span>{destino === "external_url" ? "Enlace de destino" : "Enlace opcional"}</span>
+            <InputText
+              id="push-destination-url"
+              value={urlDestino}
+              onChange={(event) => setUrlDestino(event.target.value)}
+              placeholder="https://..."
+              disabled={enviando}
+              required={destino === "external_url"}
+            />
+            <small>Si indicás un enlace, tendrá prioridad al tocar la notificación. Si lo dejás vacío, se abrirá el destino seleccionado en la APP.</small>
+          </label>
         </div>
 
         <div className={styles.card}>
