@@ -598,6 +598,7 @@ const NotificacionesPush = () => {
             <span>Enviados: {resumen.enviados}</span>
             <span>Fallidos: {resumen.fallidos}</span>
             <span>Dispositivos no registrados: {resumen.deviceNotRegistered}</span>
+            {typeof resumen.tokensDepurados === "number" && <span>Tokens depurados: {resumen.tokensDepurados}</span>}
           </div>
         )}
       </form>
