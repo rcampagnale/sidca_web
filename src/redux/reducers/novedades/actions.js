@@ -26,7 +26,7 @@ const CATEGORIA_MAP = {
 };
 const normalizeCategoria = (v) => CATEGORIA_MAP[v] || v;
 const esCategoriaConvenio = (categoria) =>
-  categoria === 'convenio_comercio' || categoria === 'convenio_hoteles';
+  categoria === 'convenio_comercio';
 const normalizarDepartamentos = (data) => {
   if (Array.isArray(data.departamentos)) return data.departamentos.filter(Boolean);
   return data.departamento ? [data.departamento] : [];

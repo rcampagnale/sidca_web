@@ -74,7 +74,7 @@ const NuevaNovedad = () => {
     value: nombre,
   }));
 
-  const esConvenio = ['convenio_comercio', 'convenio_hoteles'].includes(form.categoria);
+  const usaDepartamentos = form.categoria === 'convenio_comercio';
   const normalizarFormulario = (novedad) => ({
     ...novedad,
     departamentos: Array.isArray(novedad?.departamentos)
@@ -98,7 +98,7 @@ const NuevaNovedad = () => {
       Swal.fire({ title: 'Error', text: 'Titulo y categoría son campos obligatorios', icon: 'error' });
       return;
     }
-    if (esConvenio && !alcanceTodosDepartamentos && departamentosSeleccionados.length === 0) {
+    if (usaDepartamentos && !alcanceTodosDepartamentos && departamentosSeleccionados.length === 0) {
       Swal.fire({
         title: 'Faltan departamentos',
         text: 'Seleccioná al menos un departamento donde está disponible el convenio.',
@@ -109,11 +109,11 @@ const NuevaNovedad = () => {
 
     const payload = {
       ...form,
-      departamentos: esConvenio && !alcanceTodosDepartamentos
+      departamentos: usaDepartamentos && !alcanceTodosDepartamentos
         ? departamentosSeleccionados
         : [],
-      alcanceTodosDepartamentos: esConvenio && alcanceTodosDepartamentos,
-      departamento: esConvenio && !alcanceTodosDepartamentos
+      alcanceTodosDepartamentos: usaDepartamentos && alcanceTodosDepartamentos,
+      departamento: usaDepartamentos && !alcanceTodosDepartamentos
         ? (departamentosSeleccionados[0] || '')
         : '',
     };
@@ -148,7 +148,7 @@ const NuevaNovedad = () => {
   }, [novedades.novedad]);
 
   useEffect(() => {
-    if (!esConvenio && (form.departamento || departamentosSeleccionados.length || alcanceTodosDepartamentos)) {
+    if (!usaDepartamentos && (form.departamento || departamentosSeleccionados.length || alcanceTodosDepartamentos)) {
       handleInputChange({ target: { name: 'departamento', value: '' } });
       setDepartamentosSeleccionados([]);
       setAlcanceTodosDepartamentos(false);
@@ -234,7 +234,7 @@ const NuevaNovedad = () => {
             <label className={styles.labelForm} htmlFor="categoria">Categoría*</label>
           </span>
 
-          {esConvenio && (
+          {usaDepartamentos && (
             <div className={styles.departmentSection}>
               <label className={styles.departmentLabel} htmlFor="departamentos">
                 Departamentos donde está disponible
