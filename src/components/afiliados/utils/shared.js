@@ -1,10 +1,150 @@
 // src/components/afiliados/utils/shared.js
 
-/** Separa "dd/mm/yyyy hh:mm:ss" en { fecha, hora } */
+const TIME_ZONE_SIDCA = "America/Argentina/Buenos_Aires";
+
+const pad2 = (value) => String(value).padStart(2, "0");
+
+const fechaValida = (year, month, day) => {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day <= daysInMonth;
+};
+
+const parseHoraSidca = (value) => {
+  const texto = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ");
+  if (!texto) return { hour: 0, minute: 0, second: 0 };
+
+  const match = texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|a m|p m)?$/i);
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const second = Number(match[3] || 0);
+  const meridiem = match[4]?.replace(" ", "").toLowerCase();
+  if (minute > 59 || second > 59) return null;
+
+  if (meridiem) {
+    if (hour < 1 || hour > 12) return null;
+    if (meridiem === "pm" && hour < 12) hour += 12;
+    if (meridiem === "am" && hour === 12) hour = 0;
+  } else if (hour > 23) {
+    return null;
+  }
+
+  return { hour, minute, second };
+};
+
+const partesFechaArgentina = (date) => {
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    timeZone: TIME_ZONE_SIDCA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    second: Number(values.second),
+    timestamp: date.getTime(),
+  };
+};
+
+/**
+ * Interpreta fechas nuevas y legacy sin permitir que Date normalice meses o
+ * dias invalidos silenciosamente. Los valores ambiguos usan DD/MM/YYYY.
+ */
+export const parseFechaHoraSidca = (value) => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : partesFechaArgentina(value);
+  }
+  if (typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : partesFechaArgentina(date);
+  }
+  if (!value || typeof value !== "string") return null;
+
+  const texto = value.trim().replace(/\u00a0/g, " ");
+  if (!texto) return null;
+
+  // ISO con zona: se conserva el instante y se muestra en horario argentino.
+  if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(texto)) {
+    const date = new Date(texto);
+    return Number.isNaN(date.getTime()) ? null : partesFechaArgentina(date);
+  }
+
+  const isoMatch = texto.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s]+(.+))?$/);
+  const slashMatch = texto.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:[T\s]+(.+))?$/);
+  let year;
+  let month;
+  let day;
+  let horaTexto;
+
+  if (isoMatch) {
+    year = Number(isoMatch[1]);
+    month = Number(isoMatch[2]);
+    day = Number(isoMatch[3]);
+    horaTexto = isoMatch[4];
+  } else if (slashMatch) {
+    const first = Number(slashMatch[1]);
+    const second = Number(slashMatch[2]);
+    year = Number(slashMatch[3]);
+    if (year < 100) year += 2000;
+    if (first > 12) {
+      day = first;
+      month = second;
+    } else if (second > 12) {
+      month = first;
+      day = second;
+    } else {
+      day = first;
+      month = second;
+    }
+    horaTexto = slashMatch[4];
+  } else {
+    return null;
+  }
+
+  if (!fechaValida(year, month, day)) return null;
+  const hora = parseHoraSidca(horaTexto);
+  if (!hora) return null;
+
+  return {
+    year,
+    month,
+    day,
+    ...hora,
+    timestamp: Date.UTC(year, month - 1, day, hora.hour, hora.minute, hora.second),
+  };
+};
+
+/** Separa y normaliza una fecha a { fecha: "DD/MM/YYYY", hora: "HH:mm" }. */
 export const splitFechaHora = (fechaStr) => {
-  if (!fechaStr || typeof fechaStr !== "string") return { fecha: "", hora: "" };
-  const [f, h] = fechaStr.trim().split(" ");
-  return { fecha: f || "", hora: h || "" };
+  const parsed = parseFechaHoraSidca(fechaStr);
+  if (!parsed) return { fecha: "", hora: "" };
+  return {
+    fecha: `${pad2(parsed.day)}/${pad2(parsed.month)}/${parsed.year}`,
+    hora: `${pad2(parsed.hour)}:${pad2(parsed.minute)}`,
+  };
+};
+
+/** Genera DD/MM/YYYY HH:mm en horario argentino para nuevos registros. */
+export const formatFechaHoraSidca = (date = new Date()) => {
+  const parsed = parseFechaHoraSidca(date);
+  if (!parsed) return "";
+  return `${pad2(parsed.day)}/${pad2(parsed.month)}/${parsed.year} ${pad2(parsed.hour)}:${pad2(parsed.minute)}`;
 };
 
 export const clean = (v) => (typeof v === "string" ? v.trim() : v);
@@ -37,17 +177,9 @@ export const normalizeDescuentoInput = (val) => {
   return "";
 };
 
-/** Convierte "dd/mm/yyyy hh:mm:ss" a timestamp (para ordenar) */
+/** Convierte cualquier fecha SIDCA a timestamp (para ordenar). */
 export const toTimestamp = (s) => {
-  if (!s || typeof s !== "string") return 0;
-  const raw = s.trim().replace(/-/g, "/");
-  const [dmy, hms = "00:00:00"] = raw.split(" ");
-  if (!dmy) return 0;
-  const [d, m, y] = dmy.split("/").map((n) => parseInt(n, 10));
-  const parts = hms.split(":").map((n) => parseInt(n, 10) || 0);
-  const [hh = 0, mm = 0, ss = 0] = parts;
-  const dt = new Date(y, (m || 1) - 1, d || 1, hh, mm, ss);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+  return parseFechaHoraSidca(s)?.timestamp || 0;
 };
 
 /** Normaliza strings para búsqueda: minúsculas + sin tildes */

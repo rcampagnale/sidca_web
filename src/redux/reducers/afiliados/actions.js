@@ -16,18 +16,12 @@ import {
   limitToLast,
   setDoc,
   getDoc,
-  Timestamp
 } from "firebase/firestore";
+import { formatFechaHoraSidca, splitFechaHora, toTimestamp } from '../../../components/afiliados/utils/shared';
 
 // -------------------------------
 // Helpers
 // -------------------------------
-const separarFechaYHora = (fechaStr) => {
-  if (!fechaStr || typeof fechaStr !== 'string') return { fecha: '', hora: '' };
-  const partes = fechaStr.split(' ');
-  return { fecha: partes[0] || '', hora: partes[1] || '' };
-};
-
 // Normaliza descuento para UI/export (prioriza string; si no hay, deriva de booleano 'cotizante')
 const getDescuentoSiNo = (data) => {
   if (typeof data?.descuento === 'string') return data.descuento; // "si" | "no"
@@ -67,7 +61,7 @@ export const getAfiliadosNuevos = (pagination, start) => {
 
         querySnapshot.forEach(docSnap => {
           const data = docSnap.data();
-          const { fecha, hora } = separarFechaYHora(data.fecha);
+          const { fecha, hora } = splitFechaHora(data.fecha);
           arrayDocs.push({
             id: docSnap.id,
             apellido: data.apellido,
@@ -117,7 +111,7 @@ export const descargarAfiliadosNuevos = () => {
 
         querySnapshot.forEach(docSnap => {
           const data = docSnap.data();
-          const { fecha, hora } = separarFechaYHora(data.fecha);
+          const { fecha, hora } = splitFechaHora(data.fecha);
           arrayDocs.push({
             id: docSnap.id,
             apellido: data.apellido,
@@ -139,9 +133,7 @@ export const descargarAfiliadosNuevos = () => {
 
         // del más reciente al más antiguo
         arrayDocs.sort((a, b) => {
-          const fechaA = new Date(`${a.fecha} ${a.hora}`);
-          const fechaB = new Date(`${b.fecha} ${b.hora}`);
-          return fechaB - fechaA;
+          return toTimestamp(`${b.fecha} ${b.hora}`) - toTimestamp(`${a.fecha} ${a.hora}`);
         });
 
         dispatch(descargarAFiliadosNuevosSuccess(arrayDocs));
@@ -176,10 +168,7 @@ export const nuevoAfiliado = (data) => {
   return async (dispatch, getState) => {
     dispatch(newUserProcess());
 
-    const hoy = new Date();
-    const fechaFormateada = hoy.toLocaleDateString();
-    const horaFormateada = hoy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const fechaCompleta = `${fechaFormateada} ${horaFormateada}`;
+    const fechaCompleta = formatFechaHoraSidca();
 
     let user = {
       nombre: `${data.apellido}, ${data.nombre}`,
@@ -226,10 +215,7 @@ export const afiliacion = (data) => {
       const prev = await getDocs(qReaf);
       const nroAfiliacion = prev.size + 1; // 1=primera, 2=segunda, etc.
 
-      const hoy = new Date();
-      const fechaFormateada = hoy.toLocaleDateString();
-      const horaFormateada = hoy.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const fechaCompleta = `${fechaFormateada} ${horaFormateada}`;
+      const fechaCompleta = formatFechaHoraSidca();
 
       // ✅ Guardamos ambos: 'descuento' (si/no) y 'cotizante' (boolean) por compatibilidad
       const descuentoSiNo = data.descuento ? 'si' : 'no';
