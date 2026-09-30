@@ -30,6 +30,14 @@
   border-left: 7px solid #22c55e;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: min(100%, 360px);
+}
+
 .header h1 {
   margin: 8px 0 10px;
   color: #020617;
@@ -92,7 +100,7 @@
   width: 100%;
   max-width: 1440px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin: 0 auto 20px;
 }
@@ -105,6 +113,16 @@
   border: 1px solid #dbe4ef;
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.summaryCardAction {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.summaryCardAction:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.11);
 }
 
 .summaryCard :global(.p-card-body) {
@@ -313,6 +331,35 @@
   color: #475569;
 }
 
+.processNotice,
+.reviewNotice {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto 20px;
+  padding: 14px 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.processNotice {
+  display: grid;
+  gap: 10px;
+}
+
+.reviewNotice {
+  display: grid;
+  gap: 4px;
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.reviewNotice span {
+  line-height: 1.45;
+}
+
 @media (max-width: 960px) {
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -341,7 +388,12 @@
     padding: 20px;
   }
 
+  .headerActions {
+    justify-content: stretch;
+  }
+
   .header :global(.p-button),
+  .headerActions :global(.p-button),
   .tableToolbar :global(.p-inputtext),
   .actionButton {
     width: 100%;

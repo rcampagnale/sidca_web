@@ -73,6 +73,8 @@ import SeleccionAccesoAdministracion from "../pages/Administracion/SeleccionAcce
 // Oficina de Gestión - Administrador
 import OficinaGestionAdmin from "../pages/Admin/OficinaGestion/OficinaGestionAdmin";
 import TitularizacionPage from "../pages/Admin/OficinaGestion/Titularizacion/TitularizacionPage";
+import TitularizacionImportPage from "../pages/Admin/OficinaGestion/Titularizacion/TitularizacionImportPage";
+import TitularizacionPendientesPage from "../pages/Admin/OficinaGestion/Titularizacion/TitularizacionPendientesPage";
 
 // Oficina de Gestión - Usuario
 import OficinaGestion from "../pages/OficinaGestion/OficinaGestion";
@@ -401,6 +403,18 @@ const AppRouter = () => {
         />
 
         <AdminRoute exact path="/admin/botones" component={HabilitarBotones} />
+
+        <AdminRoute
+          exact
+          path="/admin/oficina-gestion/titularizacion/importar"
+          component={TitularizacionImportPage}
+        />
+
+        <AdminRoute
+          exact
+          path="/admin/oficina-gestion/titularizacion/pendientes"
+          component={TitularizacionPendientesPage}
+        />
 
         <AdminRoute
           exact

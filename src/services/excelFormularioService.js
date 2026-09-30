@@ -186,8 +186,8 @@ export const normalizarFilasExcel = (
 
 export const leerEstructuraExcel = async (file) => {
   if (!file || !file.name) throw new Error("Seleccione un archivo Excel.");
-  if (!/\.(xlsx|xls)$/i.test(file.name)) {
-    throw new Error("El archivo debe tener formato .xlsx o .xls.");
+  if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
+    throw new Error("El archivo debe tener formato .xlsx, .xls o .csv.");
   }
 
   const buffer = await file.arrayBuffer();
