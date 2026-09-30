@@ -1,0 +1,370 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+.header,
+.sourceBox,
+.tableSection {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto 20px;
+  border: 1px solid #dbe4ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px 30px;
+  border-left: 7px solid #22c55e;
+}
+
+.header h1 {
+  margin: 8px 0 10px;
+  color: #020617;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.1;
+}
+
+.header p {
+  max-width: 900px;
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 5px 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sourceBox {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) minmax(160px, 1fr);
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.sourceBox div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sourceBox span,
+.personDetail span,
+.situationField span,
+.situationReference span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.sourceBox strong,
+.personDetail strong,
+.situationField strong,
+.situationReference strong {
+  overflow-wrap: anywhere;
+}
+
+.summaryGrid {
+  width: 100%;
+  max-width: 1440px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 auto 20px;
+}
+
+.summaryCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.summaryCard :global(.p-card-body) {
+  width: 100%;
+  padding: 18px;
+}
+
+.summaryCard :global(.p-card-content) {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+}
+
+.summaryCard span {
+  display: block;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.3;
+}
+
+.summaryCard strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 1.65rem;
+}
+
+.summaryIcon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #16a34a;
+  font-size: 1.15rem;
+}
+
+.tableSection {
+  overflow: hidden;
+}
+
+.tableToolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tableToolbar h2 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+}
+
+.tableToolbar p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.tableToolbar :global(.p-inputtext) {
+  width: min(360px, 100%);
+  min-width: 0;
+}
+
+.peopleTable {
+  border: 0;
+}
+
+.peopleTable :global(.p-datatable-thead > tr > th),
+.peopleTable :global(.p-datatable-tbody > tr > td) {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.personNameCell {
+  display: grid;
+  gap: 4px;
+}
+
+.personNameCell small {
+  display: -webkit-box;
+  max-width: 100%;
+  max-height: 2.7em;
+  color: #b45309;
+  line-height: 1.35;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.actionButton {
+  white-space: nowrap;
+}
+
+.expandedContent {
+  padding: 4px 12px 16px 48px;
+  background: #f8fafc;
+}
+
+.expandedTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.expandedTitle span {
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.situationsList {
+  display: grid;
+  gap: 12px;
+}
+
+.situationCard {
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.situationHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.situationGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.situationField {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.situationField strong {
+  min-height: 1.35em;
+  color: #1e293b;
+  font-size: 0.93rem;
+}
+
+.situationReference {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.personDetail {
+  display: grid;
+  gap: 18px;
+}
+
+.personDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.personDetailGrid > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.personDetail h3 {
+  margin: 0;
+}
+
+.loadingBox {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  gap: 12px;
+  color: #475569;
+}
+
+@media (max-width: 960px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sourceBox {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sourceBox div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .situationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 12px;
+  }
+
+  .header {
+    display: grid;
+    padding: 20px;
+  }
+
+  .header :global(.p-button),
+  .tableToolbar :global(.p-inputtext),
+  .actionButton {
+    width: 100%;
+  }
+
+  .sourceBox,
+  .summaryGrid,
+  .personDetailGrid,
+  .situationGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tableToolbar {
+    display: grid;
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .expandedContent {
+    padding: 8px 12px 14px;
+  }
+
+  .situationReference {
+    grid-template-columns: 1fr;
+  }
+}

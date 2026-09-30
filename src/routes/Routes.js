@@ -72,6 +72,7 @@ import SeleccionAccesoAdministracion from "../pages/Administracion/SeleccionAcce
 
 // Oficina de Gestión - Administrador
 import OficinaGestionAdmin from "../pages/Admin/OficinaGestion/OficinaGestionAdmin";
+import TitularizacionPage from "../pages/Admin/OficinaGestion/Titularizacion/TitularizacionPage";
 
 // Oficina de Gestión - Usuario
 import OficinaGestion from "../pages/OficinaGestion/OficinaGestion";
@@ -400,6 +401,12 @@ const AppRouter = () => {
         />
 
         <AdminRoute exact path="/admin/botones" component={HabilitarBotones} />
+
+        <AdminRoute
+          exact
+          path="/admin/oficina-gestion/titularizacion"
+          component={TitularizacionPage}
+        />
 
         <AdminRoute
           exact

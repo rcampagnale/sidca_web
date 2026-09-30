@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "primereact/button";
 import { TabView, TabPanel } from "primereact/tabview";
+import { useHistory } from "react-router-dom";
 import styles from "./OficinaGestionAdmin.module.css";
 
 import CrearFormularioGestion from "../../../components/OficinaGestion/CrearFormularioGestion";
@@ -13,6 +14,7 @@ import ImportarExcelAgrupadoGestion from "../../../components/OficinaGestion/Imp
 import RespuestasFormularioGestion from "../../../components/OficinaGestion/RespuestasFormularioGestion";
 
 const OficinaGestionAdmin = () => {
+  const history = useHistory();
   const [activeIndex, setActiveIndex] = useState(0);
   const [modoCreacion, setModoCreacion] = useState("manual");
   const [formularioExcelCreado, setFormularioExcelCreado] = useState(null);
@@ -91,6 +93,23 @@ const OficinaGestionAdmin = () => {
 
           <TabPanel header="Ver respuestas" leftIcon="pi pi-list-check mr-2">
             <RespuestasFormularioGestion />
+          </TabPanel>
+
+          <TabPanel header="Titularización" leftIcon="pi pi-sitemap mr-2">
+            <div className={styles.sectionTitle}>
+              <div>
+                <h2>Titularización Docente</h2>
+                <p>
+                  Consultá personas y situaciones presentadas para el proceso de titularización.
+                </p>
+              </div>
+              <Button
+                label="Abrir módulo"
+                icon="pi pi-arrow-right"
+                severity="success"
+                onClick={() => history.push("/admin/oficina-gestion/titularizacion")}
+              />
+            </div>
           </TabPanel>
         </TabView>
       </section>
