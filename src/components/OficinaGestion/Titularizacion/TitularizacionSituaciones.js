@@ -22,7 +22,11 @@ const TitularizacionSituaciones = ({ situaciones = [] }) => (
         <div className={styles.situationHeading}>
           <strong>Situación {index + 1}</strong>
           <Tag
-            value={situacion.origen || "sin_origen"}
+            value={
+              situacion.origen === "importacion_excel"
+                ? "Solicitud afiliado"
+                : situacion.origen || "sin_origen"
+            }
             severity={situacion.origen === "importacion_excel" ? "warning" : "info"}
           />
         </div>
@@ -37,9 +41,9 @@ const TitularizacionSituaciones = ({ situaciones = [] }) => (
         </div>
 
         <div className={styles.situationReference}>
-          <span>respuestaId</span>
+          <span>Respuesta ID</span>
           <strong>{valueOrDash(situacion.origenRespuestaId)}</strong>
-          <span>formularioId</span>
+          <span>Formulario ID</span>
           <strong>{valueOrDash(situacion.formularioId)}</strong>
         </div>
       </article>
@@ -48,4 +52,3 @@ const TitularizacionSituaciones = ({ situaciones = [] }) => (
 );
 
 export default TitularizacionSituaciones;
-

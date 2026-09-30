@@ -189,6 +189,8 @@ const buildOperationsFromSource = (sourceData, existingState = {}) => {
     const dni = normalizeDni(persona.dni);
     const personRef = doc(peopleCollection(), dni);
     const existingPerson = existingState.persons?.get(dni);
+    const personaRequiereRevision =
+      persona.estadoInicial === "REQUIERE REVISIÓN" || persona.situaciones.length === 0;
     const respuestaIds = [
       ...(Array.isArray(existingPerson?.respuestaIds) ? existingPerson.respuestaIds : []),
       ...(persona.respuestaIds || []),
@@ -205,10 +207,16 @@ const buildOperationsFromSource = (sourceData, existingState = {}) => {
         telefono: textValue(persona.telefono),
         procesoId: TITULARIZACION_PROCESS_ID,
         cantidadSituaciones: persona.situaciones.length,
-        ...(existingPerson ? {} : { estadoGeneral: "pendiente", createdAt: serverTimestamp() }),
         respuestaIds: [...new Set(respuestaIds)],
         sourceId,
         searchable: toPersonSearchable(persona),
+        ...(existingPerson
+          ? {}
+          : {
+              estadoGeneral: personaRequiereRevision ? "requiere_revision" : "pendiente",
+              razonesRevision: persona.razonesRevision || [],
+              createdAt: serverTimestamp(),
+            }),
         updatedAt: serverTimestamp(),
       },
     });
@@ -390,7 +398,7 @@ const toPersistedPerson = (snapshot, situacionesByDni) => {
     nombreCompleto,
     situaciones,
     situacionesCount: situaciones.length,
-    razonesRevision: [],
+    razonesRevision: Array.isArray(data.razonesRevision) ? data.razonesRevision : [],
     estadoInicial: data.estadoGeneral === "requiere_revision" ? "REQUIERE REVISIÓN" : "SOLICITUD REGISTRADA",
     searchable: data.searchable || toPersonSearchable({ ...data, nombreCompleto }),
   };

@@ -58,7 +58,7 @@ const TitularizacionPersonasTable = ({ personas = [] }) => {
   const rowExpansionTemplate = (persona) => (
     <div className={styles.expandedContent}>
       <div className={styles.expandedTitle}>
-        <strong>Situaciones presentadas</strong>
+        <strong>Situaciones solicitadas</strong>
         <span>{persona.situaciones.length}</span>
       </div>
       <TitularizacionSituaciones situaciones={persona.situaciones} />

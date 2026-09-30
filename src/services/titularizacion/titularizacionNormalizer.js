@@ -209,9 +209,24 @@ const conceptValue = (respuesta, adapter, concept, record = null) => {
   };
 };
 
-const hasMeaningfulSituationData = (situacion) =>
-  ["cargo", "horas", "materia", "establecimiento", "nivel", "modalidad", "cursoAnio"].some(
-    (concept) => Boolean(textValue(situacion[concept]))
+export const TITULARIZACION_SITUATION_CONCEPTS = [
+  "cargo",
+  "horas",
+  "materia",
+  "establecimiento",
+  "nivel",
+  "modalidad",
+  "cursoAnio",
+];
+
+const isEmptySituationValue = (value) => {
+  const normalized = textValue(value);
+  return !normalized || normalized === "—";
+};
+
+export const hasMeaningfulSituationData = (situacion = {}) =>
+  TITULARIZACION_SITUATION_CONCEPTS.some(
+    (concept) => !isEmptySituationValue(situacion[concept])
   );
 
 const personValue = (respuesta, adapter, concept) =>
@@ -239,27 +254,28 @@ export const adaptResponseToPerson = (respuesta = {}, formulario = {}) => {
 
   const registros = Array.isArray(respuesta.registros)
     ? respuesta.registros
-    : [null];
+    : [];
+  const registrosDescartados = [];
 
-  const situaciones = registros.map((registro, index) => {
-    const valorOriginal = {};
-    const situacion = {
-      id: `${respuesta.id || "respuesta"}-${index + 1}`,
-      cargo: "",
-      horas: "",
-      materia: "",
-      establecimiento: "",
-      nivel: "",
-      modalidad: "",
-      cursoAnio: "",
-      origenRespuestaId: respuesta.id || "",
-      formularioId: respuesta.formularioId || formulario.id || "",
-      origen: respuesta.origen || "sin_origen",
-      camposReales: {},
-    };
+  const situaciones = registros
+    .map((registro, index) => {
+      const valorOriginal = {};
+      const situacion = {
+        id: `${respuesta.id || "respuesta"}-${index + 1}`,
+        cargo: "",
+        horas: "",
+        materia: "",
+        establecimiento: "",
+        nivel: "",
+        modalidad: "",
+        cursoAnio: "",
+        origenRespuestaId: respuesta.id || "",
+        formularioId: respuesta.formularioId || formulario.id || "",
+        origen: respuesta.origen || "sin_origen",
+        camposReales: {},
+      };
 
-    ["cargo", "horas", "materia", "establecimiento", "nivel", "modalidad", "cursoAnio"].forEach(
-      (concept) => {
+      TITULARIZACION_SITUATION_CONCEPTS.forEach((concept) => {
         const value = conceptValue(respuesta, adapter, concept, registro);
         situacion[concept] = value.valor;
         situacion.camposReales[concept] = {
@@ -268,23 +284,28 @@ export const adaptResponseToPerson = (respuesta = {}, formulario = {}) => {
           encontrado: value.encontrado,
         };
         valorOriginal[concept] = value.valorOriginal;
-      }
-    );
+      });
 
-    situacion.valorOriginal = {
-      registro: registro,
-      campos: valorOriginal,
-    };
+      situacion.valorOriginal = {
+        registro,
+        campos: valorOriginal,
+      };
 
-    return situacion;
-  });
+      return situacion;
+    })
+    .filter((situacion, index) => {
+      if (hasMeaningfulSituationData(situacion)) return true;
+
+      registrosDescartados.push({
+        indiceOriginal: index + 1,
+        motivo: "registro_sin_datos_de_situacion",
+      });
+      return false;
+    });
 
   const razonesRevision = [];
   if (!isValidDni(dni)) razonesRevision.push("DNI ausente o inválido");
   if (!situaciones.length) razonesRevision.push("Sin situaciones interpretables");
-  if (situaciones.some((situacion) => !hasMeaningfulSituationData(situacion))) {
-    razonesRevision.push("Existe una situación sin datos mínimos");
-  }
 
   const personaKey = dni || `sin-dni-${respuesta.id || "respuesta"}`;
 
@@ -298,6 +319,7 @@ export const adaptResponseToPerson = (respuesta = {}, formulario = {}) => {
     telefono: persona.telefono,
     datosPersonaOriginales: personaOriginal,
     situaciones,
+    registrosDescartados,
     estadoInicial: razonesRevision.length
       ? "REQUIERE REVISIÓN"
       : "SOLICITUD REGISTRADA",
@@ -320,6 +342,10 @@ export const groupResponsesByPerson = (respuestas = [], formulario = {}) => {
     }
 
     existente.situaciones.push(...personaNueva.situaciones);
+    existente.registrosDescartados = [
+      ...(existente.registrosDescartados || []),
+      ...(personaNueva.registrosDescartados || []),
+    ];
     existente.respuestaIds = [
       ...new Set([...existente.respuestaIds, ...personaNueva.respuestaIds]),
     ];
@@ -339,6 +365,7 @@ export const groupResponsesByPerson = (respuestas = [], formulario = {}) => {
   const personas = Array.from(personasMap.values()).map((persona) => ({
     ...persona,
     situacionesCount: persona.situaciones.length,
+    registrosDescartadosCount: (persona.registrosDescartados || []).length,
     nombreCompleto: [persona.apellido, persona.nombre].filter(Boolean).join(" "),
     searchable: normalizeSearchText(
       [persona.dni, persona.apellido, persona.nombre].filter(Boolean).join(" ")
@@ -368,6 +395,10 @@ export const buildTitularizacionMetrics = (personas = []) => {
     personas: personasIdentificadas.length,
     personasRevision: personas.length - personasIdentificadas.length,
     situaciones: situations,
+    registrosDescartados: personas.reduce(
+      (total, persona) => total + (persona.registrosDescartados || []).length,
+      0
+    ),
     unaSituacion: personasIdentificadas.filter(
       (persona) => persona.situaciones.length === 1
     ).length,
