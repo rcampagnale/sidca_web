@@ -1,4 +1,81 @@
-import { ministerioLayout } from "../layouts/ministerioLayout";
+import {
+  ministerioLayout,
+  obtenerLayoutMinisterio,
+} from "../layouts/ministerioLayout";
+
+export const TEXTO_AUSPICIO_DEFAULT_MINISTERIO =
+  "Este evento de capacitación, fortalecimiento y actualización docente fue auspiciado por el Ministerio de Educación y Trabajo, a través de Resolución";
+
+export const NOMBRES_INSTITUCIONES_ORGANIZADORAS = Object.freeze({
+  sidca: "SINDICATO DE DOCENTES DE CATAMARCA - SI.D.CA.",
+  itm: "INSTITUTO TECNOLÓGICO MUNICIPAL",
+});
+
+export const OPCIONES_INSTITUCIONES_ORGANIZADORAS = Object.freeze([
+  { value: "sidca", label: NOMBRES_INSTITUCIONES_ORGANIZADORAS.sidca },
+  { value: "itm", label: NOMBRES_INSTITUCIONES_ORGANIZADORAS.itm },
+]);
+
+const normalizarClaveInstitucion = (valor) =>
+  String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+/**
+ * Resuelve sólo instituciones conocidas. Los candidatos adicionales permiten
+ * leer configuraciones anteriores sin convertir `ministerio` en organizador.
+ * Si no hay un dato suficiente devuelve "" para conservar el comportamiento
+ * histórico en vez de inventar SIDCA.
+ */
+export const normalizarInstitucionOrganizadora = (valor) => {
+  const clave = normalizarClaveInstitucion(valor);
+  if (!clave) return "";
+
+  if (
+    clave === "itm" ||
+    clave.includes("instituto tecnologico municipal")
+  ) {
+    return "itm";
+  }
+
+  if (
+    clave === "sidca" ||
+    clave.includes("sindicato de docentes de catamarca") ||
+    clave.includes("sidca")
+  ) {
+    return "sidca";
+  }
+
+  return "";
+};
+
+export const resolverInstitucionOrganizadora = (certificado) => {
+  const candidatos = [
+    certificado?.institucionOrganizadora,
+    certificado?.institutionKey,
+    certificado?.institucion,
+    certificado?.organizador,
+    certificado?.entidad,
+    certificado?.issuer,
+    certificado?.institucionCertificado,
+  ];
+
+  for (const candidato of candidatos) {
+    const clave = normalizarInstitucionOrganizadora(candidato);
+    if (clave) return clave;
+  }
+
+  return "";
+};
+
+export const nombreInstitucionOrganizadora = (certificado) => {
+  const clave = resolverInstitucionOrganizadora(certificado);
+  return NOMBRES_INSTITUCIONES_ORGANIZADORAS[clave] || "";
+};
 
 const texto = (valor) => String(valor || "").replace(/\s+/g, " ").trim();
 
@@ -190,9 +267,14 @@ const centrarBloqueVertical = ({ limiteInferior, limiteSuperior, altura }) =>
   limiteInferior + (limiteSuperior - limiteInferior - altura) / 2;
 
 export const listarNivelesEnCastellano = (niveles) => {
-  const lista = (Array.isArray(niveles) ? niveles : [])
-    .map(texto)
-    .filter(Boolean);
+  const seleccionados = new Set(
+    (Array.isArray(niveles) ? niveles : [])
+      .map(texto)
+      .filter(Boolean)
+      .map((nivel) => nivel.toUpperCase())
+  );
+  const lista = ["INICIAL", "PRIMARIO", "SECUNDARIO", "SUPERIOR"]
+    .filter((nivel) => seleccionados.has(nivel));
   if (!lista.length) return "";
   if (lista.length === 1) return `Para el nivel ${lista[0]}.`;
   const enumerados =
@@ -210,37 +292,36 @@ const agregarPunto = (valor) => {
 const normalizarNumeroResolucion = (valor) =>
   texto(valor).replace(/^resoluci[oó]n\b[\s:.-]*/i, "");
 
-const ETIQUETA_RESOLUCION_MINISTERIO = "S.I.E.(MECYT) N°";
+// El texto administrado es literal. El campo no se modifica al hidratar ni
+// guardar; la composición visual sólo elimina un prefijo legacy si aparece.
+export const normalizarTextoAuspicioMinisterio = (valor) => texto(valor);
 
-export const normalizarTextoAuspicioMinisterio = (valor) =>
-  texto(valor)
-    .replace(
-      /resoluci[oó]n\s+S\.I\.C\.E\.\(MET\)\s*N[°º]\s*$/i,
-      `Resolución ${ETIQUETA_RESOLUCION_MINISTERIO}`
-    )
-    .replace(
-      /resoluci[oó]n\s*$/i,
-      `Resolución ${ETIQUETA_RESOLUCION_MINISTERIO}`
-    );
-
-const quitarResolucionDuplicada = (valor) =>
-  texto(valor)
-    .replace(/(N[°º])\.\s*/gi, "$1 ")
-    .replace(/(N[°º]\.?\s*)resoluci[oó]n\b\s*/i, "$1");
+/**
+ * El default sólo se aplica cuando la configuración legacy no tiene la
+ * propiedad. Un texto guardado vacío sigue siendo una edición válida.
+ */
+export const obtenerTextoAuspicioMinisterio = (configuracion) => {
+  const tieneCampo =
+    configuracion &&
+    Object.prototype.hasOwnProperty.call(configuracion, "textoAuspicio");
+  if (tieneCampo) return String(configuracion.textoAuspicio ?? "");
+  return TEXTO_AUSPICIO_DEFAULT_MINISTERIO;
+};
 
 export const textoAuspicioConResolucion = (textoAuspicio, resolucion) => {
-  const base = normalizarTextoAuspicioMinisterio(textoAuspicio);
+  const base = texto(textoAuspicio)
+    .replace(/\s*S\.I\.E\.\(MECYT\)\s*N[°º]\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const numero = normalizarNumeroResolucion(resolucion);
   if (!base) {
     return numero
-      ? `Resolución ${ETIQUETA_RESOLUCION_MINISTERIO} ${numero}.`
+      ? `Resolución ${numero}.`
       : "";
   }
-  if (!numero) return agregarPunto(base);
-  const resultado = /N[°º]\s*$/i.test(base)
-    ? `${base} ${numero}.`
-    : `${agregarPunto(base)} Resolución ${ETIQUETA_RESOLUCION_MINISTERIO} ${numero}.`;
-  return quitarResolucionDuplicada(resultado);
+  const partes = [base];
+  if (numero) partes.push(numero);
+  return agregarPunto(partes.join(" "));
 };
 
 export const fechaExpedicionMinisterio = (fecha) => {
@@ -259,7 +340,7 @@ export const fechaExpedicionMinisterio = (fecha) => {
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
   ];
-  return `El presente certificado se expide en San Fernando del Valle de Catamarca a ${dia} días del mes de ${meses[mes - 1]} de ${anio}.`;
+  return `El presente certificado se expide en San Fernando Del Valle de Catamarca a ${dia} días del mes de ${meses[mes - 1]} de ${anio}.`;
 };
 
 const fechaCorta = (fecha) => {
@@ -269,7 +350,23 @@ const fechaCorta = (fecha) => {
   return `${dia}/${mes}/${anio.slice(-2)}`;
 };
 
-export const construirTextoMinisterio = (certificado) => {
+export const formatearTituloMinisterio = (valor) => {
+  const contenido = texto(valor)
+    .replace(/^["“”]+/, "")
+    .replace(/["“”]+$/, "")
+    .trim();
+  return contenido ? `"${contenido}"` : "";
+};
+
+const cargaHorariaPresentacion = (valor) => {
+  const carga = texto(valor);
+  if (!carga) return "";
+  return /(?:horas?|hs\.?)\s*c[aá]tedras?/i.test(carga)
+    ? carga
+    : `${carga} horas cátedra`;
+};
+
+export const construirTextoMinisterio = (certificado, participante = {}) => {
   const modalidad = texto(certificado?.modalidad);
   const inicio = fechaCorta(certificado?.fechaInicio);
   const fin = fechaCorta(certificado?.fechaFin);
@@ -281,37 +378,53 @@ export const construirTextoMinisterio = (certificado) => {
     ? `, -DPTO ${departamento}`
     : "";
   const evaluacion = texto(certificado?.textoEvaluacion);
+  const nombre = texto(participante?.apellidoNombre || participante?.nombre);
+  const dni = texto(participante?.dni);
+  const auspicio = textoAuspicioConResolucion(
+    obtenerTextoAuspicioMinisterio(certificado),
+    certificado?.resolucion
+  );
+  const expedicion = fechaExpedicionMinisterio(certificado?.fecha);
 
   return {
+    institucionOrganizadora: nombreInstitucionOrganizadora(certificado),
+    modalidad,
+    textoEvaluacion: evaluacion,
+    firmantes: Array.isArray(certificado?.firmantesMinisterio)
+      ? certificado.firmantesMinisterio
+      : [],
+    titulo: formatearTituloMinisterio(certificado?.titulo),
+    participante: `Que ${nombre || "[APELLIDO Y NOMBRE]"} D.N.I. N° ${dni || "[DNI]"}`,
     actividad: `Participó y aprobó el ${texto(certificado?.tipoActividad) || "[TIPO DE ACTIVIDAD]"} denominado`,
-    dictado: `Dictado de manera ${modalidad || "[MODALIDAD]"}, desde ${inicio || "[FECHA INICIO]"} al ${fin || "[FECHA FIN]"}${ubicacion}.`,
-    duracion: `Con una duración de ${texto(certificado?.cargaHoraria) || "[CARGA HORARIA]"} horas cátedra${evaluacion ? `, ${evaluacion}` : "."}`,
+    dictado: `Dictado de manera ${modalidad || "[MODALIDAD]"}, desde ${inicio || "[FECHA INICIO]"} al ${fin || "[FECHA FIN]"}${ubicacion}`,
+    duracion: `con una duración de ${cargaHorariaPresentacion(certificado?.cargaHoraria) || "[CARGA HORARIA]"}${evaluacion ? `, ${evaluacion}` : "."}`,
     niveles: listarNivelesEnCastellano(certificado?.niveles),
-    auspicio: textoAuspicioConResolucion(
-      certificado?.textoAuspicio,
-      certificado?.resolucion
-    ),
-    expedicion: fechaExpedicionMinisterio(certificado?.fecha),
+    auspicio,
+    textoAuspicioFinal: auspicio,
+    expedicion,
+    fechaExpedicion: expedicion,
   };
 };
 
 const fechaValida = (valor) => Boolean(fechaExpedicionMinisterio(valor));
 
-export const calcularLayoutMinisterio = ({ certificado, participante }) => {
+export const calcularLayoutMinisterio = ({
+  certificado,
+  participante,
+  mostrarInstitucion = Boolean(nombreInstitucionOrganizadora(certificado)),
+}) => {
   const contexto = crearMedidor();
   if (!contexto) return { fits: false, errores: ["No se pudo medir el texto del certificado."] };
   const medida = (valor, tamanio, peso, familia) =>
     medirConCanvas(contexto, valor, tamanio, peso, familia);
-  const {
-    fonts,
+  const { fonts,
     participante: cajaParticipante,
     actividad,
     titulo,
     cuerpo,
-  } = ministerioLayout;
-  const nombre = texto(participante?.apellidoNombre) || "[APELLIDO Y NOMBRE]";
-  const dni = texto(participante?.dni) || "[DNI]";
-  const textoParticipante = `Que ${nombre} D.N.I. N° ${dni}`;
+  } = obtenerLayoutMinisterio(mostrarInstitucion);
+  const textos = construirTextoMinisterio(certificado, participante);
+  const textoParticipante = textos.participante;
   const participanteFit = fitText({
     text: textoParticipante,
     maxWidth: cajaParticipante.width,
@@ -326,7 +439,7 @@ export const calcularLayoutMinisterio = ({ certificado, participante }) => {
   const tituloFit = fitText({
     // Las comillas forman parte del texto renderizado y, por lo tanto, de su
     // ancho y altura reales al centrar el bloque.
-    text: `“${texto(certificado?.titulo) || "[TÍTULO DE LA CAPACITACIÓN]"}”`,
+    text: textos.titulo || '"[TÍTULO DE LA CAPACITACIÓN]"',
     maxWidth: titulo.width,
     initialFontSize: fonts.title.initial,
     minFontSize: fonts.title.min,
@@ -336,7 +449,6 @@ export const calcularLayoutMinisterio = ({ certificado, participante }) => {
     fontWeight: "700",
     measureText: medida,
   });
-  const textos = construirTextoMinisterio(certificado);
   const definicionBloques = [
     { contenido: textos.dictado, maxLines: 1 },
     { contenido: textos.duracion, maxLines: 1 },
@@ -391,7 +503,11 @@ export const calcularLayoutMinisterio = ({ certificado, participante }) => {
   };
 };
 
-export const validarConfiguracionMinisterio = ({ certificado, participante }) => {
+export const validarConfiguracionMinisterio = ({
+  certificado,
+  participante,
+  mostrarInstitucion = Boolean(nombreInstitucionOrganizadora(certificado)),
+}) => {
   const errores = [];
   const requerido = [
     ["titulo", "Falta el título del certificado."],
@@ -431,7 +547,11 @@ export const validarConfiguracionMinisterio = ({ certificado, participante }) =>
     }
   });
 
-  const layout = calcularLayoutMinisterio({ certificado, participante });
+  const layout = calcularLayoutMinisterio({
+    certificado,
+    participante,
+    mostrarInstitucion,
+  });
   if (!layout.tituloFit?.fits) {
     errores.push("El nombre de la capacitación excede el espacio disponible del Modelo Ministerio.");
   }

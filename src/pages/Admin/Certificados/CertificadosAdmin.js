@@ -52,7 +52,7 @@ import FirmantesMinisterioCertificado, {
 } from "./FirmantesMinisterioCertificado";
 import {
   normalizarFechaParaInput,
-  normalizarTextoAuspicioMinisterio,
+  obtenerTextoAuspicioMinisterio,
 } from "./utils/ministerioCertificado";
 import SelectorCurso from "./SelectorCurso";
 import ValidarCertificadoQR from "./ValidarCertificadoQR";
@@ -136,6 +136,7 @@ const CertificadosAdmin = () => {
             fecha: existente.fecha || "",
             modalidad: existente.modalidad || "",
             descargaAppHabilitada: existente.descargaAppHabilitada !== false,
+            institucionOrganizadora: existente.institucionOrganizadora || "",
             tipoActividad: existente.tipoActividad || "",
             fechaInicio: existente.fechaInicio || "",
             fechaFin: existente.fechaFin || "",
@@ -144,10 +145,7 @@ const CertificadosAdmin = () => {
             niveles: normalizarNivelesMinisterio(existente.niveles),
             textoEvaluacion:
               existente.textoEvaluacion || DATOS_MINISTERIO_VACIOS.textoEvaluacion,
-            textoAuspicio:
-              normalizarTextoAuspicioMinisterio(
-                existente.textoAuspicio || DATOS_MINISTERIO_VACIOS.textoAuspicio
-              ),
+            textoAuspicio: obtenerTextoAuspicioMinisterio(existente),
           });
           // Configuraciones anteriores no traen institución: caen en "sidca".
           setInstitucionCertificado(
@@ -261,6 +259,10 @@ const CertificadosAdmin = () => {
       setForm((previo) => ({
         ...previo,
         niveles: normalizarNivelesMinisterio(guardada?.niveles),
+        institucionOrganizadora: guardada?.institucionOrganizadora || "",
+        ...(guardada
+          ? { textoAuspicio: obtenerTextoAuspicioMinisterio(guardada) }
+          : {}),
       }));
 
       if (guardada) {

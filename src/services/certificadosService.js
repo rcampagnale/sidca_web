@@ -126,7 +126,7 @@ export const obtenerConfiguracionCertificado = async (cursoId) => {
  * estadoConfiguracion y la auditoría los resuelve el backend a partir del
  * curso real y del token verificado.
  */
-export const guardarConfiguracionCertificado = async (cursoId, datos) => {
+export const construirPayloadConfiguracionCertificado = (datos) => {
   const institucionCertificado =
     datos?.institucionCertificado === "itm"
       ? "itm"
@@ -145,6 +145,9 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
     // Determina la plantilla institucional. Se envía el valor semántico, no
     // el nombre del PNG: el asset es un detalle del frontend.
     institucionCertificado,
+    // En el modelo Ministerio la plantilla visual y la institución emisora
+    // son dimensiones independientes.
+    institucionOrganizadora: String(datos?.institucionOrganizadora || "").trim(),
     descargaAppHabilitada: datos?.descargaAppHabilitada !== false,
 
     // Autoridades en TEXTO, hasta cuatro renglones. Nada de imagenUrl,
@@ -191,6 +194,11 @@ export const guardarConfiguracionCertificado = async (cursoId, datos) => {
       }));
   }
 
+  return cuerpo;
+};
+
+export const guardarConfiguracionCertificado = async (cursoId, datos) => {
+  const cuerpo = construirPayloadConfiguracionCertificado(datos);
   const respuesta = await pedir(
     `/admin/configuracion/${encodeURIComponent(cursoId)}`,
     {

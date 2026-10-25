@@ -3,6 +3,8 @@ import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
 
 import styles from "./CertificadosAdmin.module.css";
+import { TEXTO_AUSPICIO_DEFAULT_MINISTERIO } from "./utils/ministerioCertificado";
+import { OPCIONES_INSTITUCIONES_ORGANIZADORAS } from "./utils/ministerioCertificado";
 
 export const TIPOS_ACTIVIDAD_MINISTERIO = [
   "CURSO",
@@ -29,6 +31,7 @@ export const normalizarNivelesMinisterio = (niveles) =>
     : [];
 
 export const DATOS_MINISTERIO_VACIOS = {
+  institucionOrganizadora: "",
   tipoActividad: "",
   fechaInicio: "",
   fechaFin: "",
@@ -36,8 +39,7 @@ export const DATOS_MINISTERIO_VACIOS = {
   departamento: "",
   niveles: [],
   textoEvaluacion: "y el correspondiente trabajo de evaluación.",
-  textoAuspicio:
-    "Este evento de capacitación, fortalecimiento y actualización docente fue auspiciado por el Ministerio de Educación y Trabajo, a través de Resolución S.I.E.(MECYT) N°",
+  textoAuspicio: TEXTO_AUSPICIO_DEFAULT_MINISTERIO,
 };
 
 const MinisterioCertificado = ({ valores, onCambiar, deshabilitado }) => (
@@ -49,6 +51,23 @@ const MinisterioCertificado = ({ valores, onCambiar, deshabilitado }) => (
     </div>
 
     <div className={styles.grillaCampos}>
+      <label className={styles.campo}>
+        <span className={styles.campoLabel}>Institución organizadora / emisora</span>
+        <Dropdown
+          value={valores.institucionOrganizadora || ""}
+          options={OPCIONES_INSTITUCIONES_ORGANIZADORAS}
+          optionLabel="label"
+          optionValue="value"
+          onChange={(event) => onCambiar("institucionOrganizadora", event.value)}
+          disabled={deshabilitado}
+          placeholder="Seleccioná una institución"
+          className={styles.controlPrime}
+        />
+        <span className={styles.campoAyuda}>
+          Se imprime debajo de la Secretaría en el modelo Ministerio. Los certificados legacy sin este dato conservan su salida actual.
+        </span>
+      </label>
+
       <label className={styles.campo}>
         <span className={styles.campoLabel}>Tipo de actividad</span>
         <Dropdown

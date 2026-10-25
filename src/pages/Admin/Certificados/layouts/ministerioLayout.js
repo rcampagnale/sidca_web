@@ -6,21 +6,23 @@ export const ministerioLayout = {
   logo: { x: 326.7, y: 42, width: 49.4, height: 58 },
   encabezado: {
     ministerio: { x: 385, y: 49, width: 190 },
-    gobierno: { x: 385, y: 84, width: 190 },
-    secretaria: { x: 274.3, y: 111.3, width: 293.1 },
+    gobierno: { x: 385, y: 79, width: 190 },
+    secretaria: { x: 274.3, y: 105, width: 293.1 },
+    institucion: { x: 245, y: 122.5, width: 352 },
   },
-  certifica: { x: 351.7, y: 136, width: 138.5 },
-  participante: { x: 101, y: 172.5, width: 640, maxLines: 2 },
-  actividad: { x: 85, y: 196.4, width: 672 },
-  // La caja visual coincide con `.tituloBox`: 17% desde la izquierda y 66%
-  // de ancho. `y` se conserva como referencia del flujo del cuerpo.
-  titulo: { x: 143.14, y: 223, width: 555.72, maxLines: 2 },
+  certifica: { x: 351.7, y: 147.5, width: 138.5 },
+  participante: { x: 101, y: 184, width: 640, maxLines: 2 },
+  actividad: { x: 85, y: 207.9, width: 672 },
+  // La caja visual usa 17% desde la izquierda y 66% de ancho. Su posición y
+  // altura se calculan dinámicamente según el título; estos valores quedan
+  // como fallback visual.
+  titulo: { x: 143.14, y: 234.5, width: 555.72, maxLines: 2 },
   tituloBox: { left: 17, top: 35.5, width: 66, height: 5.2 },
   cuerpo: {
     x: 85,
     width: 672,
-    gapAfterTitle: 14,
-    gapBetweenBlocks: 12,
+    gapAfterTitle: 8,
+    gapBetweenBlocks: 10,
     // El último renglón queda 12 pt antes de la imagen de firmas (420 pt).
     // El margen evita rechazar títulos de dos líneas por redondeo del cálculo.
     maxBottom: 408,
@@ -40,9 +42,28 @@ export const ministerioLayout = {
     boldFamily: '"Liberation Sans", Arial, sans-serif',
     participant: { initial: 13, min: 11, lineHeightFactor: 1.15 },
     activity: { size: 11.5, lineHeightFactor: 1.2 },
-    title: { initial: 14.5, min: 11.5, lineHeightFactor: 1.16 },
+    title: { initial: 14.5, min: 11.5, lineHeightFactor: 1.1 },
     body: { size: 12, min: 10.5, lineHeightFactor: 1.2 },
     signerName: { size: 6.5, lineHeightFactor: 1.1 },
     signerDetail: { size: 5.5, lineHeightFactor: 1.12 },
   },
 };
+
+// Compatibilidad visual: una emisión histórica sin institución explícita no
+// recibe la nueva línea y conserva el flujo anterior del contenido.
+export const ministerioLayoutLegacy = {
+  ...ministerioLayout,
+  encabezado: { ...ministerioLayout.encabezado },
+  certifica: { ...ministerioLayout.certifica, y: 136 },
+  participante: { ...ministerioLayout.participante, y: 172.5 },
+  actividad: { ...ministerioLayout.actividad, y: 196.4 },
+  titulo: { ...ministerioLayout.titulo, y: 223 },
+  cuerpo: {
+    ...ministerioLayout.cuerpo,
+    gapAfterTitle: 14,
+    gapBetweenBlocks: 12,
+  },
+};
+
+export const obtenerLayoutMinisterio = (mostrarInstitucion) =>
+  mostrarInstitucion ? ministerioLayout : ministerioLayoutLegacy;

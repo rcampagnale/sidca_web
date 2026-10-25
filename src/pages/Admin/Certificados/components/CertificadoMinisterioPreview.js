@@ -4,9 +4,10 @@ import QRCode from "react-qr-code";
 
 import marcoMinisterio from "../../../../assets/certificados/ministerio/marco_ministerio.png";
 import logoMinisterio from "../../../../assets/certificados/ministerio/logo_ministerio.png";
-import { ministerioLayout } from "../layouts/ministerioLayout";
+import { obtenerLayoutMinisterio } from "../layouts/ministerioLayout";
 import {
   calcularLayoutMinisterio,
+  nombreInstitucionOrganizadora,
   validarConfiguracionMinisterio,
 } from "../utils/ministerioCertificado";
 import styles from "./CertificadoMinisterioPreview.module.css";
@@ -45,15 +46,19 @@ const CertificadoMinisterioPreview = ({
       ? emision.certificado
       : configuracion || {};
   const participanteEfectivo = emision?.participante || participante || {};
+  const nombreInstitucion = nombreInstitucionOrganizadora(certificado);
+  const layoutVisual = obtenerLayoutMinisterio(Boolean(nombreInstitucion));
   const validacion = validarConfiguracionMinisterio({
     certificado,
     participante: participanteEfectivo,
+    mostrarInstitucion: Boolean(nombreInstitucion),
   });
   const layout = validacion.layout || calcularLayoutMinisterio({
     certificado,
     participante: participanteEfectivo,
+    mostrarInstitucion: Boolean(nombreInstitucion),
   });
-  const { page, marco, logo, encabezado, certifica, participante: cajaParticipante, actividad, firmas: zonaFirmas, qr, fonts, tituloBox } = ministerioLayout;
+  const { page, marco, logo, encabezado, certifica, participante: cajaParticipante, actividad, firmas: zonaFirmas, qr, fonts, tituloBox } = layoutVisual;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -78,13 +83,17 @@ const CertificadoMinisterioPreview = ({
     layout.tituloFit?.lineHeight ||
     fonts.title.initial * fonts.title.lineHeightFactor;
   const alturaTitulo = layout.tituloFit?.height || alturaLineaTitulo;
-  // Una segunda línea empuja “Dictado…” hacia abajo. La caja acompaña la
-  // mitad de esa altura extra para conservar el bloque centrado en la banda.
-  const desplazamientoTitulo = Math.max(
-    0,
-    (alturaTitulo - alturaLineaTitulo) / 2
-  );
-  const tituloTop = tituloBox.top + (desplazamientoTitulo / page.height) * 100;
+  // El medidor calcula el centro disponible entre la actividad y el primer
+  // bloque del cuerpo. La posición se adapta a la altura real del título:
+  // una línea queda centrada y dos líneas ocupan el mismo centro sin invadir
+  // el contenido siguiente.
+  const tituloCentroY =
+    layout.tituloCenterY ??
+    (tituloBox.top / 100) * page.height + alturaTitulo / 2;
+  const tituloTop = tituloCentroY - alturaTitulo / 2;
+  const tituloTopPercent = (tituloTop / page.height) * 100;
+  const tituloHeightPercent = (alturaTitulo / page.height) * 100;
+  const tituloLineHeight = layout.tituloFit?.lineHeight || alturaLineaTitulo;
   const bloqueaEmision = !puedeEmitir || !validacion.valid;
   const razon = validacion.errores[0] || motivoNoEmitir;
   const textoBoton = emitiendo
@@ -100,9 +109,9 @@ const CertificadoMinisterioPreview = ({
       key={`${bloque.y}-${indice}`}
       className={styles.cuerpoLinea}
       style={{
-        left: ministerioLayout.cuerpo.x,
+        left: layoutVisual.cuerpo.x,
         top: bloque.y,
-        width: ministerioLayout.cuerpo.width,
+        width: layoutVisual.cuerpo.width,
         fontSize: `${bloque.fontSize}px`,
         lineHeight: `${bloque.lineHeight}px`,
         whiteSpace: bloque.lines.length === 1 ? "nowrap" : "normal",
@@ -161,12 +170,13 @@ const CertificadoMinisterioPreview = ({
           <p className={styles.ministerio} style={{ left: encabezado.ministerio.x, top: encabezado.ministerio.y, width: encabezado.ministerio.width }}>Ministerio de<br />Educación y Trabajo</p>
           <p className={styles.gobierno} style={{ left: encabezado.gobierno.x, top: encabezado.gobierno.y, width: encabezado.gobierno.width }}>Catamarca Gobierno</p>
           <p className={styles.secretaria} style={{ left: encabezado.secretaria.x, top: encabezado.secretaria.y, width: encabezado.secretaria.width }}>SECRETARIA DE INNOVACION Y CALIDAD EDUCATIVA</p>
+          {nombreInstitucion && <p className={styles.institucion} style={{ left: encabezado.institucion.x, top: encabezado.institucion.y, width: encabezado.institucion.width }}>{nombreInstitucion}</p>}
           <p className={styles.certifica} style={{ left: certifica.x, top: certifica.y, width: certifica.width }}>CERTIFICA</p>
           <p className={styles.participante} style={{ left: cajaParticipante.x, top: cajaParticipante.y, width: cajaParticipante.width, fontSize: `${layout.participanteFit?.fontSize || fonts.participant.initial}px`, lineHeight: `${layout.participanteFit?.lineHeight || fonts.participant.initial * fonts.participant.lineHeightFactor}px` }}>
             {(layout.participanteFit?.lines || ["Que [APELLIDO Y NOMBRE] D.N.I. N° [DNI]"]).map((linea, indice) => <React.Fragment key={`${linea}-${indice}`}>{linea}{indice < (layout.participanteFit?.lines || []).length - 1 && <br />}</React.Fragment>)}
           </p>
           <p className={styles.actividad} style={{ left: actividad.x, top: actividad.y, width: actividad.width, fontSize: `${fonts.activity.size}px`, lineHeight: `${fonts.activity.size * fonts.activity.lineHeightFactor}px` }}>{layout.textos?.actividad}</p>
-          <p className={styles.tituloBox} style={{ fontSize: `${layout.tituloFit?.fontSize || fonts.title.initial}px`, "--titulo-top": `${tituloTop}%`, "--titulo-left": `${tituloBox.left}%`, "--titulo-width": `${tituloBox.width}%`, "--titulo-height": `${tituloBox.height}%` }}>
+          <p className={styles.tituloBox} style={{ fontSize: `${layout.tituloFit?.fontSize || fonts.title.initial}px`, lineHeight: `${tituloLineHeight}px`, "--titulo-top": `${tituloTopPercent}%`, "--titulo-left": `${tituloBox.left}%`, "--titulo-width": `${tituloBox.width}%`, "--titulo-height": `${tituloHeightPercent}%` }}>
             {(layout.tituloFit?.lines || ["“[TÍTULO DE LA CAPACITACIÓN]”"]).map((linea, indice, lineas) => <React.Fragment key={`${linea}-${indice}`}>{linea}{indice < lineas.length - 1 && <br />}</React.Fragment>)}
           </p>
           {(layout.cuerpo || []).map(renderBloque)}

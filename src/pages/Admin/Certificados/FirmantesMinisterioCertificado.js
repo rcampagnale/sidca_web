@@ -8,9 +8,9 @@ export const FIRMANTES_MINISTERIO_INICIALES = [
   {
     id: "firmante_1",
     orden: 1,
-    nombre: "Lic. Carlos Alejandro Ortiz",
-    cargo: "SECRETARIO DE INNOVACION Y CALIDAD EDUCATIVA",
-    organismo: "MINISTERIO DE EDUCACION Y TRABAJO",
+    nombre: "Lic. Marcelo Luis Altamirano.",
+    cargo: "SECRETARIA DE INNOVACION Y CALIDAD EDUCATIVA.",
+    organismo: "MINISTERIO DE EDUCACION Y TRABAJO.",
     activo: true,
     imagenStoragePath: "",
     imagenVersion: 0,
@@ -19,11 +19,11 @@ export const FIRMANTES_MINISTERIO_INICIALES = [
   {
     id: "firmante_2",
     orden: 2,
-    nombre: "David Sánchez S.",
+    nombre: "Mgter. David Sánchez S.",
     cargo:
-      "DIRECTOR PROVINCIAL DE MONITOREO DE TRAYECTORIAS Y DESARROLLO PROFESIONAL.",
+      "DIR. PROV. DE MONITOREO DE TRAYECTORIAS Y DESARROLLO PROFESIONAL.",
     organismo:
-      "SECRETARIA DE INNOVACION Y CALIDAD EDUCATIVA. MINISTERIO DE EDUCACION Y TRABAJO",
+      "SECRETARIA DE INNOVACION Y CALIDAD EDUCATIVA. MINISTERIO DE EDUCACION Y TRABAJO.",
     activo: true,
     imagenStoragePath: "",
     imagenVersion: 0,
@@ -32,9 +32,9 @@ export const FIRMANTES_MINISTERIO_INICIALES = [
   {
     id: "firmante_3",
     orden: 3,
-    nombre: "Dr. Sergio Guillamondegui",
-    cargo: "SECRETARIO GENERAL",
-    organismo: "SINDICATO DE DOCENTES DE CATAMARCA",
+    nombre: "Dr. Sergio Guillamondegui.",
+    cargo: "SECRETARIO GENERAL.",
+    organismo: "SINDICATO DE DOCENTES DE CATAMARCA.",
     activo: true,
     imagenStoragePath: "",
     imagenVersion: 0,
