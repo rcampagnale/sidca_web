@@ -7,7 +7,7 @@
 .gobierno { font-size: 11px; line-height: 1; font-weight: 400; }
 .ministerio { font-size: 13px; line-height: 1.05; font-weight: 700; color: #243b6b; }
 .secretaria { font-size: 10.5px; line-height: 1.1; font-weight: 400; letter-spacing: 0; }
-.institucion { font-size: 12.5px; line-height: 1.08; font-weight: 700; letter-spacing: 0; }
+.institucion { font-size: 13px; line-height: 1.08; font-weight: 700; letter-spacing: 0; white-space: nowrap; text-rendering: geometricPrecision; }
 .certifica { font-size: 26px; line-height: 1; font-weight: 700; font-style: italic; letter-spacing: 0; }
 .participante { font-weight: 400; transform: translateY(-50%); }
 .actividad { font-weight: 400; transform: translateY(-50%); }

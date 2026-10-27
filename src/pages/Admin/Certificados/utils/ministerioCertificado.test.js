@@ -1,5 +1,6 @@
 import {
   nombreInstitucionOrganizadora,
+  OPCIONES_INSTITUCIONES_ORGANIZADORAS,
   normalizarInstitucionOrganizadora,
   resolverInstitucionOrganizadora,
   obtenerTextoAuspicioMinisterio,
@@ -26,7 +27,20 @@ test("resuelve el nombre institucional exacto de ITM", () => {
       institucionCertificado: "ministerio",
       institucionOrganizadora: "ITM",
     })
-  ).toBe("INSTITUTO TECNOLÓGICO MUNICIPAL");
+  ).toBe("INSTITUTO TECNOLOGICO MUNICIPAL (I.T.M)");
+});
+
+test("separa la etiqueta visible de la denominación impresa sin cambiar el valor interno", () => {
+  const opcionItm = OPCIONES_INSTITUCIONES_ORGANIZADORAS.find(
+    (opcion) => opcion.value === "itm"
+  );
+
+  expect(opcionItm).toEqual({
+    value: "itm",
+    label: "INSTITUTO TECNOLÓGICO MUNICIPAL (I.T.M)",
+  });
+  expect(normalizarInstitucionOrganizadora("INSTITUTO TECNOLÓGICO MUNICIPAL")).toBe("itm");
+  expect(normalizarInstitucionOrganizadora("INSTITUTO TECNOLOGICO MUNICIPAL (I.T.M)")).toBe("itm");
 });
 
 test("no confunde el modelo Ministerio con la institución organizadora", () => {

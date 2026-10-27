@@ -12,22 +12,62 @@ import {
 
 import { db } from "../../firebase/firebase-config";
 import {
+  buildVisiblePersonName,
   isValidDni,
   normalizeDni,
   normalizeSearchText,
   textValue,
 } from "./titularizacionNormalizer";
-import { loadTitularizacionData } from "./titularizacionService";
+import {
+  buildSituationOriginKey,
+  createDeterministicId,
+  createEvidenceId,
+  createEventId,
+  createSituationIdFromOrigin,
+  deriveSituationSummary,
+  eventTypeForSourceRole,
+  materializeSituationWorkflow,
+} from "./titularizacionModel";
+import {
+  DEFAULT_TITULARIZACION_SOURCE_CONFIGS,
+  loadTitularizacionData,
+  loadTitularizacionSources,
+} from "./titularizacionService";
+import {
+  TITULARIZACION_BATCH_SIZE,
+  TITULARIZACION_EVIDENCES_COLLECTION,
+  TITULARIZACION_EVENTS_COLLECTION,
+  TITULARIZACION_IMPORTED_RECORDS_COLLECTION,
+  TITULARIZACION_IMPORTS_COLLECTION,
+  TITULARIZACION_OBSERVATIONS_COLLECTION,
+  TITULARIZACION_PEOPLE_COLLECTION,
+  TITULARIZACION_PERSISTENCE_ENABLED,
+  TITULARIZACION_PROCESS_ID,
+  TITULARIZACION_PROCESS_PATH,
+  TITULARIZACION_ROOT_COLLECTION,
+  TITULARIZACION_REVIEWS_COLLECTION,
+  TITULARIZACION_SCHEMA_VERSION,
+  TITULARIZACION_SITUATIONS_COLLECTION,
+  TITULARIZACION_SOURCES_COLLECTION,
+} from "./titularizacionFirestoreModel";
 
-export const TITULARIZACION_ROOT_COLLECTION = "titularizacion";
-export const TITULARIZACION_PROCESS_ID = "proceso_2026";
-export const TITULARIZACION_PROCESS_PATH = `${TITULARIZACION_ROOT_COLLECTION}/${TITULARIZACION_PROCESS_ID}`;
-export const TITULARIZACION_PEOPLE_COLLECTION = "personas";
-export const TITULARIZACION_SOURCES_COLLECTION = "fuentes";
-export const TITULARIZACION_IMPORTS_COLLECTION = "importaciones";
-export const TITULARIZACION_OBSERVATIONS_COLLECTION = "observaciones";
-export const TITULARIZACION_SITUATIONS_COLLECTION = "situaciones";
-export const TITULARIZACION_BATCH_SIZE = 400;
+export {
+  TITULARIZACION_BATCH_SIZE,
+  TITULARIZACION_EVIDENCES_COLLECTION,
+  TITULARIZACION_EVENTS_COLLECTION,
+  TITULARIZACION_IMPORTED_RECORDS_COLLECTION,
+  TITULARIZACION_IMPORTS_COLLECTION,
+  TITULARIZACION_OBSERVATIONS_COLLECTION,
+  TITULARIZACION_PEOPLE_COLLECTION,
+  TITULARIZACION_PERSISTENCE_ENABLED,
+  TITULARIZACION_PROCESS_ID,
+  TITULARIZACION_PROCESS_PATH,
+  TITULARIZACION_ROOT_COLLECTION,
+  TITULARIZACION_REVIEWS_COLLECTION,
+  TITULARIZACION_SCHEMA_VERSION,
+  TITULARIZACION_SITUATIONS_COLLECTION,
+  TITULARIZACION_SOURCES_COLLECTION,
+};
 
 const processRef = () => doc(db, TITULARIZACION_ROOT_COLLECTION, TITULARIZACION_PROCESS_ID);
 const peopleCollection = () => collection(processRef(), TITULARIZACION_PEOPLE_COLLECTION);
@@ -52,13 +92,12 @@ const safeId = (value, fallback = "registro") =>
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .slice(0, 120);
 
-export const createSituationId = (respuestaId, index) =>
-  safeId(`solicitud_${respuestaId || "respuesta"}_${Number(index) + 1}`);
-
-const sourceIndexFromSituation = (situacion, fallbackIndex) => {
-  const match = String(situacion?.id || "").match(/-(\d+)$/);
-  return match ? Math.max(0, Number(match[1]) - 1) : fallbackIndex;
-};
+export const createSituationId = (sourceId, respuestaId, indiceRegistroOriginal) =>
+  createSituationIdFromOrigin({
+    sourceId,
+    respuestaId,
+    indiceRegistroOriginal,
+  });
 
 const buildSourceId = (formularioId) => safeId(`formulario_${formularioId}`);
 
@@ -69,57 +108,87 @@ const toPersonSearchable = (persona) =>
       .join(" ")
   );
 
-const buildSourcePayload = (formulario, metrics, respuestas) => ({
+const buildSourcePayload = (formulario, sourceConfig, metrics, respuestas) => ({
   procesoId: TITULARIZACION_PROCESS_ID,
   sourceType: "solicitud_afiliado",
   tipo: "solicitud_afiliado",
+  rol: sourceConfig.rol,
   nombre: formulario.titulo || "TITULARIZACIÓN DOCENTE 2026",
   origenTecnico: "oficina_gestion_respuestas",
   formularioId: formulario.id,
-  cantidadRegistros: respuestas.length,
+  formularioTitulo: formulario.titulo || formulario.id,
+  sourceId: sourceConfig.sourceId,
+  respuestas: Array.isArray(respuestas) ? respuestas.length : Number(respuestas || 0),
+  cantidadRegistros: Array.isArray(respuestas) ? respuestas.length : Number(respuestas || 0),
   personasIdentificadas: metrics.personas,
-  cantidadSituaciones: metrics.situaciones,
+  personasRevision: metrics.personasRevision,
+  cantidadSituaciones: metrics.situacionesCanonicas,
+  situaciones: metrics.situacionesCanonicas,
+  registrosDescartados: metrics.registrosDescartados || 0,
 });
 
-const buildProcessPayload = (formulario, metrics, sourceId, casosRevision) => ({
-  nombre: "Titularización Docente 2026",
-  anio: 2026,
-  estado: "inicializando",
-  procesoId: TITULARIZACION_PROCESS_ID,
-  formularioFuenteId: formulario.id,
-  fuenteSolicitudId: sourceId,
-  respuestasFuente: metrics.respuestas || 0,
-  personasPersistidas: metrics.personas,
-  situacionesPersistidas: metrics.situaciones,
-  casosRevision,
-});
+const buildProcessPayload = (formulario, metrics, sourceConfigs, fuentes, casosRevision) => {
+  const formularioFuenteIds = sourceConfigs.map((sourceConfig) => sourceConfig.formularioId);
+  const fuenteSolicitudIds = sourceConfigs.map((sourceConfig) => sourceConfig.sourceId);
+  const fuentesHabilitadas = sourceConfigs.map((sourceConfig) => ({
+    sourceId: sourceConfig.sourceId,
+    formularioId: sourceConfig.formularioId,
+    rol: sourceConfig.rol,
+    habilitada: true,
+  }));
 
-const sourceRefKey = (sourceRef = {}) =>
-  [
-    sourceRef.sourceType,
-    sourceRef.sourceId,
-    sourceRef.respuestaId,
-    sourceRef.indiceRegistro,
-    sourceRef.importId,
-    sourceRef.registroId,
-  ]
-    .map((value) => String(value || ""))
-    .join("|");
-
-const mergeSourceRefs = (existingRefs = [], nextRefs = []) => {
-  const result = [];
-  const seen = new Set();
-  [...(Array.isArray(existingRefs) ? existingRefs : []), ...(Array.isArray(nextRefs) ? nextRefs : [])].forEach((sourceRef) => {
-    const key = sourceRefKey(sourceRef);
-    if (seen.has(key)) return;
-    seen.add(key);
-    result.push(sourceRef);
-  });
-  return result;
+  return {
+    nombre: "Titularización Docente 2026",
+    anio: 2026,
+    estado: "activo",
+    procesoId: TITULARIZACION_PROCESS_ID,
+    formularioFuenteIds,
+    fuenteSolicitudIds,
+    fuentesHabilitadas,
+    fuentes: fuentes.map(({ sourceId, formularioId, rol }) => ({
+      sourceId,
+      formularioId,
+      rol,
+    })),
+    formularioFuenteId: formularioFuenteIds[0] || formulario.id,
+    fuenteSolicitudId: fuenteSolicitudIds[0] || buildSourceId(formulario.id),
+    respuestasFuente: metrics.respuestas || 0,
+    personasPersistidas: metrics.personas,
+    situacionesPersistidas: metrics.situacionesCanonicas || metrics.situaciones,
+    situacionesRevision: metrics.situacionesRevision || 0,
+    personasSinSituacionEstructurada: metrics.personasSinSituacionEstructurada || 0,
+    casosRevision,
+  };
 };
 
-const situationBaseData = ({ persona, situacion, sourceId, sourceIndex, existingSituation }) => ({
-  dni: persona.dni,
+const orderedSourceRefs = (situacion = {}) =>
+  [...(Array.isArray(situacion.sourceRefs) ? situacion.sourceRefs : [])].sort((left, right) =>
+    buildSituationOriginKey({
+      sourceId: left.sourceId || left.formularioId,
+      respuestaId: left.respuestaId,
+      indiceRegistroOriginal: left.indiceRegistro,
+    }).localeCompare(
+      buildSituationOriginKey({
+        sourceId: right.sourceId || right.formularioId,
+        respuestaId: right.respuestaId,
+        indiceRegistroOriginal: right.indiceRegistro,
+      })
+    )
+  );
+
+const primarySituationRef = (situacion, sourceId) => {
+  const sourceRefs = orderedSourceRefs(situacion);
+  return sourceRefs[0] || {
+    sourceId,
+    respuestaId: situacion.origenRespuestaId || "",
+    formularioId: situacion.formularioId || "",
+    indiceRegistro: 1,
+    origen: situacion.origen || "solicitud_afiliado",
+  };
+};
+
+const situationBaseData = ({ persona, situacion, existingSituation }) => ({
+  dni: normalizeDni(persona.dni),
   cargo: textValue(situacion.cargo),
   horas: textValue(situacion.horas),
   materia: textValue(situacion.materia),
@@ -127,74 +196,134 @@ const situationBaseData = ({ persona, situacion, sourceId, sourceIndex, existing
   nivel: textValue(situacion.nivel),
   modalidad: textValue(situacion.modalidad),
   cursoAnio: textValue(situacion.cursoAnio),
-  formularioSolicitud: true,
-  sourceRefs: mergeSourceRefs(existingSituation?.sourceRefs, [
-    {
-      sourceType: "solicitud_afiliado",
-      sourceId,
-      respuestaId: situacion.origenRespuestaId || "",
-      formularioId: situacion.formularioId || "",
-      indiceRegistro: sourceIndex + 1,
-    },
-  ]),
-  valoresOriginales: firestoreSafe(situacion.valorOriginal || {}),
-  respuestaId: situacion.origenRespuestaId || "",
-  formularioId: situacion.formularioId || "",
-  indiceRegistro: sourceIndex + 1,
+  fingerprint: situacion.fingerprint || situacion.signature || "",
   procesoId: TITULARIZACION_PROCESS_ID,
+  estadoResumen: existingSituation?.estadoResumen || deriveSituationSummary([]),
+  valoresOriginales: firestoreSafe(situacion.valorOriginal || {}),
 });
 
 const newSituationData = (args) => ({
   ...situationBaseData(args),
-  presentadoSidca: false,
-  estado: "declarada",
-  matchStatus: null,
-  matchScore: null,
-  tipoInconsistencia: "",
+  estadoResumen: {
+    ...deriveSituationSummary([]),
+    ultimaEvidenciaAt: serverTimestamp(),
+  },
   createdAt: serverTimestamp(),
   updatedAt: serverTimestamp(),
 });
 
 const existingSituationSyncData = (args) => ({
   ...situationBaseData(args),
+  // El resumen y las evidencias son workflow; la sincronización inicial no los reemplaza.
+  estadoResumen: args.existingSituation?.estadoResumen || deriveSituationSummary([]),
   updatedAt: serverTimestamp(),
 });
 
-const buildOperationsFromSource = (sourceData, existingState = {}) => {
-  const { formulario, personas, respuestas, metrics } = sourceData;
-  const sourceId = buildSourceId(formulario.id);
+const buildSolicitudEvidence = ({ persona, situacion, sourceRef }) => ({
+  procesoId: TITULARIZACION_PROCESS_ID,
+  situacionId: "",
+  dni: normalizeDni(persona.dni),
+  tipo: "solicitud",
+  sourceId: sourceRef.sourceId || sourceRef.formularioId || "",
+  formularioId: sourceRef.formularioId || "",
+  formularioTitulo: sourceRef.formularioTitulo || "",
+  rolFuente: sourceRef.rol || "solicitud_inicial",
+  respuestaId: sourceRef.respuestaId || "",
+  indiceRegistro: sourceRef.indiceRegistro ?? null,
+  registroId: `${sourceRef.respuestaId || "respuesta"}_${sourceRef.indiceRegistro ?? ""}`,
+  matchStatus: null,
+  matchScore: null,
+  razones: [],
+  diferencias: [],
+  origen: "automatico",
+  valoresOriginales: firestoreSafe(situacion.valorOriginal || {}),
+  createdAt: serverTimestamp(),
+});
+
+const buildOperationsFromSource = (
+  sourceData,
+  existingState = {},
+  existingProcess = null
+) => {
+  const {
+    formulario,
+    personas,
+    respuestas,
+    metrics,
+    sourceConfigs = [],
+    fuentes = [],
+  } = sourceData;
   const operations = [];
   const reviewCases = personas.filter((persona) => !isValidDni(persona.dni));
+  const canonicalSituationIds = new Set();
 
   operations.push({
     ref: processRef(),
     data: {
-      ...buildProcessPayload(formulario, { ...metrics, respuestas: respuestas.length }, sourceId, reviewCases.length),
-      createdAt: serverTimestamp(),
+      ...buildProcessPayload(
+        formulario,
+        { ...metrics, respuestas: respuestas.length },
+        sourceConfigs,
+        fuentes,
+        reviewCases.length
+      ),
+      ...(existingProcess ? {} : { createdAt: serverTimestamp() }),
       updatedAt: serverTimestamp(),
     },
   });
 
-  operations.push({
-    ref: doc(sourcesCollection(), sourceId),
-    data: {
-      ...buildSourcePayload(formulario, metrics, respuestas),
-      sourceId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
+  fuentes.forEach((fuente) => {
+    operations.push({
+      ref: doc(sourcesCollection(), fuente.sourceId),
+      data: {
+        ...buildSourcePayload(
+          fuente.formulario,
+          fuente,
+          fuente.metrics || metrics,
+          fuente.respuestas
+        ),
+        sourceId: fuente.sourceId,
+        ...(existingState.sources?.has(fuente.sourceId)
+          ? {}
+          : { createdAt: serverTimestamp() }),
+        updatedAt: serverTimestamp(),
+      },
+    });
   });
 
   personas.filter((persona) => isValidDni(persona.dni)).forEach((persona) => {
     const dni = normalizeDni(persona.dni);
     const personRef = doc(peopleCollection(), dni);
     const existingPerson = existingState.persons?.get(dni);
-    const personaRequiereRevision =
-      persona.estadoInicial === "REQUIERE REVISIÓN" || persona.situaciones.length === 0;
+    const existingSituationIds = existingState.situationIdsByDni?.get(dni) || new Set();
+    const sourceIds = new Set(existingPerson?.sourceIds || []);
+    const formularioIds = new Set(existingPerson?.formularioIds || []);
     const respuestaIds = [
       ...(Array.isArray(existingPerson?.respuestaIds) ? existingPerson.respuestaIds : []),
       ...(persona.respuestaIds || []),
     ];
+    (persona.fuentes || []).forEach((fuente) => {
+      sourceIds.add(fuente.sourceId);
+      formularioIds.add(fuente.formularioId);
+    });
+
+    const situationEntries = persona.situaciones.map((situacion) => {
+      const sourceRef = primarySituationRef(
+        situacion,
+        persona.fuentes?.[0]?.sourceId || sourceConfigs[0]?.sourceId || ""
+      );
+      const situationId = createSituationId(
+        sourceRef.sourceId || sourceRef.formularioId,
+        sourceRef.respuestaId || situacion.origenRespuestaId || "",
+        sourceRef.indiceRegistro ?? 1
+      );
+      return { situacion, sourceRef, situationId };
+    });
+    const situationIds = new Set(situationEntries.map(({ situationId }) => situationId));
+    situationEntries.forEach(({ situationId }) => canonicalSituationIds.add(`${dni}/${situationId}`));
+    const existingSituationCount = existingSituationIds.size;
+    const hasAnySituation = existingSituationCount > 0 || situationIds.size > 0;
+
     operations.push({
       ref: personRef,
       data: {
@@ -206,14 +335,22 @@ const buildOperationsFromSource = (sourceData, existingState = {}) => {
         email: textValue(persona.email),
         telefono: textValue(persona.telefono),
         procesoId: TITULARIZACION_PROCESS_ID,
-        cantidadSituaciones: persona.situaciones.length,
+        cantidadSituaciones: existingSituationCount +
+          [...situationIds].filter((id) => !existingSituationIds.has(id)).length,
         respuestaIds: [...new Set(respuestaIds)],
-        sourceId,
+        sourceId: [...sourceIds][0] || "",
+        sourceIds: [...sourceIds].filter(Boolean),
+        formularioIds: [...formularioIds].filter(Boolean),
+        sinSituacionEstructurada: !hasAnySituation,
         searchable: toPersonSearchable(persona),
         ...(existingPerson
           ? {}
           : {
-              estadoGeneral: personaRequiereRevision ? "requiere_revision" : "pendiente",
+              estadoGeneral: persona.razonesRevision?.length
+                ? "requiere_revision"
+                : !hasAnySituation
+                  ? "sin_situacion_estructurada"
+                  : "pendiente",
               razonesRevision: persona.razonesRevision || [],
               createdAt: serverTimestamp(),
             }),
@@ -221,74 +358,115 @@ const buildOperationsFromSource = (sourceData, existingState = {}) => {
       },
     });
 
-    persona.situaciones.forEach((situacion, index) => {
-      const sourceIndex = sourceIndexFromSituation(situacion, index);
-      const situationId = createSituationId(situacion.origenRespuestaId, sourceIndex);
+    situationEntries.forEach(({ situacion, sourceRef, situationId }) => {
       const existingSituation = existingState.situations?.get(`${dni}/${situationId}`);
+      const situationRef = doc(
+        personRef,
+        TITULARIZACION_SITUATIONS_COLLECTION,
+        situationId
+      );
       operations.push({
-        ref: doc(personRef, TITULARIZACION_SITUATIONS_COLLECTION, situationId),
+        ref: situationRef,
         data: existingSituation
-          ? existingSituationSyncData({ persona, situacion, sourceId, sourceIndex, existingSituation })
-          : newSituationData({ persona, situacion, sourceId, sourceIndex }),
+          ? existingSituationSyncData({ persona, situacion, existingSituation })
+          : newSituationData({ persona, situacion }),
+      });
+
+      const sourceRefs = orderedSourceRefs(situacion);
+      (sourceRefs.length ? sourceRefs : [sourceRef]).forEach((ref) => {
+        const evidenceBase = buildSolicitudEvidence({ persona, situacion, sourceRef: ref });
+        const evidenceId = createEvidenceId({
+          sourceId: evidenceBase.sourceId,
+          importId: "",
+          registroId: evidenceBase.registroId,
+          tipo: evidenceBase.tipo,
+        });
+        operations.push({
+          ref: doc(
+            collection(situationRef, TITULARIZACION_EVIDENCES_COLLECTION),
+            evidenceId
+          ),
+          data: {
+            ...evidenceBase,
+            situacionId: situationId,
+            evidenceId,
+          },
+        });
       });
     });
+
+    const situationSourceIds = new Set(
+      situationEntries.flatMap(({ situacion }) =>
+        (situacion.sourceRefs || []).map((sourceRef) => sourceRef.sourceId || sourceRef.formularioId)
+      )
+    );
+    (persona.sourceRefs || [])
+      .filter((sourceRef) => sourceRef.indiceRegistro == null && sourceRef.respuestaId)
+      .filter((sourceRef) => !situationSourceIds.has(sourceRef.sourceId || sourceRef.formularioId))
+      .forEach((sourceRef) => {
+        const tipo = eventTypeForSourceRole(sourceRef.rol);
+        const eventId = createEventId({
+          sourceId: sourceRef.sourceId || sourceRef.formularioId,
+          formularioId: sourceRef.formularioId,
+          respuestaId: sourceRef.respuestaId,
+          tipo,
+        });
+        operations.push({
+          ref: doc(collection(personRef, TITULARIZACION_EVENTS_COLLECTION), eventId),
+          data: {
+            tipo,
+            sourceId: sourceRef.sourceId || sourceRef.formularioId || "",
+            formularioId: sourceRef.formularioId || "",
+            respuestaId: sourceRef.respuestaId,
+            rolFuente: sourceRef.rol || "otra_solicitud",
+            valoresOriginales: firestoreSafe(persona.datosPersonaOriginales || {}),
+            procesoId: TITULARIZACION_PROCESS_ID,
+            ...(existingState.events?.has(`${dni}/${eventId}`)
+              ? {}
+              : { createdAt: serverTimestamp() }),
+            updatedAt: serverTimestamp(),
+          },
+        });
+      });
   });
 
   reviewCases.forEach((persona) => {
-    const reviewId = safeId(`revision_${persona.id}`);
-    const observationRef = doc(
-      processRef(),
-      TITULARIZACION_OBSERVATIONS_COLLECTION,
-      reviewId
-    );
-
-    const existingObservation = existingState.observations?.get(reviewId);
+    const reviewSourceId = persona.sourceRefs?.[0]?.sourceId || sourceConfigs[0]?.sourceId || "fuente";
+    const reviewRefKey = [reviewSourceId, persona.respuestaIds?.[0] || persona.id].join("|");
+    const reviewId = createDeterministicId("revision", reviewRefKey);
+    const reviewRef = doc(processRef(), TITULARIZACION_REVIEWS_COLLECTION, reviewId);
+    const existingReview = existingState.reviews?.get(reviewId);
     operations.push({
-      ref: observationRef,
+      ref: reviewRef,
       data: {
         procesoId: TITULARIZACION_PROCESS_ID,
         tipo: "caso_revision_sin_dni_valido",
-        ...(existingObservation ? {} : { estado: "requiere_revision", createdAt: serverTimestamp() }),
+        ...(existingReview ? {} : { estado: "abierta", createdAt: serverTimestamp() }),
         motivo: persona.razonesRevision?.join(" · ") || "DNI ausente o inválido",
         dniOriginal: textValue(persona.dni),
         apellido: textValue(persona.apellido),
         nombre: textValue(persona.nombre),
         nombreCompleto: textValue(persona.nombreCompleto),
         respuestaIds: persona.respuestaIds || [],
-        sourceId,
+        sourceId: reviewSourceId,
+        sourceRefs: persona.sourceRefs || [],
         cantidadSituaciones: persona.situaciones.length,
+        situaciones: firestoreSafe(persona.situaciones || []),
         updatedAt: serverTimestamp(),
       },
     });
-
-    persona.situaciones.forEach((situacion, index) => {
-      const sourceIndex = sourceIndexFromSituation(situacion, index);
-      const situationId = createSituationId(situacion.origenRespuestaId, sourceIndex);
-      const existingSituation = existingState.situations?.get(`${reviewId}/${situationId}`);
-      operations.push({
-        ref: doc(
-          observationRef,
-          TITULARIZACION_SITUATIONS_COLLECTION,
-          situationId
-        ),
-        data: existingSituation
-          ? existingSituationSyncData({ persona, situacion, sourceId, sourceIndex, existingSituation })
-          : {
-              ...newSituationData({ persona, situacion, sourceId, sourceIndex }),
-              tipoInconsistencia: "revision",
-              estado: "requiere_revision",
-            },
-      });
-    });
   });
 
-  return { operations, sourceId, reviewCases };
+  return { operations, reviewCases, canonicalSituationIds };
 };
 
 export const commitTitularizacionOperations = async (
   operations = [],
   onProgress = () => {}
 ) => {
+  if (!TITULARIZACION_PERSISTENCE_ENABLED) {
+    throw new Error("Persistencia Titularización deshabilitada hasta completar la auditoría de seguridad.");
+  }
   const totalBatches = Math.max(1, Math.ceil(operations.length / TITULARIZACION_BATCH_SIZE));
   let completedBatches = 0;
 
@@ -313,15 +491,32 @@ export const getTitularizacionProcess = async () => {
 };
 
 const loadExistingProcessState = async () => {
-  const [peopleSnapshot, situationsSnapshot, observationsSnapshot] = await Promise.all([
+  const [
+    peopleSnapshot,
+    situationsSnapshot,
+    evidencesSnapshot,
+    eventsSnapshot,
+    sourcesSnapshot,
+    reviewsSnapshot,
+    observationsSnapshot,
+  ] = await Promise.all([
     getDocs(peopleCollection()),
     getDocs(query(collectionGroup(db, TITULARIZACION_SITUATIONS_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(query(collectionGroup(db, TITULARIZACION_EVIDENCES_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(query(collectionGroup(db, TITULARIZACION_EVENTS_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(sourcesCollection()),
+    getDocs(collection(processRef(), TITULARIZACION_REVIEWS_COLLECTION)),
     getDocs(collection(processRef(), TITULARIZACION_OBSERVATIONS_COLLECTION)),
   ]);
 
   const state = {
     persons: new Map(),
     situations: new Map(),
+    situationIdsByDni: new Map(),
+    evidences: new Map(),
+    events: new Map(),
+    sources: new Map(),
+    reviews: new Map(),
     observations: new Map(),
   };
 
@@ -331,28 +526,60 @@ const loadExistingProcessState = async () => {
   observationsSnapshot.docs.forEach((snapshot) => {
     state.observations.set(snapshot.id, snapshot.data() || {});
   });
+  reviewsSnapshot.docs.forEach((snapshot) => {
+    state.reviews.set(snapshot.id, snapshot.data() || {});
+  });
+  sourcesSnapshot.docs.forEach((snapshot) => {
+    state.sources.set(snapshot.id, snapshot.data() || {});
+  });
   situationsSnapshot.docs.forEach((snapshot) => {
     const path = snapshot.ref.path.split("/");
     if (path[2] === TITULARIZACION_PEOPLE_COLLECTION) {
       state.situations.set(`${path[3]}/${snapshot.id}`, snapshot.data() || {});
+      if (!state.situationIdsByDni.has(path[3])) state.situationIdsByDni.set(path[3], new Set());
+      state.situationIdsByDni.get(path[3]).add(snapshot.id);
     }
-    if (path[2] === TITULARIZACION_OBSERVATIONS_COLLECTION) {
-      state.situations.set(`${path[3]}/${snapshot.id}`, snapshot.data() || {});
-    }
+  });
+  evidencesSnapshot.docs.forEach((snapshot) => {
+    const path = snapshot.ref.path.split("/");
+    state.evidences.set(`${path[3]}/${path[5]}/${snapshot.id}`, snapshot.data() || {});
+  });
+  eventsSnapshot.docs.forEach((snapshot) => {
+    const path = snapshot.ref.path.split("/");
+    state.events.set(`${path[3]}/${snapshot.id}`, snapshot.data() || {});
   });
 
   return state;
 };
 
-export const initializeTitularizacionProcess = async (onProgress) => {
-  const existing = await getTitularizacionProcess();
-  if (existing?.estado === "activo" && existing?.personasPersistidas) {
-    return { alreadyInitialized: true, process: existing, batchCount: 0 };
-  }
+const mergeSourceConfigurations = (existingProcess, sourceConfigs = []) => {
+  const previous = existingProcess?.fuentesHabilitadas || existingProcess?.fuentes || [];
+  const bySourceId = new Map();
+  [...previous, ...sourceConfigs].forEach((source) => {
+    const sourceId = source.sourceId || source.formularioId;
+    if (!sourceId) return;
+    bySourceId.set(sourceId, {
+      sourceId,
+      formularioId: source.formularioId,
+      rol: source.rol || "otra_solicitud",
+      habilitada: source.habilitada !== false,
+    });
+  });
+  return [...bySourceId.values()];
+};
 
-  const sourceData = await loadTitularizacionData();
+export const initializeTitularizacionProcess = async (onProgress, sourceConfigs) => {
+  if (!TITULARIZACION_PERSISTENCE_ENABLED) {
+    throw new Error("La inicialización está bloqueada hasta completar la auditoría de seguridad.");
+  }
+  const existing = await getTitularizacionProcess();
+  const sourceData = await loadTitularizacionData({ sourceConfigs });
   const existingState = await loadExistingProcessState();
-  const { operations, sourceId, reviewCases } = buildOperationsFromSource(sourceData, existingState);
+  const { operations, reviewCases } = buildOperationsFromSource(
+    sourceData,
+    existingState,
+    existing
+  );
   let batchCount = 0;
 
   await commitTitularizacionOperations(operations, (progress) => {
@@ -360,36 +587,54 @@ export const initializeTitularizacionProcess = async (onProgress) => {
     onProgress?.({ phase: "persistiendo", ...progress });
   });
 
+  const fuentesHabilitadas = mergeSourceConfigurations(existing, sourceData.sourceConfigs);
   const finalPayload = {
     nombre: "Titularización Docente 2026",
     anio: 2026,
     estado: "activo",
     procesoId: TITULARIZACION_PROCESS_ID,
-    formularioFuenteId: sourceData.formulario.id,
-    fuenteSolicitudId: sourceId,
-    respuestasFuente: sourceData.respuestas.length,
-    personasPersistidas: sourceData.metrics.personas,
-    situacionesPersistidas: sourceData.metrics.situaciones,
-    casosRevision: reviewCases.length,
-    initializedAt: serverTimestamp(),
+    formularioFuenteIds: fuentesHabilitadas.map((sourceConfig) => sourceConfig.formularioId),
+    fuenteSolicitudIds: fuentesHabilitadas.map((sourceConfig) => sourceConfig.sourceId),
+    fuentesHabilitadas,
+    fuentes: fuentesHabilitadas.map(({ sourceId, formularioId, rol }) => ({
+      sourceId,
+      formularioId,
+      rol,
+    })),
+    formularioFuenteId: fuentesHabilitadas[0]?.formularioId || sourceData.formulario.id,
+    fuenteSolicitudId: fuentesHabilitadas[0]?.sourceId || "",
+    respuestasFuente: Math.max(existing?.respuestasFuente || 0, sourceData.respuestas.length),
+    personasPersistidas: Math.max(existing?.personasPersistidas || 0, sourceData.metrics.personas),
+    situacionesPersistidas: Math.max(
+      existing?.situacionesPersistidas || 0,
+      sourceData.metrics.situacionesCanonicas || sourceData.metrics.situaciones
+    ),
+    situacionesRevision: sourceData.metrics.situacionesRevision || 0,
+    personasSinSituacionEstructurada: Math.max(
+      existing?.personasSinSituacionEstructurada || 0,
+      sourceData.metrics.personasSinSituacionEstructurada || 0
+    ),
+    casosRevision: Math.max(existing?.casosRevision || 0, reviewCases.length),
+    ...(existing?.initializedAt ? {} : { initializedAt: serverTimestamp() }),
     updatedAt: serverTimestamp(),
   };
   await commitTitularizacionOperations([{ ref: processRef(), data: finalPayload }], () => {});
 
   return {
     alreadyInitialized: false,
+    synchronized: Boolean(existing),
     process: { ...finalPayload, estado: "activo" },
-    personasPersistidas: sourceData.metrics.personas,
-    situacionesPersistidas: sourceData.metrics.situaciones,
-    casosRevision: reviewCases.length,
+    personasPersistidas: finalPayload.personasPersistidas,
+    situacionesPersistidas: finalPayload.situacionesPersistidas,
+    casosRevision: finalPayload.casosRevision,
     batchCount: batchCount + 1,
   };
 };
 
-const toPersistedPerson = (snapshot, situacionesByDni) => {
+const toPersistedPerson = (snapshot, situacionesByDni, eventosByDni = new Map()) => {
   const data = snapshot.data() || {};
   const situaciones = situacionesByDni.get(snapshot.id) || [];
-  const nombreCompleto = data.nombreCompleto || [data.apellido, data.nombre].filter(Boolean).join(" ");
+  const nombreCompleto = buildVisiblePersonName(data);
 
   return {
     id: snapshot.id,
@@ -398,8 +643,14 @@ const toPersistedPerson = (snapshot, situacionesByDni) => {
     nombreCompleto,
     situaciones,
     situacionesCount: situaciones.length,
+    eventos: eventosByDni.get(snapshot.id) || [],
     razonesRevision: Array.isArray(data.razonesRevision) ? data.razonesRevision : [],
-    estadoInicial: data.estadoGeneral === "requiere_revision" ? "REQUIERE REVISIÓN" : "SOLICITUD REGISTRADA",
+    estadoInicial:
+      data.estadoGeneral === "requiere_revision"
+        ? "REQUIERE REVISIÓN"
+        : data.sinSituacionEstructurada
+          ? "SIN SITUACIÓN ESTRUCTURADA"
+          : "SOLICITUD REGISTRADA",
     searchable: data.searchable || toPersonSearchable({ ...data, nombreCompleto }),
   };
 };
@@ -408,47 +659,87 @@ export const loadPersistedTitularizacionData = async () => {
   const process = await getTitularizacionProcess();
   if (!process || process.estado !== "activo") return null;
 
-  const [peopleSnapshot, situationsSnapshot, observationsSnapshot] = await Promise.all([
+  const [
+    peopleSnapshot,
+    situationsSnapshot,
+    evidencesSnapshot,
+    eventsSnapshot,
+    reviewsSnapshot,
+    observationsSnapshot,
+    sourcesSnapshot,
+  ] = await Promise.all([
     getDocs(peopleCollection()),
     getDocs(query(collectionGroup(db, TITULARIZACION_SITUATIONS_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(query(collectionGroup(db, TITULARIZACION_EVIDENCES_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(query(collectionGroup(db, TITULARIZACION_EVENTS_COLLECTION), where("procesoId", "==", TITULARIZACION_PROCESS_ID))),
+    getDocs(collection(processRef(), TITULARIZACION_REVIEWS_COLLECTION)),
     getDocs(collection(processRef(), TITULARIZACION_OBSERVATIONS_COLLECTION)),
+    getDocs(sourcesCollection()),
   ]);
 
+  const evidenciasBySituation = new Map();
+  evidencesSnapshot.docs.forEach((snapshot) => {
+    const path = snapshot.ref.path.split("/");
+    if (path[2] !== TITULARIZACION_PEOPLE_COLLECTION) return;
+    const key = `${path[3]}/${path[5]}`;
+    if (!evidenciasBySituation.has(key)) evidenciasBySituation.set(key, []);
+    evidenciasBySituation.get(key).push({ id: snapshot.id, ...snapshot.data() });
+  });
+
   const situacionesByDni = new Map();
-  const situacionesRevision = [];
   situationsSnapshot.docs.forEach((snapshot) => {
     const path = snapshot.ref.path.split("/");
-    if (path[2] === TITULARIZACION_OBSERVATIONS_COLLECTION) {
-      situacionesRevision.push({ id: snapshot.id, ...snapshot.data(), observacionId: path[3] });
-      return;
-    }
     if (path[2] !== TITULARIZACION_PEOPLE_COLLECTION) return;
     const dni = path[3];
+    const base = { id: snapshot.id, ...snapshot.data() };
+    const legacyEvidence = base.matchStatus || base.presentadoSidca
+      ? [{
+          tipo: "presentacion_sidca",
+          matchStatus: base.matchStatus ?? null,
+          matchScore: base.matchScore ?? null,
+          razones: base.razonesMatch || [],
+          diferencias: base.diferenciasMatch || [],
+          createdAt: base.updatedAt || base.createdAt || null,
+        }]
+      : [];
+    const evidencias = evidenciasBySituation.get(`${dni}/${snapshot.id}`) || legacyEvidence;
+    const situation = materializeSituationWorkflow(base, evidencias);
     if (!situacionesByDni.has(dni)) situacionesByDni.set(dni, []);
-    situacionesByDni.get(dni).push({ id: snapshot.id, ...snapshot.data() });
+    situacionesByDni.get(dni).push(situation);
+  });
+
+  const eventosByDni = new Map();
+  eventsSnapshot.docs.forEach((snapshot) => {
+    const path = snapshot.ref.path.split("/");
+    if (path[2] !== TITULARIZACION_PEOPLE_COLLECTION) return;
+    const dni = path[3];
+    if (!eventosByDni.has(dni)) eventosByDni.set(dni, []);
+    eventosByDni.get(dni).push({ id: snapshot.id, ...snapshot.data() });
   });
 
   const personas = peopleSnapshot.docs
-    .map((snapshot) => toPersistedPerson(snapshot, situacionesByDni))
+    .map((snapshot) => toPersistedPerson(snapshot, situacionesByDni, eventosByDni))
     .filter((persona) => isValidDni(persona.dni));
   const situaciones = personas.flatMap((persona) => persona.situaciones);
   const presentadas = situaciones.filter((situacion) => situacion.presentadoSidca).length;
   const requierenRevisionCanonicas = situaciones.filter(
-    (situacion) => situacion.estado === "requiere_revision" || situacion.tipoInconsistencia === "revision"
+    (situacion) => situacion.estadoResumen?.requiereRevision
   ).length;
-  const reviewRows = situacionesRevision.map((situacion) => {
-    const observation = observationsSnapshot.docs.find((snapshot) => snapshot.id === situacion.observacionId)?.data() || {};
-    return {
+  const reviewRows = reviewsSnapshot.docs.flatMap((snapshot) => {
+    const review = snapshot.data() || {};
+    return (review.situaciones || []).map((situacion, index) => ({
       ...situacion,
-      apellido: observation.apellido || "",
-      nombre: observation.nombre || "",
-      nombreCompleto: observation.nombreCompleto || [observation.apellido, observation.nombre].filter(Boolean).join(" "),
+      id: `${snapshot.id}_${situacion.id || index + 1}`,
+      dni: review.dniOriginal || situacion.dni || "",
+      apellido: review.apellido || "",
+      nombre: review.nombre || "",
+      nombreCompleto: buildVisiblePersonName(review),
       presentadoSidca: false,
       estado: "requiere_revision",
       tipoInconsistencia: "revision",
       formularioSolicitud: true,
       esSituacionCanonica: false,
-    };
+    }));
   });
 
   const metrics = {
@@ -457,13 +748,27 @@ export const loadPersistedTitularizacionData = async () => {
     presentadasSidca: presentadas,
     pendientesSidca: situaciones.length + reviewRows.length - presentadas,
     requierenRevision: requierenRevisionCanonicas + reviewRows.length + (process.registrosRevision || 0),
-    casosRevision: observationsSnapshot.size,
+    casosRevision: reviewsSnapshot.size,
+    personasSinSituacionEstructurada: personas.filter(
+      (persona) => persona.sinSituacionEstructurada
+    ).length,
     unaSituacion: personas.filter((persona) => persona.situaciones.length === 1).length,
     multiplesSituaciones: personas.filter((persona) => persona.situaciones.length > 1).length,
   };
 
+  const formularioIds = process.formularioFuenteIds || [process.formularioFuenteId].filter(Boolean);
+  const sourceIds = process.fuenteSolicitudIds || [process.fuenteSolicitudId].filter(Boolean);
+  const fuentes = sourcesSnapshot.docs.map((snapshot) => ({
+    id: snapshot.id,
+    ...snapshot.data(),
+  }));
+  const sourceConfigs = (process.fuentesHabilitadas || process.fuentes || fuentes).map((fuente, index) => ({
+    formularioId: fuente.formularioId || formularioIds[index],
+    sourceId: fuente.sourceId || sourceIds[index],
+    rol: fuente.rol || "otra_solicitud",
+  })).filter((sourceConfig) => sourceConfig.formularioId);
   const formulario = {
-    id: process.formularioFuenteId,
+    id: formularioIds[0] || process.formularioFuenteId,
     titulo: process.nombre || "TITULARIZACIÓN DOCENTE 2026",
   };
 
@@ -471,21 +776,47 @@ export const loadPersistedTitularizacionData = async () => {
     initialized: true,
     process,
     formulario,
+    formularios: fuentes.map((fuente) => ({
+      id: fuente.formularioId,
+      titulo: fuente.nombre || fuente.formularioTitulo || fuente.formularioId,
+      tipoFormulario: fuente.tipoFormulario,
+    })),
+    sourceConfigs,
+    fuentes,
     respuestas: { length: process.respuestasFuente || 0 },
     personas,
     situations: situaciones,
     reviewSituations: reviewRows,
     observations: observationsSnapshot.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() })),
-    casosRevision: observationsSnapshot.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() })),
+    casosRevision: reviewsSnapshot.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() })),
     metrics,
   };
 };
 
-export const loadTitularizacionDashboard = async () => {
+export const loadTitularizacionDashboard = async (options = {}) => {
   const persisted = await loadPersistedTitularizacionData();
-  if (persisted) return persisted;
+  if (persisted && options.previewSources) {
+    const sourceData = await loadTitularizacionData(options);
+    return {
+      ...sourceData,
+      initialized: true,
+      process: persisted.process,
+      casosRevision: sourceData.personas.filter((persona) => !isValidDni(persona.dni)),
+    };
+  }
+  if (persisted) {
+    const formularios = await loadTitularizacionSources();
+    return {
+      ...persisted,
+      formularios,
+      formulariosRelacionados: formularios,
+    };
+  }
 
-  const sourceData = await loadTitularizacionData();
+  const sourceConfigs = Array.isArray(options.sourceConfigs) && options.sourceConfigs.length
+    ? options.sourceConfigs
+    : DEFAULT_TITULARIZACION_SOURCE_CONFIGS;
+  const sourceData = await loadTitularizacionData({ ...options, sourceConfigs });
   return {
     ...sourceData,
     initialized: false,
@@ -499,7 +830,7 @@ export const loadTitularizacionPendingData = async () => {
 
   const recordsSnapshot = await getDocs(
     query(
-      collectionGroup(db, "registros"),
+      collectionGroup(db, TITULARIZACION_IMPORTED_RECORDS_COLLECTION),
       where("procesoId", "==", TITULARIZACION_PROCESS_ID)
     )
   );
@@ -535,11 +866,11 @@ export const loadTitularizacionPendingData = async () => {
       dni: normalizeDni(record.dni),
       apellido: record.valoresNormalizados?.apellido || "",
       nombre: record.valoresNormalizados?.nombre || "",
-      nombreCompleto:
-        record.valoresNormalizados?.apellidoNombre ||
-        [record.valoresNormalizados?.apellido, record.valoresNormalizados?.nombre]
-          .filter(Boolean)
-          .join(" "),
+      nombreCompleto: buildVisiblePersonName({
+        apellido: record.valoresNormalizados?.apellido,
+        nombre: record.valoresNormalizados?.nombre,
+        nombreCompleto: record.valoresNormalizados?.apellidoNombre,
+      }),
       cargo: record.valoresNormalizados?.cargo || "",
       materia: record.valoresNormalizados?.materia || "",
       horas: record.valoresNormalizados?.horas || "",
@@ -551,7 +882,7 @@ export const loadTitularizacionPendingData = async () => {
       presentadoSidca: true,
       estado: "requiere_revision",
       matchStatus: record.matchStatus || "revision",
-      matchScore: record.matchScore || null,
+      matchScore: record.matchScore ?? null,
       tipoInconsistencia: "presentada_sin_solicitud_vinculada",
       sourceRefs: [
         {

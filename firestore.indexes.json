@@ -51,6 +51,14 @@
         { "fieldPath": "habilitarAsistencia", "order": "ASCENDING" },
         { "fieldPath": "titulo", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "situaciones",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "procesoId", "order": "ASCENDING" },
+        { "fieldPath": "estadoResumen.requiereRevision", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -70,6 +78,46 @@
           "arrayConfig": "CONTAINS",
           "queryScope": "COLLECTION"
         },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "situaciones",
+      "fieldPath": "procesoId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "evidencias",
+      "fieldPath": "procesoId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "eventos",
+      "fieldPath": "procesoId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros_importados",
+      "fieldPath": "procesoId",
+      "indexes": [
         {
           "order": "ASCENDING",
           "queryScope": "COLLECTION_GROUP"

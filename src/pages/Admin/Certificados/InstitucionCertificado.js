@@ -9,6 +9,7 @@
 import React from "react";
 
 import styles from "./CertificadosAdmin.module.css";
+import { ETIQUETAS_INSTITUCIONES_ORGANIZADORAS } from "./utils/ministerioCertificado";
 
 export const INSTITUCIONES = [
   {
@@ -19,7 +20,7 @@ export const INSTITUCIONES = [
   {
     valor: "itm",
     etiqueta: "ITM",
-    detalle: "Instituto Tecnológico Municipal",
+    detalle: ETIQUETAS_INSTITUCIONES_ORGANIZADORAS.itm,
   },
   {
     valor: "ministerio",

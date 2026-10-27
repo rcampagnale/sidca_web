@@ -1,9 +1,29 @@
 import React from "react";
 import { Tag } from "primereact/tag";
 
+import { TITULARIZACION_SOURCE_ROLE_LABELS } from "../../../services/titularizacion/titularizacionService";
 import styles from "../../../pages/Admin/OficinaGestion/Titularizacion/TitularizacionPage.module.css";
 
 const valueOrDash = (value) => value || "—";
+
+const sourceLabel = (sourceRef = {}, situacion = {}) =>
+  TITULARIZACION_SOURCE_ROLE_LABELS[sourceRef.rol] ||
+  (sourceRef.importId
+    ? "Presentación SIDCA"
+    : sourceRef.formularioTitulo || "Solicitud afiliado") ||
+  situacion.formularioId ||
+  "Fuente";
+
+const sourceLabelsFor = (situacion) => {
+  const refs = Array.isArray(situacion.sourceRefs) ? situacion.sourceRefs : [];
+  const labels = refs.map((sourceRef) =>
+    sourceLabel(sourceRef, situacion)
+  );
+  if (!labels.length) {
+    return [situacion.origen === "importacion_excel" ? "Solicitud afiliado" : "Fuente"];
+  }
+  return [...new Set(labels)];
+};
 
 const fields = [
   ["cargo", "Cargo"],
@@ -22,12 +42,8 @@ const TitularizacionSituaciones = ({ situaciones = [] }) => (
         <div className={styles.situationHeading}>
           <strong>Situación {index + 1}</strong>
           <Tag
-            value={
-              situacion.origen === "importacion_excel"
-                ? "Solicitud afiliado"
-                : situacion.origen || "sin_origen"
-            }
-            severity={situacion.origen === "importacion_excel" ? "warning" : "info"}
+            value={sourceLabelsFor(situacion).join(" · ")}
+            severity="info"
           />
         </div>
 
@@ -41,6 +57,8 @@ const TitularizacionSituaciones = ({ situaciones = [] }) => (
         </div>
 
         <div className={styles.situationReference}>
+          <span>Fuente</span>
+          <strong>{sourceLabelsFor(situacion).join(" · ")}</strong>
           <span>Respuesta ID</span>
           <strong>{valueOrDash(situacion.origenRespuestaId)}</strong>
           <span>Formulario ID</span>

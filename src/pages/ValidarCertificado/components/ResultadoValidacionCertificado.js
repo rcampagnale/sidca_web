@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dialog } from "primereact/dialog";
 import styles from "../../Admin/Certificados/ValidarCertificadoQR.module.css";
 import adminStyles from "../../Admin/Certificados/CertificadosAdmin.module.css";
+import { ETIQUETAS_INSTITUCIONES_ORGANIZADORAS } from "../../Admin/Certificados/utils/ministerioCertificado";
 
 export const formatInstitucionCertificado = (valor) => {
   const normalizado = String(valor || "").trim().toLowerCase();
@@ -13,7 +14,7 @@ export const formatInstitucionCertificado = (valor) => {
     normalizado.includes("instituto tecnologico municipal") ||
     normalizado.includes("instituto tecnológico municipal")
   ) {
-    return "Instituto Tecnológico Municipal";
+    return ETIQUETAS_INSTITUCIONES_ORGANIZADORAS.itm;
   }
   if (normalizado === "ministerio") {
     return "Ministerio de Educación y Trabajo";

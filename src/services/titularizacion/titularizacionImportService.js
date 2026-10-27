@@ -18,18 +18,30 @@ import {
 import {
   TITULARIZACION_IMPORTS_COLLECTION,
   TITULARIZACION_BATCH_SIZE,
+  TITULARIZACION_EVIDENCES_COLLECTION,
+  TITULARIZACION_IMPORTED_RECORDS_COLLECTION,
+  TITULARIZACION_PERSISTENCE_ENABLED,
   TITULARIZACION_PROCESS_ID,
   TITULARIZACION_ROOT_COLLECTION,
   commitTitularizacionOperations,
   getTitularizacionProcess,
   loadPersistedTitularizacionData,
 } from "./titularizacionProcessService";
-import { matchSituationsOneToOne } from "./titularizacionMatcher";
 import {
-  leerEstructuraExcel,
+  createEvidenceId,
+  deriveSituationSummary,
+} from "./titularizacionModel";
+import { matchSituationsOneToOne } from "./titularizacionMatcher";
+import { SOURCE_COVERAGE } from "./titularizacionSourceModel";
+import {
+  leerEstructuraWorkbook,
   normalizarNombreColumna,
   obtenerValorCampoFila,
 } from "../excelFormularioService";
+import {
+  detectWideTitularizacionSchema,
+  parseWideTitularizacionRows,
+} from "./titularizacionWideExcelParser";
 
 export const SIDCA_IMPORT_FIELDS = [
   { key: "dni", label: "DNI", required: true, aliases: ["dni", "documento", "documento nacional", "nro dni", "numero dni"] },
@@ -118,34 +130,388 @@ export const normalizeSidcaRows = ({ filas = [], columnas = [], mapping = {}, in
 export const summarizeSidcaRows = (rows = []) => {
   const dnis = rows.filter((row) => row.dni);
   const validDnis = dnis.filter((row) => isValidDni(row.dni));
+  const situations = rows.length;
   return {
     filasDetectadas: rows.length,
+    filasExcel: rows.length,
     dniDetectados: dnis.length,
     dniValidos: validDnis.length,
     dniInvalidos: dnis.filter((row) => !isValidDni(row.dni)).length,
     dniUnicos: new Set(validDnis.map((row) => row.dni)).size,
     personas: new Set(validDnis.map((row) => row.dni)).size,
-    situacionesEstimadas: rows.length,
+    situacionesEstimadas: situations,
+    situacionesExtraidas: situations,
+    bloquesVaciosDescartados: 0,
+    bloquesReconocidos: 0,
+    columnasReconocidas: 0,
+  };
+};
+
+const compactHeader = (column = {}) =>
+  normalizarNombreColumna(column.sourceHeader || column.label || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+
+const isDirectDniHeader = (column) => {
+  const header = compactHeader(column);
+  return header === "dni" ||
+    (header.startsWith("dni") && !header.includes("clave") && !header.includes("cruce"));
+};
+
+const isDocumentHeader = (column) => {
+  const header = compactHeader(column);
+  return header === "documento" ||
+    header.startsWith("documento") ||
+    header === "nrodni" ||
+    header === "numerodedocumento" ||
+    header === "numerodocumento";
+};
+
+const isDniCrossKeyHeader = (column) => {
+  const header = compactHeader(column);
+  return header.includes("dni") && (header.includes("clave") || header.includes("cruce"));
+};
+
+const resolveDniColumns = (columns = []) => {
+  const direct = columns.find(isDirectDniHeader);
+  const document = columns.find(isDocumentHeader);
+  const crossKey = columns.find(isDniCrossKeyHeader);
+  return {
+    primary: direct || document || crossKey || null,
+    direct,
+    document,
+    crossKey,
+  };
+};
+
+const schemaWithDniColumn = (schema, columns) => {
+  const dniColumns = resolveDniColumns(schema.columns || columns);
+  return {
+    ...schema,
+    detectedDniColumn: dniColumns.primary,
+    personColumns: {
+      ...schema.personColumns,
+      dni: dniColumns.primary || schema.personColumns.dni || null,
+      claveCruceDni: dniColumns.crossKey || null,
+    },
+  };
+};
+
+const semanticFieldsFor = (schema = {}) => [
+  ...Object.entries(schema.personColumns || {})
+    .filter(([, column]) => Boolean(column))
+    .map(([field]) => field),
+  ...((schema.blocks || []).flatMap((block) => Object.entries(block.fields || [])
+    .filter(([, column]) => Boolean(column))
+    .map(([field]) => field))),
+].filter((field, index, fields) => fields.indexOf(field) === index);
+
+const administrativeRowsFor = (sheet, schema) => {
+  const mapping = {
+    dni: schema.personColumns.dni?.key || "",
+    apellido: schema.personColumns.apellido?.key || "",
+    nombre: schema.personColumns.nombre?.key || "",
+    departamento: schema.personColumns.departamento?.key || "",
+  };
+  return normalizeSidcaRows({
+    filas: sheet.filas || [],
+    columnas: sheet.columnas || [],
+    mapping,
+    indiceEncabezados: sheet.indiceEncabezados || 0,
+  }).map((row) => ({
+    ...row,
+    recordKey: `hoja_${sheet.sheetIndex}_fila_${row.numeroFila}`,
+    sourceSheetName: sheet.sheetName || sheet.hoja || "Hoja 1",
+    sourceSheetIndex: sheet.sheetIndex || 0,
+    sourceRowNumber: row.numeroFila,
+    rawRecord: row.valoresOriginales,
+    provenance: {
+      sheetName: sheet.sheetName || sheet.hoja || "Hoja 1",
+      sheetIndex: sheet.sheetIndex || 0,
+      rowNumber: row.numeroFila,
+    },
+    valoresNormalizados: {
+      ...Object.fromEntries((sheet.columnas || []).map((column) => [
+        column.key,
+        textValue(row.valoresOriginales?.[column.key]),
+      ])),
+      ...row.valoresNormalizados,
+    },
+  }));
+};
+
+const summaryForRows = (rows = [], { situations = [], schema = {} } = {}) => {
+  const summary = summarizeSidcaRows(rows);
+  return {
+    ...summary,
+    situacionesEstimadas: situations.length,
+    situacionesExtraidas: situations.length,
+    situacionesValidas: situations.filter((row) => row.situacion?.semanticValidation?.valid !== false).length,
+    situacionesConWarnings: situations.filter((row) => row.situacion?.semanticValidation?.warnings?.length).length,
+    situacionesInvalidas: situations.filter((row) => row.situacion?.semanticValidation?.valid === false).length,
+    bloquesReconocidos: schema.blocks?.length || 0,
+    columnasReconocidas: schema.recognizedColumnCount || 0,
+    columnasMapeadas: schema.recognizedColumnCount || 0,
+    camposSemanticosDisponibles: semanticFieldsFor(schema),
+  };
+};
+
+const sheetError = (message) => ({ valid: false, errors: [message], warnings: [] });
+
+export const analyzeSidcaSheet = (sheet = {}) => {
+  const hasRows = Number.isFinite(sheet.rowCount) ? sheet.rowCount > 0 : Boolean(sheet.filas?.length);
+  if (!sheet.columnas?.length) {
+    return {
+      ...sheet,
+      status: "NO_COMPATIBLE",
+      selectable: false,
+      parserMode: "none",
+      validation: sheetError("No se detectaron encabezados utilizables."),
+      summary: summarizeSidcaRows([]),
+    };
+  }
+
+  const detectedSchema = detectWideTitularizacionSchema(sheet.columnas, {
+    sheetName: sheet.sheetName || sheet.hoja || "Hoja 1",
+    sheetIndex: sheet.sheetIndex || 0,
+  });
+  const wideSchema = schemaWithDniColumn(detectedSchema, sheet.columnas);
+  const administrativeRows = administrativeRowsFor(sheet, wideSchema);
+  const validDniCount = administrativeRows.filter((row) => isValidDni(row.dni)).length;
+  if (!hasRows || !wideSchema.personColumns.dni || validDniCount === 0) {
+    return {
+      ...sheet,
+      wideSchema,
+      rows: administrativeRows,
+      status: "NO_COMPATIBLE",
+      selectable: false,
+      parserMode: "none",
+      validation: sheetError(
+        !hasRows
+          ? "No hay registros físicos para analizar."
+          : !wideSchema.personColumns.dni
+            ? "No se encontró una columna DNI utilizable."
+            : "No se encontraron DNI válidos en los registros."
+      ),
+      summary: summaryForRows(administrativeRows, { schema: wideSchema }),
+    };
+  }
+
+  const wideParsed = parseWideTitularizacionRows({
+    ...sheet,
+    schema: wideSchema,
+    sourceSheetName: sheet.sheetName || sheet.hoja || "Hoja 1",
+    sourceSheetIndex: sheet.sheetIndex || 0,
+  });
+  const semanticErrors = wideParsed.summary.erroresSemanticos || [];
+  const semanticWarnings = wideParsed.summary.warningsSemanticos || [];
+  const structured = wideSchema.blocks.length > 0 && wideSchema.missingCoreFields.length === 0;
+  const rows = structured ? wideParsed.rows : administrativeRows;
+  const summary = structured
+    ? {
+      ...wideParsed.summary,
+      camposSemanticosDisponibles: semanticFieldsFor(wideSchema),
+    }
+    : summaryForRows(rows, { schema: wideSchema });
+  return {
+    ...sheet,
+    wideSchema,
+    wideParsed: {
+      ...wideParsed,
+      rows,
+      summary,
+    },
+    rows,
+    status: structured ? "COMPATIBLE_ESTRUCTURADA" : "COMPATIBLE_PARCIAL",
+    selectable: true,
+    parserMode: "wide",
+    validation: {
+      valid: true,
+      errors: [],
+      warnings: [
+        ...(structured ? semanticErrors : ["Hoja importable con estructura parcial; no se fabrican situaciones completas."]),
+        ...semanticWarnings,
+      ],
+    },
+    summary,
+  };
+};
+
+const mergePeople = (peopleByKey, person, sheetIndex) => {
+  const personKey = person.dniValido
+    ? `dni_${person.dni}`
+    : `revision_${sheetIndex}_${person.filasExcel?.[0] || peopleByKey.size}`;
+  if (!peopleByKey.has(personKey)) {
+    peopleByKey.set(personKey, {
+      ...person,
+      situaciones: [],
+      filasExcel: [],
+      hojasOrigen: [],
+    });
+  }
+  const target = peopleByKey.get(personKey);
+  target.situaciones.push(...(person.situaciones || []));
+  target.filasExcel.push(...(person.filasExcel || []));
+  (person.hojasOrigen || []).forEach((origin) => {
+    if (!target.hojasOrigen.some((item) => item.sheetIndex === origin.sheetIndex)) {
+      target.hojasOrigen.push(origin);
+    }
+  });
+};
+
+export const consolidateSidcaSheets = (sheetAnalyses = [], selectedSheetIndexes = []) => {
+  const selected = sheetAnalyses.filter((sheet) => selectedSheetIndexes.includes(sheet.sheetIndex));
+  const rows = selected.flatMap((sheet) => sheet.rows || []);
+  const situationRows = rows.filter((row) => row.situacion);
+  const peopleByKey = new Map();
+  selected.forEach((sheet) => {
+    (sheet.wideParsed?.personas || []).forEach((person) => mergePeople(peopleByKey, person, sheet.sheetIndex));
+  });
+  const personas = [...peopleByKey.values()].map((person) => ({
+    ...person,
+    situacionesCount: person.situaciones.length,
+  }));
+  const validRows = rows.filter((row) => isValidDni(row.dni));
+  const semanticInvalid = situationRows.filter((row) => !row.situacion?.semanticValidation?.valid);
+  const semanticWarnings = situationRows.filter((row) => row.situacion?.semanticValidation?.warnings?.length);
+  return {
+    rows,
+    personas,
+    summary: {
+      filasDetectadas: selected.reduce((sum, sheet) => sum + (sheet.summary?.filasDetectadas || 0), 0),
+      filasExcel: selected.reduce((sum, sheet) => sum + (sheet.summary?.filasExcel || 0), 0),
+      dniDetectados: selected.reduce((sum, sheet) => sum + (sheet.summary?.dniDetectados || 0), 0),
+      dniValidos: selected.reduce((sum, sheet) => sum + (sheet.summary?.dniValidos || 0), 0),
+      dniInvalidos: selected.reduce((sum, sheet) => sum + (sheet.summary?.dniInvalidos || 0), 0),
+      dniUnicos: new Set(validRows.map((row) => row.dni)).size,
+      personas: personas.filter((person) => person.dniValido).length,
+      situacionesExtraidas: situationRows.length,
+      situacionesEstimadas: situationRows.length,
+      situacionesValidas: situationRows.length - semanticInvalid.length,
+      situacionesConWarnings: semanticWarnings.length,
+      situacionesInvalidas: semanticInvalid.length,
+      bloquesVaciosDescartados: selected.reduce((sum, sheet) => sum + (sheet.summary?.bloquesVaciosDescartados || 0), 0),
+      bloquesReconocidos: selected.reduce((sum, sheet) => sum + (sheet.summary?.bloquesReconocidos || 0), 0),
+      columnasReconocidas: selected.reduce((sum, sheet) => sum + (sheet.summary?.columnasReconocidas || 0), 0),
+      columnasMapeadas: selected.reduce((sum, sheet) => sum + (sheet.summary?.columnasMapeadas || 0), 0),
+      hojasTotales: sheetAnalyses.length,
+      hojasSeleccionadas: selected.length,
+      erroresSemanticos: [...new Set(semanticInvalid.flatMap((row) => row.situacion.semanticValidation.errors))],
+      warningsSemanticos: [...new Set(semanticWarnings.flatMap((row) => row.situacion.semanticValidation.warnings))],
+    },
+  };
+};
+
+export const selectPreparedSidcaSheets = (prepared, selectedSheetIndexes = []) => {
+  if (!prepared?.sheets) return prepared;
+  const selected = selectedSheetIndexes.filter((index) =>
+    prepared.sheets.some((sheet) => sheet.sheetIndex === index && sheet.selectable)
+  );
+  const consolidated = consolidateSidcaSheets(prepared.sheets, selected);
+  const errors = prepared.sheets
+    .filter((sheet) => selected.includes(sheet.sheetIndex))
+    .flatMap((sheet) => sheet.validation?.errors || []);
+  const selectionErrors = selected.length ? errors : ["Seleccioná al menos una hoja compatible antes del preview."];
+  return {
+    ...prepared,
+    selectedSheetIndexes: selected,
+    rows: consolidated.rows,
+    summary: consolidated.summary,
+    wideParsed: consolidated,
+    validation: {
+      valid: selected.length > 0 && errors.length === 0,
+      errors: selectionErrors,
+      warnings: prepared.sheets
+        .filter((sheet) => selected.includes(sheet.sheetIndex))
+        .flatMap((sheet) => sheet.validation?.warnings || []),
+    },
+    structureValid: selected.length > 0 && errors.length === 0,
   };
 };
 
 export const prepareSidcaPresentation = async (file, mappingOverride = null) => {
-  const parsed = await leerEstructuraExcel(file);
-  const automaticMapping = autoMapSidcaColumns(parsed.columnas);
-  const mapping = mappingOverride || automaticMapping;
-  const validation = validateSidcaMapping(mapping, parsed.columnas);
-  const rows = validation.valid
-    ? normalizeSidcaRows({ ...parsed, mapping })
-    : [];
+  const workbook = await leerEstructuraWorkbook(file);
+  const analyzedSheets = workbook.hojas.map((sheet) => ({
+    ...analyzeSidcaSheet(sheet),
+    coverage: SOURCE_COVERAGE.UNKNOWN,
+    scope: null,
+  }));
+  const hasWideSheet = analyzedSheets.some((sheet) => sheet.parserMode === "wide");
+  const sheets = analyzedSheets;
+  const compatibleSheetIndexes = sheets
+    .filter((sheet) => sheet.selectable)
+    .map((sheet) => sheet.sheetIndex);
+  const selectedSheetIndexes = compatibleSheetIndexes;
+  const primary = sheets.find((sheet) => sheet.sheetIndex === selectedSheetIndexes[0]) || sheets[0];
 
+  if (hasWideSheet) {
+    const wideSheets = sheets.filter((sheet) => sheet.parserMode === "wide");
+    const consolidated = consolidateSidcaSheets(sheets, selectedSheetIndexes);
+    const wideSchema = primary?.wideSchema || wideSheets[0]?.wideSchema || detectWideTitularizacionSchema([]);
+    const automaticMapping = {
+      dni: wideSchema.personColumns.dni?.key || "",
+      apellido: wideSchema.personColumns.apellido?.key || "",
+      nombre: wideSchema.personColumns.nombre?.key || "",
+      departamento: wideSchema.personColumns.departamento?.key || "",
+    };
+    const prepared = {
+      file,
+      parsed: primary || {},
+      workbook,
+      sheets,
+      sheetNames: workbook.sheetNames,
+      selectedSheetIndexes,
+      compatibleSheetIndexes,
+      automaticMapping,
+      mapping: mappingOverride || automaticMapping,
+      validation: {
+        valid: selectedSheetIndexes.length > 0 && sheets
+          .filter((sheet) => selectedSheetIndexes.includes(sheet.sheetIndex))
+          .every((sheet) => sheet.validation.valid),
+        errors: selectedSheetIndexes.length === 0
+          ? ["Seleccioná al menos una hoja compatible antes del preview."]
+          : sheets
+          .filter((sheet) => selectedSheetIndexes.includes(sheet.sheetIndex))
+          .flatMap((sheet) => sheet.validation.errors),
+        warnings: sheets
+          .filter((sheet) => selectedSheetIndexes.includes(sheet.sheetIndex))
+          .flatMap((sheet) => sheet.validation.warnings),
+      },
+      rows: consolidated.rows,
+      summary: consolidated.summary,
+      wideSchema,
+      wideSchemas: Object.fromEntries(wideSheets.map((sheet) => [sheet.sheetIndex, sheet.wideSchema])),
+      wideParsed: consolidated,
+      parserMode: "wide",
+      structureValid: selectedSheetIndexes.length > 0 && sheets
+        .filter((sheet) => selectedSheetIndexes.includes(sheet.sheetIndex))
+        .every((sheet) => sheet.validation.valid),
+    };
+    return prepared;
+  }
+
+  const parsed = primary || {};
+  const automaticMapping = autoMapSidcaColumns(parsed.columnas || []);
+  const mapping = mappingOverride || automaticMapping;
+  const validation = validateSidcaMapping(mapping, parsed.columnas || []);
+  const rows = validation.valid ? normalizeSidcaRows({ ...parsed, mapping }) : [];
   return {
     file,
     parsed,
+    workbook,
+    sheets,
+    sheetNames: workbook.sheetNames,
+    selectedSheetIndexes: primary?.selectable ? [primary.sheetIndex] : [],
+    compatibleSheetIndexes: sheets.filter((sheet) => sheet.selectable).map((sheet) => sheet.sheetIndex),
     automaticMapping,
     mapping,
-    validation,
+    validation: { ...validation, warnings: [] },
     rows,
     summary: summarizeSidcaRows(rows),
+    wideSchema: primary?.wideSchema || null,
+    wideParsed: null,
+    parserMode: "manual",
+    structureValid: validation.valid,
   };
 };
 
@@ -188,8 +554,8 @@ const buildRecordData = ({ row, sourceId, importId, result }) => ({
   valoresNormalizados: row.valoresNormalizados,
   sourceId,
   importId,
-  matchStatus: result.matchStatus || null,
-  matchScore: result.matchScore || null,
+  matchStatus: result.matchStatus ?? null,
+  matchScore: result.matchScore ?? null,
   razones: result.razones || [],
   diferencias: result.diferencias || [],
   situacionIdVinculada: result.situacionIdVinculada || null,
@@ -198,67 +564,54 @@ const buildRecordData = ({ row, sourceId, importId, result }) => ({
   updatedAt: serverTimestamp(),
 });
 
-const importSourceRefKey = (sourceRef = {}) =>
-  [sourceRef.sourceId, sourceRef.importId, sourceRef.registroId, sourceRef.numeroFila]
-    .map((value) => String(value || ""))
-    .join("|");
-
-const mergeImportSourceRefs = (existingRefs = [], nextRef = null) => {
-  const refs = [...(Array.isArray(existingRefs) ? existingRefs : [])];
-  if (nextRef) refs.push(nextRef);
-  const seen = new Set();
-  return refs.filter((sourceRef) => {
-    const key = importSourceRefKey(sourceRef);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+const buildPresentationEvidence = ({ result, situation, row, sourceId, importId, importedUser }) => {
+  const tipo = result.tipoInconsistencia && result.matchStatus !== "confirmada"
+    ? "revision"
+    : "presentacion_sidca";
+  const registroId = row?.recordKey || "sin_registro";
+  const evidenceId = createEvidenceId({
+    sourceId,
+    importId,
+    registroId,
+    tipo,
   });
-};
-
-const updateSituationData = ({ result, situation, sourceId, importId, rowByKey }) => {
-  const alreadyConfirmed =
-    situation?.presentadoSidca === true || situation?.estado === "presentada_sidca";
-  if (alreadyConfirmed && result.matchStatus !== "confirmada") {
-    return { updatedAt: serverTimestamp() };
-  }
-
-  const row = result.recordKey ? rowByKey.get(result.recordKey) : null;
-  const sourceRef = row
-    ? {
-        sourceId,
-        importId,
-        registroId: row.recordKey,
-        numeroFila: row.numeroFila,
-      }
-    : null;
-  const status = result.matchStatus === "confirmada" ? "presentada_sidca" : result.matchStatus ? "requiere_revision" : "no_encontrada";
-
   return {
-    presentadoSidca: result.matchStatus === "confirmada",
-    estado: status,
-    matchStatus: result.matchStatus || null,
-    matchScore: result.matchScore || null,
-    tipoInconsistencia: result.tipoInconsistencia || "",
-    razonesMatch: result.razones || [],
-    diferenciasMatch: result.diferencias || [],
-    sourceRefs: mergeImportSourceRefs(situation?.sourceRefs, sourceRef),
-    updatedAt: serverTimestamp(),
+    evidenceId,
+    data: {
+      procesoId: TITULARIZACION_PROCESS_ID,
+      situacionId: situation.id,
+      dni: normalizeDni(situation.dni),
+      tipo,
+      sourceId,
+      importId,
+      registroId,
+      numeroFila: row?.numeroFila ?? null,
+      matchStatus: result.matchStatus ?? null,
+      matchScore: result.matchScore ?? null,
+      razones: result.razones || [],
+      diferencias: result.diferencias || [],
+      tipoInconsistencia: result.tipoInconsistencia || "",
+      origen: "automatico",
+      decididoPor: importedUser,
+      createdAt: serverTimestamp(),
+    },
   };
 };
 
-const metricsAfterImport = (persisted, situationUpdates, extraReviewCount) => {
-  const situations = persisted.situations.map((situacion) => ({
-    ...situacion,
-    ...(situationUpdates.get(situacion.id) || {}),
-  }));
-  const presentadasSidca = situations.filter((situacion) => situacion.presentadoSidca).length;
+const metricsAfterImport = (persisted, situationSummaries, extraReviewCount) => {
+  const presentadasSidca = persisted.situations.filter(
+    (situacion) => situationSummaries.get(situacion.id)?.presentadaSidca || situacion.presentadoSidca
+  ).length;
+  const requiresReview = persisted.situations.filter(
+    (situacion) => situationSummaries.get(situacion.id)?.requiereRevision || situacion.estadoResumen?.requiereRevision
+  ).length;
   return {
     personas: persisted.personas.length,
     situaciones: persisted.metrics.situaciones,
     presentadasSidca,
     pendientesSidca: persisted.metrics.situaciones - presentadasSidca,
     requierenRevision:
-      situations.filter((situacion) => situacion.estado === "requiere_revision").length +
+      requiresReview +
       (persisted.reviewSituations?.length || 0) +
       extraReviewCount,
     casosRevision: persisted.metrics.casosRevision || 0,
@@ -274,6 +627,9 @@ export const importSidcaPresentation = async ({
   summary,
   onProgress,
 }) => {
+  if (!TITULARIZACION_PERSISTENCE_ENABLED) {
+    throw new Error("La importación está bloqueada hasta completar la auditoría de seguridad.");
+  }
   const process = await getTitularizacionProcess();
   if (!process || process.estado !== "activo") {
     throw new Error("Primero debe inicializar el proceso Titularización 2026.");
@@ -334,19 +690,6 @@ export const importSidcaPresentation = async ({
     matched.rowResults.forEach((result) => rowResultsByKey.set(result.fila.recordKey, result));
   });
 
-  persisted.situations.forEach((situacion) => {
-    if (situationResultsById.has(situacion.id)) return;
-    const matched = matchSituationsOneToOne(
-      [situacion],
-      rowsByDni.get(situacion.dni) || []
-    );
-    const result = matched.situationResults[0];
-    situationResultsById.set(situacion.id, result);
-    matched.rowResults.forEach((rowResult) => {
-      if (!rowResultsByKey.has(rowResult.fila.recordKey)) rowResultsByKey.set(rowResult.fila.recordKey, rowResult);
-    });
-  });
-
   rows.forEach((row) => {
     if (rowResultsByKey.has(row.recordKey)) return;
     rowResultsByKey.set(row.recordKey, {
@@ -358,11 +701,6 @@ export const importSidcaPresentation = async ({
       situacionIdVinculada: null,
       tipoInconsistencia: "presentada_sin_solicitud_vinculada",
     });
-  });
-
-  const situationUpdates = new Map();
-  situationResultsById.forEach((result, situationId) => {
-    situationUpdates.set(situationId, updateSituationData({ result, situation: result.situacion, sourceId, importId, rowByKey }));
   });
 
   const rowResults = rows.map((row) => rowResultsByKey.get(row.recordKey));
@@ -423,34 +761,63 @@ export const importSidcaPresentation = async ({
     rows.forEach((row) => {
       const recordId = row.recordKey;
       operations.push({
-        ref: doc(collection(importRef, "registros"), recordId),
+        ref: doc(collection(importRef, TITULARIZACION_IMPORTED_RECORDS_COLLECTION), recordId),
         data: buildRecordData({
           row,
           sourceId,
           importId,
-          result: rowResults.find((item) => item.fila.recordKey === row.recordKey),
+          result: rowResultsByKey.get(row.recordKey),
         }),
       });
     });
 
-    persisted.personas.forEach((persona) => {
-      persona.situaciones.forEach((situacion) => {
-        const result = situationResultsById.get(situacion.id);
-        if (!result) return;
-        operations.push({
-          ref: doc(
-            collection(
-              doc(collection(processRef(), "personas"), persona.dni),
-              "situaciones"
-            ),
-            situacion.id
-          ),
-          data: updateSituationData({ result, situation: situacion, sourceId, importId, rowByKey }),
-        });
+    const situationSummaries = new Map();
+    situationResultsById.forEach((result) => {
+      const situation = result.situacion;
+      const row = result.recordKey ? rowByKey.get(result.recordKey) : null;
+      const evidence = buildPresentationEvidence({
+        result,
+        situation,
+        row,
+        sourceId,
+        importId,
+        importedUser,
+      });
+      const evidenceForSummary = {
+        ...evidence.data,
+        createdAt: null,
+      };
+      const summaryForSituation = deriveSituationSummary([
+        ...(situation.evidencias || []),
+        evidenceForSummary,
+      ]);
+      situationSummaries.set(situation.id, summaryForSituation);
+
+      const personRef = doc(collection(processRef(), "personas"), situation.dni);
+      const situationRef = doc(
+        collection(personRef, "situaciones"),
+        situation.id
+      );
+      operations.push({
+        ref: doc(
+          collection(situationRef, TITULARIZACION_EVIDENCES_COLLECTION),
+          evidence.evidenceId
+        ),
+        data: evidence.data,
+      });
+      operations.push({
+        ref: situationRef,
+        data: {
+          estadoResumen: {
+            ...summaryForSituation,
+            ultimaEvidenciaAt: serverTimestamp(),
+          },
+          updatedAt: serverTimestamp(),
+        },
       });
     });
 
-    const nextMetrics = metricsAfterImport(persisted, situationUpdates, review);
+    const nextMetrics = metricsAfterImport(persisted, situationSummaries, review);
     operations.push({
       ref: processRef(),
       data: {

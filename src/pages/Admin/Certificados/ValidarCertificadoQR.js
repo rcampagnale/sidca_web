@@ -25,6 +25,7 @@ import {
 } from "../../../services/certificadosService";
 import styles from "./CertificadosAdmin.module.css";
 import validar from "./ValidarCertificadoQR.module.css";
+import { ETIQUETAS_INSTITUCIONES_ORGANIZADORAS } from "./utils/ministerioCertificado";
 
 /**
  * Token de validación tal como lo genera el backend: 48 caracteres
@@ -104,7 +105,7 @@ const formatearFecha = (valor) => {
 
 const INSTITUCIONES = {
   sidca: "SIDCA — Sindicato de Docentes de Catamarca",
-  itm: "ITM — Instituto Tecnológico Municipal",
+  itm: `ITM — ${ETIQUETAS_INSTITUCIONES_ORGANIZADORAS.itm}`,
 };
 
 /**

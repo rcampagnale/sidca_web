@@ -53,6 +53,7 @@ import FirmantesMinisterioCertificado, {
 import {
   normalizarFechaParaInput,
   obtenerTextoAuspicioMinisterio,
+  resolverInstitucionOrganizadora,
 } from "./utils/ministerioCertificado";
 import SelectorCurso from "./SelectorCurso";
 import ValidarCertificadoQR from "./ValidarCertificadoQR";
@@ -127,6 +128,7 @@ const CertificadosAdmin = () => {
         const existente = await obtenerConfiguracionCertificado(cursoElegido.id);
 
         if (existente) {
+          const institucionOrganizadora = resolverInstitucionOrganizadora(existente);
           setConfiguracion(existente);
           setForm({
             titulo: existente.titulo || "",
@@ -136,7 +138,7 @@ const CertificadosAdmin = () => {
             fecha: existente.fecha || "",
             modalidad: existente.modalidad || "",
             descargaAppHabilitada: existente.descargaAppHabilitada !== false,
-            institucionOrganizadora: existente.institucionOrganizadora || "",
+            institucionOrganizadora,
             tipoActividad: existente.tipoActividad || "",
             fechaInicio: existente.fechaInicio || "",
             fechaFin: existente.fechaFin || "",
@@ -259,7 +261,7 @@ const CertificadosAdmin = () => {
       setForm((previo) => ({
         ...previo,
         niveles: normalizarNivelesMinisterio(guardada?.niveles),
-        institucionOrganizadora: guardada?.institucionOrganizadora || "",
+        institucionOrganizadora: resolverInstitucionOrganizadora(guardada),
         ...(guardada
           ? { textoAuspicio: obtenerTextoAuspicioMinisterio(guardada) }
           : {}),

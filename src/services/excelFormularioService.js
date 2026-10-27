@@ -57,6 +57,13 @@ const obtenerFilasDeHoja = (sheet) =>
     blankrows: false,
   });
 
+const estadoVisibilidadHoja = (workbook, sheetIndex) => {
+  const hiddenState = workbook.Workbook?.Sheets?.[sheetIndex]?.Hidden || 0;
+  if (hiddenState === 2) return { hidden: true, visibility: "veryHidden" };
+  if (hiddenState === 1) return { hidden: true, visibility: "hidden" };
+  return { hidden: false, visibility: "visible" };
+};
+
 const obtenerTextoHeader = (header) =>
   typeof header === "string"
     ? header
@@ -184,28 +191,41 @@ export const normalizarFilasExcel = (
   return { filas: filasNormalizadas, correspondencias, faltantes };
 };
 
-export const leerEstructuraExcel = async (file) => {
+const validarArchivoExcel = (file) => {
   if (!file || !file.name) throw new Error("Seleccione un archivo Excel.");
   if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
     throw new Error("El archivo debe tener formato .xlsx, .xls o .csv.");
   }
+};
 
-  const buffer = await file.arrayBuffer();
-  if (!buffer || buffer.byteLength === 0) throw new Error("El archivo está vacío.");
-
-  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  const sheetName = workbook.SheetNames?.[0];
-  if (!sheetName) throw new Error("El archivo no contiene hojas.");
-
-  const rows = obtenerFilasDeHoja(workbook.Sheets[sheetName]);
-  const headerIndex = rows.findIndex(
+const leerHojaEstructura = (workbook, sheetName, sheetIndex) => {
+  const sheet = workbook.Sheets[sheetName];
+  const filasCrudas = sheet ? obtenerFilasDeHoja(sheet) : [];
+  const visibilidad = estadoVisibilidadHoja(workbook, sheetIndex);
+  const headerIndex = filasCrudas.findIndex(
     (row) => Array.isArray(row) && row.some((cell) => texto(cell))
   );
-  if (headerIndex < 0) throw new Error("No se encontraron encabezados.");
 
-  const encabezados = rows[headerIndex] || [];
+  if (headerIndex < 0) {
+    return {
+      sheetName,
+      sheetIndex,
+      ...visibilidad,
+      hoja: sheetName,
+      estado: "HOJA_VACIA",
+      filas: [],
+      columnas: [],
+      headers: [],
+      indiceEncabezados: -1,
+      rowCount: 0,
+      columnCount: 0,
+      encabezadosDuplicados: [],
+      filasCrudas: 0,
+    };
+  }
+
+  const encabezados = filasCrudas[headerIndex] || [];
   const columnas = crearClavesColumnas(encabezados);
-  if (columnas.length === 0) throw new Error("No se encontraron columnas.");
   const conteoEncabezados = columnas.reduce((conteo, columna) => {
     const clave = normalizarNombreColumna(columna.label);
     conteo[clave] = (conteo[clave] || 0) + 1;
@@ -214,8 +234,7 @@ export const leerEstructuraExcel = async (file) => {
   const encabezadosDuplicados = Object.keys(conteoEncabezados).filter(
     (clave) => conteoEncabezados[clave] > 1
   );
-
-  const filas = rows
+  const filas = filasCrudas
     .slice(headerIndex + 1)
     .filter((row) => row.some((cell) => texto(cell)))
     .map((row) => {
@@ -225,15 +244,59 @@ export const leerEstructuraExcel = async (file) => {
       });
       return values;
     });
+  const range = sheet?.["!ref"] ? XLSX.utils.decode_range(sheet["!ref"]) : null;
+
+  return {
+    sheetName,
+    sheetIndex,
+    ...visibilidad,
+    hoja: sheetName,
+    estado: "PENDIENTE_ANALISIS",
+    filas,
+    columnas,
+    headers: columnas.map((column) => column.sourceHeader),
+    indiceEncabezados: headerIndex,
+    rowCount: filas.length,
+    columnCount: range ? range.e.c + 1 : columnas.length,
+    encabezadosDuplicados,
+    filasCrudas: filasCrudas.length,
+  };
+};
+
+export const leerEstructuraWorkbook = async (file) => {
+  validarArchivoExcel(file);
+
+  const buffer = await file.arrayBuffer();
+  if (!buffer || buffer.byteLength === 0) throw new Error("El archivo está vacío.");
+
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheetNames = workbook.SheetNames || [];
+  if (!sheetNames.length) throw new Error("El archivo no contiene hojas.");
+  const hojas = sheetNames.map((sheetName, sheetIndex) =>
+    leerHojaEstructura(workbook, sheetName, sheetIndex)
+  );
 
   return {
     nombreArchivo: file.name,
-    hoja: sheetName,
-    filas,
-    columnas,
-    indiceEncabezados: headerIndex,
-    hojasDisponibles: workbook.SheetNames,
-    encabezadosDuplicados,
+    sheetNames,
+    hojas,
+    hojasDisponibles: sheetNames,
+    workbookSheetCount: hojas.length,
+  };
+};
+
+export const leerEstructuraExcel = async (file) => {
+  const workbookData = await leerEstructuraWorkbook(file);
+  const firstSheet = workbookData.hojas[0];
+  if (!firstSheet) throw new Error("El archivo no contiene hojas.");
+
+  return {
+    ...firstSheet,
+    nombreArchivo: workbookData.nombreArchivo,
+    sheetNames: workbookData.sheetNames,
+    hojas: workbookData.hojas,
+    hojasDisponibles: workbookData.hojasDisponibles,
+    workbookSheetCount: workbookData.workbookSheetCount,
   };
 };
 

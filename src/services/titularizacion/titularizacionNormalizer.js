@@ -22,6 +22,42 @@ export const normalizeSearchText = (value) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const cleanVisibleNameText = (value) =>
+  String(value === null || value === undefined ? "" : value)
+    .replace(/,/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const visibleNameWords = (value) => cleanVisibleNameText(value).split(" ").filter(Boolean);
+
+const normalizedVisibleNameWords = (value) =>
+  visibleNameWords(value).map((word) => normalizeSearchText(word));
+
+/**
+ * Construye el nombre sólo para presentación, sin mutar ni combinar los
+ * valores originales de identidad.
+ */
+export const buildVisiblePersonName = ({ apellido = "", nombre = "", nombreCompleto = "" } = {}) => {
+  const surname = cleanVisibleNameText(apellido);
+  const givenName = cleanVisibleNameText(nombre);
+  const completeName = cleanVisibleNameText(nombreCompleto);
+
+  if (surname && givenName) {
+    const surnameWords = normalizedVisibleNameWords(surname);
+    const givenWords = visibleNameWords(givenName);
+    const normalizedGivenWords = normalizedVisibleNameWords(givenName);
+    const surnameIsPrefix = surnameWords.length <= normalizedGivenWords.length &&
+      surnameWords.every((word, index) => word === normalizedGivenWords[index]);
+    const remainingGivenName = surnameIsPrefix
+      ? givenWords.slice(surnameWords.length).join(" ")
+      : givenName;
+
+    return [surname, remainingGivenName].filter(Boolean).join(" ");
+  }
+
+  return surname || givenName || completeName;
+};
+
 export const normalizeFieldName = (value) =>
   normalizeSearchText(value).replace(/[\u00a0_-]+/g, " ");
 
@@ -229,6 +265,14 @@ export const hasMeaningfulSituationData = (situacion = {}) =>
     (concept) => !isEmptySituationValue(situacion[concept])
   );
 
+export const buildSituationFingerprint = (situacion = {}) =>
+  TITULARIZACION_SITUATION_CONCEPTS.map((concept) =>
+    normalizeSearchText(textValue(situacion[concept]))
+  ).join("|");
+
+// Alias de compatibilidad para el cálculo en memoria previo a la persistencia.
+export const buildSituationSignature = buildSituationFingerprint;
+
 const personValue = (respuesta, adapter, concept) =>
   conceptValue(respuesta, adapter, concept, null);
 
@@ -305,8 +349,6 @@ export const adaptResponseToPerson = (respuesta = {}, formulario = {}) => {
 
   const razonesRevision = [];
   if (!isValidDni(dni)) razonesRevision.push("DNI ausente o inválido");
-  if (!situaciones.length) razonesRevision.push("Sin situaciones interpretables");
-
   const personaKey = dni || `sin-dni-${respuesta.id || "respuesta"}`;
 
   return {
@@ -319,6 +361,7 @@ export const adaptResponseToPerson = (respuesta = {}, formulario = {}) => {
     telefono: persona.telefono,
     datosPersonaOriginales: personaOriginal,
     situaciones,
+    sinSituacionEstructurada: situaciones.length === 0,
     registrosDescartados,
     estadoInicial: razonesRevision.length
       ? "REQUIERE REVISIÓN"
@@ -342,6 +385,8 @@ export const groupResponsesByPerson = (respuestas = [], formulario = {}) => {
     }
 
     existente.situaciones.push(...personaNueva.situaciones);
+    existente.sinSituacionEstructurada =
+      existente.sinSituacionEstructurada && personaNueva.sinSituacionEstructurada;
     existente.registrosDescartados = [
       ...(existente.registrosDescartados || []),
       ...(personaNueva.registrosDescartados || []),
@@ -366,7 +411,7 @@ export const groupResponsesByPerson = (respuestas = [], formulario = {}) => {
     ...persona,
     situacionesCount: persona.situaciones.length,
     registrosDescartadosCount: (persona.registrosDescartados || []).length,
-    nombreCompleto: [persona.apellido, persona.nombre].filter(Boolean).join(" "),
+    nombreCompleto: buildVisiblePersonName(persona),
     searchable: normalizeSearchText(
       [persona.dni, persona.apellido, persona.nombre].filter(Boolean).join(" ")
     ),
@@ -405,8 +450,11 @@ export const buildTitularizacionMetrics = (personas = []) => {
     multiplesSituaciones: personasIdentificadas.filter(
       (persona) => persona.situaciones.length > 1
     ).length,
+    personasSinSituacionEstructurada: personasIdentificadas.filter(
+      (persona) => persona.sinSituacionEstructurada
+    ).length,
     requierenRevision: personas.filter(
-      (persona) => persona.estadoInicial === "REQUIERE REVISIÓN"
+      (persona) => persona.razonesRevision?.length > 0
     ).length,
   };
 };

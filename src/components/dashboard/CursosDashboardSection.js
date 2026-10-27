@@ -2,12 +2,44 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Chart } from "primereact/chart";
-import { collection, getDocs, collectionGroup, query, where } from "firebase/firestore";
+import { collection, getDocs, collectionGroup, query, where, documentId } from "firebase/firestore";
 import { db } from "../../firebase/firebase-config";
 import styles from "../../pages/Admin/AfiliadosDashboard/afiliadosDashboard.module.css";
 import cursoStyles from "./CursosDashboardSection.module.css";
 
 const COURSE_PATH_PREFIX = "cursos/";
+const USER_BATCH_SIZE = 10;
+
+const normalizeSearchText = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "");
+
+const chunk = (items, size) => {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+};
+
+const getUserProfile = (data, id) => {
+  const dni = String(data.dni || data.documento || id || "").trim();
+  const rawApellido = String(data.apellido || "").trim();
+  const rawNombre = String(data.nombre || "").trim();
+  let apellido = rawApellido;
+  let nombre = rawNombre;
+
+  if (!apellido && rawNombre.includes(",")) {
+    const [apellidoPart, ...nombreParts] = rawNombre.split(",");
+    apellido = apellidoPart.trim();
+    nombre = nombreParts.join(",").trim();
+  }
+
+  const nombreCompleto = [apellido, nombre].filter(Boolean).join(", ") || rawNombre || "Afiliado sin nombre";
+  return { dni, apellido, nombre, nombreCompleto, usuarioId: id };
+};
 
 const getCourseYear = (data) =>
   data.anio || data.año || data.anioCurso || data.anioDictado || data.anioCohorte || null;
@@ -57,7 +89,11 @@ export default function CursosDashboardSection({ year }) {
   const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorAfiliados, setErrorAfiliados] = useState("");
   const [filtro, setFiltro] = useState("todos");
+  const [afiliadosAprobados, setAfiliadosAprobados] = useState([]);
+  const [busquedaAfiliado, setBusquedaAfiliado] = useState("");
+  const [afiliadoSeleccionado, setAfiliadoSeleccionado] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +101,7 @@ export default function CursosDashboardSection({ year }) {
     const fetchCursos = async () => {
       setLoading(true);
       setError("");
+      setErrorAfiliados("");
 
       try {
         const cursosSnap = await getDocs(collection(db, "cursos"));
@@ -91,7 +128,11 @@ export default function CursosDashboardSection({ year }) {
         });
 
         if (cursosMap.size === 0) {
-          if (!cancelled) { setCursos([]); }
+          if (!cancelled) {
+            setCursos([]);
+            setAfiliadosAprobados([]);
+            setErrorAfiliados("");
+          }
           return;
         }
 
@@ -99,23 +140,101 @@ export default function CursosDashboardSection({ year }) {
           query(collectionGroup(db, "cursos"), where("aprobo", "==", true))
         );
 
+        const aprobadosPorUsuario = new Map();
+        const clavesAprobacion = new Set();
+        const usuarioIds = new Set();
+
         cgSnap.forEach((docSnap) => {
           const d = docSnap.data() || {};
-          const cursoPath = d.curso;
+          const cursoPath = typeof d.curso === "string" ? d.curso.trim() : "";
           if (!cursoPath || typeof cursoPath !== "string") return;
           const entry = cursosMap.get(cursoPath);
           if (!entry) return;
+
+          const usuarioRef = docSnap.ref?.parent?.parent;
+          if (!usuarioRef || !usuarioRef.parent || usuarioRef.parent.id !== "usuarios") return;
+
+          const usuarioId = usuarioRef.id || "";
+          const clave = `${usuarioId}|${cursoPath}`;
+          if (!usuarioId || clavesAprobacion.has(clave)) return;
+
+          clavesAprobacion.add(clave);
+          usuarioIds.add(usuarioId);
           entry.aprobados = (entry.aprobados || 0) + 1;
+
+          if (!aprobadosPorUsuario.has(usuarioId)) aprobadosPorUsuario.set(usuarioId, new Set());
+          aprobadosPorUsuario.get(usuarioId).add(cursoPath);
         });
 
-        const arr = Array.from(cursosMap.values()).sort((a, b) =>
-          a.titulo.localeCompare(b.titulo, "es", { sensitivity: "base" })
-        );
+        const arr = Array.from(cursosMap.values())
+          .filter((curso) => curso.aprobados > 0)
+          .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { sensitivity: "base" }));
 
-        if (!cancelled) { setCursos(arr); }
+        if (!cancelled) {
+          setCursos(arr);
+          setAfiliadosAprobados([]);
+          setLoading(false);
+        }
+
+        if (usuarioIds.size === 0) return;
+
+        try {
+          const ids = Array.from(usuarioIds);
+          const lotes = chunk(ids, USER_BATCH_SIZE);
+          const usuariosPorId = new Map();
+
+          for (const lote of lotes) {
+            const usuariosSnap = await getDocs(
+              query(collection(db, "usuarios"), where(documentId(), "in", lote))
+            );
+            usuariosSnap.forEach((docSnap) => {
+              usuariosPorId.set(docSnap.id, getUserProfile(docSnap.data() || {}, docSnap.id));
+            });
+          }
+
+          const afiliados = Array.from(aprobadosPorUsuario.entries())
+            .map(([usuarioId, cursoPaths]) => {
+              const perfil = usuariosPorId.get(usuarioId) || getUserProfile({}, usuarioId);
+              const cursosAprobados = Array.from(cursoPaths)
+                .map((cursoPath) => cursosMap.get(cursoPath))
+                .filter(Boolean)
+                .map((curso) => ({
+                  id: curso.id,
+                  titulo: curso.titulo,
+                  estado: curso.estado,
+                  categoria: curso.categoria,
+                }))
+                .sort((a, b) => a.titulo.localeCompare(b.titulo, "es", { sensitivity: "base" }));
+              return { ...perfil, usuarioId, cursosAprobados };
+            })
+            .filter((afiliado) => afiliado.cursosAprobados.length > 0)
+            .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto, "es", { sensitivity: "base" }));
+
+          if (!cancelled) {
+            setAfiliadosAprobados(afiliados);
+            setErrorAfiliados("");
+          }
+        } catch (err) {
+          const ids = Array.from(usuarioIds);
+          const lotes = chunk(ids, USER_BATCH_SIZE);
+          console.error("[CursosDashboardSection] Error cargando usuarios:", err);
+          console.error("[CursosDashboardSection] usuarios batch error", {
+            code: err?.code,
+            message: err?.message,
+            totalIds: ids.length,
+            lotes: lotes.length,
+          });
+          if (!cancelled) {
+            setAfiliadosAprobados([]);
+            setErrorAfiliados("No se pudieron cargar los datos de afiliados para la búsqueda.");
+          }
+        }
       } catch (err) {
-        console.error("[CursosDashboardSection] Error:", err);
-        if (!cancelled) { setError("No se pudo cargar la información de cursos."); }
+        console.error("[CursosDashboardSection] Error cargando cursos:", err);
+        if (!cancelled) {
+          setError("No se pudo cargar la información de cursos.");
+          setAfiliadosAprobados([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -133,6 +252,19 @@ export default function CursosDashboardSection({ year }) {
     const maxAprobados = Math.max(...cursos.map((c) => c.aprobados || 0), 1);
     return { totalCursos, cursosActivos, cursosFinalizados, totalAprobados, maxAprobados };
   }, [cursos]);
+
+  const afiliadosCoincidentes = useMemo(() => {
+    const termino = normalizeSearchText(busquedaAfiliado);
+    if (!termino) return [];
+    return afiliadosAprobados
+      .filter((afiliado) => [
+        afiliado.dni,
+        afiliado.apellido,
+        afiliado.nombre,
+        afiliado.nombreCompleto,
+      ].some((value) => normalizeSearchText(value).includes(termino)))
+      .slice(0, 10);
+  }, [afiliadosAprobados, busquedaAfiliado]);
 
   const cursosFiltrados = useMemo(() => {
     if (filtro === "activos") return cursos.filter((c) => isActiveStatus(c.estado));
@@ -173,7 +305,7 @@ export default function CursosDashboardSection({ year }) {
       <div className={cursoStyles.kpiRow}>
         <div className={cursoStyles.kpiCard}>
           <span className={cursoStyles.kpiVal}>{totalCursos}</span>
-          <span className={cursoStyles.kpiLbl}>Cursos totales</span>
+          <span className={cursoStyles.kpiLbl}>Cursos con aprobados</span>
         </div>
         <div className={`${cursoStyles.kpiCard} ${cursoStyles.kpiCardGreen}`}>
           <span className={cursoStyles.kpiVal}>{cursosActivos}</span>
@@ -185,9 +317,98 @@ export default function CursosDashboardSection({ year }) {
         </div>
         <div className={`${cursoStyles.kpiCard} ${cursoStyles.kpiCardBlue}`}>
           <span className={cursoStyles.kpiVal}>{totalAprobados}</span>
-          <span className={cursoStyles.kpiLbl}>Afiliados aprobados</span>
+          <span className={cursoStyles.kpiLbl}>Aprobaciones registradas</span>
         </div>
       </div>
+
+      <section className={cursoStyles.affiliateLookup} aria-labelledby="consulta-afiliado-titulo">
+        <div className={cursoStyles.lookupHeader}>
+          <div>
+            <h3 id="consulta-afiliado-titulo" className={cursoStyles.lookupTitle}>
+              Consultar cursos aprobados por afiliado
+            </h3>
+            <p className={cursoStyles.lookupSubtitle}>
+              Buscá un afiliado para consultar sus cursos aprobados.
+            </p>
+          </div>
+          {busquedaAfiliado && (
+            <button
+              type="button"
+              className={cursoStyles.lookupClear}
+              onClick={() => {
+                setBusquedaAfiliado("");
+                setAfiliadoSeleccionado(null);
+              }}
+            >
+              <i className="pi pi-times" aria-hidden="true" />
+              Limpiar búsqueda
+            </button>
+          )}
+        </div>
+
+        <div className={cursoStyles.lookupInputWrap}>
+          <i className="pi pi-search" aria-hidden="true" />
+          <input
+            type="search"
+            className={cursoStyles.lookupInput}
+            value={busquedaAfiliado}
+            onChange={(event) => {
+              setBusquedaAfiliado(event.target.value);
+              setAfiliadoSeleccionado(null);
+            }}
+            placeholder="Buscar por DNI, apellido o nombre..."
+            aria-label="Buscar por DNI, apellido o nombre"
+          />
+        </div>
+
+        {errorAfiliados && <p className={cursoStyles.lookupError}>{errorAfiliados}</p>}
+
+        {busquedaAfiliado && afiliadosCoincidentes.length > 0 && (
+          <div className={cursoStyles.affiliateResults}>
+            {afiliadosCoincidentes.map((afiliado) => (
+              <button
+                type="button"
+                key={afiliado.usuarioId}
+                className={`${cursoStyles.affiliateResult} ${afiliadoSeleccionado?.usuarioId === afiliado.usuarioId ? cursoStyles.affiliateResultSelected : ""}`}
+                onClick={() => setAfiliadoSeleccionado(afiliado)}
+              >
+                <span className={cursoStyles.affiliateResultName}>{afiliado.nombreCompleto}</span>
+                <span className={cursoStyles.affiliateResultMeta}>
+                  DNI {afiliado.dni} · {afiliado.cursosAprobados.length} {afiliado.cursosAprobados.length === 1 ? "curso aprobado" : "cursos aprobados"}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {busquedaAfiliado && afiliadosCoincidentes.length === 0 && (
+          <p className={cursoStyles.lookupEmpty}>No encontramos afiliados con esa búsqueda.</p>
+        )}
+
+        {afiliadoSeleccionado && (
+          <div className={cursoStyles.affiliateDetail}>
+            <div className={cursoStyles.affiliateDetailHeader}>
+              <div>
+                <h4>{afiliadoSeleccionado.nombreCompleto}</h4>
+                <p>DNI {afiliadoSeleccionado.dni}</p>
+              </div>
+              <strong>{afiliadoSeleccionado.cursosAprobados.length} aprobados</strong>
+            </div>
+            <div className={cursoStyles.approvedCoursesHeader}>Cursos aprobados</div>
+            <div className={cursoStyles.approvedCourses}>
+              {afiliadoSeleccionado.cursosAprobados.map((curso) => (
+                <div key={curso.id} className={cursoStyles.approvedCourseRow}>
+                  <span className={cursoStyles.approvedCourseTitle}>{curso.titulo}</span>
+                  <span className={cursoStyles.approvedCourseMeta}>
+                    <span>{limpiarEstadoLabel(curso.estado)}</span>
+                    {curso.categoria && <span>{curso.categoria}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* ── Layout principal: tabla + sidebar ── */}
       <div className={cursoStyles.layout}>
@@ -195,7 +416,7 @@ export default function CursosDashboardSection({ year }) {
         {/* Tabla */}
         <div className={`${styles.panel} ${cursoStyles.tablePanel}`}>
           <div className={cursoStyles.tableHeader}>
-            <span className={styles.panelHeader} style={{ margin: 0 }}>Todos los cursos</span>
+            <span className={styles.panelHeader} style={{ margin: 0 }}>Cursos con afiliados aprobados</span>
             <div className={cursoStyles.filtroTabs}>
               {[
                 { key: "todos", label: "Todos" },
@@ -222,7 +443,7 @@ export default function CursosDashboardSection({ year }) {
             <p className={styles.errorText}>{error}</p>
           ) : cursosFiltrados.length === 0 ? (
             <div className={cursoStyles.emptyBox}>
-              No hay cursos para mostrar.
+              No hay cursos con afiliados aprobados.
             </div>
           ) : (
             <div className={cursoStyles.tableScroll}>

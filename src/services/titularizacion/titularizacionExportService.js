@@ -29,13 +29,13 @@ export const buildTitularizacionExportRows = (rows = []) =>
     Modalidad: value(row, "modalidad"),
     Departamento: value(row, "departamento"),
     "Formulario solicitud": row.formularioSolicitud ? "Sí" : "",
-    "Presentado SIDCA": row.presentadoSidca ? "Sí" : "No",
+    "Presentado SIDCA": (row.estadoResumen?.presentadaSidca ?? row.presentadoSidca) ? "Sí" : "No",
     "Estado Ministerio": "",
     Apto: "",
     "No Apto": "",
     Observado: "",
     Resolución: "",
-    "Situación actual": value(row, "estado"),
+    "Situación actual": row.estadoResumen?.estadoActual || value(row, "estado"),
     "Tipo de inconsistencia": value(row, "tipoInconsistencia"),
     Observación: "",
   }));
@@ -48,4 +48,3 @@ export const exportTitularizacionPendientes = (rows = []) => {
   XLSX.writeFile(workbook, fileName);
   return { fileName, rows: rows.length };
 };
-

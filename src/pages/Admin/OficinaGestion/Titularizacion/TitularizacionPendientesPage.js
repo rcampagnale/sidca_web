@@ -11,7 +11,10 @@ import { useHistory, useLocation } from "react-router-dom";
 
 import { exportTitularizacionPendientes } from "../../../../services/titularizacion/titularizacionExportService";
 import { loadTitularizacionPendingData } from "../../../../services/titularizacion/titularizacionProcessService";
-import { normalizeSearchText } from "../../../../services/titularizacion/titularizacionNormalizer";
+import {
+  buildVisiblePersonName,
+  normalizeSearchText,
+} from "../../../../services/titularizacion/titularizacionNormalizer";
 import styles from "./TitularizacionStage2.module.css";
 
 const FILTERS = [
@@ -76,7 +79,7 @@ const TitularizacionPendientesPage = () => {
       <div className={styles.detailGrid}>
         {[
           ["DNI", selected.dni],
-          ["Apellido y nombre", selected.nombreCompleto || [selected.apellido, selected.nombre].filter(Boolean).join(" ")],
+          ["Apellido y nombre", buildVisiblePersonName(selected)],
           ["Cargo", selected.cargo],
           ["Materia", selected.materia],
           ["Horas", selected.horas],
@@ -124,7 +127,7 @@ const TitularizacionPendientesPage = () => {
         <div className={styles.pendingTable}>
           <DataTable value={rows} dataKey="id" paginator rows={25} rowsPerPageOptions={[25, 50, 100]} responsiveLayout="scroll" emptyMessage="No hay situaciones para este filtro." sortMode="single">
             <Column field="dni" header="DNI" sortable body={(row) => valueOrDash(row.dni)} />
-            <Column header="Apellido y nombre" sortable sortField="nombreCompleto" body={(row) => valueOrDash(row.nombreCompleto || [row.apellido, row.nombre].filter(Boolean).join(" "))} />
+            <Column header="Apellido y nombre" sortable sortField="nombreCompleto" body={(row) => valueOrDash(buildVisiblePersonName(row))} />
             <Column field="cargo" header="Cargo" sortable body={(row) => valueOrDash(row.cargo)} />
             <Column field="materia" header="Materia" sortable body={(row) => valueOrDash(row.materia)} />
             <Column field="horas" header="Horas" body={(row) => valueOrDash(row.horas)} />
@@ -147,4 +150,3 @@ const TitularizacionPendientesPage = () => {
 };
 
 export default TitularizacionPendientesPage;
-

@@ -8,12 +8,17 @@ export const TEXTO_AUSPICIO_DEFAULT_MINISTERIO =
 
 export const NOMBRES_INSTITUCIONES_ORGANIZADORAS = Object.freeze({
   sidca: "SINDICATO DE DOCENTES DE CATAMARCA - SI.D.CA.",
-  itm: "INSTITUTO TECNOLÓGICO MUNICIPAL",
+  itm: "INSTITUTO TECNOLOGICO MUNICIPAL (I.T.M)",
+});
+
+export const ETIQUETAS_INSTITUCIONES_ORGANIZADORAS = Object.freeze({
+  sidca: "SINDICATO DE DOCENTES DE CATAMARCA - SI.D.CA.",
+  itm: "INSTITUTO TECNOLÓGICO MUNICIPAL (I.T.M)",
 });
 
 export const OPCIONES_INSTITUCIONES_ORGANIZADORAS = Object.freeze([
-  { value: "sidca", label: NOMBRES_INSTITUCIONES_ORGANIZADORAS.sidca },
-  { value: "itm", label: NOMBRES_INSTITUCIONES_ORGANIZADORAS.itm },
+  { value: "sidca", label: ETIQUETAS_INSTITUCIONES_ORGANIZADORAS.sidca },
+  { value: "itm", label: ETIQUETAS_INSTITUCIONES_ORGANIZADORAS.itm },
 ]);
 
 const normalizarClaveInstitucion = (valor) =>

@@ -45,7 +45,7 @@ export const CAMPOS_AUTORIDAD = [
     label: "Organismo / institución",
     maxLength: 300,
     ayuda:
-      "Ej.: Sindicato de Docentes de Catamarca, Instituto Tecnológico Municipal.",
+      "Ej.: Sindicato de Docentes de Catamarca, Instituto Tecnológico Municipal (I.T.M).",
   },
   {
     nombre: "referencia",
